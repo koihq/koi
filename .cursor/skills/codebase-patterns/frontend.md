@@ -17,6 +17,8 @@ ui/src/
 
 Package manager is **pnpm**. Do not add npm or yarn lockfiles.
 
+Import alias is `@/*` → `src/*` (tsconfig `baseUrl` + `paths`). Do not use `#/` or add `package.json#imports`. shadcn `components.json` aliases stay `@/components`, `@/lib/utils`, `@/components/ui`.
+
 ## API layer (`src/api/`)
 
 SDK/client instances are created **once** in `apiProvider.tsx` and passed into thin per-entity wrappers. Entity files never construct the HTTP client themselves.
@@ -96,3 +98,7 @@ Entity list/mutation hooks wrap TanStack Query and call `useApi()`.
 ## Components
 
 shadcn/ui primitives live in `components/ui`. Shared product blocks in `components/blocks`. Tailwind v4 for styling.
+
+## Dev
+
+`make dev` runs Vite on `:5173` and proxies `/health` and `/api` to the Go API on `:8080`. Browse `http://localhost:5173`. Keep `createApiClient()` on a relative/empty base URL so requests go through the proxy — do not point the browser at `:8080`.

@@ -13,8 +13,10 @@ vendor/
 
 # Node
 node_modules/
-ui/dist/
 ui/.vite/
+
+# Vite → Go embed output
+pkg/web/dist/
 
 # OS / editor
 .DS_Store

@@ -8,14 +8,22 @@ See [ROADMAP.md](ROADMAP.md) for MVP slices.
 
 ```bash
 cp .env.example .env
+make dev
+```
+
+Dev serves the UI with Vite HMR at `http://localhost:5173` and the API (Air) at `:8080`. Vite proxies `/health` and `/api` to the API. Check `GET http://localhost:5173/health` — `{ "status": "ok", "db": "ok"|"down" }`.
+
+To run the production-shaped binary (embedded UI, no HMR):
+
+```bash
 make compose-up
 make run
 ```
 
-API listens on `:8080`. Check `GET /health` — `{ "status": "ok", "db": "ok"|"down" }`.
+API listens on `:8080`.
 
 ```bash
 make test
 ```
 
-The React app lives in `ui/` (pnpm). Scaffold it with Vite; Go embeds a built bundle from `pkg/web/dist` when present.
+The React app lives in `ui/` (pnpm). `make ui-build` writes the Vite bundle to `pkg/web/dist` (gitignored); Go embeds it. `make dev`, `make run`, and `make test` build the UI first if that output is missing.

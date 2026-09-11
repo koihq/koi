@@ -1,6 +1,8 @@
 # Backend architecture
 
-Single Go binary built from `cmd/koi/main.go`. The binary boots the app (`koiapp.NewKoiApp`) and serves the HTTP API on port 8080. UI bundle is embedded when available.
+Single Go binary built from `cmd/koi/main.go`. The binary boots the app (`koiapp.NewKoiApp`) and serves the HTTP API on port 8080. The UI bundle is produced by `make ui-build` into `pkg/web/dist` (gitignored) and embedded at compile time.
+
+`make dev` runs Air against `./cmd/koi` (see `.air.toml`) plus Vite. Do not serve dev UI from `:8080`; that is the embedded bundle.
 
 ## Layering
 
