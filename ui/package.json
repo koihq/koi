@@ -2,6 +2,7 @@
   "name": "ui",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "vite",
     "generate-routes": "tsr generate",
