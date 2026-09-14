@@ -1,6 +1,7 @@
 package koiapp
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,27 +17,37 @@ type Config struct {
 	DatabaseURL string
 }
 
-func LoadConfig() Config {
+func LoadConfig() (Config, error) {
 	_ = godotenv.Load()
-	return Config{
-		HTTPAddr:    env("KOI_HTTP_ADDR", ":8080"),
-		DatabaseURL: env("KOI_DATABASE_URL", "postgres://koi:koi@localhost:5432/koi?sslmode=disable"),
+	httpAddr, err := requireEnv("KOI_PORT")
+	if err != nil {
+		return Config{}, err
 	}
+	databaseURL, err := requireEnv("KOI_DATABASE_URL")
+	if err != nil {
+		return Config{}, err
+	}
+	return Config{HTTPAddr: httpAddr, DatabaseURL: databaseURL}, nil
 }
 
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func requireEnv(key string) (string, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return "", fmt.Errorf("required env %s is not set", key)
 	}
-	return fallback
+	return v, nil
 }
 
 type App struct {
 	cfg Config
 }
 
-func NewKoiApp() *App {
-	return &App{cfg: LoadConfig()}
+func NewKoiApp() (*App, error) {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	return &App{cfg: cfg}, nil
 }
 
 func (a *App) Run() error {
