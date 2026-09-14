@@ -1,0 +1,25 @@
+.env
+bin/
+tmp/
+/dist/
+*.exe
+*.test
+coverage.out
+
+# Go
+vendor/
+.gocache/
+.gomodcache/
+
+# Node
+node_modules/
+ui/.vite/
+
+# Vite → Go embed output
+pkg/web/dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
