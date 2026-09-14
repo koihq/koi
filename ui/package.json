@@ -14,7 +14,7 @@
     "check:fix-unsafe": "biome check --write --unsafe .",
     "check-types": "tsc -b --noEmit",
     "test": "vitest run",
-    "prepare": "husky"
+    "prepare": "cd .. && husky ui/.husky"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
