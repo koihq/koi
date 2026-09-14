@@ -25,6 +25,10 @@ func (s stubStore) Ping(context.Context) error {
 	return s.ping
 }
 
+func (s stubStore) UserRepo() koidomain.UserRepository                 { return nil }
+func (s stubStore) OrganizationRepo() koidomain.OrganizationRepository { return nil }
+func (s stubStore) MembershipRepo() koidomain.MembershipRepository     { return nil }
+
 func TestHealthHandler_DBOk(t *testing.T) {
 	h := NewHealthHandler(stubStore{})
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
