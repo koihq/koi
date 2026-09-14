@@ -1,0 +1,19 @@
+cd ui
+
+echo ""
+echo "==> UI pre-commit"
+echo ""
+
+echo "→ lint"
+pnpm lint
+
+echo ""
+echo "→ typecheck"
+pnpm check-types
+
+echo ""
+echo "→ unit tests"
+pnpm test
+
+echo ""
+echo "==> UI pre-commit passed"
