@@ -24,6 +24,8 @@ make run                 # Go API + embedded UI on :8080
 make test                # go test ./...
 ```
 
+`ui/.husky/pre-commit` runs UI `lint`, `check-types`, and unit tests (`vitest run`).
+
 Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/api` to the Go API. `:8080` in dev serves the last embedded build — do not use it for UI work.
 
 `GET /health` returns `{ "status": "ok", "db": "ok"|"down" }`.
