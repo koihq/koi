@@ -13,8 +13,9 @@ import (
 )
 
 type Config struct {
-	HTTPAddr    string
-	DatabaseURL string
+	HTTPAddr      string
+	DatabaseURL   string
+	SessionSecret string
 }
 
 func LoadConfig() (Config, error) {
@@ -27,7 +28,15 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	return Config{HTTPAddr: httpAddr, DatabaseURL: databaseURL}, nil
+	sessionSecret, err := requireEnv("KOI_SESSION_SECRET")
+	if err != nil {
+		return Config{}, err
+	}
+	return Config{
+		HTTPAddr:      httpAddr,
+		DatabaseURL:   databaseURL,
+		SessionSecret: sessionSecret,
+	}, nil
 }
 
 func requireEnv(key string) (string, error) {
