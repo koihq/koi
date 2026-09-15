@@ -5,7 +5,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/alexedwards/scs/postgresstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/joho/godotenv"
 
 	"github.com/koihq/koi/pkg/koiapi"
@@ -67,7 +70,24 @@ func (a *App) Run() error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 	store := koidatabase.NewStore(db)
-	server := koiapi.NewServer(store)
+
+	sess := scs.New()
+	sess.Lifetime = 30 * 24 * time.Hour
+	sess.Cookie.Name = "koi_session"
+	sess.Cookie.HttpOnly = true
+	sess.Cookie.SameSite = http.SameSiteLaxMode
+	sess.Cookie.Path = "/"
+	sess.Cookie.Secure = false
+	sess.Cookie.Persist = true
+	if db != nil {
+		sqlDB, err := db.DB()
+		if err != nil {
+			return fmt.Errorf("sql db: %w", err)
+		}
+		sess.Store = postgresstore.New(sqlDB)
+	}
+
+	server := koiapi.NewServer(store, sess)
 
 	slog.Info("koi listening", "addr", a.cfg.HTTPAddr)
 	return http.ListenAndServe(a.cfg.HTTPAddr, server)
