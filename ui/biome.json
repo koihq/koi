@@ -40,7 +40,8 @@
         "recommended": true
       },
       "style": {
-        "recommended": true
+        "recommended": true,
+        "noJsxLiterals": "error"
       },
       "suspicious": {
         "recommended": true

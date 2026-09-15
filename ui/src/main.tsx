@@ -2,6 +2,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 
 import { ApiProvider, createApi } from "@/api/apiProvider";
+import "@/config/i18n";
 import { routeTree } from "./routeTree.gen";
 
 const api = createApi();

@@ -1,4 +1,7 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { type FormEvent, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
+
 import { messageFromUnknown } from "@/api/errors";
 import type { CredentialsReq } from "@/api/generated";
 import { Button } from "@/components/ui/button";
@@ -6,18 +9,15 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 
 export function CredentialsForm({
-  title,
-  submitLabel,
-  alt,
+  intent,
   passwordComplete,
   onSubmit,
 }: {
-  title: string;
-  submitLabel: string;
-  alt: ReactNode;
+  intent: "sign-in" | "sign-up";
   passwordComplete: "current-password" | "new-password";
   onSubmit: (body: CredentialsReq) => Promise<void>;
 }) {
+  const { t } = useTranslation("auth");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -39,11 +39,13 @@ export function CredentialsForm({
 
   return (
     <>
-      <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
+      <h1 className="text-2xl font-medium tracking-tight">
+        {intent === "sign-in" ? t("signIn.title") : t("signUp.title")}
+      </h1>
       <form className="mt-8" onSubmit={handleSubmit}>
         <FieldGroup>
           <Field data-invalid={error ? true : undefined}>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
+            <FieldLabel htmlFor="email">{t("fields.email")}</FieldLabel>
             <Input
               id="email"
               name="email"
@@ -55,7 +57,7 @@ export function CredentialsForm({
             />
           </Field>
           <Field data-invalid={error ? true : undefined}>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <FieldLabel htmlFor="password">{t("fields.password")}</FieldLabel>
             <Input
               id="password"
               name="password"
@@ -69,11 +71,28 @@ export function CredentialsForm({
           </Field>
           <FieldError>{error}</FieldError>
           <Button type="submit" size="lg" className="w-full" disabled={pending}>
-            {pending ? "Working…" : submitLabel}
+            {pending
+              ? t("working", { ns: "common" })
+              : intent === "sign-in"
+                ? t("signIn.submit")
+                : t("signUp.submit")}
           </Button>
         </FieldGroup>
       </form>
-      <p className="mt-6 text-sm text-muted-foreground">{alt}</p>
+      <p className="mt-6 text-sm text-muted-foreground">
+        <Trans
+          t={t}
+          i18nKey={intent === "sign-in" ? "signIn.alt" : "signUp.alt"}
+          components={{
+            action: (
+              <Link
+                to={intent === "sign-in" ? "/sign-up" : "/sign-in"}
+                className="text-foreground underline-offset-4 hover:underline"
+              />
+            ),
+          }}
+        />
+      </p>
     </>
   );
 }

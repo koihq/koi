@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 
 import { useApi } from "@/api/apiProvider";
 import { AuthShell } from "@/routes/-auth-shell";
@@ -15,17 +15,8 @@ function SignUp() {
   return (
     <AuthShell>
       <CredentialsForm
-        title="Create an account"
-        submitLabel="Create account"
+        intent="sign-up"
         passwordComplete="new-password"
-        alt={
-          <>
-            Already have one?{" "}
-            <Link to="/sign-in" className="text-foreground underline-offset-4 hover:underline">
-              Sign in
-            </Link>
-          </>
-        }
         onSubmit={async (body) => {
           await api.auth.signup(body);
           await router.invalidate();

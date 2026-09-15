@@ -1,25 +1,28 @@
 import { describe, expect, it } from "vitest";
 
 import { displayMessage, envelopeMiddleware } from "@/api/errors";
+import i18n from "@/config/i18n";
 
 describe("displayMessage", () => {
   it("maps field codes", () => {
     expect(displayMessage("validation", [{ field: "password", code: "min_length" }])).toBe(
-      "Password must be at least 8 characters",
+      i18n.t("fields.password.min_length", { ns: "errors" }),
     );
     expect(displayMessage("validation", [{ field: "email", code: "invalid" }])).toBe(
-      "Enter a valid email",
+      i18n.t("fields.email.invalid", { ns: "errors" }),
     );
   });
 
   it("maps envelope codes", () => {
-    expect(displayMessage("invalid_credentials")).toBe("Invalid email or password");
-    expect(displayMessage("email_taken")).toBe("That email is already registered");
+    expect(displayMessage("invalid_credentials")).toBe(
+      i18n.t("codes.invalid_credentials", { ns: "errors" }),
+    );
+    expect(displayMessage("email_taken")).toBe(i18n.t("codes.email_taken", { ns: "errors" }));
   });
 });
 
 describe("envelopeMiddleware", () => {
-  it("throws ApiError with UI copy", async () => {
+  it("throws ApiError with code and fields, not UI copy", async () => {
     const response = new Response(
       JSON.stringify({ error: { code: "invalid_credentials", message: "invalid credentials" } }),
       { status: 401, headers: { "Content-Type": "application/json" } },
@@ -33,7 +36,8 @@ describe("envelopeMiddleware", () => {
       }),
     ).rejects.toMatchObject({
       name: "ApiError",
-      message: "Invalid email or password",
+      code: "invalid_credentials",
+      message: "invalid_credentials",
     });
   });
 });

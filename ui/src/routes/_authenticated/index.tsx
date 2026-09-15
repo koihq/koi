@@ -1,4 +1,5 @@
 import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,12 @@ function Home() {
   const { me } = useRouteContext({ from: "/_authenticated" });
   const api = useApi();
   const router = useRouter();
+  const { t } = useTranslation("home");
 
   return (
     <main className="min-h-svh px-6 py-10 sm:px-16 sm:py-16">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="text-sm tracking-tight">Koi</p>
+        <p className="text-sm tracking-tight">{t("brand", { ns: "common" })}</p>
         <Button
           type="button"
           variant="ghost"
@@ -26,7 +28,7 @@ function Home() {
             await router.navigate({ to: "/sign-in" });
           }}
         >
-          Sign out
+          {t("signOut")}
         </Button>
       </div>
       <div className="mt-24 max-w-lg">
