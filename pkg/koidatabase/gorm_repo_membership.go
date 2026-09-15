@@ -21,7 +21,7 @@ func (r *GormMembershipRepository) GetByUserID(ctx context.Context, userID uuid.
 	entity := new(koidomain.Membership)
 	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Take(entity).Error
 	if err != nil {
-		return nil, mapNotFound(err)
+		return nil, mapDBError(err)
 	}
 	return entity, nil
 }

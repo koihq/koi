@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/scs/postgresstore"
@@ -55,11 +56,33 @@ type App struct {
 }
 
 func NewKoiApp() (*App, error) {
+	_ = godotenv.Load()
+	initLogger()
 	cfg, err := LoadConfig()
 	if err != nil {
 		return nil, err
 	}
 	return &App{cfg: cfg}, nil
+}
+
+func initLogger() {
+	level := slog.LevelInfo
+	switch strings.ToLower(os.Getenv("KOI_LOG_LEVEL")) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	}
+	opts := &slog.HandlerOptions{Level: level}
+	var h slog.Handler
+	if strings.EqualFold(os.Getenv("KOI_LOG_FORMAT"), "json") {
+		h = slog.NewJSONHandler(os.Stderr, opts)
+	} else {
+		h = slog.NewTextHandler(os.Stderr, opts)
+	}
+	slog.SetDefault(slog.New(h))
 }
 
 func (a *App) Run() error {

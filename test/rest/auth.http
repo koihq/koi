@@ -16,13 +16,13 @@ GET {{host}}/health
 
 ### --- Errors (no session needed) ----------------------------------------
 
-### Invalid JSON — 400 invalid json
+### Invalid JSON — 400 { "error": { "code": "invalid_json" } }
 POST {{baseUrl}}/auth/signup
 Content-Type: application/json
 
 not-json
 
-### Short password — 400 validation: password
+### Short password — 400 { "error": { "code": "validation", "fields": [{ "field": "password", "code": "min_length" }] } }
 POST {{baseUrl}}/auth/signup
 Content-Type: application/json
 
@@ -31,7 +31,7 @@ Content-Type: application/json
     "password": "short"
 }
 
-### Bad email — 400 validation: email
+### Bad email — 400 { "error": { "code": "validation", "fields": [{ "field": "email", "code": "invalid" }] } }
 POST {{baseUrl}}/auth/signup
 Content-Type: application/json
 
@@ -40,7 +40,7 @@ Content-Type: application/json
     "password": "{{password}}"
 }
 
-### Unknown email login — 401 invalid credentials (same as bad password)
+### Unknown email login — 401 { "error": { "code": "invalid_credentials" } } (same as bad password)
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
@@ -49,7 +49,7 @@ Content-Type: application/json
     "password": "{{password}}"
 }
 
-### me without cookie — 401 unauthorized
+### me without cookie — 401 { "error": { "code": "unauthorized" } }
 ### Run this before signup, or after logout.
 GET {{baseUrl}}/auth/me
 
@@ -72,7 +72,7 @@ X-Debug-Set-Cookie: {{signup.response.headers.Set-Cookie}}
 ### me with cookie — 200, same email, org name = local-part
 GET {{baseUrl}}/auth/me
 
-### Duplicate email — 409 email taken
+### Duplicate email — 409 { "error": { "code": "email_taken", "fields": [{ "field": "email", "code": "taken" }] } }
 POST {{baseUrl}}/auth/signup
 Content-Type: application/json
 
@@ -84,7 +84,7 @@ Content-Type: application/json
 ### Logout — 204, cookie expired
 POST {{baseUrl}}/auth/logout
 
-### me after logout — 401
+### me after logout — 401 { "error": { "code": "unauthorized" } }
 GET {{baseUrl}}/auth/me
 
 ### Login — 200 + Set-Cookie
@@ -100,7 +100,7 @@ Content-Type: application/json
 ### me after login — 200
 GET {{baseUrl}}/auth/me
 
-### Bad password — 401 invalid credentials
+### Bad password — 401 { "error": { "code": "invalid_credentials" } }
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 

@@ -2,17 +2,9 @@ package koidomain
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-)
-
-var (
-	ErrNotFound           = errors.New("not found")
-	ErrEmailTaken         = errors.New("email taken")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrValidation         = errors.New("validation")
 )
 
 type Entity interface {

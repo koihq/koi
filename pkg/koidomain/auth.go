@@ -3,7 +3,6 @@ package koidomain
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -18,10 +17,10 @@ type SignupParams struct {
 
 func (p SignupParams) Validate() error {
 	if !validEmail(p.Email) {
-		return fmt.Errorf("%w: email", ErrValidation)
+		return Validation(FieldError{Field: "email", Code: FieldInvalid})
 	}
 	if len(p.Password) < minPasswordLen {
-		return fmt.Errorf("%w: password", ErrValidation)
+		return Validation(FieldError{Field: "password", Code: FieldMinLength})
 	}
 	return nil
 }
@@ -32,23 +31,32 @@ type Me struct {
 	Role         string
 }
 
-type AuthCommander struct {
+type AuthCommander interface {
+	Signup(ctx context.Context, p SignupParams) (*Me, error)
+	Login(ctx context.Context, email, password string) (*Me, error)
+}
+
+type AuthQuerier interface {
+	Me(ctx context.Context, userID uuid.UUID) (*Me, error)
+}
+
+type authCommander struct {
 	store Store
 }
 
-func NewAuthCommander(store Store) *AuthCommander {
-	return &AuthCommander{store: store}
+func NewAuthCommander(store Store) AuthCommander {
+	return &authCommander{store: store}
 }
 
-type AuthQuerier struct {
+type authQuerier struct {
 	store Store
 }
 
-func NewAuthQuerier(store Store) *AuthQuerier {
-	return &AuthQuerier{store: store}
+func NewAuthQuerier(store Store) AuthQuerier {
+	return &authQuerier{store: store}
 }
 
-func (c *AuthCommander) Signup(ctx context.Context, p SignupParams) (*Me, error) {
+func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error) {
 	p.Email = strings.ToLower(strings.TrimSpace(p.Email))
 	if err := p.Validate(); err != nil {
 		return nil, err
@@ -97,7 +105,7 @@ func (c *AuthCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 	return me, nil
 }
 
-func (c *AuthCommander) Login(ctx context.Context, email, password string) (*Me, error) {
+func (c *authCommander) Login(ctx context.Context, email, password string) (*Me, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	user, err := c.store.UserRepo().GetByEmail(ctx, email)
 	if err != nil && !errors.Is(err, ErrNotFound) {
@@ -110,19 +118,23 @@ func (c *AuthCommander) Login(ctx context.Context, email, password string) (*Me,
 	if !CheckPassword(hash, password) || user == nil {
 		return nil, ErrInvalidCredentials
 	}
-	return NewAuthQuerier(c.store).Me(ctx, user.ID)
+	return loadMe(ctx, c.store, user.ID)
 }
 
-func (q *AuthQuerier) Me(ctx context.Context, userID uuid.UUID) (*Me, error) {
-	user, err := q.store.UserRepo().Get(ctx, userID)
+func (q *authQuerier) Me(ctx context.Context, userID uuid.UUID) (*Me, error) {
+	return loadMe(ctx, q.store, userID)
+}
+
+func loadMe(ctx context.Context, store Store, userID uuid.UUID) (*Me, error) {
+	user, err := store.UserRepo().Get(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	m, err := q.store.MembershipRepo().GetByUserID(ctx, userID)
+	m, err := store.MembershipRepo().GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	org, err := q.store.OrganizationRepo().Get(ctx, m.OrganizationID)
+	org, err := store.OrganizationRepo().Get(ctx, m.OrganizationID)
 	if err != nil {
 		return nil, err
 	}

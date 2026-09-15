@@ -1,7 +1,6 @@
 package koiapi
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/alexedwards/scs/v2"
@@ -13,21 +12,7 @@ import (
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
-type authCommander interface {
-	Signup(context.Context, koidomain.SignupParams) (*koidomain.Me, error)
-	Login(context.Context, string, string) (*koidomain.Me, error)
-}
-
-type authQuerier interface {
-	Me(context.Context, uuid.UUID) (*koidomain.Me, error)
-}
-
-type SignupReq struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type LoginReq struct {
+type CredentialsReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -57,26 +42,26 @@ func MeToRes(me *koidomain.Me) MeRes {
 }
 
 type AuthHandler struct {
-	querier   authQuerier
-	commander authCommander
+	querier   koidomain.AuthQuerier
+	commander koidomain.AuthCommander
 	sess      *scs.SessionManager
 }
 
-func NewAuthHandler(q authQuerier, c authCommander, sess *scs.SessionManager) *AuthHandler {
+func NewAuthHandler(q koidomain.AuthQuerier, c koidomain.AuthCommander, sess *scs.SessionManager) *AuthHandler {
 	return &AuthHandler{querier: q, commander: c, sess: sess}
 }
 
 func (h *AuthHandler) Routes() func(r chi.Router) {
 	return func(r chi.Router) {
-		r.With(middlewares.DecodeBody[SignupReq]()).Post("/signup", h.Signup)
-		r.With(middlewares.DecodeBody[LoginReq]()).Post("/login", h.Login)
+		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/signup", h.Signup)
+		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/login", h.Login)
 		r.Post("/logout", h.Logout)
 		r.With(Authorizer(h.sess)).Get("/me", h.Me)
 	}
 }
 
 func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
-	req := middlewares.Body[SignupReq](r)
+	req := middlewares.Body[CredentialsReq](r)
 	me, err := h.commander.Signup(r.Context(), koidomain.SignupParams{
 		Email:    req.Email,
 		Password: req.Password,
@@ -93,7 +78,7 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	req := middlewares.Body[LoginReq](r)
+	req := middlewares.Body[CredentialsReq](r)
 	me, err := h.commander.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
@@ -117,7 +102,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(h.sess.GetString(r.Context(), "user_id"))
 	if err != nil {
-		api.Error(w, r, http.StatusUnauthorized, "unauthorized")
+		api.WriteDomainError(w, r, koidomain.ErrUnauthorized)
 		return
 	}
 	me, err := h.querier.Me(r.Context(), id)

@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down ui-build ensure-ui run test dev
+.PHONY: compose-up compose-down ui-build ensure-ui run test dev mocks
 
 compose-up:
 	docker compose up -d --wait
@@ -23,3 +23,6 @@ dev: compose-up ensure-ui
 		go tool air & \
 		pnpm --dir ui dev & \
 		wait
+
+mocks:
+	go tool mockery

@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 
+	"github.com/koihq/koi/pkg/koiapi/middlewares"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/web"
 )
@@ -20,8 +21,8 @@ func NewServer(store koidomain.Store, sess *scs.SessionManager) http.Handler {
 func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(middlewares.RequestLogger)
+	r.Use(middlewares.Recoverer)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},

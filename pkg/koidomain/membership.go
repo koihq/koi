@@ -2,7 +2,6 @@ package koidomain
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -20,10 +19,10 @@ func (Membership) TableName() string { return "memberships" }
 
 func (m Membership) Validate() error {
 	if m.UserID == uuid.Nil || m.OrganizationID == uuid.Nil {
-		return fmt.Errorf("%w: membership", ErrValidation)
+		return Validation(FieldError{Field: "membership", Code: FieldInvalid})
 	}
 	if m.Role != RoleOwner {
-		return fmt.Errorf("%w: role", ErrValidation)
+		return Validation(FieldError{Field: "role", Code: FieldInvalid})
 	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package koiapi
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/cookiejar"
@@ -12,38 +11,12 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koidomain"
 )
-
-type fakeAuth struct {
-	me        *koidomain.Me
-	signupErr error
-	loginErr  error
-	meErr     error
-}
-
-func (f *fakeAuth) Signup(context.Context, koidomain.SignupParams) (*koidomain.Me, error) {
-	if f.signupErr != nil {
-		return nil, f.signupErr
-	}
-	return f.me, nil
-}
-
-func (f *fakeAuth) Login(context.Context, string, string) (*koidomain.Me, error) {
-	if f.loginErr != nil {
-		return nil, f.loginErr
-	}
-	return f.me, nil
-}
-
-func (f *fakeAuth) Me(context.Context, uuid.UUID) (*koidomain.Me, error) {
-	if f.meErr != nil {
-		return nil, f.meErr
-	}
-	return f.me, nil
-}
 
 func sampleMe() *koidomain.Me {
 	return &koidomain.Me{
@@ -59,13 +32,13 @@ func sampleMe() *koidomain.Me {
 	}
 }
 
-func newAuthTestServer(t *testing.T, fake *fakeAuth) *httptest.Server {
+func newAuthTestServer(t *testing.T, q koidomain.AuthQuerier, c koidomain.AuthCommander) *httptest.Server {
 	t.Helper()
 	sess := scs.New()
 	sess.Cookie.Name = "koi_session"
 	r := chi.NewRouter()
 	r.Use(sess.LoadAndSave)
-	r.Route("/api/v1/auth", NewAuthHandler(fake, fake, sess).Routes())
+	r.Route("/api/v1/auth", NewAuthHandler(q, c, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 	return ts
@@ -97,7 +70,10 @@ func readJSON(t *testing.T, resp *http.Response, v any) {
 }
 
 func TestAuthHandler_SignupSetsCookie(t *testing.T) {
-	ts := newAuthTestServer(t, &fakeAuth{me: sampleMe()})
+	cmd := NewMockAuthCommander(t)
+	q := NewMockAuthQuerier(t)
+	cmd.EXPECT().Signup(mock.Anything, mock.Anything).Return(sampleMe(), nil)
+	ts := newAuthTestServer(t, q, cmd)
 	client := newCookieClient(t)
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/signup",
@@ -120,31 +96,52 @@ func TestAuthHandler_SignupSetsCookie(t *testing.T) {
 }
 
 func TestAuthHandler_LoginInvalidCredentials(t *testing.T) {
-	ts := newAuthTestServer(t, &fakeAuth{loginErr: koidomain.ErrInvalidCredentials})
+	cmd := NewMockAuthCommander(t)
+	q := NewMockAuthQuerier(t)
+	cmd.EXPECT().Login(mock.Anything, mock.Anything, mock.Anything).Return(nil, koidomain.ErrInvalidCredentials)
+	ts := newAuthTestServer(t, q, cmd)
 	client := newCookieClient(t)
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/login",
 		`{"email":"you@example.com","password":"wrongpass"}`)
-	var body map[string]string
+	var body api.Envelope
 	readJSON(t, resp, &body)
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	require.Equal(t, "invalid credentials", body["error"])
+	require.Equal(t, koidomain.CodeInvalidCredentials, body.Error.Code)
+	require.Empty(t, body.Error.Fields)
 }
 
 func TestAuthHandler_MeUnauthorized(t *testing.T) {
-	ts := newAuthTestServer(t, &fakeAuth{me: sampleMe()})
+	ts := newAuthTestServer(t, NewMockAuthQuerier(t), NewMockAuthCommander(t))
 	resp, err := http.Get(ts.URL + "/api/v1/auth/me")
 	require.NoError(t, err)
-	var body map[string]string
+	var body api.Envelope
 	readJSON(t, resp, &body)
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-	require.Equal(t, "unauthorized", body["error"])
+	require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
+}
+
+func TestAuthHandler_InvalidJSON(t *testing.T) {
+	ts := newAuthTestServer(t, NewMockAuthQuerier(t), NewMockAuthCommander(t))
+	client := newCookieClient(t)
+
+	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/signup", "not-json")
+	var body api.Envelope
+	readJSON(t, resp, &body)
+
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	require.Equal(t, koidomain.CodeInvalidJSON, body.Error.Code)
 }
 
 func TestAuthHandler_SessionFlow(t *testing.T) {
-	ts := newAuthTestServer(t, &fakeAuth{me: sampleMe()})
+	me := sampleMe()
+	cmd := NewMockAuthCommander(t)
+	q := NewMockAuthQuerier(t)
+	cmd.EXPECT().Signup(mock.Anything, mock.Anything).Return(me, nil)
+	q.EXPECT().Me(mock.Anything, me.User.ID).Return(me, nil)
+	ts := newAuthTestServer(t, q, cmd)
 	client := newCookieClient(t)
 	creds := `{"email":"you@example.com","password":"password1"}`
 
@@ -155,11 +152,11 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 
 	resp, err := client.Get(ts.URL + "/api/v1/auth/me")
 	require.NoError(t, err)
-	var me MeRes
-	readJSON(t, resp, &me)
+	var got MeRes
+	readJSON(t, resp, &got)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, created.Email, me.Email)
-	require.Equal(t, created.ID, me.ID)
+	require.Equal(t, created.Email, got.Email)
+	require.Equal(t, created.ID, got.ID)
 
 	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/logout", "")
 	resp.Body.Close()
@@ -167,7 +164,8 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 
 	resp, err = client.Get(ts.URL + "/api/v1/auth/me")
 	require.NoError(t, err)
-	var after map[string]string
+	var after api.Envelope
 	readJSON(t, resp, &after)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Equal(t, koidomain.CodeUnauthorized, after.Error.Code)
 }

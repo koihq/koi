@@ -5,110 +5,56 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-type memStore struct {
-	users   map[uuid.UUID]*User
-	orgs    map[uuid.UUID]*Organization
-	members map[uuid.UUID]*Membership
+type authDeps struct {
+	store   *MockStore
+	users   *MockUserRepository
+	orgs    *MockOrganizationRepository
+	members *MockMembershipRepository
 }
 
-func newMemStore() *memStore {
-	return &memStore{
-		users:   map[uuid.UUID]*User{},
-		orgs:    map[uuid.UUID]*Organization{},
-		members: map[uuid.UUID]*Membership{},
+func newAuthDeps(t *testing.T) authDeps {
+	t.Helper()
+	d := authDeps{
+		store:   NewMockStore(t),
+		users:   NewMockUserRepository(t),
+		orgs:    NewMockOrganizationRepository(t),
+		members: NewMockMembershipRepository(t),
 	}
+	d.store.On("UserRepo").Return(d.users)
+	d.store.On("OrganizationRepo").Return(d.orgs).Maybe()
+	d.store.On("MembershipRepo").Return(d.members).Maybe()
+	return d
 }
 
-func (s *memStore) Atomic(_ context.Context, fn func(Store) error) error { return fn(s) }
-func (s *memStore) Ping(context.Context) error                           { return nil }
-func (s *memStore) UserRepo() UserRepository                             { return memUsers{s} }
-func (s *memStore) OrganizationRepo() OrganizationRepository             { return memOrgs{s} }
-func (s *memStore) MembershipRepo() MembershipRepository                 { return memMembers{s} }
-
-type memUsers struct{ s *memStore }
-type memOrgs struct{ s *memStore }
-type memMembers struct{ s *memStore }
-
-func assignID(id *uuid.UUID) {
-	if *id == uuid.Nil {
-		*id = uuid.New()
-	}
+func (d authDeps) mockAtomic() {
+	d.store.EXPECT().Atomic(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, fn func(Store) error) error { return fn(d.store) },
+	)
 }
 
-func (r memUsers) Create(_ context.Context, user *User) error {
-	assignID(&user.ID)
-	cp := *user
-	r.s.users[user.ID] = &cp
+func assignUserID(_ context.Context, u *User) error {
+	u.ID = uuid.New()
 	return nil
 }
 
-func (r memUsers) Get(_ context.Context, id uuid.UUID) (*User, error) {
-	u, ok := r.s.users[id]
-	if !ok {
-		return nil, ErrNotFound
-	}
-	cp := *u
-	return &cp, nil
-}
-
-func (r memUsers) GetByEmail(_ context.Context, email string) (*User, error) {
-	for _, u := range r.s.users {
-		if u.Email == email {
-			cp := *u
-			return &cp, nil
-		}
-	}
-	return nil, ErrNotFound
-}
-
-func (r memOrgs) Create(_ context.Context, org *Organization) error {
-	assignID(&org.ID)
-	cp := *org
-	r.s.orgs[org.ID] = &cp
+func assignOrgID(_ context.Context, o *Organization) error {
+	o.ID = uuid.New()
 	return nil
-}
-
-func (r memOrgs) Get(_ context.Context, id uuid.UUID) (*Organization, error) {
-	o, ok := r.s.orgs[id]
-	if !ok {
-		return nil, ErrNotFound
-	}
-	cp := *o
-	return &cp, nil
-}
-
-func (r memMembers) Create(_ context.Context, m *Membership) error {
-	assignID(&m.ID)
-	cp := *m
-	r.s.members[m.ID] = &cp
-	return nil
-}
-
-func (r memMembers) Get(_ context.Context, id uuid.UUID) (*Membership, error) {
-	m, ok := r.s.members[id]
-	if !ok {
-		return nil, ErrNotFound
-	}
-	cp := *m
-	return &cp, nil
-}
-
-func (r memMembers) GetByUserID(_ context.Context, userID uuid.UUID) (*Membership, error) {
-	for _, m := range r.s.members {
-		if m.UserID == userID {
-			cp := *m
-			return &cp, nil
-		}
-	}
-	return nil, ErrNotFound
 }
 
 func TestSignup_CreatesUserOrgMembership(t *testing.T) {
-	store := newMemStore()
-	me, err := NewAuthCommander(store).Signup(t.Context(), SignupParams{
+	d := newAuthDeps(t)
+	d.mockAtomic()
+	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(nil, ErrNotFound)
+	d.users.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignUserID)
+	d.orgs.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignOrgID)
+	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
+
+	me, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
 		Email: "You@Example.com", Password: "password1",
 	})
 	require.NoError(t, err)
@@ -117,39 +63,51 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	require.Equal(t, "you@example.com", me.User.Email)
 	require.Equal(t, "you", me.Organization.Name)
 	require.Equal(t, RoleOwner, me.Role)
-	require.Len(t, store.users, 1)
-	require.Len(t, store.orgs, 1)
-	require.Len(t, store.members, 1)
 }
 
 func TestSignup_DuplicateEmail(t *testing.T) {
-	cmd := NewAuthCommander(newMemStore())
-	p := SignupParams{Email: "you@example.com", Password: "password1"}
-	_, err := cmd.Signup(t.Context(), p)
-	require.NoError(t, err)
-	_, err = cmd.Signup(t.Context(), p)
+	d := newAuthDeps(t)
+	d.mockAtomic()
+	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(&User{Email: "you@example.com"}, nil)
+
+	_, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
+		Email: "you@example.com", Password: "password1",
+	})
 	require.ErrorIs(t, err, ErrEmailTaken)
 }
 
 func TestLogin_WrongPasswordAndUnknownEmail(t *testing.T) {
-	cmd := NewAuthCommander(newMemStore())
-	_, err := cmd.Signup(t.Context(), SignupParams{Email: "you@example.com", Password: "password1"})
+	hash, err := HashPassword("password1")
 	require.NoError(t, err)
+	user := &User{
+		BaseEntity:   BaseEntity{ID: uuid.New()},
+		Email:        "you@example.com",
+		PasswordHash: hash,
+	}
 
-	_, err = cmd.Login(t.Context(), "you@example.com", "wrongpass")
+	wrong := newAuthDeps(t)
+	wrong.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(user, nil)
+	_, err = NewAuthCommander(wrong.store).Login(t.Context(), "you@example.com", "wrongpass")
 	require.ErrorIs(t, err, ErrInvalidCredentials)
 
-	_, err = cmd.Login(t.Context(), "nobody@example.com", "password1")
+	unknown := newAuthDeps(t)
+	unknown.users.EXPECT().GetByEmail(mock.Anything, "nobody@example.com").Return(nil, ErrNotFound)
+	_, err = NewAuthCommander(unknown.store).Login(t.Context(), "nobody@example.com", "password1")
 	require.ErrorIs(t, err, ErrInvalidCredentials)
 }
 
 func TestSignup_Validate(t *testing.T) {
-	cmd := NewAuthCommander(newMemStore())
+	cmd := NewAuthCommander(NewMockStore(t))
 	_, err := cmd.Signup(t.Context(), SignupParams{Email: "not-an-email", Password: "password1"})
 	require.ErrorIs(t, err, ErrValidation)
+	var ve *Error
+	require.ErrorAs(t, err, &ve)
+	require.Equal(t, []FieldError{{Field: "email", Code: FieldInvalid}}, ve.Fields)
 
 	_, err = cmd.Signup(t.Context(), SignupParams{Email: "you@example.com", Password: "short"})
 	require.ErrorIs(t, err, ErrValidation)
+	require.ErrorAs(t, err, &ve)
+	require.Equal(t, []FieldError{{Field: "password", Code: FieldMinLength}}, ve.Fields)
 }
 
 func TestUserValidate(t *testing.T) {
@@ -166,11 +124,31 @@ func TestCheckPassword(t *testing.T) {
 }
 
 func TestLogin_Me(t *testing.T) {
-	cmd := NewAuthCommander(newMemStore())
-	_, err := cmd.Signup(t.Context(), SignupParams{Email: "you@example.com", Password: "password1"})
+	hash, err := HashPassword("password1")
 	require.NoError(t, err)
-	me, err := cmd.Login(t.Context(), "you@example.com", "password1")
+	userID := uuid.New()
+	orgID := uuid.New()
+	user := &User{BaseEntity: BaseEntity{ID: userID}, Email: "you@example.com", PasswordHash: hash}
+	org := &Organization{BaseEntity: BaseEntity{ID: orgID}, Name: "you"}
+	member := &Membership{UserID: userID, OrganizationID: orgID, Role: RoleOwner}
+
+	d := newAuthDeps(t)
+	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(user, nil)
+	d.users.EXPECT().Get(mock.Anything, userID).Return(user, nil)
+	d.members.EXPECT().GetByUserID(mock.Anything, userID).Return(member, nil)
+	d.orgs.EXPECT().Get(mock.Anything, orgID).Return(org, nil)
+
+	me, err := NewAuthCommander(d.store).Login(t.Context(), "you@example.com", "password1")
 	require.NoError(t, err)
 	require.Equal(t, "you@example.com", me.User.Email)
 	require.Equal(t, "you", me.Organization.Name)
+}
+
+func TestAuthQuerier_MeNotFound(t *testing.T) {
+	d := newAuthDeps(t)
+	id := uuid.New()
+	d.users.EXPECT().Get(mock.Anything, id).Return(nil, ErrNotFound)
+
+	_, err := NewAuthQuerier(d.store).Me(t.Context(), id)
+	require.ErrorIs(t, err, ErrNotFound)
 }

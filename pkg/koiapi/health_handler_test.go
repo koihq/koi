@@ -1,36 +1,20 @@
 package koiapi
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/koihq/koi/pkg/koidomain"
 )
 
-type stubStore struct {
-	ping error
-}
-
-func (s stubStore) Atomic(context.Context, func(koidomain.Store) error) error {
-	return nil
-}
-
-func (s stubStore) Ping(context.Context) error {
-	return s.ping
-}
-
-func (s stubStore) UserRepo() koidomain.UserRepository                 { return nil }
-func (s stubStore) OrganizationRepo() koidomain.OrganizationRepository { return nil }
-func (s stubStore) MembershipRepo() koidomain.MembershipRepository     { return nil }
-
 func TestHealthHandler_DBOk(t *testing.T) {
-	h := NewHealthHandler(stubStore{})
+	store := NewMockStore(t)
+	store.EXPECT().Ping(mock.Anything).Return(nil)
+	h := NewHealthHandler(store)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
@@ -43,7 +27,9 @@ func TestHealthHandler_DBOk(t *testing.T) {
 }
 
 func TestHealthHandler_DBDown(t *testing.T) {
-	h := NewHealthHandler(stubStore{ping: errors.New("no db")})
+	store := NewMockStore(t)
+	store.EXPECT().Ping(mock.Anything).Return(errors.New("no db"))
+	h := NewHealthHandler(store)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 

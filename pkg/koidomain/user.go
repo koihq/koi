@@ -2,7 +2,6 @@ package koidomain
 
 import (
 	"context"
-	"fmt"
 	"strings"
 )
 
@@ -16,10 +15,10 @@ func (User) TableName() string { return "users" }
 
 func (u User) Validate() error {
 	if !validEmail(u.Email) {
-		return fmt.Errorf("%w: email", ErrValidation)
+		return Validation(FieldError{Field: "email", Code: FieldInvalid})
 	}
 	if u.PasswordHash == "" {
-		return fmt.Errorf("%w: password", ErrValidation)
+		return Validation(FieldError{Field: "password", Code: FieldInvalid})
 	}
 	return nil
 }

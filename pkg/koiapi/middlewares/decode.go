@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/koihq/koi/pkg/koiapi/api"
+	"github.com/koihq/koi/pkg/koidomain"
 )
 
 type bodyKey struct{}
@@ -15,7 +16,7 @@ func DecodeBody[T any]() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var v T
 			if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-				api.Error(w, r, http.StatusBadRequest, "invalid json")
+				api.WriteDomainError(w, r, koidomain.ErrInvalidJSON)
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), bodyKey{}, v)))

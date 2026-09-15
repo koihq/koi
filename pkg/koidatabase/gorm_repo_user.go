@@ -20,7 +20,7 @@ func (r *GormUserRepository) GetByEmail(ctx context.Context, email string) (*koi
 	entity := new(koidomain.User)
 	err := r.db.WithContext(ctx).Where("email = ?", email).Take(entity).Error
 	if err != nil {
-		return nil, mapNotFound(err)
+		return nil, mapDBError(err)
 	}
 	return entity, nil
 }

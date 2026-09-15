@@ -1,7 +1,6 @@
 package koidomain
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -14,7 +13,7 @@ func (Organization) TableName() string { return "organizations" }
 
 func (o Organization) Validate() error {
 	if strings.TrimSpace(o.Name) == "" {
-		return fmt.Errorf("%w: name", ErrValidation)
+		return Validation(FieldError{Field: "name", Code: FieldInvalid})
 	}
 	return nil
 }
