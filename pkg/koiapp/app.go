@@ -63,6 +63,8 @@ func (a *App) Run() error {
 	db, err := koidatabase.Open(a.cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("database unavailable; /health will report db=down", "err", err)
+	} else if err := koidatabase.Migrate(db); err != nil {
+		return fmt.Errorf("migrate: %w", err)
 	}
 	store := koidatabase.NewStore(db)
 	server := koiapi.NewServer(store)
