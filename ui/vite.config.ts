@@ -17,6 +17,8 @@ const config = defineConfig({
       "class-variance-authority",
       "cn",
       "@base-ui/react/button",
+      "@base-ui/react/input",
+      "@base-ui/react/separator",
       "@tanstack/react-devtools",
       "@tanstack/react-router-devtools",
     ],
