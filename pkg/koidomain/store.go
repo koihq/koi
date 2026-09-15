@@ -2,8 +2,12 @@ package koidomain
 
 import "context"
 
-// Store aggregates persistence. Add repo getters as entities land (Brand in slice 1).
+//go:generate go tool mockery
+
 type Store interface {
 	Atomic(context.Context, func(Store) error) error
 	Ping(context.Context) error
+	UserRepo() UserRepository
+	OrganizationRepo() OrganizationRepository
+	MembershipRepo() MembershipRepository
 }

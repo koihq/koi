@@ -1,10 +1,11 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 
+import type { Api } from "@/api/apiProvider";
 import "../styles.css";
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ api: Api }>()({
   component: RootComponent,
 });
 

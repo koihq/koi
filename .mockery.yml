@@ -1,0 +1,39 @@
+all: false
+force-file-write: true
+formatter: goimports
+recursive: false
+structname: '{{.Mock}}{{.InterfaceName}}'
+template: testify
+packages:
+  github.com/koihq/koi/pkg/koidomain:
+    config:
+      dir: '{{.InterfaceDir}}'
+      filename: mocks_test.go
+      pkgname: '{{.SrcPackageName}}'
+      inpackage: true
+    interfaces:
+      Store:
+        configs:
+          - dir: '{{.InterfaceDir}}'
+            filename: mocks_test.go
+            pkgname: '{{.SrcPackageName}}'
+            inpackage: true
+          - dir: '{{.InterfaceDir}}/../koiapi'
+            filename: mocks_test.go
+            pkgname: koiapi
+            inpackage: false
+      UserRepository:
+      OrganizationRepository:
+      MembershipRepository:
+      AuthCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      AuthQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false

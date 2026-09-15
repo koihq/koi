@@ -32,8 +32,18 @@ Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/a
 
 ## Agent rules
 
-- Before Go API, domain, or GORM work, read `.cursor/skills/codebase-patterns` (`backend.md`).
-- Before React routes, API wrappers, or UI features, read `.cursor/skills/codebase-patterns` (`frontend.md`).
+- Before Go API, domain, or GORM work, read `.agents/skills/codebase-patterns` (`backend.md`).
+- Before React routes, API wrappers, or UI features, read `.agents/skills/codebase-patterns` (`frontend.md`).
 - `ui/` uses **pnpm**. Do not add `package-lock.json` or `yarn.lock`. Imports use `@/` (not `#/`).
-- Pin every dependency to an exact version; prefer LTS when the project publishes one. See `.cursor/rules/pin-dependencies.mdc`.
-- No auth in this codebase yet. Dual-surface CLI/MCP comes after the HTTP + UI loop works.
+- Cookie session auth (email/password, `koi_session`). `KOI_SESSION_SECRET` is required (`openssl rand -base64 32`). Browse `:5173` during `make dev`. Dual-surface CLI/MCP comes later.
+
+## Pin dependencies
+
+When adding or bumping a dependency (pnpm, Go modules, Docker base images, GitHub Actions):
+
+1. **Pin exact versions.** No `latest`, `*`, `^`, `~`, or floating dist-tags. Write `1.170.35`, not `^1.170.0`.
+2. **Choose LTS when it exists.** Runtimes and images that publish LTS (Node, Postgres, Ubuntu, etc.) must use the current LTS line, not Current/nightly/rc.
+3. **Libraries without LTS:** pin the stable version just resolved into the lockfile (`pnpm-lock.yaml` / `go.sum`). Do not leave the specifier as `latest`.
+4. **Record the pin.** After install, the manifest (`package.json` / `go.mod`) and lockfile must both show the same exact version.
+
+Go: `go get example.com/mod@v1.2.3` (never unversioned `go get example.com/mod`). Docker: `postgres:16`, not `postgres:latest`.

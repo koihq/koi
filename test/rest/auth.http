@@ -1,0 +1,110 @@
+### Auth: signup / me / logout / login
+###
+### Cookie session via Vite proxy. Run with make dev.
+### REST Client remembers Set-Cookie (koi_session) for later requests.
+### After signup, check Response Headers for Set-Cookie, or run "echo cookie".
+### Re-run signup with a new email (guid) or you get 409.
+
+### Variables
+@host = http://localhost:5173
+@baseUrl = {{host}}/api/v1
+@email = rest-{{$guid}}@example.com
+@password = password1
+
+### Health
+GET {{host}}/health
+
+### --- Errors (no session needed) ----------------------------------------
+
+### Invalid JSON — 400 { "error": { "code": "invalid_json" } }
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+not-json
+
+### Short password — 400 { "error": { "code": "validation", "fields": [{ "field": "password", "code": "min_length" }] } }
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+    "email": "short@example.com",
+    "password": "short"
+}
+
+### Bad email — 400 { "error": { "code": "validation", "fields": [{ "field": "email", "code": "invalid" }] } }
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+    "email": "not-an-email",
+    "password": "{{password}}"
+}
+
+### Unknown email login — 401 { "error": { "code": "invalid_credentials" } } (same as bad password)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "nobody@example.com",
+    "password": "{{password}}"
+}
+
+### me without cookie — 401 { "error": { "code": "unauthorized" } }
+### Run this before signup, or after logout.
+GET {{baseUrl}}/auth/me
+
+### --- Session -----------------------------------------------------------
+
+### Sign up — 201. Response Headers should include Set-Cookie: koi_session=...
+# @name signup
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+    "email": "{{email}}",
+    "password": "{{password}}"
+}
+
+### Echo cookie — request header repeats signup's Set-Cookie (health ignores it)
+GET {{host}}/health
+X-Debug-Set-Cookie: {{signup.response.headers.Set-Cookie}}
+
+### me with cookie — 200, same email, org name = local-part
+GET {{baseUrl}}/auth/me
+
+### Duplicate email — 409 { "error": { "code": "email_taken", "fields": [{ "field": "email", "code": "taken" }] } }
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+    "email": "{{signup.response.body.email}}",
+    "password": "{{password}}"
+}
+
+### Logout — 204, cookie expired
+POST {{baseUrl}}/auth/logout
+
+### me after logout — 401 { "error": { "code": "unauthorized" } }
+GET {{baseUrl}}/auth/me
+
+### Login — 200 + Set-Cookie
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "{{signup.response.body.email}}",
+    "password": "{{password}}"
+}
+
+### me after login — 200
+GET {{baseUrl}}/auth/me
+
+### Bad password — 401 { "error": { "code": "invalid_credentials" } }
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "{{signup.response.body.email}}",
+    "password": "wrongpass"
+}

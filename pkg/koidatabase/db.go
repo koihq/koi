@@ -2,6 +2,9 @@ package koidatabase
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -10,7 +13,12 @@ import (
 
 func Open(dsn string) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: logger.New(log.New(os.Stderr, "", log.LstdFlags), logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      true,
+		}),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("open postgres: %w", err)

@@ -3,8 +3,7 @@ package koiapi
 import (
 	"net/http"
 
-	"github.com/go-chi/render"
-
+	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -26,5 +25,5 @@ func (h *HealthHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if h.store == nil || h.store.Ping(r.Context()) != nil {
 		db = "down"
 	}
-	render.JSON(w, r, HealthResponse{Status: "ok", DB: db})
+	api.JSON(w, r, http.StatusOK, HealthResponse{Status: "ok", DB: db})
 }

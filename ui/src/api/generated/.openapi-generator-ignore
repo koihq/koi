@@ -1,0 +1,9 @@
+README.md
+.gitignore
+.npmignore
+git_push.sh
+package.json
+tsconfig.json
+.npmrc
+.github
+docs/

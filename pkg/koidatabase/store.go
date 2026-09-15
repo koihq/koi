@@ -38,3 +38,15 @@ func (s *Store) Atomic(ctx context.Context, fn func(koidomain.Store) error) erro
 		return fn(&Store{db: tx})
 	})
 }
+
+func (s *Store) UserRepo() koidomain.UserRepository {
+	return NewGormUserRepository(s.db)
+}
+
+func (s *Store) OrganizationRepo() koidomain.OrganizationRepository {
+	return NewGormOrganizationRepository(s.db)
+}
+
+func (s *Store) MembershipRepo() koidomain.MembershipRepository {
+	return NewGormMembershipRepository(s.db)
+}

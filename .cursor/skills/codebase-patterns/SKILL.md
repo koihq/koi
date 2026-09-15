@@ -11,4 +11,4 @@ Read the section that matches the work. Do not invent a parallel layout.
 - **React routes, ApiProvider, factories, TanStack Router, shadcn, entity hooks** → [frontend.md](frontend.md)
 - **Both** (new entity end to end) → backend first, then frontend.
 
-Auth is not in the stack yet. Do not add Keycloak, JWT gates, or `_authenticated` layouts unless the task is explicitly auth.
+Cookie session auth exists (`Authorizer` on `/me`, `_authenticated` layout). Do not add Keycloak or JWT.

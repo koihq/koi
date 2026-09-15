@@ -5,7 +5,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/alexedwards/scs/postgresstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/joho/godotenv"
 
 	"github.com/koihq/koi/pkg/koiapi"
@@ -13,8 +17,9 @@ import (
 )
 
 type Config struct {
-	HTTPAddr    string
-	DatabaseURL string
+	HTTPAddr      string
+	DatabaseURL   string
+	SessionSecret string
 }
 
 func LoadConfig() (Config, error) {
@@ -27,7 +32,15 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	return Config{HTTPAddr: httpAddr, DatabaseURL: databaseURL}, nil
+	sessionSecret, err := requireEnv("KOI_SESSION_SECRET")
+	if err != nil {
+		return Config{}, err
+	}
+	return Config{
+		HTTPAddr:      httpAddr,
+		DatabaseURL:   databaseURL,
+		SessionSecret: sessionSecret,
+	}, nil
 }
 
 func requireEnv(key string) (string, error) {
@@ -43,6 +56,8 @@ type App struct {
 }
 
 func NewKoiApp() (*App, error) {
+	_ = godotenv.Load()
+	initLogger()
 	cfg, err := LoadConfig()
 	if err != nil {
 		return nil, err
@@ -50,13 +65,52 @@ func NewKoiApp() (*App, error) {
 	return &App{cfg: cfg}, nil
 }
 
+func initLogger() {
+	level := slog.LevelInfo
+	switch strings.ToLower(os.Getenv("KOI_LOG_LEVEL")) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn", "warning":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	}
+	opts := &slog.HandlerOptions{Level: level}
+	var h slog.Handler
+	if strings.EqualFold(os.Getenv("KOI_LOG_FORMAT"), "json") {
+		h = slog.NewJSONHandler(os.Stderr, opts)
+	} else {
+		h = slog.NewTextHandler(os.Stderr, opts)
+	}
+	slog.SetDefault(slog.New(h))
+}
+
 func (a *App) Run() error {
 	db, err := koidatabase.Open(a.cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("database unavailable; /health will report db=down", "err", err)
+	} else if err := koidatabase.Migrate(db); err != nil {
+		return fmt.Errorf("migrate: %w", err)
 	}
 	store := koidatabase.NewStore(db)
-	server := koiapi.NewServer(store)
+
+	sess := scs.New()
+	sess.Lifetime = 30 * 24 * time.Hour
+	sess.Cookie.Name = "koi_session"
+	sess.Cookie.HttpOnly = true
+	sess.Cookie.SameSite = http.SameSiteLaxMode
+	sess.Cookie.Path = "/"
+	sess.Cookie.Secure = false
+	sess.Cookie.Persist = true
+	if db != nil {
+		sqlDB, err := db.DB()
+		if err != nil {
+			return fmt.Errorf("sql db: %w", err)
+		}
+		sess.Store = postgresstore.New(sqlDB)
+	}
+
+	server := koiapi.NewServer(store, sess)
 
 	slog.Info("koi listening", "addr", a.cfg.HTTPAddr)
 	return http.ListenAndServe(a.cfg.HTTPAddr, server)

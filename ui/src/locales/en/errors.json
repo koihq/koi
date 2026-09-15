@@ -1,0 +1,20 @@
+{
+  "codes": {
+    "validation": "Check the form and try again",
+    "email_taken": "That email is already registered",
+    "invalid_credentials": "Invalid email or password",
+    "not_found": "Something went wrong",
+    "unauthorized": "Sign in to continue",
+    "invalid_json": "Check the form and try again",
+    "internal": "Something went wrong"
+  },
+  "fields": {
+    "email": {
+      "invalid": "Enter a valid email",
+      "taken": "That email is already registered"
+    },
+    "password": {
+      "min_length": "Password must be at least 8 characters"
+    }
+  }
+}
