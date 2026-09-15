@@ -1,4 +1,6 @@
-.PHONY: compose-up compose-down ui-build ensure-ui run test dev mocks
+.PHONY: compose-up compose-down ui-build ensure-ui run test dev mocks openapi
+
+OPENAPI_GENERATOR_IMAGE := openapitools/openapi-generator-cli:v7.22.0
 
 compose-up:
 	docker compose up -d --wait
@@ -26,3 +28,14 @@ dev: compose-up ensure-ui
 
 mocks:
 	go tool mockery
+
+openapi:
+	docker run --rm -v "$(CURDIR):/local" $(OPENAPI_GENERATOR_IMAGE) generate \
+		-i /local/docs/openapi.yaml \
+		-g typescript-fetch \
+		-o /local/ui/src/api/generated \
+		--additional-properties=supportsES6=true,typescriptThreePlus=true,withInterfaces=true,modelPropertyNaming=camelCase,enumPropertyNaming=UPPERCASE,useSingleRequestParameter=false
+	@rm -rf ui/src/api/generated/docs
+	@python3 -c "from pathlib import Path; \
+root = Path('ui/src/api/generated'); \
+[p.write_text('// @ts-nocheck\n' + t) for p in root.rglob('*.ts') if not (t := p.read_text()).startswith('// @ts-nocheck')]"
