@@ -24,7 +24,7 @@ onboard → generate prompts + competitors → first run → inspect who-shows-u
 
 ## Now — MVP
 
-Ship in this order. Slice 2 starts as soon as slice 1 works. Slice 3 is the same MVP, not a later product.
+Ship in this order. Self-hosted email/password cookie sessions precede Slice 1. Slice 2 starts as soon as slice 1 works. Slice 3 is the same MVP, not a later product.
 
 ### Slice 1 — See (AI visibility)
 

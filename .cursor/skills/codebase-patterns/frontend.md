@@ -5,7 +5,7 @@ React 19 SPA under `ui/` (create with Vite, package manager **pnpm**) with a sim
 ```
 ui/src/
 ├── api/              # Entity types, factories, mappers, DI provider
-├── services/         # Non-HTTP services (none required until auth)
+├── services/         # Non-HTTP services (none yet)
 ├── context/          # React Context providers
 ├── routes/           # Presentation layer (UI, hooks, components)
 ├── components/       # Shared components (ui/, blocks/, custom/)
@@ -77,7 +77,7 @@ TanStack Router file-based routing:
 | `$`    | Dynamic parameter                  | `$id.tsx` → `/route/:id`   |
 | `-`    | Private folder or read-only module | `-components/`, `-hooks/`  |
 
-A root layout is enough until auth exists. Do not add `_authenticated` unless the task is auth.
+Pathless `_authenticated` layout gates `/`. `beforeLoad` calls `context.api.auth.me()` (the same `createApi()` instance is passed into the router in `main.tsx`; hooks cannot run in `beforeLoad`) and redirects to `/sign-in` on failure. Public routes: `/sign-in`, `/sign-up`. Do not add Keycloak or JWT.
 
 Full-CRUD feature structure:
 

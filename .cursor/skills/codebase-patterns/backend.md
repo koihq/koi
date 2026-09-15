@@ -16,9 +16,9 @@ Persistence         pkg/koidatabase/gorm_repo_*.go  (GORM implementations of Sto
 
 Handlers receive querier and commander via constructor. No global state.
 
-Cookie session auth exists (`scs`, `koi_session`). Keep constructors injectable. Do not add Keycloak or JWT.
+Cookie session auth exists (`scs`, `koi_session`, `Authorizer`). Keep constructors injectable. Do not add Keycloak or JWT.
 
-Do **not** add generic `api.List` / `api.Create` / `api.Get` helpers until a second CRUD entity needs them. Auth handlers are explicit.
+Shared HTTP: `api.JSON`, `api.Error`, `api.WriteDomainError`, `middlewares.DecodeBody`. Do **not** add generic `api.List` / `api.Create` / `api.Get` or `middlewares.ID` until a `/{id}` resource exists. Auth handlers stay explicit (they also set cookies).
 
 ## Stack (from `go.mod`)
 
@@ -87,6 +87,16 @@ Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP map
 
 ## Domain (`pkg/koidomain/`)
 
+Entities embed `koidomain.BaseEntity`. Postgres assigns `id` (`gen_random_uuid()`). GORM fills `CreatedAt` / `UpdatedAt` (`autoCreateTime` / `autoUpdateTime`). Timestamps are `json:"-"`; commanders do not set ID or timestamps. GORM migrates these same structs (no parallel row type).
+
+```go
+type BaseEntity struct {
+    ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    CreatedAt time.Time `json:"-" gorm:"not null;autoCreateTime"`
+    UpdatedAt time.Time `json:"-" gorm:"not null;autoUpdateTime"`
+}
+```
+
 Each entity file declares the GORM-mapped struct, `TableName()`, `Validate()`, and a repository interface. Commanders/queriers are interfaces with unexported implementations (`NewAuthCommander(store) AuthCommander`).
 
 `Store` (`pkg/koidomain/store.go`) aggregates repos and exposes `Atomic(ctx, fn)` for transactions:
@@ -103,7 +113,7 @@ type Store interface {
 
 ## Repositories (`pkg/koidatabase/`)
 
-GORM-backed. Name files `gorm_repo_<entity>.go`. Shared `Create`/`Get` live on `Repository[T]`; `mapDBError` turns `ErrRecordNotFound` into `ErrNotFound` and email unique-violations into `ErrEmailTaken`.
+GORM-backed. Name files `gorm_repo_<entity>.go`. Entity repos embed `*Repository[T]` (`Create` / `Get` by UUID). `mapDBError` turns `ErrRecordNotFound` into `ErrNotFound` and email unique-violations into `ErrEmailTaken`.
 
 `pkg/koidatabase` implements `koidomain.Store`. `Atomic` opens a GORM transaction and passes a store bound to that tx.
 

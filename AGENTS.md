@@ -35,7 +35,7 @@ Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/a
 - Before Go API, domain, or GORM work, read `.agents/skills/codebase-patterns` (`backend.md`).
 - Before React routes, API wrappers, or UI features, read `.agents/skills/codebase-patterns` (`frontend.md`).
 - `ui/` uses **pnpm**. Do not add `package-lock.json` or `yarn.lock`. Imports use `@/` (not `#/`).
-- No auth in this codebase yet. Dual-surface CLI/MCP comes after the HTTP + UI loop works.
+- Cookie session auth (email/password, `koi_session`). `KOI_SESSION_SECRET` is required (`openssl rand -base64 32`). Browse `:5173` during `make dev`. Dual-surface CLI/MCP comes later.
 
 ## Pin dependencies
 
