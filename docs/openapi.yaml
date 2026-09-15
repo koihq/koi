@@ -144,7 +144,7 @@ components:
       required: [code, message]
       properties:
         code:
-          type: string
+          $ref: "#/components/schemas/ErrorCode"
         message:
           type: string
         fields:
@@ -158,4 +158,20 @@ components:
         field:
           type: string
         code:
-          type: string
+          $ref: "#/components/schemas/FieldCode"
+    ErrorCode:
+      type: string
+      enum:
+        - validation
+        - email_taken
+        - invalid_credentials
+        - not_found
+        - unauthorized
+        - invalid_json
+        - internal
+    FieldCode:
+      type: string
+      enum:
+        - invalid
+        - min_length
+        - taken
