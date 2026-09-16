@@ -47,14 +47,16 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 
 ## Motion contract
 
-Named properties only: `transform`, `background-color`, `color`, `border-color`, `box-shadow`, `opacity`. Never `all`. Never reintroduce `transition-all` or `active:translate-y-px`.
+Named properties only: `transform`, `background-color`, `color`, `border-color`, `box-shadow`, `opacity`. Never `all`. Never reintroduce `transition-all` or `active:translate-y-px` on `Button`.
 
-`prefers-reduced-motion: reduce` drops **transform** and keeps color/opacity.
+Tokens live in `ui/src/styles.css`. Button press is on `[data-slot="button"]` — do not add `transition-*` or `active:*` motion classes in `button.tsx`.
+
+`prefers-reduced-motion: reduce` drops **transform** (and the `:active` scale) and keeps color/opacity. Wrap press transform in `prefers-reduced-motion: no-preference` so it is opt-in.
 
 | Primitive | Motion |
 | --- | --- |
-| `Button` | Press: `:active` `scale(0.97)` at **160ms** `var(--ease-out)`, keep `not-aria-[haspopup]`. Color/hover: `ease`, no hover scale. Reduced motion: no scale on `:active` |
-| `Input` | `transition-colors` only. No press scale |
+| `Button` | Press: `:active` `scale(0.97)` at **160ms** `var(--ease-out)`, keep `:not([aria-haspopup])`. Color/hover: **160ms** `ease`, no hover scale. Reduced motion: no scale on `:active` |
+| `Input` | `transition-colors ease` only. No press scale |
 | `Label`, `Field`, `Separator` | None |
 
 Do not animate theme flips, keyboard actions, or page navigation. Do not add popover/tooltip/modal recipes until those primitives exist.
