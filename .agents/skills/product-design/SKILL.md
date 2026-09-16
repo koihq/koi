@@ -46,7 +46,7 @@ Keys live in `ui/src/locales`. Sentence case. CTAs name the action (`Sign in`, n
 
 The mark is the one loud thing. Orange is identity, not the theme.
 
-The asset is a PNG copied as-is (`ui/src/assets/koi-mark.png`). The black field is part of the file. Do not vectorize, crop, recolor, invert, make it transparent, or invent a white-on-orange lockup. Same file on the light canvas and the dark canvas.
+The asset is a PNG copied as-is (`ui/src/assets/koi-mark.png`). It has a transparent field. Do not flatten it onto black, vectorize, crop, recolor, invert, or invent a white-on-orange lockup. Same file on the light canvas and the dark canvas. Copy from the source PNG — chat previews may be JPEGs with the alpha baked to black.
 
 `--brand` is sampled from that orange. `--primary` stays Mira near-black / near-white. Do not fill primary buttons orange. Do not set a full-app orange canvas.
 

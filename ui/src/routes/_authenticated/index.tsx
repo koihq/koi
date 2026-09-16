@@ -2,6 +2,7 @@ import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-rou
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
+import { KoiMark } from "@/components/blocks/koi-mark";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -16,8 +17,8 @@ function Home() {
 
   return (
     <main className="min-h-svh px-6 py-10 sm:px-16 sm:py-16">
-      <div className="flex items-baseline justify-between gap-4">
-        <p className="text-sm tracking-tight">{t("brand", { ns: "common" })}</p>
+      <div className="flex items-center justify-between gap-4">
+        <KoiMark />
         <Button
           type="button"
           variant="ghost"

@@ -9,7 +9,30 @@ export const Route = createRootRouteWithContext<{ api: Api }>()({
   component: RootComponent,
 });
 
+function parkDevtoolsTrigger() {
+  try {
+    const key = "tanstack_devtools_settings";
+    const prev = JSON.parse(localStorage.getItem(key) ?? "{}") as {
+      triggerMode?: string;
+      position?: string;
+    };
+    if (prev.triggerMode === "fixed" && prev.position === "bottom-right") {
+      return;
+    }
+    localStorage.setItem(
+      key,
+      JSON.stringify({ ...prev, triggerMode: "fixed", position: "bottom-right" }),
+    );
+  } catch {
+    // quota / private mode
+  }
+}
+
 function RootComponent() {
+  if (import.meta.env.DEV) {
+    parkDevtoolsTrigger();
+  }
+
   return (
     <>
       <Outlet />
@@ -17,6 +40,7 @@ function RootComponent() {
         <TanStackDevtools
           config={{
             position: "bottom-right",
+            triggerMode: "fixed",
           }}
           plugins={[
             {
