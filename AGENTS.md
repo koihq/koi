@@ -33,7 +33,11 @@ Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/a
 ## Agent rules
 
 - Before Go API, domain, or GORM work, read `.agents/skills/codebase-patterns` (`backend.md`).
+- Before visual or UI work, read `.agents/skills/product-design`, then `.agents/skills/codebase-patterns` (`frontend.md`).
 - Before React routes, API wrappers, or UI features, read `.agents/skills/codebase-patterns` (`frontend.md`).
+- Before changing primitive motion, also read `.agents/skills/emil-design-eng` and `.agents/skills/animate`.
+- For a screen or flow review, load `.agents/skills/better-interface` (it already routes to the installed `better-accessibility`, `better-layout`, `better-writing`, `better-typography`, `better-colors`, `better-ui`).
+- For a branch, PR, or uncommitted UI diff, use `.agents/skills/interface-review` instead.
 - `ui/` uses **pnpm**. Do not add `package-lock.json` or `yarn.lock`. Imports use `@/` (not `#/`).
 - Cookie session auth (email/password, `koi_session`). `KOI_SESSION_SECRET` is required (`openssl rand -base64 32`). Browse `:5173` during `make dev`. Dual-surface CLI/MCP comes later.
 

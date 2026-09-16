@@ -97,7 +97,15 @@ Entity list/mutation hooks wrap TanStack Query and call `useApi()`.
 
 ## Components
 
-shadcn/ui primitives live in `components/ui`. Shared product blocks in `components/blocks`. Tailwind v4 for styling.
+Visual language, allowed primitives, and named anti-patterns: `.agents/skills/product-design` (then [primitives.md](../product-design/primitives.md)).
+
+```
+components/ui/      shadcn primitives (add with the CLI, don’t fork)
+components/blocks/  product compositions built only from ui/
+routes/             screens that assemble blocks, not restyle primitives
+```
+
+Routes import `@/components/ui/*` and `@/components/blocks/*`. Do not change a primitive’s size or type from a route (`className="h-9 text-sm"` on `Input` is forbidden). Do not add `Card` to group metrics or metadata. `FieldGroup` gap groups form fields; do not insert `FieldSeparator` between them. Tailwind v4 for styling.
 
 ## Dev
 
