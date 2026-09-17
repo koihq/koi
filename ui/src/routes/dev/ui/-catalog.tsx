@@ -1,4 +1,4 @@
-import { Add01Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useLayoutEffect } from "react";
@@ -132,8 +132,8 @@ export function CatalogPage({
   return (
     <>
       <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
-      <p className="mt-2 max-w-lg text-muted-foreground">{lead}</p>
-      {children ? <div className="mt-16 flex min-w-0 flex-col gap-16">{children}</div> : null}
+      <p className="mt-1 max-w-lg text-sm text-muted-foreground text-pretty">{lead}</p>
+      {children ? <div className="mt-8 flex min-w-0 flex-col gap-10">{children}</div> : null}
     </>
   );
 }
@@ -141,15 +141,20 @@ export function CatalogPage({
 export function CatalogSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="min-w-0">
-      <h2 className="text-xs/relaxed font-medium text-muted-foreground">{title}</h2>
-      <div className="mt-6 min-w-0">{children}</div>
+      <h2 className="text-sm font-medium text-foreground">{title}</h2>
+      <div className="mt-4 min-w-0">{children}</div>
     </section>
   );
 }
 
 export function SpecList({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <dl className={cn("grid grid-cols-[auto_1fr] items-baseline gap-x-6 gap-y-2", className)}>
+    <dl
+      className={cn(
+        "grid min-w-0 grid-cols-1 items-baseline gap-x-6 gap-y-1 min-[360px]:grid-cols-[minmax(0,auto)_minmax(0,1fr)] min-[360px]:gap-y-2",
+        className,
+      )}
+    >
       {children}
     </dl>
   );
@@ -167,7 +172,9 @@ export function SpecRow({
   return (
     <>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn("m-0 min-w-0", className)}>{children}</dd>
+      <dd className={cn("m-0 mb-2 min-w-0 wrap-anywhere min-[360px]:mb-0", className)}>
+        {children}
+      </dd>
     </>
   );
 }
@@ -193,28 +200,52 @@ export function ButtonMatrix() {
   const { t } = useTranslation("dev");
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-6">
       {BUTTON_VARIANTS.map((buttonVariant) => (
-        <div key={buttonVariant} className="flex w-full min-w-0 flex-wrap items-center gap-3">
-          {TEXT_SIZES.map((size) => (
-            <Button key={size} type="button" variant={buttonVariant} size={size}>
-              {t(buttonVariant === "destructive" ? "delete" : buttonVariant)}
-            </Button>
-          ))}
-          {ICON_SIZES.map((size) => (
-            <Button
-              key={size}
-              type="button"
-              variant={buttonVariant}
-              size={size}
-              aria-label={t("add")}
-            >
-              <HugeiconsIcon icon={Add01Icon} aria-hidden={true} />
-            </Button>
-          ))}
-        </div>
+        <section
+          key={buttonVariant}
+          className="grid min-w-0 gap-3 min-[640px]:grid-cols-[6rem_minmax(0,1fr)]"
+        >
+          <h2 className="pt-1 text-xs/relaxed font-medium">{t(buttonVariant)}</h2>
+          <div className="grid min-w-0 gap-4 min-[980px]:grid-cols-[max-content_max-content] min-[980px]:gap-10">
+            <div className="min-w-0">
+              <p className="mb-2 text-xs/relaxed text-muted-foreground">{t("textSizes")}</p>
+              <div className="flex flex-wrap items-end gap-3">
+                {TEXT_SIZES.map((size) => (
+                  <div key={size} className="flex flex-col items-start gap-1">
+                    <span className="text-[0.625rem] text-muted-foreground">{size}</span>
+                    <Button type="button" variant={buttonVariant} size={size}>
+                      {t(buttonVariant === "destructive" ? "delete" : "add")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="mb-2 text-xs/relaxed text-muted-foreground">{t("iconSizes")}</p>
+              <div className="flex flex-wrap items-end gap-3">
+                {ICON_SIZES.map((size) => (
+                  <div key={size} className="flex flex-col items-start gap-1">
+                    <span className="text-[0.625rem] text-muted-foreground">{size}</span>
+                    <Button
+                      type="button"
+                      variant={buttonVariant}
+                      size={size}
+                      aria-label={t(buttonVariant === "destructive" ? "delete" : "add")}
+                    >
+                      <HugeiconsIcon
+                        icon={buttonVariant === "destructive" ? Delete01Icon : Add01Icon}
+                        aria-hidden={true}
+                      />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       ))}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 pt-2">
         <Button type="button" disabled>
           {t("disabled")}
         </Button>
