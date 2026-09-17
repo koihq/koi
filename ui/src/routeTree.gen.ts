@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedBriefRouteImport } from './routes/_authenticated/brief'
+import { Route as AuthenticatedCitationsRouteImport } from './routes/_authenticated/citations'
+import { Route as AuthenticatedCompetitorsRouteImport } from './routes/_authenticated/competitors'
+import { Route as AuthenticatedMentionsRouteImport } from './routes/_authenticated/mentions'
 import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
@@ -28,6 +32,27 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedBriefRoute = AuthenticatedBriefRouteImport.update({
+  id: '/brief',
+  path: '/brief',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCitationsRoute = AuthenticatedCitationsRouteImport.update({
+  id: '/citations',
+  path: '/citations',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCompetitorsRoute =
+  AuthenticatedCompetitorsRouteImport.update({
+    id: '/competitors',
+    path: '/competitors',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMentionsRoute = AuthenticatedMentionsRouteImport.update({
+  id: '/mentions',
+  path: '/mentions',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const DevUiRouteRoute = DevUiRouteRouteImport.update({
@@ -79,6 +104,10 @@ const DevUiSeparatorRoute = DevUiSeparatorRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/brief': typeof AuthenticatedBriefRoute
+  '/citations': typeof AuthenticatedCitationsRoute
+  '/competitors': typeof AuthenticatedCompetitorsRoute
+  '/mentions': typeof AuthenticatedMentionsRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -89,6 +118,10 @@ export interface FileRoutesByFullPath {
   '/dev/ui/': typeof DevUiIndexRoute
 }
 export interface FileRoutesByTo {
+  '/brief': typeof AuthenticatedBriefRoute
+  '/citations': typeof AuthenticatedCitationsRoute
+  '/competitors': typeof AuthenticatedCompetitorsRoute
+  '/mentions': typeof AuthenticatedMentionsRoute
   '/': typeof AuthenticatedIndexRoute
   '/sign-in': typeof SignInIndexRoute
   '/sign-up': typeof SignUpIndexRoute
@@ -103,6 +136,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/_authenticated/brief': typeof AuthenticatedBriefRoute
+  '/_authenticated/citations': typeof AuthenticatedCitationsRoute
+  '/_authenticated/competitors': typeof AuthenticatedCompetitorsRoute
+  '/_authenticated/mentions': typeof AuthenticatedMentionsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
@@ -118,6 +155,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dev/ui'
+    | '/brief'
+    | '/citations'
+    | '/competitors'
+    | '/mentions'
     | '/sign-in/'
     | '/sign-up/'
     | '/dev/ui/button'
@@ -128,6 +169,10 @@ export interface FileRouteTypes {
     | '/dev/ui/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/brief'
+    | '/citations'
+    | '/competitors'
+    | '/mentions'
     | '/'
     | '/sign-in'
     | '/sign-up'
@@ -141,6 +186,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/dev/ui'
+    | '/_authenticated/brief'
+    | '/_authenticated/citations'
+    | '/_authenticated/competitors'
+    | '/_authenticated/mentions'
     | '/_authenticated/'
     | '/sign-in/'
     | '/sign-up/'
@@ -173,6 +222,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/brief': {
+      id: '/_authenticated/brief'
+      path: '/brief'
+      fullPath: '/brief'
+      preLoaderRoute: typeof AuthenticatedBriefRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/citations': {
+      id: '/_authenticated/citations'
+      path: '/citations'
+      fullPath: '/citations'
+      preLoaderRoute: typeof AuthenticatedCitationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/competitors': {
+      id: '/_authenticated/competitors'
+      path: '/competitors'
+      fullPath: '/competitors'
+      preLoaderRoute: typeof AuthenticatedCompetitorsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/mentions': {
+      id: '/_authenticated/mentions'
+      path: '/mentions'
+      fullPath: '/mentions'
+      preLoaderRoute: typeof AuthenticatedMentionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/dev/ui': {
@@ -242,10 +319,18 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedBriefRoute: typeof AuthenticatedBriefRoute
+  AuthenticatedCitationsRoute: typeof AuthenticatedCitationsRoute
+  AuthenticatedCompetitorsRoute: typeof AuthenticatedCompetitorsRoute
+  AuthenticatedMentionsRoute: typeof AuthenticatedMentionsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedBriefRoute: AuthenticatedBriefRoute,
+  AuthenticatedCitationsRoute: AuthenticatedCitationsRoute,
+  AuthenticatedCompetitorsRoute: AuthenticatedCompetitorsRoute,
+  AuthenticatedMentionsRoute: AuthenticatedMentionsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

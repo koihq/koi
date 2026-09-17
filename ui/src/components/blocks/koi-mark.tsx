@@ -7,6 +7,12 @@ export function KoiMark({ className }: { className?: string }) {
   const { t } = useTranslation();
 
   return (
-    <img src={mark} alt={t("brand")} width={32} height={32} className={cn("block size-8", className)} />
+    <img
+      src={mark}
+      alt={t("brand")}
+      width={32}
+      height={32}
+      className={cn("block size-8", className)}
+    />
   );
 }

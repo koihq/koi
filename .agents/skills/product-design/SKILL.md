@@ -22,19 +22,19 @@ Frame the screen around that job. Do not start from a dashboard template.
 
 ## Composition
 
-Steal this geometry when a mentions surface exists. Do not add the rail or split shell until then.
+Use this geometry when a mentions surface exists:
 
 ```
 rail |  brand + verdict + engines     |  runs / citations / brief
      |  (facts, definition list)      |  (activity, not a widget grid)
 ```
 
-- Narrow **icon rail**, not a labeled sidebar.
+- The authenticated shell has a labeled sidebar that collapses to a narrow icon rail. The main area is an inset surface on desktop.
 - **Definition-list metadata:** muted label column, value column. Gap and type role group rows. No boxes, no rules between rows.
 - The title is the page. A run id stays quiet (`tabular-nums`). The sentence is the heading.
 - One focal relationship per viewport. Magnitude shares one scale; comparison uses the same basis; the markdown brief is one primary object.
 
-Auth is a quiet centered column. Home is a mark + identity until there is real mention data.
+Auth is a quiet centered column. Home stays a brief introduction until there is real mention data.
 
 Light and dark are the same layout. Invert the canvas, keep the hierarchy. No separate “marketing light” and “tool dark.”
 
@@ -77,6 +77,7 @@ These are disallowed, not taste. Name them when rejecting work.
 | **Mono chrome** | `--font-mono`, `font-mono`, Geist Mono, JetBrains, mono on IDs, timestamps, KPIs, tables, “code-like” labels | Inter Variable for everything. Aligned numbers use `tabular-nums` |
 | **Card kit** | shadcn `Card`; boxed metrics, metadata, sections, or lists “to group them” | Gap, alignment, type role. A surface is earned (dialog, popover, a quoted artifact) |
 | **Hairline habit** | `Separator` / `FieldSeparator` between fields, under headings, between timeline rows | Space owns grouping. One structural split at most (rail \| body, facts \| activity) |
+| **Decorative shadow** | Shadows on static panels or sections, including the authenticated main surface | Use canvas contrast and a single structural border. Add a shadow only when it clarifies meaningful overlap or elevation |
 | **Primitive override** | Route `className` changing size or type of a `ui/` control (`h-9 text-sm` on `Input`) | Use the primitive’s CVA sizes. Density is Mira compact |
 | **Parallel theme** | Page-local hex, a second typeface, a new radius, orange `--primary` | Semantic tokens and `components/ui`. New controls: `pnpm --dir ui exec shadcn add …`, then update [primitives.md](primitives.md) |
 

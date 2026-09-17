@@ -1,3 +1,20 @@
 {
-  "signOut": "Sign out"
+  "signOut": "Sign out",
+  "skip": "Skip to content",
+  "navigation": "Main navigation",
+  "toggleSidebar": "Toggle sidebar",
+  "routes": {
+    "home": "Home",
+    "mentions": "Mentions",
+    "competitors": "Competitors",
+    "citations": "Citations",
+    "brief": "Brief"
+  },
+  "pages": {
+    "home": "See where your brand appears in AI answers.",
+    "mentions": "Track when answer engines mention your brand.",
+    "competitors": "See which alternatives answer engines recommend.",
+    "citations": "Review the sources answer engines cite.",
+    "brief": "Get a markdown brief for your agent."
+  }
 }

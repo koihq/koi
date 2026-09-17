@@ -43,7 +43,28 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 | Label | `Label` (prefer `FieldLabel` in forms) |
 | Structural split | `Separator` — **one split**, never as grouping. Do not put `FieldSeparator` between form fields |
 
-`FieldGroup` gap is the default grouping. Do not add `Card`, `Table`, `Sidebar`, or `Tabs` until a product screen needs the behavior.
+`FieldGroup` gap is the default grouping. Do not add `Card`, `Table`, or `Tabs` until a product screen needs the behavior.
+
+Authenticated navigation uses shadcn `Sidebar` with `SidebarProvider`, `SidebarInset`, `SidebarTrigger`, `SidebarMenuButton`, and their generated `Sheet`, `Tooltip`, and `Skeleton` dependencies. Desktop collapses to icons; mobile opens a drawer.
+
+## Authenticated shell baseline
+
+These are the current measurements at a 16px root font size. Keep them consistent when extending the shell; change them through the shared component or token when the product needs a different scale.
+
+| Element | Current value |
+| --- | --- |
+| Main inset edge | 0.5px `border-border` from `md` (768px) upward; no border on mobile; no shadow |
+| Main inset corner | `rounded-xl` = 14px (`--radius: 10px` × 1.4) on desktop |
+| Sidebar link corner | 8px (`--radius-sm: 6px` + 2px) |
+| Page title in shell header | `text-sm font-medium` = 14px / 500 |
+| Organization name | `text-sm font-medium` = 14px / 500 |
+| Sidebar link label | `text-xs font-medium` = 12px / 500; active link = 600 |
+| Placeholder body text | Browser body default = 16px / 400 |
+| Navigation icon | 16 × 16px, Hugeicons stroke width 2 |
+| Sidebar toggle icon | 16 × 16px, Hugeicons stroke width 2 |
+| Koi mark in sidebar | 20 × 20px |
+
+The border is a structural edge, not a cue to add more dividers. Focus rings are separate from borders. Use the token radius scale; do not introduce a route-specific corner value.
 
 ## Motion contract
 
