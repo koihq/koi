@@ -16,5 +16,7 @@
     "competitors": "See which alternatives answer engines recommend.",
     "citations": "Review the sources answer engines cite.",
     "brief": "Get a markdown brief for your agent."
-  }
+  },
+  "workspace": "Workspace",
+  "action": "Act"
 }

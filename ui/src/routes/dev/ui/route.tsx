@@ -13,6 +13,7 @@ const NAV = [
   { to: "/dev/ui/field", key: "field" },
   { to: "/dev/ui/separator", key: "separator" },
   { to: "/dev/ui/patterns", key: "patterns" },
+  { to: "/dev/ui/sidebar", key: "sidebar" },
 ] as const;
 
 export const Route = createFileRoute("/dev/ui")({
@@ -87,7 +88,7 @@ function ThemeLink({ item, variant }: { item: Variant; variant: Variant }) {
   return (
     <Link
       to={catalogTo(pathname)}
-      search={{ variant: item }}
+      search={(previous) => ({ ...previous, variant: item })}
       replace
       aria-current={variant === item ? "true" : undefined}
       className="block rounded-sm py-1.5 text-xs/relaxed text-muted-foreground underline-offset-4 aria-[current=true]:font-semibold aria-[current=true]:text-foreground aria-[current=true]:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"

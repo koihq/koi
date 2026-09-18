@@ -40,6 +40,7 @@ const CATALOG_TO = {
   "/dev/ui/mark": true,
   "/dev/ui/patterns": true,
   "/dev/ui/separator": true,
+  "/dev/ui/sidebar": true,
 } as const;
 
 export type CatalogTo = keyof typeof CATALOG_TO;

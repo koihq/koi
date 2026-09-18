@@ -6,7 +6,6 @@ import {
   QuoteIcon,
   UserMultipleIcon,
 } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import {
   createFileRoute,
   Link,
@@ -19,21 +18,8 @@ import {
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
-import { KoiMark } from "@/components/blocks/koi-mark";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { KoiSidebar, type KoiSidebarItem } from "@/components/blocks/koi-sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const navigation = [
@@ -92,64 +78,47 @@ function AppSidebar({ pathname }: { pathname: string }) {
   const api = useApi();
   const router = useRouter();
 
+  const items: KoiSidebarItem[] = navigation.map((item) => {
+    const active = pathname === item.to;
+    return {
+      id: item.key,
+      label: t(`routes.${item.key}`),
+      icon: item.icon,
+      active,
+      render: (
+        <Link
+          to={item.to}
+          aria-current={active ? "page" : undefined}
+          onClick={() => setOpenMobile(false)}
+        />
+      ),
+    };
+  });
   return (
-    <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader>
-        <div className="flex h-9 items-center gap-2 px-2">
-          <KoiMark className="size-5 shrink-0" />
-          <span className="truncate text-sm font-medium group-data-[collapsible=icon]:hidden">
-            {me.organization.name}
-          </span>
-          <SidebarTrigger className="ml-auto md:hidden" aria-label={t("toggleSidebar")} />
-        </div>
-      </SidebarHeader>
-      <SidebarContent>
-        <nav aria-label={t("navigation")}>
-          <SidebarGroup>
-            <SidebarMenu>
-              {navigation.map((item) => {
-                const label = t(`routes.${item.key}`);
-                const active = pathname === item.to;
-                return (
-                  <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton
-                      render={
-                        <Link
-                          to={item.to}
-                          aria-current={active ? "page" : undefined}
-                          onClick={() => setOpenMobile(false)}
-                        />
-                      }
-                      isActive={active}
-                      tooltip={label}
-                    >
-                      <HugeiconsIcon icon={item.icon} strokeWidth={2} />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroup>
-        </nav>
-      </SidebarContent>
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip={t("signOut")}
-              onClick={async () => {
-                await api.auth.logout();
-                await router.invalidate();
-                await router.navigate({ to: "/sign-in" });
-              }}
-            >
-              <HugeiconsIcon icon={Logout01Icon} strokeWidth={2} />
-              <span>{t("signOut")}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+    <KoiSidebar
+      brand={me.organization.name}
+      home={items[0]}
+      workspace={items.slice(1, 4)}
+      workspaceLabel={t("workspace")}
+      navigationLabel={t("navigation")}
+      action={items.slice(4)}
+      actionLabel={t("action")}
+      footer={{
+        id: "signOut",
+        label: t("signOut"),
+        icon: Logout01Icon,
+        active: false,
+        render: (
+          <button
+            type="button"
+            onClick={async () => {
+              await api.auth.logout();
+              await router.invalidate();
+              await router.navigate({ to: "/sign-in" });
+            }}
+          />
+        ),
+      }}
+    />
   );
 }

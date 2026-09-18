@@ -90,5 +90,92 @@
   "buttonApi": {
     "variant": "default, outline, secondary, ghost, destructive, link",
     "size": "xs, sm, default, lg, icon-xs, icon-sm, icon, icon-lg"
+  },
+  "sidebar": "Sidebar",
+  "sidebarStudy": {
+    "lead": "The shared shadcn sidebar, shown with sample pages. Select a page, switch brands, and collapse the rail.",
+    "workspace": "Workspace",
+    "action": "Act",
+    "chooseBrand": "Choose brand",
+    "koi": "Koi",
+    "acme": "Acme",
+    "preview": "Sample product page",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "sample": "Sample data",
+    "brandReport": "{brand} / Visibility",
+    "latestRun": "Latest run · Today, 07:42",
+    "runNote": "40 prompts checked across four answer engines.",
+    "pages": {
+      "home": "Overview",
+      "mentions": "Mentions",
+      "competitors": "Competitors",
+      "citations": "Citations",
+      "brief": "Agent brief",
+      "settings": "Settings"
+    },
+    "content": {
+      "home": {
+        "heading": "Your next step is clearer.",
+        "body": "See where {brand} appears in AI answers, who comes up instead, and what to work on next.",
+        "firstLabel": "Mentioned in",
+        "firstValue": "12 of 40 answers",
+        "secondLabel": "Top substitute",
+        "secondValue": "Peec AI",
+        "thirdLabel": "Next step",
+        "thirdValue": "Publish a comparison page"
+      },
+      "mentions": {
+        "heading": "{brand} is part of the conversation.",
+        "body": "Answer engines mention {brand} in 12 of 40 answers. There is room to show up in more of the questions your buyers ask.",
+        "firstLabel": "Mention rate",
+        "firstValue": "30%",
+        "secondLabel": "Strongest engine",
+        "secondValue": "ChatGPT · 7 mentions",
+        "thirdLabel": "Top substitute",
+        "thirdValue": "Peec AI"
+      },
+      "competitors": {
+        "heading": "See who comes up instead.",
+        "body": "Peec AI appears most often when an answer leaves {brand} out. Start with the questions where that gap is widest.",
+        "firstLabel": "Peec AI",
+        "firstValue": "18 of 40 answers",
+        "secondLabel": "Profound",
+        "secondValue": "14 of 40 answers",
+        "thirdLabel": "Otterly",
+        "thirdValue": "9 of 40 answers"
+      },
+      "citations": {
+        "heading": "The sources behind the answers.",
+        "body": "Find the pages answer engines trust, and where your own content is already helping buyers discover {brand}.",
+        "firstLabel": "Cited answers",
+        "firstValue": "8 of 40",
+        "secondLabel": "Top source",
+        "secondValue": "{brand} documentation",
+        "thirdLabel": "Opportunity",
+        "thirdValue": "Comparison pages"
+      },
+      "brief": {
+        "heading": "Give your agent a clear next step.",
+        "body": "Create a comparison page that answers how {brand} differs from Peec AI. Use specific capabilities and cite your documentation.",
+        "firstLabel": "Priority",
+        "firstValue": "High",
+        "secondLabel": "Based on",
+        "secondValue": "28 answers missing {brand}",
+        "thirdLabel": "Success measure",
+        "thirdValue": "Mentions in comparison prompts"
+      },
+      "settings": {
+        "heading": "A workspace for your brand.",
+        "body": "Switch the brand in the sidebar to explore the same workspace with a different name.",
+        "firstLabel": "Brand",
+        "firstValue": "{brand}",
+        "secondLabel": "Answer engines",
+        "secondValue": "ChatGPT, Perplexity, Gemini, Google",
+        "thirdLabel": "Prompt set",
+        "thirdValue": "40 buyer questions"
+      }
+    },
+    "navigation": "Sample navigation"
   }
 }

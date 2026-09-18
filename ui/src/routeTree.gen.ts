@@ -24,6 +24,7 @@ import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
 import { Route as DevUiMarkRouteImport } from './routes/dev/ui/mark'
 import { Route as DevUiPatternsRouteImport } from './routes/dev/ui/patterns'
 import { Route as DevUiSeparatorRouteImport } from './routes/dev/ui/separator'
+import { Route as DevUiSidebarRouteImport } from './routes/dev/ui/sidebar'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -100,6 +101,11 @@ const DevUiSeparatorRoute = DevUiSeparatorRouteImport.update({
   path: '/separator',
   getParentRoute: () => DevUiRouteRoute,
 } as any)
+const DevUiSidebarRoute = DevUiSidebarRouteImport.update({
+  id: '/sidebar',
+  path: '/sidebar',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/dev/ui/mark': typeof DevUiMarkRoute
   '/dev/ui/patterns': typeof DevUiPatternsRoute
   '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/dev/ui/': typeof DevUiIndexRoute
 }
 export interface FileRoutesByTo {
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/dev/ui/mark': typeof DevUiMarkRoute
   '/dev/ui/patterns': typeof DevUiPatternsRoute
   '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/dev/ui': typeof DevUiIndexRoute
 }
 export interface FileRoutesById {
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/dev/ui/mark': typeof DevUiMarkRoute
   '/dev/ui/patterns': typeof DevUiPatternsRoute
   '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/dev/ui/': typeof DevUiIndexRoute
 }
 export interface FileRouteTypes {
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/dev/ui/mark'
     | '/dev/ui/patterns'
     | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
     | '/dev/ui/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/dev/ui/mark'
     | '/dev/ui/patterns'
     | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
     | '/dev/ui'
   id:
     | '__root__'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/dev/ui/mark'
     | '/dev/ui/patterns'
     | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
     | '/dev/ui/'
   fileRoutesById: FileRoutesById
 }
@@ -315,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiSeparatorRouteImport
       parentRoute: typeof DevUiRouteRoute
     }
+    '/dev/ui/sidebar': {
+      id: '/dev/ui/sidebar'
+      path: '/sidebar'
+      fullPath: '/dev/ui/sidebar'
+      preLoaderRoute: typeof DevUiSidebarRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
   }
 }
 
@@ -344,6 +363,7 @@ interface DevUiRouteRouteChildren {
   DevUiMarkRoute: typeof DevUiMarkRoute
   DevUiPatternsRoute: typeof DevUiPatternsRoute
   DevUiSeparatorRoute: typeof DevUiSeparatorRoute
+  DevUiSidebarRoute: typeof DevUiSidebarRoute
   DevUiIndexRoute: typeof DevUiIndexRoute
 }
 
@@ -353,6 +373,7 @@ const DevUiRouteRouteChildren: DevUiRouteRouteChildren = {
   DevUiMarkRoute: DevUiMarkRoute,
   DevUiPatternsRoute: DevUiPatternsRoute,
   DevUiSeparatorRoute: DevUiSeparatorRoute,
+  DevUiSidebarRoute: DevUiSidebarRoute,
   DevUiIndexRoute: DevUiIndexRoute,
 }
 

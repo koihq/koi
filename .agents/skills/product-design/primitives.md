@@ -57,8 +57,10 @@ These are the current measurements at a 16px root font size. Keep them consisten
 | Main inset corner | `rounded-xl` = 14px (`--radius: 10px` × 1.4) on desktop |
 | Sidebar link corner | 8px (`--radius-sm: 6px` + 2px) |
 | Page title in shell header | `text-sm font-medium` = 14px / 500 |
-| Organization name | `text-sm font-medium` = 14px / 500 |
-| Sidebar link label | `text-xs font-medium` = 12px / 500; active link = 600 |
+| Organization name | 13px / 500 |
+| Sidebar link label | 13px / 500, including active links |
+| Sidebar width | 232px expanded; 48px icon rail |
+| Sidebar states | Default transparent, hover `sidebar-accent`, selected `sidebar-selected` |
 | Placeholder body text | Browser body default = 16px / 400 |
 | Navigation icon | 16 × 16px, Hugeicons stroke width 2 |
 | Sidebar toggle icon | 16 × 16px, Hugeicons stroke width 2 |
