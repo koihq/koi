@@ -1,7 +1,6 @@
 import { Add01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useLayoutEffect } from "react";
+import { type ReactNode, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { KoiMark } from "@/components/blocks/koi-mark";
@@ -25,20 +24,11 @@ export const TEXT_SIZES = ["xs", "sm", "default", "lg"] as const;
 export const ICON_SIZES = ["icon-xs", "icon-sm", "icon", "icon-lg"] as const;
 export const MARK_SIZES = ["size-6", "size-8", "size-16"] as const;
 
-export const IMPORTS = {
-  mark: "@/components/blocks/koi-mark",
-  button: "@/components/ui/button",
-  field: "@/components/ui/field",
-  input: "@/components/ui/input",
-  separator: "@/components/ui/separator",
-} as const;
-
 const CATALOG_TO = {
   "/dev/ui": true,
   "/dev/ui/button": true,
   "/dev/ui/field": true,
   "/dev/ui/mark": true,
-  "/dev/ui/patterns": true,
   "/dev/ui/separator": true,
   "/dev/ui/sidebar": true,
 } as const;
@@ -61,13 +51,6 @@ export function validateUiSearch(search: Record<string, unknown>): { variant: Va
   return { variant: parseVariant(search.variant) };
 }
 
-function isTypingTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  return Boolean(target.closest("input, textarea, select, [contenteditable=true]"));
-}
-
 function applyTheme(dark: boolean) {
   const style = document.createElement("style");
   style.append(document.createTextNode("*,*::before,*::after{transition:none !important}"));
@@ -81,9 +64,6 @@ function applyTheme(dark: boolean) {
 }
 
 export function useCatalogTheme(variant: Variant) {
-  const navigate = useNavigate();
-  const pathname = useLocation({ select: (location) => location.pathname });
-
   useLayoutEffect(() => {
     applyTheme(variant === "dark");
     return () => {
@@ -91,34 +71,6 @@ export function useCatalogTheme(variant: Variant) {
       document.documentElement.style.colorScheme = "";
     };
   }, [variant]);
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) {
-        return;
-      }
-
-      let next: Variant | undefined;
-      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-        event.preventDefault();
-        const delta = event.key === "ArrowRight" ? 1 : -1;
-        next = VARIANTS[(VARIANTS.indexOf(variant) + delta + VARIANTS.length) % VARIANTS.length];
-      } else if (event.key === "1") {
-        next = "light";
-      } else if (event.key === "2") {
-        next = "dark";
-      }
-
-      if (!next || next === variant) {
-        return;
-      }
-
-      void navigate({ to: catalogTo(pathname), search: { variant: next }, replace: true });
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [navigate, pathname, variant]);
 }
 
 export function CatalogPage({
@@ -133,50 +85,79 @@ export function CatalogPage({
   return (
     <>
       <h1 className="text-2xl font-medium tracking-tight">{title}</h1>
-      <p className="mt-1 max-w-lg text-sm text-muted-foreground text-pretty">{lead}</p>
-      {children ? <div className="mt-8 flex min-w-0 flex-col gap-10">{children}</div> : null}
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty">
+        {lead}
+      </p>
+      {children ? <div className="mt-10 flex min-w-0 flex-col gap-12">{children}</div> : null}
     </>
   );
 }
 
-export function CatalogSection({ title, children }: { title: string; children: ReactNode }) {
+export function CatalogSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
     <section className="min-w-0">
-      <h2 className="text-sm font-medium text-foreground">{title}</h2>
-      <div className="mt-4 min-w-0">{children}</div>
+      <h2 className="text-base font-medium text-foreground">{title}</h2>
+      {description ? (
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+      ) : null}
+      <div className="mt-5 min-w-0">{children}</div>
     </section>
   );
 }
 
-export function SpecList({ className, children }: { className?: string; children: ReactNode }) {
+export function CatalogPreview({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <dl
-      className={cn(
-        "grid min-w-0 grid-cols-1 items-baseline gap-x-6 gap-y-1 min-[360px]:grid-cols-[minmax(0,auto)_minmax(0,1fr)] min-[360px]:gap-y-2",
-        className,
-      )}
+    <div
+      className={cn("min-w-0 rounded-xl border border-border bg-background p-6 sm:p-8", className)}
     >
       {children}
-    </dl>
+    </div>
   );
 }
 
-export function SpecRow({
-  label,
-  className,
-  children,
-}: {
-  label: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
+export function CatalogCode({ title, code }: { title: string; code: string }) {
+  const { t } = useTranslation("dev");
+  const [copied, setCopied] = useState(false);
+
   return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn("m-0 mb-2 min-w-0 wrap-anywhere min-[360px]:mb-0", className)}>
-        {children}
-      </dd>
-    </>
+    <div className="min-w-0 overflow-hidden rounded-lg border border-border">
+      <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-2">
+        <span className="text-xs/relaxed font-medium">{title}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(code);
+              setCopied(true);
+            } catch {
+              setCopied(false);
+            }
+          }}
+          aria-label={`Copy ${title.toLowerCase()}`}
+        >
+          {copied ? t("copied") : t("copy")}
+        </Button>
+      </div>
+      <pre className="overflow-x-auto bg-muted/40 p-4 text-xs/relaxed text-foreground">
+        <code>{code}</code>
+      </pre>
+    </div>
   );
 }
 

@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 
 import {
+  CatalogCode,
   CatalogPage,
-  IMPORTS,
+  CatalogPreview,
+  CatalogSection,
   MarkOnCanvases,
-  SpecList,
-  SpecRow,
   validateUiSearch,
 } from "./-catalog";
 
@@ -16,14 +15,28 @@ export const Route = createFileRoute("/dev/ui/mark")({
 });
 
 function DevUiMark() {
-  const { t } = useTranslation("dev");
-
   return (
-    <CatalogPage title={t("mark")} lead={t("markLead")}>
-      <SpecList>
-        <SpecRow label={t("import")}>{IMPORTS.mark}</SpecRow>
-      </SpecList>
-      <MarkOnCanvases />
+    <CatalogPage
+      title="Koi mark"
+      lead="The same transparent PNG appears on light and dark surfaces. Orange is the brand accent."
+    >
+      <CatalogSection
+        title="Preview"
+        description="The shipped asset at 24, 32, and 64 pixels on both canvases."
+      >
+        <CatalogPreview>
+          <MarkOnCanvases />
+        </CatalogPreview>
+      </CatalogSection>
+      <CatalogSection title="Use it">
+        <div className="grid gap-4">
+          <CatalogCode
+            title="Import"
+            code={'import { KoiMark } from "@/components/blocks/koi-mark";'}
+          />
+          <CatalogCode title="Usage" code={'<KoiMark className="size-8" />'} />
+        </div>
+      </CatalogSection>
     </CatalogPage>
   );
 }

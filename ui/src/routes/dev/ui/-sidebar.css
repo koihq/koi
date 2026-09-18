@@ -1,7 +1,7 @@
 .sidebar-catalog-stage {
   position: relative;
-  min-height: 640px;
-  height: min(720px, calc(100svh - 210px));
+  height: 36rem;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
@@ -16,118 +16,7 @@
   height: 100%;
 }
 
-.sidebar-catalog-stage [data-slot="sidebar-inner"] {
-  min-width: 0;
-}
-
-.sidebar-catalog-stage select {
-  min-width: 0;
-  width: 100%;
-  color: inherit;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-
-.sidebar-catalog-stage select:focus-visible {
-  outline: 2px solid var(--sidebar-ring);
-  outline-offset: 2px;
-}
-
-.sidebar-catalog-stage option {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-.sidebar-catalog-page {
-  min-width: 0;
-  flex: 1;
-  margin: 8px 8px 8px 0;
+.sidebar-catalog-inset {
+  min-height: 0;
   overflow: auto;
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-xl);
-  background: var(--background);
-}
-
-.sidebar-catalog-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.sidebar-catalog-demo {
-  margin-left: auto;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.sidebar-catalog-body {
-  padding: 58px clamp(20px, 4vw, 56px);
-}
-.sidebar-catalog-eyebrow {
-  margin-bottom: 14px;
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-.sidebar-catalog-body h2 {
-  max-width: 470px;
-  font-size: clamp(23px, 2.5vw, 32px);
-  line-height: 1.2;
-  letter-spacing: -0.035em;
-  font-weight: 500;
-  text-wrap: pretty;
-}
-.sidebar-catalog-summary {
-  max-width: 430px;
-  margin-top: 14px;
-  color: var(--muted-foreground);
-  font-size: 13px;
-  line-height: 1.7;
-}
-.sidebar-catalog-facts {
-  display: grid;
-  gap: 14px;
-  margin-top: 36px;
-  font-size: 13px;
-}
-.sidebar-catalog-facts > div {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 16px;
-}
-.sidebar-catalog-facts dt,
-.sidebar-catalog-note > span {
-  color: var(--muted-foreground);
-}
-.sidebar-catalog-facts dd {
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-.sidebar-catalog-note {
-  margin-top: 64px;
-  font-size: 12px;
-}
-.sidebar-catalog-note p {
-  margin-top: 8px;
-}
-
-@media (max-width: 640px) {
-  .sidebar-catalog-body {
-    padding: 32px 20px;
-  }
-  .sidebar-catalog-facts > div {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .sidebar-catalog-demo {
-    display: none;
-  }
-  .sidebar-catalog-page {
-    margin-left: 8px;
-  }
 }

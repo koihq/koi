@@ -12,7 +12,6 @@ const NAV = [
   { to: "/dev/ui/button", key: "button" },
   { to: "/dev/ui/field", key: "field" },
   { to: "/dev/ui/separator", key: "separator" },
-  { to: "/dev/ui/patterns", key: "patterns" },
   { to: "/dev/ui/sidebar", key: "sidebar" },
 ] as const;
 
@@ -41,11 +40,17 @@ function DevUiLayout() {
         {t("skip")}
       </a>
       <nav
-        className="flex shrink-0 flex-col px-6 pt-6 pb-2 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-svh min-[800px]:w-44 min-[800px]:py-8"
+        className="flex shrink-0 flex-col border-b border-border px-5 pt-5 pb-4 min-[800px]:sticky min-[800px]:top-0 min-[800px]:h-svh min-[800px]:w-56 min-[800px]:border-b-0 min-[800px]:px-6 min-[800px]:py-8"
         aria-label={t("catalog")}
       >
-        <KoiMark className="size-6" />
-        <div className="mt-4 flex flex-wrap gap-x-5 min-[800px]:mt-6 min-[800px]:flex-col min-[800px]:gap-x-0">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <KoiMark className="size-6" />
+          <span>{t("koiUi")}</span>
+        </div>
+        <p className="mt-8 hidden text-xs/relaxed font-medium text-muted-foreground min-[800px]:block">
+          {t("catalog")}
+        </p>
+        <div className="mt-4 flex gap-x-5 overflow-x-auto min-[800px]:mt-2 min-[800px]:flex-col min-[800px]:gap-x-0">
           {NAV.map((item) => (
             <Link
               key={item.to}
@@ -53,16 +58,13 @@ function DevUiLayout() {
               search={{ variant }}
               activeOptions={{ exact: true, includeSearch: false }}
               activeProps={{ "aria-current": "page" }}
-              className="block rounded-sm py-1.5 text-xs/relaxed text-muted-foreground underline-offset-4 data-[status=active]:font-semibold data-[status=active]:text-foreground data-[status=active]:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+              className="block shrink-0 rounded-sm py-2 text-sm text-muted-foreground data-[status=active]:font-medium data-[status=active]:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
             >
               {t(item.key)}
             </Link>
           ))}
         </div>
-        <nav
-          className="mt-3 flex flex-wrap gap-x-5 min-[800px]:mt-auto min-[800px]:flex-col min-[800px]:gap-x-0"
-          aria-label={t("variants")}
-        >
+        <nav className="mt-3 flex gap-4 min-[800px]:mt-auto" aria-label={t("variants")}>
           {VARIANTS.map((item) => (
             <ThemeLink key={item} item={item} variant={variant} />
           ))}
@@ -71,9 +73,9 @@ function DevUiLayout() {
       <Separator orientation="vertical" className="hidden min-[800px]:block" />
       <main
         id="dev-ui-main"
-        className="min-w-0 flex-1 scroll-mt-10 px-6 pt-6 pb-12 min-[800px]:py-8"
+        className="min-w-0 flex-1 scroll-mt-10 px-5 pt-8 pb-16 min-[800px]:px-10 min-[800px]:py-10"
       >
-        <div className="mx-auto w-full max-w-6xl">
+        <div className="mx-auto w-full max-w-4xl">
           <Outlet />
         </div>
       </main>
@@ -91,7 +93,7 @@ function ThemeLink({ item, variant }: { item: Variant; variant: Variant }) {
       search={(previous) => ({ ...previous, variant: item })}
       replace
       aria-current={variant === item ? "true" : undefined}
-      className="block rounded-sm py-1.5 text-xs/relaxed text-muted-foreground underline-offset-4 aria-[current=true]:font-semibold aria-[current=true]:text-foreground aria-[current=true]:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+      className="block rounded-sm py-1.5 text-xs/relaxed text-muted-foreground underline-offset-4 aria-[current=true]:font-medium aria-[current=true]:text-foreground aria-[current=true]:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
     >
       {t(item)}
     </Link>
