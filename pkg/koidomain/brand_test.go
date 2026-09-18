@@ -2,6 +2,7 @@ package koidomain
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -201,8 +202,19 @@ func TestBrandQuerierEmptyPage(t *testing.T) {
 func TestSupportedCountriesMatchBrandValidation(t *testing.T) {
 	codes := SupportedCountries()
 	require.Contains(t, codes, "IT")
+	require.Contains(t, codes, "XK")
 	require.NotContains(t, codes, "ZZ")
+	require.NotContains(t, codes, "AC")
+	require.True(t, slices.IsSorted(codes))
+	require.Len(t, slices.Compact(slices.Clone(codes)), len(codes))
 	for _, code := range codes {
 		require.NoError(t, (Brand{UserID: uuid.New(), Name: "Koi", Domain: "koi.dev", Country: code}).Validate())
 	}
+	for _, code := range []string{"AC", "ZZ"} {
+		var domainErr *Error
+		require.ErrorAs(t, (Brand{UserID: uuid.New(), Name: "Koi", Domain: "koi.dev", Country: code}).Validate(), &domainErr)
+		require.Equal(t, "country", domainErr.Fields[0].Field)
+	}
+	codes[0] = "ZZ"
+	require.Equal(t, "AD", SupportedCountries()[0])
 }

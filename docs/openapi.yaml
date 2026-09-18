@@ -132,7 +132,7 @@ paths:
     get:
       tags: [brands]
       operationId: listBrandCountries
-      description: Currently returns ISO country codes accepted by brand validation. Phase 3 will constrain this to the Cloro snapshot.
+      description: Returns the committed Cloro country snapshot used by brand validation.
       security:
         - cookieAuth: []
       responses:

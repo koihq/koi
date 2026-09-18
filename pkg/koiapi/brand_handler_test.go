@@ -148,8 +148,7 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	var countries []string
 	readJSON(t, resp, &countries)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Contains(t, countries, "IT")
-	require.NotContains(t, countries, "ZZ")
+	require.Equal(t, koidomain.SupportedCountries(), countries)
 
 	resp = doJSON(t, clientA, http.MethodPost, base,
 		`{"user_id":"00000000-0000-0000-0000-000000000000","name":"Koi","domain":"koi.dev","country":"IT"}`)

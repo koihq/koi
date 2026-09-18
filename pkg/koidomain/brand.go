@@ -4,10 +4,10 @@ import (
 	"context"
 	"net"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
-	"golang.org/x/text/language"
 )
 
 type Brand struct {
@@ -56,23 +56,12 @@ func (b Brand) Validate() error {
 }
 
 func supportedCountry(code string) bool {
-	region, err := language.ParseRegion(code)
-	return len(code) == 2 && err == nil && region.IsCountry() && !region.IsPrivateUse() && region.Canonicalize().String() == code
+	return slices.Contains(cloroCountries, code)
 }
 
-// SupportedCountries uses the same ISO country check as Brand.Validate.
-// Phase 3 will replace this with the captured Cloro country snapshot.
+// SupportedCountries returns the Cloro snapshot used by Brand.Validate.
 func SupportedCountries() []string {
-	var codes []string
-	for first := 'A'; first <= 'Z'; first++ {
-		for second := 'A'; second <= 'Z'; second++ {
-			code := string([]rune{first, second})
-			if supportedCountry(code) {
-				codes = append(codes, code)
-			}
-		}
-	}
-	return codes
+	return slices.Clone(cloroCountries)
 }
 
 func validHostname(host string) bool {
