@@ -1,0 +1,119 @@
+package koidomain
+
+import (
+	"context"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+func TestBrandValidate(t *testing.T) {
+	valid := Brand{UserID: uuid.New(), Name: "Koi", Domain: "koi.dev", Country: "IT"}
+	require.NoError(t, valid.Validate())
+
+	repoOnly := valid
+	repoOnly.Domain = ""
+	repoOnly.GitHubRepo = "https://github.com/koihq/koi"
+	require.NoError(t, repoOnly.Validate())
+
+	both := valid
+	both.GitHubRepo = repoOnly.GitHubRepo
+	require.NoError(t, both.Validate())
+
+	tests := []struct {
+		name  string
+		edit  func(*Brand)
+		field string
+	}{
+		{"owner", func(b *Brand) { b.UserID = uuid.Nil }, "user_id"},
+		{"name", func(b *Brand) { b.Name = "  " }, "name"},
+		{"identifiers", func(b *Brand) { b.Domain = "" }, "domain"},
+		{"domain URL", func(b *Brand) { b.Domain = "https://koi.dev" }, "domain"},
+		{"domain empty label", func(b *Brand) { b.Domain = "koi..dev" }, "domain"},
+		{"domain hyphen", func(b *Brand) { b.Domain = "-koi.dev" }, "domain"},
+		{"domain IP", func(b *Brand) { b.Domain = "127.0.0.1" }, "domain"},
+		{"country unknown", func(b *Brand) { b.Country = "ZZ" }, "country"},
+		{"country alias", func(b *Brand) { b.Country = "UK" }, "country"},
+		{"country malformed", func(b *Brand) { b.Country = "ITA" }, "country"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := valid
+			tt.edit(&b)
+			var domainErr *Error
+			require.ErrorAs(t, b.Validate(), &domainErr)
+			require.Equal(t, tt.field, domainErr.Fields[0].Field)
+		})
+	}
+}
+
+func TestBrandValidateGitHubRepo(t *testing.T) {
+	for _, raw := range []string{
+		"http://github.com/koihq/koi",
+		"https://example.com/koihq/koi",
+		"https://github.com/koihq",
+		"https://github.com/koihq/koi/issues",
+		"https://github.com/koihq/koi?tab=readme",
+		"https://github.com/koihq/koi#readme",
+		"https://github.com:443/koihq/koi",
+		"https://github.com/../koi",
+		"https://github.com/koihq/%6boi",
+	} {
+		t.Run(raw, func(t *testing.T) {
+			b := Brand{UserID: uuid.New(), Name: "Koi", GitHubRepo: raw, Country: "IT"}
+			var domainErr *Error
+			require.ErrorAs(t, b.Validate(), &domainErr)
+			require.Equal(t, "github_repo", domainErr.Fields[0].Field)
+		})
+	}
+}
+
+func TestBrandCommanderCreate(t *testing.T) {
+	store := NewMockStore(t)
+	users := NewMockUserRepository(t)
+	brands := NewMockBrandRepository(t)
+	store.EXPECT().Atomic(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, fn func(Store) error) error { return fn(store) },
+	)
+	store.EXPECT().UserRepo().Return(users)
+	store.EXPECT().BrandRepo().Return(brands)
+	userID := uuid.New()
+	users.EXPECT().LockForUpdate(mock.Anything, userID).Return(nil)
+	brands.EXPECT().ListByUserID(mock.Anything, userID).Return(nil, nil)
+	brands.EXPECT().Create(mock.Anything, mock.MatchedBy(func(b *Brand) bool {
+		return b.UserID == userID && b.Name == "Koi" && b.Domain == "koi.dev" &&
+			b.Country == "IT" && b.ProductLine == "AI visibility"
+	})).RunAndReturn(func(_ context.Context, b *Brand) error {
+		b.ID = uuid.New()
+		return nil
+	})
+
+	brand, err := NewBrandCommander(store).Create(t.Context(), userID, BrandParams{
+		Name: " Koi ", Domain: " koi.dev ", Country: " it ", ProductLine: " AI visibility ",
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, uuid.Nil, brand.ID)
+	require.Equal(t, userID, brand.UserID)
+}
+
+func TestBrandCommanderLimit(t *testing.T) {
+	store := NewMockStore(t)
+	users := NewMockUserRepository(t)
+	brands := NewMockBrandRepository(t)
+	store.EXPECT().Atomic(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, fn func(Store) error) error { return fn(store) },
+	)
+	store.EXPECT().UserRepo().Return(users)
+	store.EXPECT().BrandRepo().Return(brands)
+	userID := uuid.New()
+	users.EXPECT().LockForUpdate(mock.Anything, userID).Return(nil)
+	brands.EXPECT().ListByUserID(mock.Anything, userID).Return([]Brand{{UserID: userID}}, nil)
+
+	brand, err := NewBrandCommander(store).Create(t.Context(), userID, BrandParams{
+		Name: "Koi", Domain: "koi.dev", Country: "IT",
+	})
+	require.Nil(t, brand)
+	require.ErrorIs(t, err, ErrBrandLimitReached)
+}

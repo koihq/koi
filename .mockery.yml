@@ -25,6 +25,7 @@ packages:
       UserRepository:
       OrganizationRepository:
       MembershipRepository:
+      BrandRepository:
       AuthCommander:
         config:
           dir: '{{.InterfaceDir}}/../koiapi'

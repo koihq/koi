@@ -22,6 +22,7 @@ func Migrate(db *gorm.DB) error {
 		&koidomain.User{},
 		&koidomain.Organization{},
 		&koidomain.Membership{},
+		&koidomain.Brand{},
 		&sessionRow{},
 	)
 }

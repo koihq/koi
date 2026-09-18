@@ -3,6 +3,8 @@ package koidomain
 import (
 	"context"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type User struct {
@@ -32,4 +34,5 @@ func validEmail(email string) bool {
 type UserRepository interface {
 	BaseEntityRepository[User]
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	LockForUpdate(ctx context.Context, id uuid.UUID) error
 }

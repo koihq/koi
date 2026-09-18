@@ -360,6 +360,52 @@ func (_c *MockStore_Atomic_Call) RunAndReturn(run func(context1 context.Context,
 	return _c
 }
 
+// BrandRepo provides a mock function for the type MockStore
+func (_mock *MockStore) BrandRepo() koidomain.BrandRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for BrandRepo")
+	}
+
+	var r0 koidomain.BrandRepository
+	if returnFunc, ok := ret.Get(0).(func() koidomain.BrandRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(koidomain.BrandRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_BrandRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BrandRepo'
+type MockStore_BrandRepo_Call struct {
+	*mock.Call
+}
+
+// BrandRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) BrandRepo() *MockStore_BrandRepo_Call {
+	return &MockStore_BrandRepo_Call{Call: _e.mock.On("BrandRepo")}
+}
+
+func (_c *MockStore_BrandRepo_Call) Run(run func()) *MockStore_BrandRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_BrandRepo_Call) Return(brandRepository koidomain.BrandRepository) *MockStore_BrandRepo_Call {
+	_c.Call.Return(brandRepository)
+	return _c
+}
+
+func (_c *MockStore_BrandRepo_Call) RunAndReturn(run func() koidomain.BrandRepository) *MockStore_BrandRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MembershipRepo provides a mock function for the type MockStore
 func (_mock *MockStore) MembershipRepo() koidomain.MembershipRepository {
 	ret := _mock.Called()

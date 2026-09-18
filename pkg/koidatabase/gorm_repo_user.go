@@ -3,7 +3,9 @@ package koidatabase
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/koihq/koi/pkg/koidomain"
 )
@@ -23,4 +25,10 @@ func (r *GormUserRepository) GetByEmail(ctx context.Context, email string) (*koi
 		return nil, mapDBError(err)
 	}
 	return entity, nil
+}
+
+func (r *GormUserRepository) LockForUpdate(ctx context.Context, id uuid.UUID) error {
+	var user koidomain.User
+	err := r.db.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Select("id").Where("id = ?", id).Take(&user).Error
+	return mapDBError(err)
 }
