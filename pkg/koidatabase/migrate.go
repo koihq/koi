@@ -18,6 +18,14 @@ type sessionRow struct {
 func (sessionRow) TableName() string { return "sessions" }
 
 func Migrate(db *gorm.DB) error {
+	// AutoMigrate adds columns but does not rename them; preserve existing brand descriptions.
+	if db.Migrator().HasTable(&koidomain.Brand{}) &&
+		db.Migrator().HasColumn(&koidomain.Brand{}, "product_line") &&
+		!db.Migrator().HasColumn(&koidomain.Brand{}, "description") {
+		if err := db.Migrator().RenameColumn(&koidomain.Brand{}, "product_line", "description"); err != nil {
+			return err
+		}
+	}
 	return db.AutoMigrate(
 		&koidomain.User{},
 		&koidomain.Organization{},

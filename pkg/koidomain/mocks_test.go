@@ -38,6 +38,72 @@ func (_m *MockBrandRepository) EXPECT() *MockBrandRepository_Expecter {
 	return &MockBrandRepository_Expecter{mock: &_m.Mock}
 }
 
+// CountByUserID provides a mock function for the type MockBrandRepository
+func (_mock *MockBrandRepository) CountByUserID(context1 context.Context, uUID uuid.UUID) (int64, error) {
+	ret := _mock.Called(context1, uUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountByUserID")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int64, error)); ok {
+		return returnFunc(context1, uUID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) int64); ok {
+		r0 = returnFunc(context1, uUID)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBrandRepository_CountByUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountByUserID'
+type MockBrandRepository_CountByUserID_Call struct {
+	*mock.Call
+}
+
+// CountByUserID is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+func (_e *MockBrandRepository_Expecter) CountByUserID(context1 interface{}, uUID interface{}) *MockBrandRepository_CountByUserID_Call {
+	return &MockBrandRepository_CountByUserID_Call{Call: _e.mock.On("CountByUserID", context1, uUID)}
+}
+
+func (_c *MockBrandRepository_CountByUserID_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockBrandRepository_CountByUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBrandRepository_CountByUserID_Call) Return(n int64, err error) *MockBrandRepository_CountByUserID_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockBrandRepository_CountByUserID_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (int64, error)) *MockBrandRepository_CountByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type MockBrandRepository
 func (_mock *MockBrandRepository) Create(context1 context.Context, brand *Brand) error {
 	ret := _mock.Called(context1, brand)
@@ -95,9 +161,83 @@ func (_c *MockBrandRepository_Create_Call) RunAndReturn(run func(context1 contex
 	return _c
 }
 
+// GetByIDAndUserID provides a mock function for the type MockBrandRepository
+func (_mock *MockBrandRepository) GetByIDAndUserID(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*Brand, error) {
+	ret := _mock.Called(context1, uUID, uUID1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetByIDAndUserID")
+	}
+
+	var r0 *Brand
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*Brand, error)); ok {
+		return returnFunc(context1, uUID, uUID1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *Brand); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Brand)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBrandRepository_GetByIDAndUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetByIDAndUserID'
+type MockBrandRepository_GetByIDAndUserID_Call struct {
+	*mock.Call
+}
+
+// GetByIDAndUserID is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+//   - uUID1 uuid.UUID
+func (_e *MockBrandRepository_Expecter) GetByIDAndUserID(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockBrandRepository_GetByIDAndUserID_Call {
+	return &MockBrandRepository_GetByIDAndUserID_Call{Call: _e.mock.On("GetByIDAndUserID", context1, uUID, uUID1)}
+}
+
+func (_c *MockBrandRepository_GetByIDAndUserID_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockBrandRepository_GetByIDAndUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBrandRepository_GetByIDAndUserID_Call) Return(brand *Brand, err error) *MockBrandRepository_GetByIDAndUserID_Call {
+	_c.Call.Return(brand, err)
+	return _c
+}
+
+func (_c *MockBrandRepository_GetByIDAndUserID_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*Brand, error)) *MockBrandRepository_GetByIDAndUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListByUserID provides a mock function for the type MockBrandRepository
-func (_mock *MockBrandRepository) ListByUserID(context1 context.Context, uUID uuid.UUID) ([]Brand, error) {
-	ret := _mock.Called(context1, uUID)
+func (_mock *MockBrandRepository) ListByUserID(context1 context.Context, uUID uuid.UUID, n int, n1 int) ([]Brand, error) {
+	ret := _mock.Called(context1, uUID, n, n1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListByUserID")
@@ -105,18 +245,18 @@ func (_mock *MockBrandRepository) ListByUserID(context1 context.Context, uUID uu
 
 	var r0 []Brand
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]Brand, error)); ok {
-		return returnFunc(context1, uUID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int, int) ([]Brand, error)); ok {
+		return returnFunc(context1, uUID, n, n1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) []Brand); ok {
-		r0 = returnFunc(context1, uUID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int, int) []Brand); ok {
+		r0 = returnFunc(context1, uUID, n, n1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]Brand)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(context1, uUID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, int, int) error); ok {
+		r1 = returnFunc(context1, uUID, n, n1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -131,11 +271,13 @@ type MockBrandRepository_ListByUserID_Call struct {
 // ListByUserID is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-func (_e *MockBrandRepository_Expecter) ListByUserID(context1 interface{}, uUID interface{}) *MockBrandRepository_ListByUserID_Call {
-	return &MockBrandRepository_ListByUserID_Call{Call: _e.mock.On("ListByUserID", context1, uUID)}
+//   - n int
+//   - n1 int
+func (_e *MockBrandRepository_Expecter) ListByUserID(context1 interface{}, uUID interface{}, n interface{}, n1 interface{}) *MockBrandRepository_ListByUserID_Call {
+	return &MockBrandRepository_ListByUserID_Call{Call: _e.mock.On("ListByUserID", context1, uUID, n, n1)}
 }
 
-func (_c *MockBrandRepository_ListByUserID_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockBrandRepository_ListByUserID_Call {
+func (_c *MockBrandRepository_ListByUserID_Call) Run(run func(context1 context.Context, uUID uuid.UUID, n int, n1 int)) *MockBrandRepository_ListByUserID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -145,9 +287,19 @@ func (_c *MockBrandRepository_ListByUserID_Call) Run(run func(context1 context.C
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		var arg3 int
+		if args[3] != nil {
+			arg3 = args[3].(int)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -158,7 +310,70 @@ func (_c *MockBrandRepository_ListByUserID_Call) Return(brands []Brand, err erro
 	return _c
 }
 
-func (_c *MockBrandRepository_ListByUserID_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) ([]Brand, error)) *MockBrandRepository_ListByUserID_Call {
+func (_c *MockBrandRepository_ListByUserID_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, n int, n1 int) ([]Brand, error)) *MockBrandRepository_ListByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateByIDAndUserID provides a mock function for the type MockBrandRepository
+func (_mock *MockBrandRepository) UpdateByIDAndUserID(context1 context.Context, uUID uuid.UUID, brand *Brand) error {
+	ret := _mock.Called(context1, uUID, brand)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateByIDAndUserID")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *Brand) error); ok {
+		r0 = returnFunc(context1, uUID, brand)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockBrandRepository_UpdateByIDAndUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateByIDAndUserID'
+type MockBrandRepository_UpdateByIDAndUserID_Call struct {
+	*mock.Call
+}
+
+// UpdateByIDAndUserID is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+//   - brand *Brand
+func (_e *MockBrandRepository_Expecter) UpdateByIDAndUserID(context1 interface{}, uUID interface{}, brand interface{}) *MockBrandRepository_UpdateByIDAndUserID_Call {
+	return &MockBrandRepository_UpdateByIDAndUserID_Call{Call: _e.mock.On("UpdateByIDAndUserID", context1, uUID, brand)}
+}
+
+func (_c *MockBrandRepository_UpdateByIDAndUserID_Call) Run(run func(context1 context.Context, uUID uuid.UUID, brand *Brand)) *MockBrandRepository_UpdateByIDAndUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 *Brand
+		if args[2] != nil {
+			arg2 = args[2].(*Brand)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBrandRepository_UpdateByIDAndUserID_Call) Return(err error) *MockBrandRepository_UpdateByIDAndUserID_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockBrandRepository_UpdateByIDAndUserID_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, brand *Brand) error) *MockBrandRepository_UpdateByIDAndUserID_Call {
 	_c.Call.Return(run)
 	return _c
 }

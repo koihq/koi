@@ -2,6 +2,7 @@
   "codes": {
     "validation": "Check the form and try again",
     "email_taken": "That email is already registered",
+    "brand_limit_reached": "This account already has a brand",
     "invalid_credentials": "Invalid email or password",
     "not_found": "Something went wrong",
     "unauthorized": "Sign in to continue",

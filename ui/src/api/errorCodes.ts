@@ -3,6 +3,7 @@ import errors from "@/locales/en/errors.json";
 export const errorCodes = [
   "validation",
   "email_taken",
+  "brand_limit_reached",
   "invalid_credentials",
   "not_found",
   "unauthorized",

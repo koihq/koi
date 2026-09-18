@@ -17,7 +17,7 @@ type Brand struct {
 	Domain      string    `json:"domain"`
 	GitHubRepo  string    `json:"github_repo" gorm:"column:github_repo"`
 	Country     string    `json:"country" gorm:"not null;type:varchar(2)"`
-	ProductLine string    `json:"product_line"`
+	Description string    `json:"description"`
 }
 
 func (Brand) TableName() string { return "brands" }
@@ -27,7 +27,7 @@ func (b *Brand) Normalize() {
 	b.Domain = strings.TrimSpace(b.Domain)
 	b.GitHubRepo = strings.TrimSpace(b.GitHubRepo)
 	b.Country = strings.ToUpper(strings.TrimSpace(b.Country))
-	b.ProductLine = strings.TrimSpace(b.ProductLine)
+	b.Description = strings.TrimSpace(b.Description)
 }
 
 func (b Brand) Validate() error {
@@ -49,11 +49,30 @@ func (b Brand) Validate() error {
 	if b.GitHubRepo != "" && !validGitHubRepo(b.GitHubRepo) {
 		return Validation(FieldError{Field: "github_repo", Code: FieldInvalid})
 	}
-	region, err := language.ParseRegion(b.Country)
-	if len(b.Country) != 2 || err != nil || !region.IsCountry() || region.IsPrivateUse() || region.Canonicalize().String() != b.Country {
+	if !supportedCountry(b.Country) {
 		return Validation(FieldError{Field: "country", Code: FieldInvalid})
 	}
 	return nil
+}
+
+func supportedCountry(code string) bool {
+	region, err := language.ParseRegion(code)
+	return len(code) == 2 && err == nil && region.IsCountry() && !region.IsPrivateUse() && region.Canonicalize().String() == code
+}
+
+// SupportedCountries uses the same ISO country check as Brand.Validate.
+// Phase 3 will replace this with the captured Cloro country snapshot.
+func SupportedCountries() []string {
+	var codes []string
+	for first := 'A'; first <= 'Z'; first++ {
+		for second := 'A'; second <= 'Z'; second++ {
+			code := string([]rune{first, second})
+			if supportedCountry(code) {
+				codes = append(codes, code)
+			}
+		}
+	}
+	return codes
 }
 
 func validHostname(host string) bool {
@@ -101,7 +120,19 @@ func validGitHubRepo(raw string) bool {
 
 type BrandRepository interface {
 	Create(context.Context, *Brand) error
-	ListByUserID(context.Context, uuid.UUID) ([]Brand, error)
+	CountByUserID(context.Context, uuid.UUID) (int64, error)
+	ListByUserID(context.Context, uuid.UUID, int, int) ([]Brand, error)
+	GetByIDAndUserID(context.Context, uuid.UUID, uuid.UUID) (*Brand, error)
+	UpdateByIDAndUserID(context.Context, uuid.UUID, *Brand) error
+}
+
+type BrandPage struct {
+	Items       []Brand `json:"items"`
+	TotalItems  int64   `json:"totalItems"`
+	TotalPages  int64   `json:"totalPages"`
+	CurrentPage int     `json:"currentPage"`
+	HasNext     bool    `json:"hasNext"`
+	HasPrev     bool    `json:"hasPrev"`
 }
 
 type BrandParams struct {
@@ -109,11 +140,25 @@ type BrandParams struct {
 	Domain      string
 	GitHubRepo  string
 	Country     string
-	ProductLine string
+	Description string
 }
 
 type BrandCommander interface {
 	Create(ctx context.Context, userID uuid.UUID, p BrandParams) (*Brand, error)
+	Update(ctx context.Context, userID, id uuid.UUID, p BrandPatch) (*Brand, error)
+}
+
+type BrandQuerier interface {
+	List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*BrandPage, error)
+	Get(ctx context.Context, userID, id uuid.UUID) (*Brand, error)
+}
+
+type BrandPatch struct {
+	Name        *string
+	Domain      *string
+	GitHubRepo  *string
+	Country     *string
+	Description *string
 }
 
 type brandCommander struct{ store Store }
@@ -123,7 +168,7 @@ func NewBrandCommander(store Store) BrandCommander { return &brandCommander{stor
 func (c *brandCommander) Create(ctx context.Context, userID uuid.UUID, p BrandParams) (*Brand, error) {
 	brand := &Brand{
 		UserID: userID, Name: p.Name, Domain: p.Domain, GitHubRepo: p.GitHubRepo,
-		Country: p.Country, ProductLine: p.ProductLine,
+		Country: p.Country, Description: p.Description,
 	}
 	brand.Normalize()
 	if err := brand.Validate(); err != nil {
@@ -133,11 +178,11 @@ func (c *brandCommander) Create(ctx context.Context, userID uuid.UUID, p BrandPa
 		if err := s.UserRepo().LockForUpdate(ctx, userID); err != nil {
 			return err
 		}
-		brands, err := s.BrandRepo().ListByUserID(ctx, userID)
+		count, err := s.BrandRepo().CountByUserID(ctx, userID)
 		if err != nil {
 			return err
 		}
-		if len(brands) != 0 {
+		if count != 0 {
 			return ErrBrandLimitReached
 		}
 		return s.BrandRepo().Create(ctx, brand)
@@ -146,4 +191,65 @@ func (c *brandCommander) Create(ctx context.Context, userID uuid.UUID, p BrandPa
 		return nil, err
 	}
 	return brand, nil
+}
+
+func (c *brandCommander) Update(ctx context.Context, userID, id uuid.UUID, p BrandPatch) (*Brand, error) {
+	brand, err := c.store.BrandRepo().GetByIDAndUserID(ctx, id, userID)
+	if err != nil {
+		return nil, err
+	}
+	if p.Name != nil {
+		brand.Name = *p.Name
+	}
+	if p.Domain != nil {
+		brand.Domain = *p.Domain
+	}
+	if p.GitHubRepo != nil {
+		brand.GitHubRepo = *p.GitHubRepo
+	}
+	if p.Country != nil {
+		brand.Country = *p.Country
+	}
+	if p.Description != nil {
+		brand.Description = *p.Description
+	}
+	brand.Normalize()
+	if err := brand.Validate(); err != nil {
+		return nil, err
+	}
+	if err := c.store.BrandRepo().UpdateByIDAndUserID(ctx, userID, brand); err != nil {
+		return nil, err
+	}
+	return brand, nil
+}
+
+type brandQuerier struct{ store Store }
+
+func NewBrandQuerier(store Store) BrandQuerier { return &brandQuerier{store: store} }
+
+func (q *brandQuerier) List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*BrandPage, error) {
+	total, err := q.store.BrandRepo().CountByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	result := &BrandPage{
+		Items: make([]Brand, 0), TotalItems: total,
+		CurrentPage: page, HasPrev: page > 1,
+	}
+	if total > 0 {
+		result.TotalPages = (total-1)/int64(pageSize) + 1
+	}
+	result.HasNext = int64(page) < result.TotalPages
+	if int64(page) > result.TotalPages {
+		return result, nil
+	}
+	result.Items, err = q.store.BrandRepo().ListByUserID(ctx, userID, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (q *brandQuerier) Get(ctx context.Context, userID, id uuid.UUID) (*Brand, error) {
+	return q.store.BrandRepo().GetByIDAndUserID(ctx, id, userID)
 }

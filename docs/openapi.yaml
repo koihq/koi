@@ -6,6 +6,7 @@ servers:
   - url: /
 tags:
   - name: auth
+  - name: brands
   - name: health
 paths:
   /api/v1/auth/signup:
@@ -72,6 +73,128 @@ paths:
                 $ref: "#/components/schemas/MeRes"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/brands:
+    get:
+      tags: [brands]
+      operationId: listBrands
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        "200":
+          description: Page of brands owned by the session user, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [brands]
+      operationId: createBrand
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/countries:
+    get:
+      tags: [brands]
+      operationId: listBrandCountries
+      description: Currently returns ISO country codes accepted by brand validation. Phase 3 will constrain this to the Cloro snapshot.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Supported country codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  pattern: "^[A-Z]{2}$"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [brands]
+      operationId: getBrand
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Brand owned by the session user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [brands]
+      operationId: updateBrand
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandPatchRequest"
+      responses:
+        "200":
+          description: Updated brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /health:
     get:
       tags: [health]
@@ -97,6 +220,81 @@ components:
           schema:
             $ref: "#/components/schemas/Envelope"
   schemas:
+    BrandRequest:
+      type: object
+      description: At least one of domain or github_repo is required.
+      required: [name, country]
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        github_repo:
+          type: string
+          format: uri
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+        description:
+          type: string
+          description: Briefly describe what this brand offers.
+    BrandPatchRequest:
+      type: object
+      description: Editable brand fields. At least one of domain or github_repo must remain after the update.
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        github_repo:
+          type: string
+          format: uri
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+        description:
+          type: string
+          description: Briefly describe what this brand offers.
+    BrandRes:
+      type: object
+      required: [id, user_id, name, domain, github_repo, country, description]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+        github_repo:
+          type: string
+        country:
+          type: string
+        description:
+          type: string
+    BrandPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BrandRes"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
     CredentialsReq:
       type: object
       required: [email, password]
@@ -164,6 +362,7 @@ components:
       enum:
         - validation
         - email_taken
+        - brand_limit_reached
         - invalid_credentials
         - not_found
         - unauthorized

@@ -81,17 +81,17 @@ func TestBrandCommanderCreate(t *testing.T) {
 	store.EXPECT().BrandRepo().Return(brands)
 	userID := uuid.New()
 	users.EXPECT().LockForUpdate(mock.Anything, userID).Return(nil)
-	brands.EXPECT().ListByUserID(mock.Anything, userID).Return(nil, nil)
+	brands.EXPECT().CountByUserID(mock.Anything, userID).Return(0, nil)
 	brands.EXPECT().Create(mock.Anything, mock.MatchedBy(func(b *Brand) bool {
 		return b.UserID == userID && b.Name == "Koi" && b.Domain == "koi.dev" &&
-			b.Country == "IT" && b.ProductLine == "AI visibility"
+			b.Country == "IT" && b.Description == "AI visibility"
 	})).RunAndReturn(func(_ context.Context, b *Brand) error {
 		b.ID = uuid.New()
 		return nil
 	})
 
 	brand, err := NewBrandCommander(store).Create(t.Context(), userID, BrandParams{
-		Name: " Koi ", Domain: " koi.dev ", Country: " it ", ProductLine: " AI visibility ",
+		Name: " Koi ", Domain: " koi.dev ", Country: " it ", Description: " AI visibility ",
 	})
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, brand.ID)
@@ -109,11 +109,100 @@ func TestBrandCommanderLimit(t *testing.T) {
 	store.EXPECT().BrandRepo().Return(brands)
 	userID := uuid.New()
 	users.EXPECT().LockForUpdate(mock.Anything, userID).Return(nil)
-	brands.EXPECT().ListByUserID(mock.Anything, userID).Return([]Brand{{UserID: userID}}, nil)
+	brands.EXPECT().CountByUserID(mock.Anything, userID).Return(1, nil)
 
 	brand, err := NewBrandCommander(store).Create(t.Context(), userID, BrandParams{
 		Name: "Koi", Domain: "koi.dev", Country: "IT",
 	})
 	require.Nil(t, brand)
 	require.ErrorIs(t, err, ErrBrandLimitReached)
+}
+
+func TestBrandCommanderUpdate(t *testing.T) {
+	store := NewMockStore(t)
+	repo := NewMockBrandRepository(t)
+	store.EXPECT().BrandRepo().Return(repo).Twice()
+	userID, id := uuid.New(), uuid.New()
+	brand := &Brand{BaseEntity: BaseEntity{ID: id}, UserID: userID, Name: "Koi", Domain: "koi.dev", Country: "IT"}
+	repo.EXPECT().GetByIDAndUserID(mock.Anything, id, userID).Return(brand, nil)
+	repo.EXPECT().UpdateByIDAndUserID(mock.Anything, userID, mock.MatchedBy(func(b *Brand) bool {
+		return b.ID == id && b.UserID == userID && b.Name == "Koi" && b.Domain == "" &&
+			b.GitHubRepo == "https://github.com/koihq/koi" && b.Description == "AI visibility"
+	})).Return(nil)
+	empty, repoURL, description := "", " https://github.com/koihq/koi ", " AI visibility "
+
+	updated, err := NewBrandCommander(store).Update(t.Context(), userID, id, BrandPatch{
+		Domain: &empty, GitHubRepo: &repoURL, Description: &description,
+	})
+	require.NoError(t, err)
+	require.Equal(t, userID, updated.UserID)
+	require.Equal(t, "AI visibility", updated.Description)
+}
+
+func TestBrandCommanderUpdateRejectsInvalidAndOtherOwner(t *testing.T) {
+	userID, id := uuid.New(), uuid.New()
+	store := NewMockStore(t)
+	repo := NewMockBrandRepository(t)
+	store.EXPECT().BrandRepo().Return(repo)
+	repo.EXPECT().GetByIDAndUserID(mock.Anything, id, userID).Return(nil, ErrNotFound)
+	name := "Stolen"
+	_, err := NewBrandCommander(store).Update(t.Context(), userID, id, BrandPatch{Name: &name})
+	require.ErrorIs(t, err, ErrNotFound)
+
+	store2 := NewMockStore(t)
+	repo2 := NewMockBrandRepository(t)
+	store2.EXPECT().BrandRepo().Return(repo2)
+	repo2.EXPECT().GetByIDAndUserID(mock.Anything, id, userID).Return(&Brand{
+		BaseEntity: BaseEntity{ID: id}, UserID: userID, Name: "Koi", Domain: "koi.dev", Country: "IT",
+	}, nil)
+	invalid := "ZZ"
+	_, err = NewBrandCommander(store2).Update(t.Context(), userID, id, BrandPatch{Country: &invalid})
+	var domainErr *Error
+	require.ErrorAs(t, err, &domainErr)
+	require.Equal(t, "country", domainErr.Fields[0].Field)
+}
+
+func TestBrandQuerierPages(t *testing.T) {
+	store := NewMockStore(t)
+	repo := NewMockBrandRepository(t)
+	store.EXPECT().BrandRepo().Return(repo)
+	userID := uuid.New()
+	repo.EXPECT().CountByUserID(mock.Anything, userID).Return(21, nil)
+	repo.EXPECT().ListByUserID(mock.Anything, userID, 10, 10).Return([]Brand{{UserID: userID}}, nil)
+	page, err := NewBrandQuerier(store).List(t.Context(), userID, 2, 10)
+	require.NoError(t, err)
+	require.Equal(t, &BrandPage{
+		Items: []Brand{{UserID: userID}}, TotalItems: 21, TotalPages: 3,
+		CurrentPage: 2, HasNext: true, HasPrev: true,
+	}, page)
+
+	repo.EXPECT().CountByUserID(mock.Anything, userID).Return(21, nil)
+	page, err = NewBrandQuerier(store).List(t.Context(), userID, 10, 10)
+	require.NoError(t, err)
+	require.Empty(t, page.Items)
+	require.EqualValues(t, 21, page.TotalItems)
+	require.EqualValues(t, 3, page.TotalPages)
+	require.Equal(t, 10, page.CurrentPage)
+	require.False(t, page.HasNext)
+	require.True(t, page.HasPrev)
+}
+
+func TestBrandQuerierEmptyPage(t *testing.T) {
+	store := NewMockStore(t)
+	repo := NewMockBrandRepository(t)
+	store.EXPECT().BrandRepo().Return(repo)
+	userID := uuid.New()
+	repo.EXPECT().CountByUserID(mock.Anything, userID).Return(0, nil)
+	page, err := NewBrandQuerier(store).List(t.Context(), userID, 1, 10)
+	require.NoError(t, err)
+	require.Equal(t, &BrandPage{Items: []Brand{}, CurrentPage: 1}, page)
+}
+
+func TestSupportedCountriesMatchBrandValidation(t *testing.T) {
+	codes := SupportedCountries()
+	require.Contains(t, codes, "IT")
+	require.NotContains(t, codes, "ZZ")
+	for _, code := range codes {
+		require.NoError(t, (Brand{UserID: uuid.New(), Name: "Koi", Domain: "koi.dev", Country: code}).Validate())
+	}
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
@@ -100,9 +99,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(h.sess.GetString(r.Context(), "user_id"))
-	if err != nil {
-		api.WriteDomainError(w, r, koidomain.ErrUnauthorized)
+	id, ok := authenticatedUserID(w, r)
+	if !ok {
 		return
 	}
 	me, err := h.querier.Me(r.Context(), id)
