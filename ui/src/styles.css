@@ -37,6 +37,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand: var(--brand);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,6 +52,9 @@
 :root {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.625rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --brand: oklch(0.674 0.209 39.27);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -77,6 +83,7 @@
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-selected: oklch(0.92 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
@@ -111,6 +118,7 @@
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-selected: oklch(0.34 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
@@ -133,4 +141,47 @@
     margin: 0;
     font-family: var(--font-sans);
   }
+}
+
+@layer components {
+  [data-slot="button"] {
+    transition:
+      background-color 160ms ease,
+      color 160ms ease,
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      opacity 160ms ease;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    [data-slot="button"] {
+      transition:
+        transform 160ms var(--ease-out),
+        background-color 160ms ease,
+        color 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        opacity 160ms ease;
+    }
+
+    [data-slot="button"]:active:not([aria-haspopup]) {
+      transform: scale(0.97);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-property:
+      color, background-color, border-color, box-shadow, opacity, outline-color,
+      text-decoration-color, fill, stroke;
+  }
+}
+
+[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-gap"],
+[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-container"],
+[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-group-label"] {
+  transition-duration: 0ms;
 }

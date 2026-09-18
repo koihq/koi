@@ -11,8 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedBriefRouteImport } from './routes/_authenticated/brief'
+import { Route as AuthenticatedCitationsRouteImport } from './routes/_authenticated/citations'
+import { Route as AuthenticatedCompetitorsRouteImport } from './routes/_authenticated/competitors'
+import { Route as AuthenticatedMentionsRouteImport } from './routes/_authenticated/mentions'
+import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
+import { Route as DevUiIndexRouteImport } from './routes/dev/ui/index'
+import { Route as DevUiButtonRouteImport } from './routes/dev/ui/button'
+import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
+import { Route as DevUiMarkRouteImport } from './routes/dev/ui/mark'
+import { Route as DevUiSeparatorRouteImport } from './routes/dev/ui/separator'
+import { Route as DevUiSidebarRouteImport } from './routes/dev/ui/sidebar'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -22,6 +33,32 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedBriefRoute = AuthenticatedBriefRouteImport.update({
+  id: '/brief',
+  path: '/brief',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCitationsRoute = AuthenticatedCitationsRouteImport.update({
+  id: '/citations',
+  path: '/citations',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedCompetitorsRoute =
+  AuthenticatedCompetitorsRouteImport.update({
+    id: '/competitors',
+    path: '/competitors',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMentionsRoute = AuthenticatedMentionsRouteImport.update({
+  id: '/mentions',
+  path: '/mentions',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const DevUiRouteRoute = DevUiRouteRouteImport.update({
+  id: '/dev/ui',
+  path: '/dev/ui',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SignInIndexRoute = SignInIndexRouteImport.update({
   id: '/sign-in/',
@@ -33,39 +70,140 @@ const SignUpIndexRoute = SignUpIndexRouteImport.update({
   path: '/sign-up/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevUiIndexRoute = DevUiIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiButtonRoute = DevUiButtonRouteImport.update({
+  id: '/button',
+  path: '/button',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiFieldRoute = DevUiFieldRouteImport.update({
+  id: '/field',
+  path: '/field',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiMarkRoute = DevUiMarkRouteImport.update({
+  id: '/mark',
+  path: '/mark',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiSeparatorRoute = DevUiSeparatorRouteImport.update({
+  id: '/separator',
+  path: '/separator',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiSidebarRoute = DevUiSidebarRouteImport.update({
+  id: '/sidebar',
+  path: '/sidebar',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/brief': typeof AuthenticatedBriefRoute
+  '/citations': typeof AuthenticatedCitationsRoute
+  '/competitors': typeof AuthenticatedCompetitorsRoute
+  '/mentions': typeof AuthenticatedMentionsRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
+  '/dev/ui/button': typeof DevUiButtonRoute
+  '/dev/ui/field': typeof DevUiFieldRoute
+  '/dev/ui/mark': typeof DevUiMarkRoute
+  '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
+  '/dev/ui/': typeof DevUiIndexRoute
 }
 export interface FileRoutesByTo {
+  '/brief': typeof AuthenticatedBriefRoute
+  '/citations': typeof AuthenticatedCitationsRoute
+  '/competitors': typeof AuthenticatedCompetitorsRoute
+  '/mentions': typeof AuthenticatedMentionsRoute
   '/': typeof AuthenticatedIndexRoute
   '/sign-in': typeof SignInIndexRoute
   '/sign-up': typeof SignUpIndexRoute
+  '/dev/ui/button': typeof DevUiButtonRoute
+  '/dev/ui/field': typeof DevUiFieldRoute
+  '/dev/ui/mark': typeof DevUiMarkRoute
+  '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
+  '/dev/ui': typeof DevUiIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/_authenticated/brief': typeof AuthenticatedBriefRoute
+  '/_authenticated/citations': typeof AuthenticatedCitationsRoute
+  '/_authenticated/competitors': typeof AuthenticatedCompetitorsRoute
+  '/_authenticated/mentions': typeof AuthenticatedMentionsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
+  '/dev/ui/button': typeof DevUiButtonRoute
+  '/dev/ui/field': typeof DevUiFieldRoute
+  '/dev/ui/mark': typeof DevUiMarkRoute
+  '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
+  '/dev/ui/': typeof DevUiIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in/' | '/sign-up/'
+  fullPaths:
+    | '/'
+    | '/dev/ui'
+    | '/brief'
+    | '/citations'
+    | '/competitors'
+    | '/mentions'
+    | '/sign-in/'
+    | '/sign-up/'
+    | '/dev/ui/button'
+    | '/dev/ui/field'
+    | '/dev/ui/mark'
+    | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
+    | '/dev/ui/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-up'
+  to:
+    | '/brief'
+    | '/citations'
+    | '/competitors'
+    | '/mentions'
+    | '/'
+    | '/sign-in'
+    | '/sign-up'
+    | '/dev/ui/button'
+    | '/dev/ui/field'
+    | '/dev/ui/mark'
+    | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
+    | '/dev/ui'
   id:
     | '__root__'
     | '/_authenticated'
+    | '/dev/ui'
+    | '/_authenticated/brief'
+    | '/_authenticated/citations'
+    | '/_authenticated/competitors'
+    | '/_authenticated/mentions'
     | '/_authenticated/'
     | '/sign-in/'
     | '/sign-up/'
+    | '/dev/ui/button'
+    | '/dev/ui/field'
+    | '/dev/ui/mark'
+    | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
+    | '/dev/ui/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  DevUiRouteRoute: typeof DevUiRouteRouteWithChildren
   SignInIndexRoute: typeof SignInIndexRoute
   SignUpIndexRoute: typeof SignUpIndexRoute
 }
@@ -86,6 +224,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/brief': {
+      id: '/_authenticated/brief'
+      path: '/brief'
+      fullPath: '/brief'
+      preLoaderRoute: typeof AuthenticatedBriefRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/citations': {
+      id: '/_authenticated/citations'
+      path: '/citations'
+      fullPath: '/citations'
+      preLoaderRoute: typeof AuthenticatedCitationsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/competitors': {
+      id: '/_authenticated/competitors'
+      path: '/competitors'
+      fullPath: '/competitors'
+      preLoaderRoute: typeof AuthenticatedCompetitorsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/mentions': {
+      id: '/_authenticated/mentions'
+      path: '/mentions'
+      fullPath: '/mentions'
+      preLoaderRoute: typeof AuthenticatedMentionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/dev/ui': {
+      id: '/dev/ui'
+      path: '/dev/ui'
+      fullPath: '/dev/ui'
+      preLoaderRoute: typeof DevUiRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-in/': {
       id: '/sign-in/'
       path: '/sign-in'
@@ -100,14 +273,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev/ui/': {
+      id: '/dev/ui/'
+      path: '/'
+      fullPath: '/dev/ui/'
+      preLoaderRoute: typeof DevUiIndexRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/button': {
+      id: '/dev/ui/button'
+      path: '/button'
+      fullPath: '/dev/ui/button'
+      preLoaderRoute: typeof DevUiButtonRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/field': {
+      id: '/dev/ui/field'
+      path: '/field'
+      fullPath: '/dev/ui/field'
+      preLoaderRoute: typeof DevUiFieldRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/mark': {
+      id: '/dev/ui/mark'
+      path: '/mark'
+      fullPath: '/dev/ui/mark'
+      preLoaderRoute: typeof DevUiMarkRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/separator': {
+      id: '/dev/ui/separator'
+      path: '/separator'
+      fullPath: '/dev/ui/separator'
+      preLoaderRoute: typeof DevUiSeparatorRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/sidebar': {
+      id: '/dev/ui/sidebar'
+      path: '/sidebar'
+      fullPath: '/dev/ui/sidebar'
+      preLoaderRoute: typeof DevUiSidebarRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedBriefRoute: typeof AuthenticatedBriefRoute
+  AuthenticatedCitationsRoute: typeof AuthenticatedCitationsRoute
+  AuthenticatedCompetitorsRoute: typeof AuthenticatedCompetitorsRoute
+  AuthenticatedMentionsRoute: typeof AuthenticatedMentionsRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedBriefRoute: AuthenticatedBriefRoute,
+  AuthenticatedCitationsRoute: AuthenticatedCitationsRoute,
+  AuthenticatedCompetitorsRoute: AuthenticatedCompetitorsRoute,
+  AuthenticatedMentionsRoute: AuthenticatedMentionsRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 
@@ -115,8 +338,31 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface DevUiRouteRouteChildren {
+  DevUiButtonRoute: typeof DevUiButtonRoute
+  DevUiFieldRoute: typeof DevUiFieldRoute
+  DevUiMarkRoute: typeof DevUiMarkRoute
+  DevUiSeparatorRoute: typeof DevUiSeparatorRoute
+  DevUiSidebarRoute: typeof DevUiSidebarRoute
+  DevUiIndexRoute: typeof DevUiIndexRoute
+}
+
+const DevUiRouteRouteChildren: DevUiRouteRouteChildren = {
+  DevUiButtonRoute: DevUiButtonRoute,
+  DevUiFieldRoute: DevUiFieldRoute,
+  DevUiMarkRoute: DevUiMarkRoute,
+  DevUiSeparatorRoute: DevUiSeparatorRoute,
+  DevUiSidebarRoute: DevUiSidebarRoute,
+  DevUiIndexRoute: DevUiIndexRoute,
+}
+
+const DevUiRouteRouteWithChildren = DevUiRouteRoute._addFileChildren(
+  DevUiRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  DevUiRouteRoute: DevUiRouteRouteWithChildren,
   SignInIndexRoute: SignInIndexRoute,
   SignUpIndexRoute: SignUpIndexRoute,
 }

@@ -3,12 +3,13 @@ import { initReactI18next } from "react-i18next";
 
 import auth from "@/locales/en/auth.json";
 import common from "@/locales/en/common.json";
+import dev from "@/locales/en/dev.json";
 import errors from "@/locales/en/errors.json";
 import home from "@/locales/en/home.json";
 
 export const defaultNS = "common";
 export const resources = {
-  en: { common, auth, errors, home },
+  en: { common, auth, errors, home, dev },
 } as const;
 
 i18n.use(initReactI18next).init({
@@ -16,7 +17,7 @@ i18n.use(initReactI18next).init({
   lng: "en",
   fallbackLng: "en",
   defaultNS,
-  ns: ["common", "auth", "errors", "home"],
+  ns: ["common", "auth", "errors", "home", "dev"],
   interpolation: {
     escapeValue: false,
     prefix: "{",

@@ -52,7 +52,6 @@ export function CredentialsForm({
               type="email"
               autoComplete="email"
               required
-              className="h-9 text-sm"
               aria-invalid={error ? true : undefined}
             />
           </Field>
@@ -65,7 +64,6 @@ export function CredentialsForm({
               autoComplete={passwordComplete}
               required
               minLength={8}
-              className="h-9 text-sm"
               aria-invalid={error ? true : undefined}
             />
           </Field>
