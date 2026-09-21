@@ -5,6 +5,7 @@ export * from './BrandPage';
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
 export * from './BrandRes';
+export * from './CountryOption';
 export * from './CredentialsReq';
 export * from './Envelope';
 export * from './ErrorBody';

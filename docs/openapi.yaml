@@ -132,19 +132,24 @@ paths:
     get:
       tags: [brands]
       operationId: listBrandCountries
-      description: Returns the committed Cloro country snapshot used by brand validation.
+      description: Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
       security:
         - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
-          description: Supported country codes
+          description: Supported countries ordered by English name, or up to 20 prefix matches ordered by match quality
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: string
-                  pattern: "^[A-Z]{2}$"
+                  $ref: "#/components/schemas/CountryOption"
         "401":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{id}:
@@ -295,6 +300,15 @@ components:
           type: boolean
         hasPrev:
           type: boolean
+    CountryOption:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z]{2}$"
+        name:
+          type: string
     CredentialsReq:
       type: object
       required: [email, password]

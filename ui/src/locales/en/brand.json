@@ -1,0 +1,61 @@
+{
+  "setup": {
+    "title": "Set up your brand",
+    "description": "Tell Koi which brand and market to measure.",
+    "submit": "Create brand"
+  },
+  "settings": {
+    "title": "Brand settings",
+    "description": "Update the brand and market Koi measures.",
+    "back": "Back to app",
+    "navigation": "Settings navigation",
+    "section": "Settings",
+    "brand": "Brand",
+    "save": "Save changes",
+    "saved": "Brand settings saved"
+  },
+  "menu": {
+    "open": "Open {name} menu",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "fields": {
+    "name": {
+      "label": "Brand name"
+    },
+    "domain": {
+      "label": "Domain",
+      "placeholder": "koi.dev"
+    },
+    "githubRepo": {
+      "label": "GitHub repository",
+      "placeholder": "https://github.com/koihq/koi"
+    },
+    "identifierHelp": "Enter a domain, a GitHub repository, or both.",
+    "country": {
+      "label": "Measurement country",
+      "placeholder": "Search by code or country",
+      "description": "Choose the first country where you want Koi to measure the brand.",
+      "searching": "Searching…",
+      "noResults": "No supported countries found",
+      "searchError": "Unable to search countries"
+    },
+    "description": {
+      "label": "Description",
+      "placeholder": "AI visibility for technical founders",
+      "description": "Briefly describe what the brand offers."
+    }
+  },
+  "validation": {
+    "name": { "invalid": "Enter a brand name" },
+    "domain": { "invalid": "Enter a valid domain or provide a GitHub repository" },
+    "github_repo": { "invalid": "Enter a valid GitHub URL or provide a domain" },
+    "country": { "invalid": "Select a supported country" },
+    "description": { "invalid": "Check the description" }
+  },
+  "loadError": {
+    "title": "Unable to load your brand",
+    "description": "Check your connection and try again."
+  },
+  "retry": "Try again"
+}

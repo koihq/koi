@@ -35,6 +35,11 @@ import {
     BrandResToJSON,
 } from '../models/BrandRes';
 import {
+    type CountryOption,
+    CountryOptionFromJSON,
+    CountryOptionToJSON,
+} from '../models/CountryOption';
+import {
     type Envelope,
     EnvelopeFromJSON,
     EnvelopeToJSON,
@@ -46,6 +51,10 @@ export interface CreateBrandRequest {
 
 export interface GetBrandRequest {
     id: string;
+}
+
+export interface ListBrandCountriesRequest {
+    q?: string;
 }
 
 export interface ListBrandsRequest {
@@ -109,23 +118,25 @@ export interface BrandsApiInterface {
 
     /**
      * Creates request options for listBrandCountries without sending the request
+     * @param {string} [q]
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
      */
-    listBrandCountriesRequestOpts(): Promise<runtime.RequestOpts>;
+    listBrandCountriesRequestOpts(requestParameters: ListBrandCountriesRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Currently returns ISO country codes accepted by brand validation. Phase 3 will constrain this to the Cloro snapshot.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+     * @param {string} [q]
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
      */
-    listBrandCountriesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<string>>>;
+    listBrandCountriesRaw(requestParameters: ListBrandCountriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CountryOption>>>;
 
     /**
-     * Currently returns ISO country codes accepted by brand validation. Phase 3 will constrain this to the Cloro snapshot.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
      */
-    listBrandCountries(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<string>>;
+    listBrandCountries(q?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>>;
 
     /**
      * Creates request options for listBrands without sending the request
@@ -271,8 +282,12 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
     /**
      * Creates request options for listBrandCountries without sending the request
      */
-    async listBrandCountriesRequestOpts(): Promise<runtime.RequestOpts> {
+    async listBrandCountriesRequestOpts(requestParameters: ListBrandCountriesRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -288,20 +303,20 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
     }
 
     /**
-     * Currently returns ISO country codes accepted by brand validation. Phase 3 will constrain this to the Cloro snapshot.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
      */
-    async listBrandCountriesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<string>>> {
-        const requestOptions = await this.listBrandCountriesRequestOpts();
+    async listBrandCountriesRaw(requestParameters: ListBrandCountriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CountryOption>>> {
+        const requestOptions = await this.listBrandCountriesRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse<any>(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CountryOptionFromJSON));
     }
 
     /**
-     * Currently returns ISO country codes accepted by brand validation. Phase 3 will constrain this to the Cloro snapshot.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
      */
-    async listBrandCountries(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<string>> {
-        const response = await this.listBrandCountriesRaw(initOverrides);
+    async listBrandCountries(q?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>> {
+        const response = await this.listBrandCountriesRaw({ q: q }, initOverrides);
         return await response.value();
     }
 

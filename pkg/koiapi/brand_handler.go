@@ -154,5 +154,5 @@ func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BrandHandler) Countries(w http.ResponseWriter, r *http.Request) {
-	api.JSON(w, r, http.StatusOK, koidomain.SupportedCountries())
+	api.JSON(w, r, http.StatusOK, koidomain.SearchSupportedCountries(r.URL.Query().Get("q")))
 }

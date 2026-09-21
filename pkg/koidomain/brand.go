@@ -5,9 +5,13 @@ import (
 	"net"
 	"net/url"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 )
 
 type Brand struct {
@@ -62,6 +66,68 @@ func supportedCountry(code string) bool {
 // SupportedCountries returns the Cloro snapshot used by Brand.Validate.
 func SupportedCountries() []string {
 	return slices.Clone(cloroCountries)
+}
+
+type CountryOption struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// SearchSupportedCountries returns all Cloro-supported countries by English
+// name when query is empty. Searches return up to 20 countries ordered by
+// exact code, code prefix, then name prefix.
+func SearchSupportedCountries(query string) []CountryOption {
+	query = strings.ToLower(strings.TrimSpace(query))
+
+	type match struct {
+		CountryOption
+		rank int
+	}
+	matches := make([]match, 0, len(cloroCountries))
+	namer := display.English.Regions()
+	nameOrder := collate.New(language.English)
+	for _, code := range cloroCountries {
+		region, err := language.ParseRegion(code)
+		if err != nil {
+			continue
+		}
+		name := namer.Name(region)
+		lowerCode, lowerName := strings.ToLower(code), strings.ToLower(name)
+		rank := -1
+		switch {
+		case query == "":
+			rank = 0
+		case lowerCode == query:
+			rank = 0
+		case strings.HasPrefix(lowerCode, query):
+			rank = 1
+		case strings.HasPrefix(lowerName, query):
+			rank = 2
+		}
+		if rank >= 0 {
+			matches = append(matches, match{
+				CountryOption: CountryOption{Code: code, Name: name},
+				rank:          rank,
+			})
+		}
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].rank != matches[j].rank {
+			return matches[i].rank < matches[j].rank
+		}
+		if order := nameOrder.CompareString(matches[i].Name, matches[j].Name); order != 0 {
+			return order < 0
+		}
+		return matches[i].Code < matches[j].Code
+	})
+	if query != "" && len(matches) > 20 {
+		matches = matches[:20]
+	}
+	result := make([]CountryOption, len(matches))
+	for i := range matches {
+		result[i] = matches[i].CountryOption
+	}
+	return result
 }
 
 func validHostname(host string) bool {

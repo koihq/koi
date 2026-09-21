@@ -3,11 +3,14 @@ package koidomain
 import (
 	"context"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 )
 
 func TestBrandValidate(t *testing.T) {
@@ -217,4 +220,21 @@ func TestSupportedCountriesMatchBrandValidation(t *testing.T) {
 	}
 	codes[0] = "ZZ"
 	require.Equal(t, "AD", SupportedCountries()[0])
+}
+
+func TestSearchSupportedCountries(t *testing.T) {
+	all := SearchSupportedCountries("")
+	require.Len(t, all, len(SupportedCountries()))
+	require.Equal(t, all, SearchSupportedCountries(" \t\n"))
+	nameOrder := collate.New(language.English)
+	require.True(t, slices.IsSortedFunc(all, func(a, b CountryOption) int {
+		if order := nameOrder.CompareString(a.Name, b.Name); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Code, b.Code)
+	}))
+	require.Equal(t, []CountryOption{{Code: "IT", Name: "Italy"}}, SearchSupportedCountries("it"))
+	require.Equal(t, []CountryOption{{Code: "IT", Name: "Italy"}}, SearchSupportedCountries("ITALY"))
+	require.Empty(t, SearchSupportedCountries("tal"))
+	require.Len(t, SearchSupportedCountries("s"), 20)
 }

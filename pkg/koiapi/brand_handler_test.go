@@ -102,6 +102,30 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	require.Equal(t, 3, page.CurrentPage)
 }
 
+func TestBrandHandlerCountries(t *testing.T) {
+	ts := newBrandTestServer(t, NewMockBrandQuerier(t), NewMockBrandCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, uuid.New())
+
+	for _, tt := range []struct {
+		name  string
+		query string
+		want  []koidomain.CountryOption
+	}{
+		{name: "omitted", want: koidomain.SearchSupportedCountries("")},
+		{name: "empty", query: "?q=", want: koidomain.SearchSupportedCountries("")},
+		{name: "search", query: "?q=italy", want: []koidomain.CountryOption{{Code: "IT", Name: "Italy"}}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/countries"+tt.query, "")
+			var countries []koidomain.CountryOption
+			readJSON(t, resp, &countries)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.Equal(t, tt.want, countries)
+		})
+	}
+}
+
 func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	userA, userB, brandID := uuid.New(), uuid.New(), uuid.New()
 	brand := &koidomain.Brand{
@@ -144,11 +168,11 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	require.Empty(t, empty.Items)
 	require.Equal(t, 1, empty.CurrentPage)
 
-	resp = doJSON(t, clientA, http.MethodGet, base+"/countries", "")
-	var countries []string
+	resp = doJSON(t, clientA, http.MethodGet, base+"/countries?q=italy", "")
+	var countries []koidomain.CountryOption
 	readJSON(t, resp, &countries)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, koidomain.SupportedCountries(), countries)
+	require.Equal(t, []koidomain.CountryOption{{Code: "IT", Name: "Italy"}}, countries)
 
 	resp = doJSON(t, clientA, http.MethodPost, base,
 		`{"user_id":"00000000-0000-0000-0000-000000000000","name":"Koi","domain":"koi.dev","country":"IT"}`)
