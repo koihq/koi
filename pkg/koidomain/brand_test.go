@@ -237,4 +237,5 @@ func TestSearchSupportedCountries(t *testing.T) {
 	require.Equal(t, []CountryOption{{Code: "IT", Name: "Italy"}}, SearchSupportedCountries("ITALY"))
 	require.Empty(t, SearchSupportedCountries("tal"))
 	require.Len(t, SearchSupportedCountries("s"), 20)
+	require.True(t, slices.ContainsFunc(all, func(c CountryOption) bool { return c.Code == "XK" }))
 }

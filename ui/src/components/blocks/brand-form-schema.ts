@@ -70,3 +70,13 @@ export const brandFormSchema = z
       context.addIssue({ code: "custom", path: ["githubRepo"] });
     }
   }) satisfies z.ZodType<BrandRequest>;
+
+export type BrandField = "name" | "domain" | "github_repo" | "country" | "description";
+
+export const brandFormFields: Record<string, BrandField> = {
+  name: "name",
+  domain: "domain",
+  githubRepo: "github_repo",
+  country: "country",
+  description: "description",
+};

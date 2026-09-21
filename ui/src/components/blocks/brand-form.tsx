@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
 import { ApiError, messageFromUnknown } from "@/api/errors";
 import type { BrandRequest, BrandRes, CountryOption } from "@/api/generated";
-import { brandFormSchema } from "@/components/blocks/brand-form-schema";
+import {
+  type BrandField,
+  brandFormFields,
+  brandFormSchema,
+} from "@/components/blocks/brand-form-schema";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -17,16 +21,8 @@ import {
 } from "@/components/ui/combobox";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-
-type BrandField = "name" | "domain" | "github_repo" | "country" | "description";
-
-const zodFieldNames: Record<string, BrandField | undefined> = {
-  name: "name",
-  domain: "domain",
-  githubRepo: "github_repo",
-  country: "country",
-  description: "description",
-};
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { fieldErrorsFromZod } from "@/lib/utils";
 
 export function BrandForm({
   brand,
@@ -62,12 +58,7 @@ export function BrandForm({
       description: String(data.get("description") ?? ""),
     });
     if (!parsed.success) {
-      const next: Partial<Record<BrandField, string>> = {};
-      for (const issue of parsed.error.issues) {
-        const field = zodFieldNames[String(issue.path[0])];
-        if (field && !next[field]) next[field] = validationMessage(field);
-      }
-      setFieldErrors(next);
+      setFieldErrors(fieldErrorsFromZod(parsed.error.issues, brandFormFields, validationMessage));
       requestAnimationFrame(() => form.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
       return;
     }
@@ -218,22 +209,6 @@ function countryFromCode(code: string): CountryOption | null {
   return { code: normalized, name: countryNames.of(normalized) ?? normalized };
 }
 
-function useDebouncedSearch(value: string, delay = 300): string {
-  const normalized = value.trim();
-  const [debounced, setDebounced] = useState(normalized);
-
-  useEffect(() => {
-    if (!normalized) {
-      setDebounced("");
-      return;
-    }
-    const timeout = window.setTimeout(() => setDebounced(normalized), delay);
-    return () => window.clearTimeout(timeout);
-  }, [delay, normalized]);
-
-  return normalized ? debounced : "";
-}
-
 function CountryCombobox({
   initialCode = "",
   invalid,
@@ -253,7 +228,9 @@ function CountryCombobox({
     initialCountry ? countryLabel(initialCountry) : "",
   );
   const [selected, setSelected] = useState<CountryOption | null>(initialCountry);
-  const search = useDebouncedSearch(query);
+  const trimmed = query.trim();
+  const debounced = useDebouncedValue(trimmed);
+  const search = trimmed ? debounced : "";
   const countries = useQuery({
     queryKey: ["brands", "countries", search],
     queryFn: ({ signal }) => api.brands.listBrandCountries(search || undefined, { signal }),
@@ -263,7 +240,7 @@ function CountryCombobox({
   const options = countries.data ?? [];
 
   let emptyMessage = t("fields.country.noResults");
-  if (countries.isPending || countries.isFetching || query.trim() !== search) {
+  if (countries.isPending || countries.isFetching || trimmed !== search) {
     emptyMessage = t("fields.country.searching");
   }
   if (countries.isError) emptyMessage = t("fields.country.searchError");

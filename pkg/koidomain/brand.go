@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/url"
 	"slices"
-	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -73,61 +72,55 @@ type CountryOption struct {
 	Name string `json:"name"`
 }
 
+var countryOptions = loadCountryOptions()
+
+func loadCountryOptions() []CountryOption {
+	namer := display.English.Regions()
+	opts := make([]CountryOption, 0, len(cloroCountries))
+	for _, code := range cloroCountries {
+		name := code
+		if region, err := language.ParseRegion(code); err == nil {
+			if n := namer.Name(region); n != "" {
+				name = n
+			}
+		}
+		opts = append(opts, CountryOption{Code: code, Name: name})
+	}
+	nameOrder := collate.New(language.English)
+	slices.SortFunc(opts, func(a, b CountryOption) int {
+		if order := nameOrder.CompareString(a.Name, b.Name); order != 0 {
+			return order
+		}
+		return strings.Compare(a.Code, b.Code)
+	})
+	return opts
+}
+
 // SearchSupportedCountries returns all Cloro-supported countries by English
 // name when query is empty. Searches return up to 20 countries ordered by
 // exact code, code prefix, then name prefix.
 func SearchSupportedCountries(query string) []CountryOption {
 	query = strings.ToLower(strings.TrimSpace(query))
-
-	type match struct {
-		CountryOption
-		rank int
+	if query == "" {
+		return slices.Clone(countryOptions)
 	}
-	matches := make([]match, 0, len(cloroCountries))
-	namer := display.English.Regions()
-	nameOrder := collate.New(language.English)
-	for _, code := range cloroCountries {
-		region, err := language.ParseRegion(code)
-		if err != nil {
-			continue
-		}
-		name := namer.Name(region)
-		lowerCode, lowerName := strings.ToLower(code), strings.ToLower(name)
-		rank := -1
+	var exact, codes, names []CountryOption
+	for _, c := range countryOptions {
+		code, name := strings.ToLower(c.Code), strings.ToLower(c.Name)
 		switch {
-		case query == "":
-			rank = 0
-		case lowerCode == query:
-			rank = 0
-		case strings.HasPrefix(lowerCode, query):
-			rank = 1
-		case strings.HasPrefix(lowerName, query):
-			rank = 2
-		}
-		if rank >= 0 {
-			matches = append(matches, match{
-				CountryOption: CountryOption{Code: code, Name: name},
-				rank:          rank,
-			})
+		case code == query:
+			exact = append(exact, c)
+		case strings.HasPrefix(code, query):
+			codes = append(codes, c)
+		case strings.HasPrefix(name, query):
+			names = append(names, c)
 		}
 	}
-	sort.Slice(matches, func(i, j int) bool {
-		if matches[i].rank != matches[j].rank {
-			return matches[i].rank < matches[j].rank
-		}
-		if order := nameOrder.CompareString(matches[i].Name, matches[j].Name); order != 0 {
-			return order < 0
-		}
-		return matches[i].Code < matches[j].Code
-	})
-	if query != "" && len(matches) > 20 {
-		matches = matches[:20]
+	out := slices.Concat(exact, codes, names)
+	if len(out) > 20 {
+		out = out[:20]
 	}
-	result := make([]CountryOption, len(matches))
-	for i := range matches {
-		result[i] = matches[i].CountryOption
-	}
-	return result
+	return out
 }
 
 func validHostname(host string) bool {
