@@ -10,4 +10,5 @@ type Store interface {
 	UserRepo() UserRepository
 	OrganizationRepo() OrganizationRepository
 	MembershipRepo() MembershipRepository
+	BrandRepo() BrandRepository
 }

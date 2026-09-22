@@ -3,6 +3,7 @@ package koidomain
 const (
 	CodeValidation         = "validation"
 	CodeEmailTaken         = "email_taken"
+	CodeBrandLimitReached  = "brand_limit_reached"
 	CodeInvalidCredentials = "invalid_credentials"
 	CodeNotFound           = "not_found"
 	CodeUnauthorized       = "unauthorized"
@@ -17,6 +18,7 @@ const (
 var (
 	ErrNotFound           = &Error{Code: CodeNotFound, Message: "not found"}
 	ErrEmailTaken         = &Error{Code: CodeEmailTaken, Message: "email taken", Fields: []FieldError{{Field: "email", Code: FieldTaken}}}
+	ErrBrandLimitReached  = &Error{Code: CodeBrandLimitReached, Message: "brand limit reached"}
 	ErrInvalidCredentials = &Error{Code: CodeInvalidCredentials, Message: "invalid credentials"}
 	ErrValidation         = &Error{Code: CodeValidation, Message: "validation"}
 	ErrUnauthorized       = &Error{Code: CodeUnauthorized, Message: "unauthorized"}

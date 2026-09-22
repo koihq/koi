@@ -1,0 +1,134 @@
+### Brand API walkthrough
+### Run `make dev` first. Execute these requests in order in VS Code REST Client.
+### Each request disables REST Client's cookie jar; explicit Cookie headers keep A and B sessions separate.
+
+@baseUrl = http://localhost:5173/api/v1
+@password = password1
+
+### No session: 401 unauthorized
+# @no-cookie-jar
+GET {{baseUrl}}/brands
+
+### Create user A and capture koi_session
+# @no-cookie-jar
+# @name signupA
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{"email":"brand-a-{{$guid}}@example.com","password":"{{password}}"}
+
+### Confirm A's session identity before brand requests: 200 A
+# @no-cookie-jar
+GET {{baseUrl}}/auth/me
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### A has no brands yet: 200 with empty items and zero totalItems
+# @no-cookie-jar
+GET {{baseUrl}}/brands
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Country codes accepted by the current validator: 200 array containing IT
+# @no-cookie-jar
+GET {{baseUrl}}/brands/countries
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Create A's brand: 201; spoofed user_id is ignored
+# @no-cookie-jar
+# @name createA
+POST {{baseUrl}}/brands
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"user_id":"00000000-0000-0000-0000-000000000000","name":"Koi","domain":"koi.dev","github_repo":"https://github.com/koihq/koi","country":"IT","description":"Koi measures brand visibility in AI answers."}
+
+### A sees only A's brand: 200 with one item and totalItems 1
+# @no-cookie-jar
+GET {{baseUrl}}/brands
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### A's out-of-range page: 200 with empty items and currentPage 2
+# @no-cookie-jar
+GET {{baseUrl}}/brands?page=2&pageSize=1
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Read A's brand: 200
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{createA.response.body.$.id}}
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Change an editable field: 200; user_id remains A's
+# @no-cookie-jar
+PATCH {{baseUrl}}/brands/{{createA.response.body.$.id}}
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"description":"Koi measures mentions and citations in AI answers.","user_id":"00000000-0000-0000-0000-000000000000"}
+
+### Invalid country: 400 validation with country field error
+# @no-cookie-jar
+PATCH {{baseUrl}}/brands/{{createA.response.body.$.id}}
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"country":"ZZ"}
+
+### Second brand: 409 brand_limit_reached
+# @no-cookie-jar
+POST {{baseUrl}}/brands
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"name":"Second","domain":"second.dev","country":"IT"}
+
+### Create user B and capture a separate session
+# @no-cookie-jar
+# @name signupB
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{"email":"brand-b-{{$guid}}@example.com","password":"{{password}}"}
+
+### Confirm B's session identity before cross-user requests: 200 B
+# @no-cookie-jar
+GET {{baseUrl}}/auth/me
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### B has no brands: 200 with empty items and zero totalItems
+# @no-cookie-jar
+GET {{baseUrl}}/brands
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### B cannot read A's brand: 404 not_found
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{createA.response.body.$.id}}
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### B cannot edit A's brand: 404 not_found
+# @no-cookie-jar
+PATCH {{baseUrl}}/brands/{{createA.response.body.$.id}}
+Content-Type: application/json
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+{"name":"Stolen"}
+
+### Create B's brand: 201
+# @no-cookie-jar
+# @name createB
+POST {{baseUrl}}/brands
+Content-Type: application/json
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+{"name":"B Project","github_repo":"https://github.com/koihq/b-project","country":"IT"}
+
+### A cannot read B's brand: 404 not_found
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{createB.response.body.$.id}}
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### A cannot edit B's brand: 404 not_found
+# @no-cookie-jar
+PATCH {{baseUrl}}/brands/{{createB.response.body.$.id}}
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"name":"Stolen"}

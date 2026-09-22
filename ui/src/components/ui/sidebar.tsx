@@ -86,14 +86,19 @@ function SidebarProvider({
   );
 
   // Helper to toggle the sidebar.
-  const toggleSidebar = React.useCallback((instant = false) => {
-    if (instant) {
-      const wrapper = wrapperRef.current;
-      wrapper?.setAttribute("data-instant", "");
-      requestAnimationFrame(() => requestAnimationFrame(() => wrapper?.removeAttribute("data-instant")));
-    }
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
-  }, [isMobile, setOpen, setOpenMobile]);
+  const toggleSidebar = React.useCallback(
+    (instant = false) => {
+      if (instant) {
+        const wrapper = wrapperRef.current;
+        wrapper?.setAttribute("data-instant", "");
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => wrapper?.removeAttribute("data-instant")),
+        );
+      }
+      return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
+    },
+    [isMobile, setOpen, setOpenMobile],
+  );
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -372,7 +377,10 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-group"
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col px-2 py-1 group-data-[collapsible=icon]:px-0", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col px-2 py-1 group-data-[collapsible=icon]:px-0",
+        className,
+      )}
       {...props}
     />
   );

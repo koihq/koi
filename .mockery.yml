@@ -25,6 +25,19 @@ packages:
       UserRepository:
       OrganizationRepository:
       MembershipRepository:
+      BrandRepository:
+      BrandCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      BrandQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
       AuthCommander:
         config:
           dir: '{{.InterfaceDir}}/../koiapi'

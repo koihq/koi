@@ -21,6 +21,13 @@ import {
     FieldErrorToJSON,
     FieldErrorToJSONTyped,
 } from './FieldError';
+import type { ErrorCode } from './ErrorCode';
+import {
+    ErrorCodeFromJSON,
+    ErrorCodeFromJSONTyped,
+    ErrorCodeToJSON,
+    ErrorCodeToJSONTyped,
+} from './ErrorCode';
 
 /**
  * 
@@ -30,10 +37,10 @@ import {
 export interface ErrorBody {
     /**
      * 
-     * @type {string}
+     * @type {ErrorCode}
      * @memberof ErrorBody
      */
-    code: string;
+    code: ErrorCode;
     /**
      * 
      * @type {string}
@@ -47,6 +54,8 @@ export interface ErrorBody {
      */
     fields?: Array<FieldError>;
 }
+
+
 
 /**
  * Check if a given object implements the ErrorBody interface.
@@ -67,7 +76,7 @@ export function ErrorBodyFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     }
     return {
         
-        'code': json['code'],
+        'code': ErrorCodeFromJSON(json['code']),
         'message': json['message'],
         'fields': json['fields'] == null ? undefined : ((json['fields'] as Array<any>).map(FieldErrorFromJSON)),
     };
@@ -84,7 +93,7 @@ export function ErrorBodyToJSONTyped(value?: ErrorBody | null, ignoreDiscriminat
 
     return {
         
-        'code': value['code'],
+        'code': ErrorCodeToJSON(value['code']),
         'message': value['message'],
         'fields': value['fields'] == null ? undefined : ((value['fields'] as Array<any>).map(FieldErrorToJSON)),
     };

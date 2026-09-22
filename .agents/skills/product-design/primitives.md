@@ -40,6 +40,8 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 | --- | --- |
 | Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| icon \| icon-xs \| icon-sm \| icon-lg` |
 | Text field | `Input` + `Field` / `FieldLabel` / `FieldError` / `FieldGroup` |
+| Searchable choice | `Combobox` / `ComboboxInput` / `ComboboxContent` / `ComboboxItem` |
+| Action menu | `DropdownMenu` / `DropdownMenuTrigger` / `DropdownMenuContent` / `DropdownMenuItem` |
 | Label | `Label` (prefer `FieldLabel` in forms) |
 | Structural split | `Separator` — **one split**, never as grouping. Do not put `FieldSeparator` between form fields |
 

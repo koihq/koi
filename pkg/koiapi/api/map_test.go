@@ -41,6 +41,12 @@ func TestMapError(t *testing.T) {
 			fields: []koidomain.FieldError{{Field: "email", Code: koidomain.FieldTaken}},
 		},
 		{
+			name:   "brand_limit_reached",
+			err:    koidomain.ErrBrandLimitReached,
+			status: http.StatusConflict,
+			code:   koidomain.CodeBrandLimitReached,
+		},
+		{
 			name:   "invalid_credentials",
 			err:    koidomain.ErrInvalidCredentials,
 			status: http.StatusUnauthorized,

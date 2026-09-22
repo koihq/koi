@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { FieldCode } from './FieldCode';
+import {
+    FieldCodeFromJSON,
+    FieldCodeFromJSONTyped,
+    FieldCodeToJSON,
+    FieldCodeToJSONTyped,
+} from './FieldCode';
+
 /**
  * 
  * @export
@@ -28,11 +36,13 @@ export interface FieldError {
     field: string;
     /**
      * 
-     * @type {string}
+     * @type {FieldCode}
      * @memberof FieldError
      */
-    code: string;
+    code: FieldCode;
 }
+
+
 
 /**
  * Check if a given object implements the FieldError interface.
@@ -54,7 +64,7 @@ export function FieldErrorFromJSONTyped(json: any, ignoreDiscriminator: boolean)
     return {
         
         'field': json['field'],
-        'code': json['code'],
+        'code': FieldCodeFromJSON(json['code']),
     };
 }
 
@@ -70,7 +80,7 @@ export function FieldErrorToJSONTyped(value?: FieldError | null, ignoreDiscrimin
     return {
         
         'field': value['field'],
-        'code': value['code'],
+        'code': FieldCodeToJSON(value['code']),
     };
 }
 

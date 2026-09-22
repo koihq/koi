@@ -1,15 +1,13 @@
 import {
   Analytics01Icon,
   File01Icon,
-  Home01Icon,
-  Logout01Icon,
   QuoteIcon,
   UserMultipleIcon,
 } from "@hugeicons/core-free-icons";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
+import { KoiMark } from "@/components/blocks/koi-mark";
 import { KoiSidebar, type KoiSidebarItem } from "@/components/blocks/koi-sidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,7 +15,6 @@ import { CatalogCode, CatalogPage, CatalogSection, validateUiSearch } from "./-c
 import "./-sidebar.css";
 
 const pages = [
-  { id: "home", icon: Home01Icon },
   { id: "mentions", icon: Analytics01Icon },
   { id: "competitors", icon: UserMultipleIcon },
   { id: "citations", icon: QuoteIcon },
@@ -64,7 +61,7 @@ function SidebarCatalog() {
           <CatalogCode
             title="Usage"
             code={
-              '<SidebarProvider>\n  <KoiSidebar\n    brand="Koi"\n    home={homeItem}\n    workspace={workspaceItems}\n    workspaceLabel="Workspace"\n    navigationLabel="Main navigation"\n    action={actionItems}\n    actionLabel="Act"\n    footer={signOutItem}\n  />\n  <SidebarInset>\n    <header><SidebarTrigger aria-label="Toggle sidebar" /></header>\n    <main>Page content</main>\n  </SidebarInset>\n</SidebarProvider>'
+              '<SidebarProvider>\n  <KoiSidebar\n    header={<WorkspaceMenu name="Koi" />}\n    workspace={workspaceItems}\n    workspaceLabel="Workspace"\n    navigationLabel="Main navigation"\n    action={actionItems}\n    actionLabel="Act"\n  />\n  <SidebarInset>\n    <header><SidebarTrigger aria-label="Toggle sidebar" /></header>\n    <main>Page content</main>\n  </SidebarInset>\n</SidebarProvider>'
             }
           />
         </div>
@@ -76,6 +73,7 @@ function SidebarCatalog() {
 function SidebarCatalogPreview() {
   const { t } = useTranslation("home");
   const { t: dev } = useTranslation("dev");
+  const { t: common } = useTranslation("common");
   const { setOpenMobile } = useSidebar();
   const [selected, setSelected] = useState<Page>("mentions");
 
@@ -99,20 +97,19 @@ function SidebarCatalogPreview() {
   return (
     <>
       <KoiSidebar
-        brand="Koi"
-        home={items[0]}
-        workspace={items.slice(1, 4)}
+        header={
+          <div className="flex h-10 min-w-0 items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <KoiMark className="size-5 shrink-0" />
+            <span className="min-w-0 truncate text-[13px] font-medium group-data-[collapsible=icon]:hidden">
+              {common("brand")}
+            </span>
+          </div>
+        }
+        workspace={items.slice(0, 3)}
         workspaceLabel={t("workspace")}
         navigationLabel={t("navigation")}
-        action={items.slice(4)}
+        action={items.slice(3)}
         actionLabel={t("action")}
-        footer={{
-          id: "signOut",
-          label: t("signOut"),
-          icon: Logout01Icon,
-          active: false,
-          render: <button type="button" onClick={() => setOpenMobile(false)} />,
-        }}
       />
       <SidebarInset className="sidebar-catalog-inset min-w-0 md:border-[0.5px] md:border-border">
         <header className="flex h-14 shrink-0 items-center gap-3 px-4 md:px-6">

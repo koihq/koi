@@ -70,7 +70,10 @@ function StyleMeasurement({
   const ref = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState("");
   useEffect(() => {
-    if (ref.current && document.documentElement.classList.contains("dark") === (variant === "dark")) {
+    if (
+      ref.current &&
+      document.documentElement.classList.contains("dark") === (variant === "dark")
+    ) {
       setValue(getComputedStyle(ref.current)[property]);
     }
   }, [property, variant]);

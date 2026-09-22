@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
-export const Route = createFileRoute("/_authenticated/competitors")({
+export const Route = createFileRoute("/_authenticated/_app/competitors")({
   component: Competitors,
 });
 
