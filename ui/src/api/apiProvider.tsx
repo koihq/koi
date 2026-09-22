@@ -1,6 +1,13 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { envelopeMiddleware } from "@/api/errors";
-import { AuthApi, BrandsApi, Configuration, HealthApi } from "@/api/generated";
+import {
+  AuthApi,
+  BrandsApi,
+  CompetitorsApi,
+  Configuration,
+  HealthApi,
+  PromptsApi,
+} from "@/api/generated";
 
 export function createApi() {
   const config = new Configuration({
@@ -11,6 +18,8 @@ export function createApi() {
   return {
     auth: new AuthApi(config),
     brands: new BrandsApi(config),
+    prompts: new PromptsApi(config),
+    competitors: new CompetitorsApi(config),
     health: new HealthApi(config),
   };
 }

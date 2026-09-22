@@ -8,7 +8,7 @@ import { KoiMark } from "@/components/blocks/koi-mark";
 export const Route = createFileRoute("/_authenticated/setup/")({
   beforeLoad: ({ context }) => {
     if (context.brand) {
-      throw redirect({ to: "/mentions" });
+      throw redirect({ to: "/setup/review" });
     }
   },
   component: Setup,

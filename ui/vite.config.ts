@@ -8,6 +8,7 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const config = defineConfig({
+  envDir: "..",
   resolve: { tsconfigPaths: true },
   test: {
     environment: "node",

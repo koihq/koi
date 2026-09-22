@@ -26,6 +26,8 @@ packages:
       OrganizationRepository:
       MembershipRepository:
       BrandRepository:
+      PromptRepository:
+      CompetitorRepository:
       BrandCommander:
         config:
           dir: '{{.InterfaceDir}}/../koiapi'
@@ -33,6 +35,30 @@ packages:
           pkgname: koiapi
           inpackage: false
       BrandQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      PromptCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      PromptQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      CompetitorCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      CompetitorQuerier:
         config:
           dir: '{{.InterfaceDir}}/../koiapi'
           filename: mocks_test.go

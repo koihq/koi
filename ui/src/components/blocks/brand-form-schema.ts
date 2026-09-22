@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { BrandRequest } from "@/api/generated";
 
-function validHostname(host: string): boolean {
+export function validHostname(host: string): boolean {
   if (host.length === 0 || host.length > 253) return false;
 
   const ipv4 = host.split(".");

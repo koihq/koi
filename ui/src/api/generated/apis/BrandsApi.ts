@@ -118,7 +118,7 @@ export interface BrandsApiInterface {
 
     /**
      * Creates request options for listBrandCountries without sending the request
-     * @param {string} [q]
+     * @param {string} [q] 
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
      */
@@ -126,7 +126,7 @@ export interface BrandsApiInterface {
 
     /**
      * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
-     * @param {string} [q]
+     * @param {string} [q] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof BrandsApiInterface

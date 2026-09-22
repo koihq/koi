@@ -31,6 +31,8 @@ func Migrate(db *gorm.DB) error {
 		&koidomain.Organization{},
 		&koidomain.Membership{},
 		&koidomain.Brand{},
+		&koidomain.Prompt{},
+		&koidomain.Competitor{},
 		&sessionRow{},
 	)
 }

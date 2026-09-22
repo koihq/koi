@@ -39,11 +39,23 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager) http.Handl
 			koidomain.NewAuthCommander(store),
 			sess,
 		).Routes())
-		r.Route("/brands", NewBrandHandler(
-			koidomain.NewBrandQuerier(store),
-			koidomain.NewBrandCommander(store),
-			sess,
-		).Routes())
+		r.Route("/brands", func(r chi.Router) {
+			NewBrandHandler(
+				koidomain.NewBrandQuerier(store),
+				koidomain.NewBrandCommander(store),
+				sess,
+			).Routes()(r)
+			r.Route("/{brandID}/prompts", NewPromptHandler(
+				koidomain.NewPromptQuerier(store),
+				koidomain.NewPromptCommander(store),
+				sess,
+			).Routes())
+			r.Route("/{brandID}/competitors", NewCompetitorHandler(
+				koidomain.NewCompetitorQuerier(store),
+				koidomain.NewCompetitorCommander(store),
+				sess,
+			).Routes())
+		})
 	})
 	r.Handle("/*", spaHandler(http.FileServer(web.FileSystem())))
 
