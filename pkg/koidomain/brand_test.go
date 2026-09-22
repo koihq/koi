@@ -175,7 +175,7 @@ func TestBrandQuerierPages(t *testing.T) {
 	repo.EXPECT().ListByUserID(mock.Anything, userID, 10, 10).Return([]Brand{{UserID: userID}}, nil)
 	page, err := NewBrandQuerier(store).List(t.Context(), userID, 2, 10)
 	require.NoError(t, err)
-	require.Equal(t, &BrandPage{
+	require.Equal(t, &Page[Brand]{
 		Items: []Brand{{UserID: userID}}, TotalItems: 21, TotalPages: 3,
 		CurrentPage: 2, HasNext: true, HasPrev: true,
 	}, page)
@@ -199,7 +199,7 @@ func TestBrandQuerierEmptyPage(t *testing.T) {
 	repo.EXPECT().CountByUserID(mock.Anything, userID).Return(0, nil)
 	page, err := NewBrandQuerier(store).List(t.Context(), userID, 1, 10)
 	require.NoError(t, err)
-	require.Equal(t, &BrandPage{Items: []Brand{}, CurrentPage: 1}, page)
+	require.Equal(t, &Page[Brand]{Items: []Brand{}, CurrentPage: 1}, page)
 }
 
 func TestSupportedCountriesMatchBrandValidation(t *testing.T) {

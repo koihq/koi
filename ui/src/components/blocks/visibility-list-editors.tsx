@@ -1,12 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
-import type { CompetitorRequest, CompetitorRes, PromptRequest, PromptRes } from "@/api/generated";
+import type { Competitor, CreateCompetitor } from "@/api/competitors.api";
+import type { CreatePrompt, Prompt } from "@/api/prompts.api";
+import type { ApiListResponse } from "@/api/shared/types";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import {
   competitorFormSchema,
+  lastPage,
   listsReady,
   promptFormSchema,
 } from "@/components/blocks/visibility-lists";
@@ -14,8 +17,61 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+const PAGE_SIZE = 10;
 const promptKey = (brandID: string) => ["brands", brandID, "prompts"] as const;
+const promptListKey = (brandID: string, page: number, confirmed?: boolean) =>
+  [
+    ...promptKey(brandID),
+    { page, pageSize: confirmed === undefined ? PAGE_SIZE : 1, confirmed },
+  ] as const;
 const competitorKey = (brandID: string) => ["brands", brandID, "competitors"] as const;
+const competitorListKey = (brandID: string, page: number, confirmed?: boolean) =>
+  [
+    ...competitorKey(brandID),
+    { page, pageSize: confirmed === undefined ? PAGE_SIZE : 1, confirmed },
+  ] as const;
+
+function ListPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const { t } = useTranslation("brand");
+  if (totalPages <= 1) return null;
+
+  return (
+    <nav
+      aria-label={t("lists.pagination.label")}
+      className="mt-6 flex items-center justify-between gap-4"
+    >
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={currentPage <= 1}
+        onClick={() => onPageChange(currentPage - 1)}
+      >
+        {t("lists.pagination.previous")}
+      </Button>
+      <p className="text-xs text-muted-foreground tabular-nums">
+        {t("lists.pagination.page", { current: currentPage, total: totalPages })}
+      </p>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={currentPage >= totalPages}
+        onClick={() => onPageChange(currentPage + 1)}
+      >
+        {t("lists.pagination.next")}
+      </Button>
+    </nav>
+  );
+}
 
 function PromptForm({
   initialText = "",
@@ -25,7 +81,7 @@ function PromptForm({
 }: {
   initialText?: string;
   pending: boolean;
-  onSave: (request: PromptRequest) => Promise<void>;
+  onSave: (request: CreatePrompt) => Promise<void>;
   onCancel?: () => void;
 }) {
   const { t } = useTranslation("brand");
@@ -80,34 +136,49 @@ function PromptForm({
   );
 }
 
-function PromptEditorView({ brandID, prompts }: { brandID: string; prompts: PromptRes[] }) {
+function PromptEditorView({
+  brandID,
+  prompts,
+  unconfirmedItems,
+  onPageChange,
+}: {
+  brandID: string;
+  prompts: ApiListResponse<Prompt>;
+  unconfirmedItems: number;
+  onPageChange: (page: number) => void;
+}) {
   const { t } = useTranslation("brand");
   const api = useApi();
   const queryClient = useQueryClient();
   const [editingID, setEditingID] = useState<string>();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: promptKey(brandID) });
   const create = useMutation({
-    mutationFn: (request: PromptRequest) => api.prompts.createPrompt(brandID, request),
-    onSuccess: invalidate,
+    mutationFn: (request: CreatePrompt) => api.prompts.create(brandID, request),
+    onSuccess: async () => {
+      onPageChange(lastPage(prompts.totalItems + 1, PAGE_SIZE));
+      await invalidate();
+    },
   });
   const update = useMutation({
-    mutationFn: ({ id, request }: { id: string; request: PromptRequest }) =>
-      api.prompts.updatePrompt(brandID, id, request),
+    mutationFn: ({ id, request }: { id: string; request: CreatePrompt }) =>
+      api.prompts.update(brandID, id, request),
     onSuccess: invalidate,
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api.prompts.deletePrompt(brandID, id),
-    onSuccess: invalidate,
+    mutationFn: (id: string) => api.prompts.delete(brandID, id),
+    onSuccess: async () => {
+      onPageChange(Math.min(prompts.currentPage, lastPage(prompts.totalItems - 1, PAGE_SIZE)));
+      await invalidate();
+    },
   });
   const confirm = useMutation({
-    mutationFn: (id: string) => api.prompts.confirmPrompt(brandID, id),
+    mutationFn: (id: string) => api.prompts.confirm(brandID, id),
     onSuccess: invalidate,
   });
   const confirmAll = useMutation({
-    mutationFn: () => api.prompts.confirmAllPrompts(brandID),
+    mutationFn: () => api.prompts.confirmAll(brandID),
     onSuccess: invalidate,
   });
-  const hasUnconfirmed = prompts.some((prompt) => !prompt.confirmed);
 
   return (
     <section aria-labelledby="prompts-heading">
@@ -118,7 +189,7 @@ function PromptEditorView({ brandID, prompts }: { brandID: string; prompts: Prom
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("lists.prompts.description")}</p>
         </div>
-        {hasUnconfirmed ? (
+        {unconfirmedItems > 0 ? (
           <Button
             type="button"
             variant="outline"
@@ -138,11 +209,11 @@ function PromptEditorView({ brandID, prompts }: { brandID: string; prompts: Prom
           }}
         />
       </div>
-      {prompts.length === 0 ? (
+      {prompts.items.length === 0 ? (
         <p className="mt-6 text-sm text-muted-foreground">{t("lists.prompts.empty")}</p>
       ) : (
         <ul className="mt-6 space-y-5">
-          {prompts.map((prompt) => (
+          {prompts.items.map((prompt) => (
             <li key={prompt.id}>
               {editingID === prompt.id ? (
                 <PromptForm
@@ -205,6 +276,11 @@ function PromptEditorView({ brandID, prompts }: { brandID: string; prompts: Prom
           ))}
         </ul>
       )}
+      <ListPagination
+        currentPage={prompts.currentPage}
+        totalPages={prompts.totalPages}
+        onPageChange={onPageChange}
+      />
     </section>
   );
 }
@@ -215,9 +291,9 @@ function CompetitorForm({
   onSave,
   onCancel,
 }: {
-  initial?: CompetitorRes;
+  initial?: Competitor;
   pending: boolean;
-  onSave: (request: CompetitorRequest) => Promise<void>;
+  onSave: (request: CreateCompetitor) => Promise<void>;
   onCancel?: () => void;
 }) {
   const { t } = useTranslation("brand");
@@ -310,9 +386,13 @@ function CompetitorForm({
 function CompetitorEditorView({
   brandID,
   competitors,
+  unconfirmedItems,
+  onPageChange,
 }: {
   brandID: string;
-  competitors: CompetitorRes[];
+  competitors: ApiListResponse<Competitor>;
+  unconfirmedItems: number;
+  onPageChange: (page: number) => void;
 }) {
   const { t } = useTranslation("brand");
   const api = useApi();
@@ -320,27 +400,34 @@ function CompetitorEditorView({
   const [editingID, setEditingID] = useState<string>();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: competitorKey(brandID) });
   const create = useMutation({
-    mutationFn: (request: CompetitorRequest) => api.competitors.createCompetitor(brandID, request),
-    onSuccess: invalidate,
+    mutationFn: (request: CreateCompetitor) => api.competitors.create(brandID, request),
+    onSuccess: async () => {
+      onPageChange(lastPage(competitors.totalItems + 1, PAGE_SIZE));
+      await invalidate();
+    },
   });
   const update = useMutation({
-    mutationFn: ({ id, request }: { id: string; request: CompetitorRequest }) =>
-      api.competitors.updateCompetitor(brandID, id, request),
+    mutationFn: ({ id, request }: { id: string; request: CreateCompetitor }) =>
+      api.competitors.update(brandID, id, request),
     onSuccess: invalidate,
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api.competitors.deleteCompetitor(brandID, id),
-    onSuccess: invalidate,
+    mutationFn: (id: string) => api.competitors.delete(brandID, id),
+    onSuccess: async () => {
+      onPageChange(
+        Math.min(competitors.currentPage, lastPage(competitors.totalItems - 1, PAGE_SIZE)),
+      );
+      await invalidate();
+    },
   });
   const confirm = useMutation({
-    mutationFn: (id: string) => api.competitors.confirmCompetitor(brandID, id),
+    mutationFn: (id: string) => api.competitors.confirm(brandID, id),
     onSuccess: invalidate,
   });
   const confirmAll = useMutation({
-    mutationFn: () => api.competitors.confirmAllCompetitors(brandID),
+    mutationFn: () => api.competitors.confirmAll(brandID),
     onSuccess: invalidate,
   });
-  const hasUnconfirmed = competitors.some((competitor) => !competitor.confirmed);
 
   return (
     <section aria-labelledby="competitors-heading">
@@ -351,7 +438,7 @@ function CompetitorEditorView({
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("lists.competitors.description")}</p>
         </div>
-        {hasUnconfirmed ? (
+        {unconfirmedItems > 0 ? (
           <Button
             type="button"
             variant="outline"
@@ -371,11 +458,11 @@ function CompetitorEditorView({
           }}
         />
       </div>
-      {competitors.length === 0 ? (
+      {competitors.items.length === 0 ? (
         <p className="mt-6 text-sm text-muted-foreground">{t("lists.competitors.empty")}</p>
       ) : (
         <ul className="mt-6 space-y-5">
-          {competitors.map((competitor) => (
+          {competitors.items.map((competitor) => (
             <li key={competitor.id}>
               {editingID === competitor.id ? (
                 <CompetitorForm
@@ -451,6 +538,11 @@ function CompetitorEditorView({
           ))}
         </ul>
       )}
+      <ListPagination
+        currentPage={competitors.currentPage}
+        totalPages={competitors.totalPages}
+        onPageChange={onPageChange}
+      />
     </section>
   );
 }
@@ -464,24 +556,67 @@ function LoadState({ failed }: { failed: boolean }) {
   );
 }
 
-export function PromptEditor({ brandID }: { brandID: string }) {
+function usePromptPages(brandID: string) {
   const api = useApi();
-  const query = useQuery({
-    queryKey: promptKey(brandID),
-    queryFn: () => api.prompts.listPrompts(brandID),
+  const [page, setPage] = useState(1);
+  const prompts = useQuery({
+    queryKey: promptListKey(brandID, page),
+    queryFn: ({ signal }) => api.prompts.list(brandID, { page, pageSize: PAGE_SIZE }, { signal }),
+    placeholderData: keepPreviousData,
   });
-  if (!query.data) return <LoadState failed={query.isError} />;
-  return <PromptEditorView brandID={brandID} prompts={query.data} />;
+  const unconfirmed = useQuery({
+    queryKey: promptListKey(brandID, 1, false),
+    queryFn: ({ signal }) =>
+      api.prompts.list(brandID, { page: 1, pageSize: 1, confirmed: false }, { signal }),
+  });
+  return { prompts, unconfirmed, setPage };
+}
+
+function useCompetitorPages(brandID: string) {
+  const api = useApi();
+  const [page, setPage] = useState(1);
+  const competitors = useQuery({
+    queryKey: competitorListKey(brandID, page),
+    queryFn: ({ signal }) =>
+      api.competitors.list(brandID, { page, pageSize: PAGE_SIZE }, { signal }),
+    placeholderData: keepPreviousData,
+  });
+  const unconfirmed = useQuery({
+    queryKey: competitorListKey(brandID, 1, false),
+    queryFn: ({ signal }) =>
+      api.competitors.list(brandID, { page: 1, pageSize: 1, confirmed: false }, { signal }),
+  });
+  return { competitors, unconfirmed, setPage };
+}
+
+export function PromptEditor({ brandID }: { brandID: string }) {
+  const { prompts, unconfirmed, setPage } = usePromptPages(brandID);
+  if (!prompts.data || !unconfirmed.data) {
+    return <LoadState failed={prompts.isError || unconfirmed.isError} />;
+  }
+  return (
+    <PromptEditorView
+      brandID={brandID}
+      prompts={prompts.data}
+      unconfirmedItems={unconfirmed.data.totalItems}
+      onPageChange={setPage}
+    />
+  );
 }
 
 export function CompetitorEditor({ brandID }: { brandID: string }) {
-  const api = useApi();
-  const query = useQuery({
-    queryKey: competitorKey(brandID),
-    queryFn: () => api.competitors.listCompetitors(brandID),
-  });
-  if (!query.data) return <LoadState failed={query.isError} />;
-  return <CompetitorEditorView brandID={brandID} competitors={query.data} />;
+  const { competitors, unconfirmed, setPage } = useCompetitorPages(brandID);
+  if (!competitors.data || !unconfirmed.data) {
+    return <LoadState failed={competitors.isError || unconfirmed.isError} />;
+  }
+  return (
+    <CompetitorEditorView
+      brandID={brandID}
+      competitors={competitors.data}
+      unconfirmedItems={unconfirmed.data.totalItems}
+      onPageChange={setPage}
+    />
+  );
 }
 
 export function VisibilityListEditors({
@@ -492,24 +627,46 @@ export function VisibilityListEditors({
   onFinish: () => void;
 }) {
   const { t } = useTranslation("brand");
-  const api = useApi();
-  const prompts = useQuery({
-    queryKey: promptKey(brandID),
-    queryFn: () => api.prompts.listPrompts(brandID),
-  });
-  const competitors = useQuery({
-    queryKey: competitorKey(brandID),
-    queryFn: () => api.competitors.listCompetitors(brandID),
-  });
-  if (!prompts.data || !competitors.data) {
-    return <LoadState failed={prompts.isError || competitors.isError} />;
+  const prompts = usePromptPages(brandID);
+  const competitors = useCompetitorPages(brandID);
+  if (
+    !prompts.prompts.data ||
+    !prompts.unconfirmed.data ||
+    !competitors.competitors.data ||
+    !competitors.unconfirmed.data
+  ) {
+    return (
+      <LoadState
+        failed={
+          prompts.prompts.isError ||
+          prompts.unconfirmed.isError ||
+          competitors.competitors.isError ||
+          competitors.unconfirmed.isError
+        }
+      />
+    );
   }
-  const ready = listsReady(prompts.data, competitors.data);
+  const ready = listsReady(
+    prompts.prompts.data,
+    competitors.competitors.data,
+    prompts.unconfirmed.data,
+    competitors.unconfirmed.data,
+  );
 
   return (
     <div className="space-y-12">
-      <PromptEditorView brandID={brandID} prompts={prompts.data} />
-      <CompetitorEditorView brandID={brandID} competitors={competitors.data} />
+      <PromptEditorView
+        brandID={brandID}
+        prompts={prompts.prompts.data}
+        unconfirmedItems={prompts.unconfirmed.data.totalItems}
+        onPageChange={prompts.setPage}
+      />
+      <CompetitorEditorView
+        brandID={brandID}
+        competitors={competitors.competitors.data}
+        unconfirmedItems={competitors.unconfirmed.data.totalItems}
+        onPageChange={competitors.setPage}
+      />
       <div>
         <Button type="button" size="lg" disabled={!ready} onClick={onFinish}>
           {t("lists.finish")}

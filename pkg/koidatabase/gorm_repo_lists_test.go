@@ -62,35 +62,54 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	}))
 
 	brandID, childID := uuid.New(), uuid.New()
+	unconfirmed := false
 	prompts := NewGormPromptRepository(db)
-	_, err = prompts.ListByBrandID(t.Context(), brandID)
+	_, err = prompts.List(t.Context(), koidomain.PromptFilter{
+		BrandID: brandID, Confirmed: &unconfirmed, Page: koidomain.PageParams{Page: 2, PageSize: 10},
+	})
 	require.NoError(t, err)
-	_, err = prompts.GetByIDAndBrandID(t.Context(), childID, brandID)
+	_, err = prompts.Get(t.Context(), koidomain.PromptFilter{ID: childID, BrandID: brandID})
 	require.NoError(t, err)
-	require.ErrorIs(t, prompts.UpdateByIDAndBrandID(t.Context(), brandID, &koidomain.Prompt{BaseEntity: koidomain.BaseEntity{ID: childID}}), koidomain.ErrNotFound)
-	require.ErrorIs(t, prompts.DeleteByIDAndBrandID(t.Context(), childID, brandID), koidomain.ErrNotFound)
-	require.ErrorIs(t, prompts.ConfirmByIDAndBrandID(t.Context(), childID, brandID), koidomain.ErrNotFound)
-	require.NoError(t, prompts.ConfirmAllByBrandID(t.Context(), brandID))
+	text, confirmed := "Updated", true
+	filter := koidomain.PromptFilter{ID: childID, BrandID: brandID}
+	require.ErrorIs(t, prompts.Update(t.Context(), filter, koidomain.PromptUpdate{Text: &text}), koidomain.ErrNotFound)
+	require.ErrorIs(t, prompts.Delete(t.Context(), filter), koidomain.ErrNotFound)
+	require.ErrorIs(t, prompts.Update(t.Context(), filter, koidomain.PromptUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
+	require.NoError(t, prompts.Update(t.Context(), koidomain.PromptFilter{
+		BrandID: brandID, Confirmed: &unconfirmed,
+	}, koidomain.PromptUpdate{Confirmed: &confirmed}))
 
 	competitors := NewGormCompetitorRepository(db)
-	_, err = competitors.ListByBrandID(t.Context(), brandID)
+	_, err = competitors.List(t.Context(), koidomain.CompetitorFilter{
+		BrandID: brandID, Page: koidomain.PageParams{Page: 1, PageSize: 10},
+	})
 	require.NoError(t, err)
-	require.ErrorIs(t, competitors.UpdateByIDAndBrandID(t.Context(), brandID, &koidomain.Competitor{
-		BaseEntity: koidomain.BaseEntity{ID: childID}, Aliases: []string{},
-	}), koidomain.ErrNotFound)
+	_, err = competitors.Get(t.Context(), koidomain.CompetitorFilter{ID: childID, BrandID: brandID})
+	require.NoError(t, err)
+	aliases := []string{}
+	require.ErrorIs(t, competitors.Update(t.Context(), koidomain.CompetitorFilter{
+		ID: childID, BrandID: brandID,
+	}, koidomain.CompetitorUpdate{Aliases: &aliases}), koidomain.ErrNotFound)
 
-	require.Len(t, queries, 8)
+	require.Len(t, queries, 9)
 	for _, query := range queries {
 		require.Contains(t, query, "brand_id =")
 	}
-	require.Contains(t, queries[0], "ORDER BY created_at ASC, id ASC")
-	require.Contains(t, queries[6], "ORDER BY created_at ASC, id ASC")
+	require.Contains(t, queries[0], "confirmed =")
 	update := strings.ToLower(queries[2])
 	require.Contains(t, update, "text")
 	require.NotContains(t, update, "source")
 	require.NotContains(t, update, "confirmed")
-	competitorUpdate := strings.ToLower(queries[7])
+	competitorUpdate := strings.ToLower(queries[8])
 	require.Contains(t, competitorUpdate, "aliases")
 	require.NotContains(t, competitorUpdate, "source")
 	require.NotContains(t, competitorUpdate, "confirmed")
+
+	listSQL := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		var items []koidomain.Prompt
+		return applyPromptFilter(tx, koidomain.PromptFilter{BrandID: brandID}).
+			Order("created_at ASC, id ASC").Limit(10).Offset(10).Find(&items)
+	})
+	require.Contains(t, listSQL, "ORDER BY created_at ASC, id ASC")
+	require.Contains(t, listSQL, "LIMIT 10 OFFSET 10")
 }

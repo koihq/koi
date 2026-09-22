@@ -66,7 +66,7 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	userID := uuid.New()
 	q := NewMockBrandQuerier(t)
-	q.EXPECT().List(mock.Anything, userID, 3, 100).Return(&koidomain.BrandPage{
+	q.EXPECT().List(mock.Anything, userID, 3, 100).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 3, HasPrev: true,
 	}, nil)
 	ts := newBrandTestServer(t, q, NewMockBrandCommander(t))
@@ -96,7 +96,7 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	}
 
 	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?page=3&pageSize=100", "")
-	var page koidomain.BrandPage
+	var page koidomain.Page[koidomain.Brand]
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, 3, page.CurrentPage)
@@ -134,13 +134,13 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	}
 	q := NewMockBrandQuerier(t)
 	c := NewMockBrandCommander(t)
-	q.EXPECT().List(mock.Anything, userA, 1, 10).Return(&koidomain.BrandPage{
+	q.EXPECT().List(mock.Anything, userA, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, userA, 1, 10).Return(&koidomain.BrandPage{
+	q.EXPECT().List(mock.Anything, userA, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{*brand}, TotalItems: 1, TotalPages: 1, CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, userB, 1, 10).Return(&koidomain.BrandPage{
+	q.EXPECT().List(mock.Anything, userB, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 1,
 	}, nil)
 	q.EXPECT().Get(mock.Anything, userA, brandID).Return(brand, nil)
@@ -161,7 +161,7 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	base := ts.URL + "/api/v1/brands"
 
 	resp := doJSON(t, clientA, http.MethodGet, base, "")
-	var empty koidomain.BrandPage
+	var empty koidomain.Page[koidomain.Brand]
 	readJSON(t, resp, &empty)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotNil(t, empty.Items)
@@ -182,7 +182,7 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	require.Equal(t, userA, created.UserID)
 
 	resp = doJSON(t, clientA, http.MethodGet, base, "")
-	var listA koidomain.BrandPage
+	var listA koidomain.Page[koidomain.Brand]
 	readJSON(t, resp, &listA)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Len(t, listA.Items, 1)
@@ -190,7 +190,7 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	require.EqualValues(t, 1, listA.TotalItems)
 
 	resp = doJSON(t, clientB, http.MethodGet, base, "")
-	var listB koidomain.BrandPage
+	var listB koidomain.Page[koidomain.Brand]
 	readJSON(t, resp, &listB)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Empty(t, listB.Items)

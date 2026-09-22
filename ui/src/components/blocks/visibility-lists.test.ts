@@ -4,6 +4,7 @@ import {
   brandfetchLogoURL,
   brandInitial,
   competitorFormSchema,
+  lastPage,
   listsReady,
   promptFormSchema,
 } from "@/components/blocks/visibility-lists";
@@ -30,12 +31,23 @@ describe("visibility list forms", () => {
 });
 
 describe("list readiness", () => {
-  it("requires two non-empty fully confirmed lists", () => {
-    expect(listsReady([], [{ confirmed: true }])).toBe(false);
-    expect(listsReady([{ confirmed: true }], [])).toBe(false);
-    expect(listsReady([{ confirmed: false }], [{ confirmed: true }])).toBe(false);
-    expect(listsReady([{ confirmed: true }], [{ confirmed: false }])).toBe(false);
-    expect(listsReady([{ confirmed: true }], [{ confirmed: true }])).toBe(true);
+  it("requires two non-empty lists with no unconfirmed items", () => {
+    const empty = { totalItems: 0 };
+    const populated = { totalItems: 2 };
+    const unconfirmed = { totalItems: 1 };
+    expect(listsReady(empty, populated, empty, empty)).toBe(false);
+    expect(listsReady(populated, empty, empty, empty)).toBe(false);
+    expect(listsReady(populated, populated, unconfirmed, empty)).toBe(false);
+    expect(listsReady(populated, populated, empty, unconfirmed)).toBe(false);
+    expect(listsReady(populated, populated, empty, empty)).toBe(true);
+  });
+});
+
+describe("list pagination", () => {
+  it("keeps empty lists on page one and calculates the last populated page", () => {
+    expect(lastPage(0, 10)).toBe(1);
+    expect(lastPage(10, 10)).toBe(1);
+    expect(lastPage(11, 10)).toBe(2);
   });
 });
 

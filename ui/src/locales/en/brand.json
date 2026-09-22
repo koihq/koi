@@ -32,6 +32,12 @@
     "cancel": "Cancel",
     "finish": "Finish setup",
     "notReady": "Add at least one prompt and competitor, then confirm every item.",
+    "pagination": {
+      "label": "List pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
     "source": {
       "manual": "Added manually",
       "drafted": "Drafted by Koi",

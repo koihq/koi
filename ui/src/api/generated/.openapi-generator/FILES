@@ -5,7 +5,6 @@ apis/HealthApi.ts
 apis/PromptsApi.ts
 apis/index.ts
 index.ts
-models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
 models/BrandRes.ts
@@ -22,6 +21,7 @@ models/FieldError.ts
 models/HealthResponse.ts
 models/MeRes.ts
 models/OrgRes.ts
+models/Page.ts
 models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts

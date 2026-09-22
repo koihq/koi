@@ -56,9 +56,9 @@ func TestCompetitorManualCreateAndImmutableProvenance(t *testing.T) {
 		BaseEntity: BaseEntity{ID: competitorID}, BrandID: brandID, Name: "Acme", Domain: "acme.com",
 		Source: CompetitorSourceObserved, Confirmed: false,
 	}
-	competitors.EXPECT().GetByIDAndBrandID(mock.Anything, competitorID, brandID).Return(observed, nil)
-	competitors.EXPECT().UpdateByIDAndBrandID(mock.Anything, brandID, mock.MatchedBy(func(competitor *Competitor) bool {
-		return competitor.Name == "Acme AI" && competitor.Source == CompetitorSourceObserved && !competitor.Confirmed
+	competitors.EXPECT().Get(mock.Anything, CompetitorFilter{ID: competitorID, BrandID: brandID}).Return(observed, nil)
+	competitors.EXPECT().Update(mock.Anything, CompetitorFilter{ID: competitorID, BrandID: brandID}, mock.MatchedBy(func(update CompetitorUpdate) bool {
+		return update.Name != nil && *update.Name == "Acme AI" && update.Confirmed == nil
 	})).Return(nil)
 	name := "Acme AI"
 	updated, err := NewCompetitorCommander(store).Update(t.Context(), userID, brandID, competitorID, CompetitorPatch{Name: &name})
@@ -74,6 +74,33 @@ func TestCompetitorRejectsUnownedBrandBeforeChildLookup(t *testing.T) {
 	store.EXPECT().BrandRepo().Return(brands)
 	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(nil, ErrNotFound)
 
-	_, err := NewCompetitorQuerier(store).List(t.Context(), userID, brandID)
+	_, err := NewCompetitorQuerier(store).List(t.Context(), userID, brandID, PageParams{Page: 1, PageSize: 10}, nil)
 	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestCompetitorConfirmationUsesUpdate(t *testing.T) {
+	store := NewMockStore(t)
+	brands := NewMockBrandRepository(t)
+	competitors := NewMockCompetitorRepository(t)
+	userID, brandID, competitorID := uuid.New(), uuid.New(), uuid.New()
+	store.EXPECT().BrandRepo().Return(brands).Twice()
+	store.EXPECT().CompetitorRepo().Return(competitors).Times(3)
+	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(&Brand{}, nil).Twice()
+	competitor := &Competitor{BaseEntity: BaseEntity{ID: competitorID}, BrandID: brandID}
+	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
+	competitors.EXPECT().Get(mock.Anything, filter).Return(competitor, nil)
+	competitors.EXPECT().Update(mock.Anything, filter, mock.MatchedBy(func(update CompetitorUpdate) bool {
+		return update.Confirmed != nil && *update.Confirmed
+	})).Return(nil)
+
+	confirmed, err := NewCompetitorCommander(store).Confirm(t.Context(), userID, brandID, competitorID)
+	require.NoError(t, err)
+	require.True(t, confirmed.Confirmed)
+
+	competitors.EXPECT().Update(mock.Anything, mock.MatchedBy(func(filter CompetitorFilter) bool {
+		return filter.BrandID == brandID && filter.Confirmed != nil && !*filter.Confirmed
+	}), mock.MatchedBy(func(update CompetitorUpdate) bool {
+		return update.Confirmed != nil && *update.Confirmed
+	})).Return(nil)
+	require.NoError(t, NewCompetitorCommander(store).ConfirmAll(t.Context(), userID, brandID))
 }

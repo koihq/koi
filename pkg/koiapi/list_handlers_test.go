@@ -66,7 +66,9 @@ func TestPromptHandlerCreateMalformedAndUnowned(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	commander := NewMockPromptCommander(t)
 	querier := NewMockPromptQuerier(t)
-	querier.EXPECT().List(mock.Anything, userID, brandID).Return(nil, koidomain.ErrNotFound)
+	querier.EXPECT().List(mock.Anything, userID, brandID,
+		koidomain.PageParams{Page: 1, PageSize: 10}, (*bool)(nil),
+	).Return(nil, koidomain.ErrNotFound)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
@@ -125,4 +127,96 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	require.Equal(t, koidomain.CompetitorSourceManual, body.Source)
 	require.True(t, body.Confirmed)
+}
+
+func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
+	userID, brandID := uuid.New(), uuid.New()
+	querier := NewMockPromptQuerier(t)
+	querier.EXPECT().List(mock.Anything, userID, brandID,
+		koidomain.PageParams{Page: 2, PageSize: 5}, mock.MatchedBy(func(confirmed *bool) bool {
+			return confirmed != nil && !*confirmed
+		}),
+	).Return(&koidomain.Page[koidomain.Prompt]{
+		Items: []koidomain.Prompt{}, TotalItems: 6, TotalPages: 2,
+		CurrentPage: 2, HasPrev: true,
+	}, nil)
+	ts := newListsTestServer(t, querier, NewMockPromptCommander(t), NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?page=2&pageSize=5&confirmed=false", "")
+	var page koidomain.Page[koidomain.Prompt]
+	readJSON(t, resp, &page)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotNil(t, page.Items)
+	require.EqualValues(t, 6, page.TotalItems)
+	require.Equal(t, 2, page.CurrentPage)
+}
+
+func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {
+	userID, brandID := uuid.New(), uuid.New()
+	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	for _, query := range []string{
+		"page=0", "pageSize=101", "confirmed=maybe", "confirmed=true&confirmed=false",
+	} {
+		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?"+query, "")
+		var body api.Envelope
+		readJSON(t, resp, &body)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, query)
+		require.Equal(t, koidomain.CodeValidation, body.Error.Code)
+	}
+}
+
+func TestPromptHandlerGetsOneAndConfirmsAllWithoutBody(t *testing.T) {
+	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
+	querier := NewMockPromptQuerier(t)
+	commander := NewMockPromptCommander(t)
+	prompt := &koidomain.Prompt{BaseEntity: koidomain.BaseEntity{ID: promptID}, BrandID: brandID}
+	querier.EXPECT().Get(mock.Anything, userID, brandID, promptID).Return(prompt, nil)
+	commander.EXPECT().ConfirmAll(mock.Anything, userID, brandID).Return(nil)
+	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts/"+promptID.String(), "")
+	var body koidomain.Prompt
+	readJSON(t, resp, &body)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, promptID, body.ID)
+
+	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts/confirm", "")
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	require.Zero(t, resp.ContentLength)
+	resp.Body.Close()
+}
+
+func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
+	userID, brandID := uuid.New(), uuid.New()
+	querier := NewMockCompetitorQuerier(t)
+	commander := NewMockCompetitorCommander(t)
+	querier.EXPECT().List(mock.Anything, userID, brandID,
+		koidomain.PageParams{Page: 1, PageSize: 1}, mock.MatchedBy(func(confirmed *bool) bool {
+			return confirmed != nil && *confirmed
+		}),
+	).Return(&koidomain.Page[koidomain.Competitor]{
+		Items: []koidomain.Competitor{}, CurrentPage: 1,
+	}, nil)
+	commander.EXPECT().ConfirmAll(mock.Anything, userID, brandID).Return(nil)
+	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), querier, commander)
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors?pageSize=1&confirmed=true", "")
+	var page koidomain.Page[koidomain.Competitor]
+	readJSON(t, resp, &page)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotNil(t, page.Items)
+
+	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors/confirm", "")
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	require.Zero(t, resp.ContentLength)
+	resp.Body.Close()
 }

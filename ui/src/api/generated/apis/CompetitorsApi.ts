@@ -34,6 +34,11 @@ import {
     EnvelopeFromJSON,
     EnvelopeToJSON,
 } from '../models/Envelope';
+import {
+    type Page,
+    PageFromJSON,
+    PageToJSON,
+} from '../models/Page';
 
 export interface ConfirmAllCompetitorsRequest {
     brandID: string;
@@ -54,8 +59,16 @@ export interface DeleteCompetitorRequest {
     competitorID: string;
 }
 
+export interface GetCompetitorRequest {
+    brandID: string;
+    competitorID: string;
+}
+
 export interface ListCompetitorsRequest {
     brandID: string;
+    page?: number;
+    pageSize?: number;
+    confirmed?: boolean;
 }
 
 export interface UpdateCompetitorRequest {
@@ -86,11 +99,11 @@ export interface CompetitorsApiInterface {
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
      */
-    confirmAllCompetitorsRaw(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CompetitorRes>>>;
+    confirmAllCompetitorsRaw(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
      */
-    confirmAllCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CompetitorRes>>;
+    confirmAllCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for confirmCompetitor without sending the request
@@ -162,25 +175,54 @@ export interface CompetitorsApiInterface {
     deleteCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
-     * Creates request options for listCompetitors without sending the request
-     * @param {string} brandID 
+    * Creates request options for getCompetitor without sending the request
+     * @param {string} brandID
+     * @param {string} competitorID
+     * @throws {RequiredError}
+     * @memberof CompetitorsApiInterface
+     */
+    getCompetitorRequestOpts(requestParameters: GetCompetitorRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     *
+     * @param {string} brandID
+     * @param {string} competitorID
+    * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof CompetitorsApiInterface
+     */
+    getCompetitorRaw(requestParameters: GetCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompetitorRes>>;
+
+    /**
+     */
+    getCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
+
+    /**
+    * Creates request options for listCompetitors without sending the request
+     * @param {string} brandID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @param {boolean} [confirmed]
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
      */
     listCompetitorsRequestOpts(requestParameters: ListCompetitorsRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * 
-     * @param {string} brandID 
-     * @param {*} [options] Override http request option.
+     *
+     * @param {string} brandID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @param {boolean} [confirmed]
+    * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
      */
-    listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CompetitorRes>>>;
+    listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>>;
 
     /**
      */
-    listCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CompetitorRes>>;
+    listCompetitors(brandID: string, page?: number, pageSize?: number, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page>;
 
     /**
      * Creates request options for updateCompetitor without sending the request
@@ -243,18 +285,17 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async confirmAllCompetitorsRaw(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CompetitorRes>>> {
+    async confirmAllCompetitorsRaw(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const requestOptions = await this.confirmAllCompetitorsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CompetitorResFromJSON));
+        return new runtime.VoidApiResponse(response);
     }
 
     /**
      */
-    async confirmAllCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CompetitorRes>> {
-        const response = await this.confirmAllCompetitorsRaw({ brandID: brandID }, initOverrides);
-        return await response.value();
+    async confirmAllCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.confirmAllCompetitorsRaw({ brandID: brandID }, initOverrides);
     }
 
     /**
@@ -412,6 +453,57 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
     }
 
     /**
+     * Creates request options for getCompetitor without sending the request
+     */
+    async getCompetitorRequestOpts(requestParameters: GetCompetitorRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandID'] == null) {
+            throw new runtime.RequiredError(
+                'brandID',
+                'Required parameter "brandID" was null or undefined when calling getCompetitor().'
+            );
+        }
+
+        if (requestParameters['competitorID'] == null) {
+            throw new runtime.RequiredError(
+                'competitorID',
+                'Required parameter "competitorID" was null or undefined when calling getCompetitor().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{brandID}/competitors/{competitorID}`;
+        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        urlPath = urlPath.replace('{competitorID}', encodeURIComponent(String(requestParameters['competitorID'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async getCompetitorRaw(requestParameters: GetCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompetitorRes>> {
+        const requestOptions = await this.getCompetitorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CompetitorResFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
+        const response = await this.getCompetitorRaw({ brandID: brandID, competitorID: competitorID }, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listCompetitors without sending the request
      */
     async listCompetitorsRequestOpts(requestParameters: ListCompetitorsRequest): Promise<runtime.RequestOpts> {
@@ -423,6 +515,18 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['pageSize'] != null) {
+            queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        if (requestParameters['confirmed'] != null) {
+            queryParameters['confirmed'] = requestParameters['confirmed'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -440,17 +544,17 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CompetitorRes>>> {
+    async listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>> {
         const requestOptions = await this.listCompetitorsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CompetitorResFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => PageFromJSON(jsonValue));
     }
 
     /**
      */
-    async listCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CompetitorRes>> {
-        const response = await this.listCompetitorsRaw({ brandID: brandID }, initOverrides);
+    async listCompetitors(brandID: string, page?: number, pageSize?: number, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page> {
+        const response = await this.listCompetitorsRaw({ brandID: brandID, page: page, pageSize: pageSize, confirmed: confirmed }, initOverrides);
         return await response.value();
     }
 

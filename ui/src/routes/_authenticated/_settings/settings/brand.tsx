@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
-import type { BrandRequest } from "@/api/generated";
+import type { CreateBrand } from "@/api/brands.api";
 import { BrandForm } from "@/components/blocks/brand-form";
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/brand")({
@@ -16,9 +16,9 @@ function BrandSettings() {
   const api = useApi();
   const [saved, setSaved] = useState(false);
 
-  async function updateBrand(body: BrandRequest) {
+  async function updateBrand(body: CreateBrand) {
     setSaved(false);
-    await api.brands.updateBrand(brand.id, body);
+    await api.brands.update(brand.id, body);
     setSaved(true);
   }
 

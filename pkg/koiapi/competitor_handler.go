@@ -39,6 +39,7 @@ func (h *CompetitorHandler) Routes() func(chi.Router) {
 		r.Get("/", h.List)
 		r.With(middlewares.DecodeBody[CompetitorRequest]()).Post("/", h.Create)
 		r.Post("/confirm", h.ConfirmAll)
+		r.Get("/{competitorID}", h.Get)
 		r.With(middlewares.DecodeBody[CompetitorPatchRequest]()).Patch("/{competitorID}", h.Update)
 		r.Delete("/{competitorID}", h.Delete)
 		r.Post("/{competitorID}/confirm", h.Confirm)
@@ -50,12 +51,39 @@ func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	competitors, err := h.querier.List(r.Context(), userID, brandID)
+	page, err := pageParams(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	confirmed, err := optionalBoolQuery(r, "confirmed")
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	competitors, err := h.querier.List(r.Context(), userID, brandID, page, confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
 	api.JSON(w, r, http.StatusOK, competitors)
+}
+
+func (h *CompetitorHandler) Get(w http.ResponseWriter, r *http.Request) {
+	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+	competitorID, ok := pathID(w, r, "competitorID")
+	if !ok {
+		return
+	}
+	competitor, err := h.querier.Get(r.Context(), userID, brandID, competitorID)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	api.JSON(w, r, http.StatusOK, competitor)
 }
 
 func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -132,10 +160,9 @@ func (h *CompetitorHandler) ConfirmAll(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	competitors, err := h.commander.ConfirmAll(r.Context(), userID, brandID)
-	if err != nil {
+	if err := h.commander.ConfirmAll(r.Context(), userID, brandID); err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	api.JSON(w, r, http.StatusOK, competitors)
+	w.WriteHeader(http.StatusNoContent)
 }

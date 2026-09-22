@@ -20,6 +20,11 @@ import {
     EnvelopeToJSON,
 } from '../models/Envelope';
 import {
+    type Page,
+    PageFromJSON,
+    PageToJSON,
+} from '../models/Page';
+import {
     type PromptPatchRequest,
     PromptPatchRequestFromJSON,
     PromptPatchRequestToJSON,
@@ -54,8 +59,16 @@ export interface DeletePromptRequest {
     promptID: string;
 }
 
+export interface GetPromptRequest {
+    brandID: string;
+    promptID: string;
+}
+
 export interface ListPromptsRequest {
     brandID: string;
+    page?: number;
+    pageSize?: number;
+    confirmed?: boolean;
 }
 
 export interface UpdatePromptRequest {
@@ -86,11 +99,11 @@ export interface PromptsApiInterface {
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
      */
-    confirmAllPromptsRaw(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PromptRes>>>;
+    confirmAllPromptsRaw(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
      */
-    confirmAllPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PromptRes>>;
+    confirmAllPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for confirmPrompt without sending the request
@@ -162,25 +175,54 @@ export interface PromptsApiInterface {
     deletePrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
-     * Creates request options for listPrompts without sending the request
-     * @param {string} brandID 
+    * Creates request options for getPrompt without sending the request
+     * @param {string} brandID
+     * @param {string} promptID
+     * @throws {RequiredError}
+     * @memberof PromptsApiInterface
+     */
+    getPromptRequestOpts(requestParameters: GetPromptRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     *
+     * @param {string} brandID
+     * @param {string} promptID
+    * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PromptsApiInterface
+     */
+    getPromptRaw(requestParameters: GetPromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PromptRes>>;
+
+    /**
+     */
+    getPrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
+
+    /**
+    * Creates request options for listPrompts without sending the request
+     * @param {string} brandID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @param {boolean} [confirmed]
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
      */
     listPromptsRequestOpts(requestParameters: ListPromptsRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * 
-     * @param {string} brandID 
-     * @param {*} [options] Override http request option.
+     *
+     * @param {string} brandID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @param {boolean} [confirmed]
+    * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
      */
-    listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PromptRes>>>;
+    listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>>;
 
     /**
      */
-    listPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PromptRes>>;
+    listPrompts(brandID: string, page?: number, pageSize?: number, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page>;
 
     /**
      * Creates request options for updatePrompt without sending the request
@@ -243,18 +285,17 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async confirmAllPromptsRaw(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PromptRes>>> {
+    async confirmAllPromptsRaw(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const requestOptions = await this.confirmAllPromptsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PromptResFromJSON));
+        return new runtime.VoidApiResponse(response);
     }
 
     /**
      */
-    async confirmAllPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PromptRes>> {
-        const response = await this.confirmAllPromptsRaw({ brandID: brandID }, initOverrides);
-        return await response.value();
+    async confirmAllPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.confirmAllPromptsRaw({ brandID: brandID }, initOverrides);
     }
 
     /**
@@ -412,6 +453,57 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
     }
 
     /**
+     * Creates request options for getPrompt without sending the request
+     */
+    async getPromptRequestOpts(requestParameters: GetPromptRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandID'] == null) {
+            throw new runtime.RequiredError(
+                'brandID',
+                'Required parameter "brandID" was null or undefined when calling getPrompt().'
+            );
+        }
+
+        if (requestParameters['promptID'] == null) {
+            throw new runtime.RequiredError(
+                'promptID',
+                'Required parameter "promptID" was null or undefined when calling getPrompt().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{brandID}/prompts/{promptID}`;
+        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async getPromptRaw(requestParameters: GetPromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PromptRes>> {
+        const requestOptions = await this.getPromptRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PromptResFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getPrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
+        const response = await this.getPromptRaw({ brandID: brandID, promptID: promptID }, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listPrompts without sending the request
      */
     async listPromptsRequestOpts(requestParameters: ListPromptsRequest): Promise<runtime.RequestOpts> {
@@ -423,6 +515,18 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['pageSize'] != null) {
+            queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        if (requestParameters['confirmed'] != null) {
+            queryParameters['confirmed'] = requestParameters['confirmed'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -440,17 +544,17 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<PromptRes>>> {
+    async listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>> {
         const requestOptions = await this.listPromptsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(PromptResFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => PageFromJSON(jsonValue));
     }
 
     /**
      */
-    async listPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<PromptRes>> {
-        const response = await this.listPromptsRaw({ brandID: brandID }, initOverrides);
+    async listPrompts(brandID: string, page?: number, pageSize?: number, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page> {
+        const response = await this.listPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize, confirmed: confirmed }, initOverrides);
         return await response.value();
     }
 

@@ -82,22 +82,41 @@ func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	page, err := positiveQueryInt(r, "page", 1, math.MaxInt)
+	page, err := pageParams(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	pageSize, err := positiveQueryInt(r, "pageSize", 10, 100)
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	brands, err := h.querier.List(r.Context(), userID, page, pageSize)
+	brands, err := h.querier.List(r.Context(), userID, page.Page, page.PageSize)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
 	api.JSON(w, r, http.StatusOK, brands)
+}
+
+func pageParams(r *http.Request) (koidomain.PageParams, error) {
+	page, err := positiveQueryInt(r, "page", 1, math.MaxInt)
+	if err != nil {
+		return koidomain.PageParams{}, err
+	}
+	pageSize, err := positiveQueryInt(r, "pageSize", 10, 100)
+	if err != nil {
+		return koidomain.PageParams{}, err
+	}
+	return koidomain.PageParams{Page: page, PageSize: pageSize}, nil
+}
+
+func optionalBoolQuery(r *http.Request, key string) (*bool, error) {
+	values, present := r.URL.Query()[key]
+	if !present {
+		return nil, nil
+	}
+	if len(values) != 1 || values[0] != "true" && values[0] != "false" {
+		return nil, koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
+	}
+	value := values[0] == "true"
+	return &value, nil
 }
 
 func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (int, error) {

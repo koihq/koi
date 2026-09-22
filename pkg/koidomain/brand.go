@@ -174,15 +174,6 @@ type BrandRepository interface {
 	UpdateByIDAndUserID(context.Context, uuid.UUID, *Brand) error
 }
 
-type BrandPage struct {
-	Items       []Brand `json:"items"`
-	TotalItems  int64   `json:"totalItems"`
-	TotalPages  int64   `json:"totalPages"`
-	CurrentPage int     `json:"currentPage"`
-	HasNext     bool    `json:"hasNext"`
-	HasPrev     bool    `json:"hasPrev"`
-}
-
 type BrandParams struct {
 	Name        string
 	Domain      string
@@ -197,7 +188,7 @@ type BrandCommander interface {
 }
 
 type BrandQuerier interface {
-	List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*BrandPage, error)
+	List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*Page[Brand], error)
 	Get(ctx context.Context, userID, id uuid.UUID) (*Brand, error)
 }
 
@@ -275,12 +266,12 @@ type brandQuerier struct{ store Store }
 
 func NewBrandQuerier(store Store) BrandQuerier { return &brandQuerier{store: store} }
 
-func (q *brandQuerier) List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*BrandPage, error) {
+func (q *brandQuerier) List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*Page[Brand], error) {
 	total, err := q.store.BrandRepo().CountByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	result := &BrandPage{
+	result := &Page[Brand]{
 		Items: make([]Brand, 0), TotalItems: total,
 		CurrentPage: page, HasPrev: page > 1,
 	}

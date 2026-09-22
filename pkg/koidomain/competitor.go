@@ -73,12 +73,24 @@ func (c Competitor) Validate() error {
 
 type CompetitorRepository interface {
 	Create(context.Context, *Competitor) error
-	ListByBrandID(context.Context, uuid.UUID) ([]Competitor, error)
-	GetByIDAndBrandID(context.Context, uuid.UUID, uuid.UUID) (*Competitor, error)
-	UpdateByIDAndBrandID(context.Context, uuid.UUID, *Competitor) error
-	DeleteByIDAndBrandID(context.Context, uuid.UUID, uuid.UUID) error
-	ConfirmByIDAndBrandID(context.Context, uuid.UUID, uuid.UUID) error
-	ConfirmAllByBrandID(context.Context, uuid.UUID) error
+	Get(context.Context, CompetitorFilter) (*Competitor, error)
+	List(context.Context, CompetitorFilter) (*Page[Competitor], error)
+	Update(context.Context, CompetitorFilter, CompetitorUpdate) error
+	Delete(context.Context, CompetitorFilter) error
+}
+
+type CompetitorFilter struct {
+	ID        uuid.UUID
+	BrandID   uuid.UUID
+	Confirmed *bool
+	Page      PageParams
+}
+
+type CompetitorUpdate struct {
+	Name      *string
+	Domain    *string
+	Aliases   *[]string
+	Confirmed *bool
 }
 
 type CompetitorParams struct {
@@ -98,11 +110,12 @@ type CompetitorCommander interface {
 	Update(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, CompetitorPatch) (*Competitor, error)
 	Delete(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error
 	Confirm(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Competitor, error)
-	ConfirmAll(context.Context, uuid.UUID, uuid.UUID) ([]Competitor, error)
+	ConfirmAll(context.Context, uuid.UUID, uuid.UUID) error
 }
 
 type CompetitorQuerier interface {
-	List(context.Context, uuid.UUID, uuid.UUID) ([]Competitor, error)
+	List(context.Context, uuid.UUID, uuid.UUID, PageParams, *bool) (*Page[Competitor], error)
+	Get(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Competitor, error)
 }
 
 type competitorService struct{ store Store }
@@ -132,7 +145,8 @@ func (s *competitorService) Update(ctx context.Context, userID, brandID, competi
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return nil, err
 	}
-	competitor, err := s.store.CompetitorRepo().GetByIDAndBrandID(ctx, competitorID, brandID)
+	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
+	competitor, err := s.store.CompetitorRepo().Get(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +163,9 @@ func (s *competitorService) Update(ctx context.Context, userID, brandID, competi
 	if err := competitor.Validate(); err != nil {
 		return nil, err
 	}
-	if err := s.store.CompetitorRepo().UpdateByIDAndBrandID(ctx, brandID, competitor); err != nil {
+	if err := s.store.CompetitorRepo().Update(ctx, filter, CompetitorUpdate{
+		Name: &competitor.Name, Domain: &competitor.Domain, Aliases: &competitor.Aliases,
+	}); err != nil {
 		return nil, err
 	}
 	return competitor, nil
@@ -159,34 +175,49 @@ func (s *competitorService) Delete(ctx context.Context, userID, brandID, competi
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return err
 	}
-	return s.store.CompetitorRepo().DeleteByIDAndBrandID(ctx, competitorID, brandID)
+	return s.store.CompetitorRepo().Delete(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
 }
 
 func (s *competitorService) Confirm(ctx context.Context, userID, brandID, competitorID uuid.UUID) (*Competitor, error) {
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return nil, err
 	}
-	if err := s.store.CompetitorRepo().ConfirmByIDAndBrandID(ctx, competitorID, brandID); err != nil {
+	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
+	competitor, err := s.store.CompetitorRepo().Get(ctx, filter)
+	if err != nil {
 		return nil, err
 	}
-	return s.store.CompetitorRepo().GetByIDAndBrandID(ctx, competitorID, brandID)
+	confirmed := true
+	if err := s.store.CompetitorRepo().Update(ctx, filter, CompetitorUpdate{Confirmed: &confirmed}); err != nil {
+		return nil, err
+	}
+	competitor.Confirmed = true
+	return competitor, nil
 }
 
-func (s *competitorService) ConfirmAll(ctx context.Context, userID, brandID uuid.UUID) ([]Competitor, error) {
+func (s *competitorService) ConfirmAll(ctx context.Context, userID, brandID uuid.UUID) error {
+	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+		return err
+	}
+	unconfirmed, confirmed := false, true
+	return s.store.CompetitorRepo().Update(ctx,
+		CompetitorFilter{BrandID: brandID, Confirmed: &unconfirmed},
+		CompetitorUpdate{Confirmed: &confirmed},
+	)
+}
+
+func (s *competitorService) List(ctx context.Context, userID, brandID uuid.UUID, page PageParams, confirmed *bool) (*Page[Competitor], error) {
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return nil, err
 	}
-	if err := s.store.CompetitorRepo().ConfirmAllByBrandID(ctx, brandID); err != nil {
-		return nil, err
-	}
-	return s.store.CompetitorRepo().ListByBrandID(ctx, brandID)
+	return s.store.CompetitorRepo().List(ctx, CompetitorFilter{BrandID: brandID, Confirmed: confirmed, Page: page})
 }
 
-func (s *competitorService) List(ctx context.Context, userID, brandID uuid.UUID) ([]Competitor, error) {
+func (s *competitorService) Get(ctx context.Context, userID, brandID, competitorID uuid.UUID) (*Competitor, error) {
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return nil, err
 	}
-	return s.store.CompetitorRepo().ListByBrandID(ctx, brandID)
+	return s.store.CompetitorRepo().Get(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
 }
 
 func ListsReady(prompts []Prompt, competitors []Competitor) bool {

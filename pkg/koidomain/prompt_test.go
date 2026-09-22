@@ -46,9 +46,9 @@ func TestPromptManualCreateAndImmutableProvenance(t *testing.T) {
 	require.Equal(t, promptID, created.ID)
 
 	drafted := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Old", Source: PromptSourceDrafted}
-	prompts.EXPECT().GetByIDAndBrandID(mock.Anything, promptID, brandID).Return(drafted, nil)
-	prompts.EXPECT().UpdateByIDAndBrandID(mock.Anything, brandID, mock.MatchedBy(func(prompt *Prompt) bool {
-		return prompt.Text == "New text" && prompt.Source == PromptSourceDrafted && !prompt.Confirmed
+	prompts.EXPECT().Get(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}).Return(drafted, nil)
+	prompts.EXPECT().Update(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}, mock.MatchedBy(func(update PromptUpdate) bool {
+		return update.Text != nil && *update.Text == "New text" && update.Confirmed == nil
 	})).Return(nil)
 	text := " New   text "
 	updated, err := NewPromptCommander(store).Update(t.Context(), userID, brandID, promptID, PromptPatch{Text: &text})
@@ -63,22 +63,25 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	prompts := NewMockPromptRepository(t)
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
 	store.EXPECT().BrandRepo().Return(brands).Times(3)
-	store.EXPECT().PromptRepo().Return(prompts).Times(4)
+	store.EXPECT().PromptRepo().Return(prompts).Times(3)
 	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(&Brand{}, nil).Twice()
 	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(nil, ErrNotFound).Once()
-	prompts.EXPECT().ConfirmByIDAndBrandID(mock.Anything, promptID, brandID).Return(nil)
-	confirmed := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Source: PromptSourceDrafted, Confirmed: true}
-	prompts.EXPECT().GetByIDAndBrandID(mock.Anything, promptID, brandID).Return(confirmed, nil)
+	confirmed := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Source: PromptSourceDrafted}
+	prompts.EXPECT().Get(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}).Return(confirmed, nil)
+	prompts.EXPECT().Update(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}, mock.MatchedBy(func(update PromptUpdate) bool {
+		return update.Confirmed != nil && *update.Confirmed
+	})).Return(nil)
 
 	got, err := NewPromptCommander(store).Confirm(t.Context(), userID, brandID, promptID)
 	require.NoError(t, err)
 	require.True(t, got.Confirmed)
 
-	prompts.EXPECT().ConfirmAllByBrandID(mock.Anything, brandID).Return(nil)
-	prompts.EXPECT().ListByBrandID(mock.Anything, brandID).Return([]Prompt{*confirmed}, nil)
-	all, err := NewPromptCommander(store).ConfirmAll(t.Context(), userID, brandID)
-	require.NoError(t, err)
-	require.Len(t, all, 1)
+	prompts.EXPECT().Update(mock.Anything, mock.MatchedBy(func(filter PromptFilter) bool {
+		return filter.BrandID == brandID && filter.ID == uuid.Nil && filter.Confirmed != nil && !*filter.Confirmed
+	}), mock.MatchedBy(func(update PromptUpdate) bool {
+		return update.Confirmed != nil && *update.Confirmed
+	})).Return(nil)
+	require.NoError(t, NewPromptCommander(store).ConfirmAll(t.Context(), userID, brandID))
 
 	err = NewPromptCommander(store).Delete(t.Context(), userID, brandID, promptID)
 	require.ErrorIs(t, err, ErrNotFound)

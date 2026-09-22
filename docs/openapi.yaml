@@ -82,26 +82,15 @@ paths:
       security:
         - cookieAuth: []
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
           description: Page of brands owned by the session user, newest first
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BrandPage"
+                $ref: "#/components/schemas/Page"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -210,15 +199,19 @@ paths:
       operationId: listPrompts
       security:
         - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Confirmed"
       responses:
         "200":
           description: Prompts for the owned brand in creation order
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PromptRes"
+                $ref: "#/components/schemas/Page"
+        "400":
+          $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -251,6 +244,22 @@ paths:
     parameters:
       - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/PromptID"
+    get:
+      tags: [prompts]
+      operationId: getPrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Prompt belonging to the owned brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     patch:
       tags: [prompts]
       operationId: updatePrompt
@@ -316,14 +325,8 @@ paths:
       security:
         - cookieAuth: []
       responses:
-        "200":
+        "204":
           description: All prompts confirmed
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/PromptRes"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -336,15 +339,19 @@ paths:
       operationId: listCompetitors
       security:
         - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Confirmed"
       responses:
         "200":
           description: Tracked competitors for the owned brand in creation order
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CompetitorRes"
+                $ref: "#/components/schemas/Page"
+        "400":
+          $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -377,6 +384,22 @@ paths:
     parameters:
       - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/CompetitorID"
+    get:
+      tags: [competitors]
+      operationId: getCompetitor
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Competitor belonging to the owned brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     patch:
       tags: [competitors]
       operationId: updateCompetitor
@@ -442,14 +465,8 @@ paths:
       security:
         - cookieAuth: []
       responses:
-        "200":
+        "204":
           description: All competitors confirmed
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/CompetitorRes"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -467,6 +484,26 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
 components:
   parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    Confirmed:
+      name: confirmed
+      in: query
+      schema:
+        type: boolean
     BrandID:
       name: brandID
       in: path
@@ -556,14 +593,13 @@ components:
           type: string
         description:
           type: string
-    BrandPage:
+    Page:
       type: object
       required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
       properties:
         items:
           type: array
-          items:
-            $ref: "#/components/schemas/BrandRes"
+          items: {}
         totalItems:
           type: integer
           format: int64

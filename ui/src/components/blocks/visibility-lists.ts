@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { CompetitorRequest, CompetitorRes, PromptRes } from "@/api/generated";
+import type { CreateCompetitor } from "@/api/competitors.api";
 import { validHostname } from "@/components/blocks/brand-form-schema";
 
 export const promptFormSchema = z.object({
@@ -30,20 +30,26 @@ export const competitorFormSchema = z.object({
 
 export type CompetitorFormInput = z.input<typeof competitorFormSchema>;
 
-export function competitorRequest(input: CompetitorFormInput): CompetitorRequest {
+export function competitorRequest(input: CompetitorFormInput): CreateCompetitor {
   return competitorFormSchema.parse(input);
 }
 
 export function listsReady(
-  prompts: Pick<PromptRes, "confirmed">[],
-  competitors: Pick<CompetitorRes, "confirmed">[],
+  prompts: { totalItems: number },
+  competitors: { totalItems: number },
+  unconfirmedPrompts: { totalItems: number },
+  unconfirmedCompetitors: { totalItems: number },
 ): boolean {
   return (
-    prompts.length > 0 &&
-    competitors.length > 0 &&
-    prompts.every((prompt) => prompt.confirmed) &&
-    competitors.every((competitor) => competitor.confirmed)
+    prompts.totalItems > 0 &&
+    competitors.totalItems > 0 &&
+    unconfirmedPrompts.totalItems === 0 &&
+    unconfirmedCompetitors.totalItems === 0
   );
+}
+
+export function lastPage(totalItems: number, pageSize: number): number {
+  return Math.max(1, Math.ceil(totalItems / pageSize));
 }
 
 export function brandfetchLogoURL(domain: string, clientID: string | undefined): string | null {

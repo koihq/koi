@@ -27,3 +27,17 @@ type BaseEntityRepository[T Entity] interface {
 	BaseEntityQuerier[T]
 	Create(ctx context.Context, entity *T) error
 }
+
+type PageParams struct {
+	Page     int
+	PageSize int
+}
+
+type Page[T any] struct {
+	Items       []T   `json:"items"`
+	TotalItems  int64 `json:"totalItems"`
+	TotalPages  int64 `json:"totalPages"`
+	CurrentPage int   `json:"currentPage"`
+	HasNext     bool  `json:"hasNext"`
+	HasPrev     bool  `json:"hasPrev"`
+}

@@ -36,6 +36,7 @@ func (h *PromptHandler) Routes() func(chi.Router) {
 		r.Get("/", h.List)
 		r.With(middlewares.DecodeBody[PromptRequest]()).Post("/", h.Create)
 		r.Post("/confirm", h.ConfirmAll)
+		r.Get("/{promptID}", h.Get)
 		r.With(middlewares.DecodeBody[PromptPatchRequest]()).Patch("/{promptID}", h.Update)
 		r.Delete("/{promptID}", h.Delete)
 		r.Post("/{promptID}/confirm", h.Confirm)
@@ -65,12 +66,39 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	prompts, err := h.querier.List(r.Context(), userID, brandID)
+	page, err := pageParams(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	confirmed, err := optionalBoolQuery(r, "confirmed")
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	prompts, err := h.querier.List(r.Context(), userID, brandID, page, confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
 	api.JSON(w, r, http.StatusOK, prompts)
+}
+
+func (h *PromptHandler) Get(w http.ResponseWriter, r *http.Request) {
+	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+	promptID, ok := pathID(w, r, "promptID")
+	if !ok {
+		return
+	}
+	prompt, err := h.querier.Get(r.Context(), userID, brandID, promptID)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	api.JSON(w, r, http.StatusOK, prompt)
 }
 
 func (h *PromptHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -145,10 +173,9 @@ func (h *PromptHandler) ConfirmAll(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	prompts, err := h.commander.ConfirmAll(r.Context(), userID, brandID)
-	if err != nil {
+	if err := h.commander.ConfirmAll(r.Context(), userID, brandID); err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	api.JSON(w, r, http.StatusOK, prompts)
+	w.WriteHeader(http.StatusNoContent)
 }
