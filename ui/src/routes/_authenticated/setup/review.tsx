@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { KoiMark } from "@/components/blocks/koi-mark";
-import { VisibilityListEditors } from "@/components/blocks/visibility-list-editors";
+import { SetupReviewEditors } from "@/routes/_authenticated/setup/-components/setup-review-editors";
 
 export const Route = createFileRoute("/_authenticated/setup/review")({
   beforeLoad: ({ context }) => {
@@ -25,12 +25,7 @@ function SetupReview() {
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
           {t("setup.reviewDescription")}
         </p>
-        <div className="mt-12">
-          <VisibilityListEditors
-            brandID={brand.id}
-            onFinish={() => navigate({ to: "/mentions" })}
-          />
-        </div>
+        <SetupReviewEditors brandID={brand.id} onFinish={() => navigate({ to: "/mentions" })} />
       </div>
     </main>
   );

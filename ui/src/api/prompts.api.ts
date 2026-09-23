@@ -1,5 +1,6 @@
 import type { PromptPatchRequest, PromptRequest, PromptRes, PromptsApi } from "@/api/generated";
 import { PromptResFromJSON } from "@/api/generated";
+import { callApi } from "@/api/shared/apiClient";
 import { mapPage } from "@/api/shared/mappers";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
@@ -11,29 +12,28 @@ export interface PromptListParams extends BaseListParams {
   confirmed?: boolean;
 }
 
-export function createPromptsApi(client: PromptsApi) {
+export function createPromptsApi(api: PromptsApi) {
   return {
     list: async (
       brandID: string,
       params: PromptListParams = {},
       initOverrides?: RequestInit,
-    ): Promise<ApiListResponse<Prompt>> =>
-      mapPage(
-        await client.listPrompts(
-          brandID,
-          params.page,
-          params.pageSize,
-          params.confirmed,
-          initOverrides,
-        ),
-        PromptResFromJSON,
-      ),
-    getById: (brandID: string, id: string) => client.getPrompt(brandID, id),
-    create: (brandID: string, request: CreatePrompt) => client.createPrompt(brandID, request),
-    update: (brandID: string, id: string, request: UpdatePrompt) =>
-      client.updatePrompt(brandID, id, request),
-    delete: (brandID: string, id: string) => client.deletePrompt(brandID, id),
-    confirm: (brandID: string, id: string) => client.confirmPrompt(brandID, id),
-    confirmAll: (brandID: string) => client.confirmAllPrompts(brandID),
+    ): Promise<ApiListResponse<Prompt>> => {
+      const response = await callApi(() =>
+        api.listPrompts(brandID, params.page, params.pageSize, params.confirmed, initOverrides),
+      );
+      return mapPage(response, PromptResFromJSON);
+    },
+    getById: (brandID: string, id: string): Promise<Prompt> =>
+      callApi(() => api.getPrompt(brandID, id)),
+    create: (brandID: string, request: CreatePrompt): Promise<Prompt> =>
+      callApi(() => api.createPrompt(brandID, request)),
+    update: (brandID: string, id: string, request: UpdatePrompt): Promise<Prompt> =>
+      callApi(() => api.updatePrompt(brandID, id, request)),
+    delete: (brandID: string, id: string): Promise<void> =>
+      callApi(() => api.deletePrompt(brandID, id)),
+    confirm: (brandID: string, id: string): Promise<Prompt> =>
+      callApi(() => api.confirmPrompt(brandID, id)),
+    confirmAll: (brandID: string): Promise<void> => callApi(() => api.confirmAllPrompts(brandID)),
   };
 }

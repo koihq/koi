@@ -5,6 +5,7 @@ import type {
   CompetitorsApi,
 } from "@/api/generated";
 import { CompetitorResFromJSON } from "@/api/generated";
+import { callApi } from "@/api/shared/apiClient";
 import { mapPage } from "@/api/shared/mappers";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
@@ -16,30 +17,29 @@ export interface CompetitorListParams extends BaseListParams {
   confirmed?: boolean;
 }
 
-export function createCompetitorsApi(client: CompetitorsApi) {
+export function createCompetitorsApi(api: CompetitorsApi) {
   return {
     list: async (
       brandID: string,
       params: CompetitorListParams = {},
       initOverrides?: RequestInit,
-    ): Promise<ApiListResponse<Competitor>> =>
-      mapPage(
-        await client.listCompetitors(
-          brandID,
-          params.page,
-          params.pageSize,
-          params.confirmed,
-          initOverrides,
-        ),
-        CompetitorResFromJSON,
-      ),
-    getById: (brandID: string, id: string) => client.getCompetitor(brandID, id),
-    create: (brandID: string, request: CreateCompetitor) =>
-      client.createCompetitor(brandID, request),
-    update: (brandID: string, id: string, request: UpdateCompetitor) =>
-      client.updateCompetitor(brandID, id, request),
-    delete: (brandID: string, id: string) => client.deleteCompetitor(brandID, id),
-    confirm: (brandID: string, id: string) => client.confirmCompetitor(brandID, id),
-    confirmAll: (brandID: string) => client.confirmAllCompetitors(brandID),
+    ): Promise<ApiListResponse<Competitor>> => {
+      const response = await callApi(() =>
+        api.listCompetitors(brandID, params.page, params.pageSize, params.confirmed, initOverrides),
+      );
+      return mapPage(response, CompetitorResFromJSON);
+    },
+    getById: (brandID: string, id: string): Promise<Competitor> =>
+      callApi(() => api.getCompetitor(brandID, id)),
+    create: (brandID: string, request: CreateCompetitor): Promise<Competitor> =>
+      callApi(() => api.createCompetitor(brandID, request)),
+    update: (brandID: string, id: string, request: UpdateCompetitor): Promise<Competitor> =>
+      callApi(() => api.updateCompetitor(brandID, id, request)),
+    delete: (brandID: string, id: string): Promise<void> =>
+      callApi(() => api.deleteCompetitor(brandID, id)),
+    confirm: (brandID: string, id: string): Promise<Competitor> =>
+      callApi(() => api.confirmCompetitor(brandID, id)),
+    confirmAll: (brandID: string): Promise<void> =>
+      callApi(() => api.confirmAllCompetitors(brandID)),
   };
 }

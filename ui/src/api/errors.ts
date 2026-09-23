@@ -1,5 +1,5 @@
 import { type ErrorCode, errorCodes } from "@/api/errorCodes";
-import type { Envelope, FieldError, Middleware } from "@/api/generated";
+import type { Envelope, FieldError } from "@/api/generated";
 import i18n from "@/config/i18n";
 
 export class ApiError extends Error {
@@ -42,7 +42,7 @@ export function messageFromUnknown(err: unknown): string {
   return displayMessage("internal");
 }
 
-async function fromResponse(response: Response): Promise<ApiError> {
+export async function apiErrorFromResponse(response: Response): Promise<ApiError> {
   try {
     const body = (await response.json()) as Envelope;
     const code = body.error?.code ?? "internal";
@@ -51,12 +51,3 @@ async function fromResponse(response: Response): Promise<ApiError> {
     return new ApiError("internal");
   }
 }
-
-export const envelopeMiddleware: Middleware = {
-  async post({ response }) {
-    if (response.ok) {
-      return;
-    }
-    throw await fromResponse(response);
-  },
-};

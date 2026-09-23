@@ -1,6 +1,14 @@
 import { useState } from "react";
 
-import { brandfetchLogoURL, brandInitial } from "@/components/blocks/visibility-lists";
+export function brandfetchLogoURL(domain: string, clientID: string | undefined): string | null {
+  const id = clientID?.trim();
+  if (!id || !domain) return null;
+  return `https://cdn.brandfetch.io/domain/${encodeURIComponent(domain)}/w/64/h/64/fallback/404/type/icon?c=${encodeURIComponent(id)}`;
+}
+
+export function brandInitial(name: string, domain: string): string {
+  return (name.trim() || domain.trim() || "?").charAt(0).toLocaleUpperCase();
+}
 
 export function BrandIcon({ name, domain }: { name: string; domain: string }) {
   const logoURL = brandfetchLogoURL(domain, import.meta.env.VITE_BRANDFETCH_CLIENT_ID);

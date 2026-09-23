@@ -1,8 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { createAuthApi } from "@/api/auth.api";
 import { createBrandsApi } from "@/api/brands.api";
 import { createCompetitorsApi } from "@/api/competitors.api";
-import type { BrandsApi, CompetitorsApi, Page, PromptsApi } from "@/api/generated";
+import type {
+  AuthApi,
+  BrandsApi,
+  CompetitorsApi,
+  HealthApi,
+  Page,
+  PromptsApi,
+} from "@/api/generated";
+import { createHealthApi } from "@/api/health.api";
 import { createPromptsApi } from "@/api/prompts.api";
 
 const page: Page = {
@@ -15,6 +24,33 @@ const page: Page = {
 };
 
 describe("entity API wrappers", () => {
+  it("wraps generated auth methods", async () => {
+    const account = {
+      id: "user-id",
+      email: "founder@example.com",
+      organization: { id: "org-id", name: "Koi" },
+    };
+    const client = {
+      login: vi.fn().mockResolvedValue(account),
+      logout: vi.fn(),
+      me: vi.fn(),
+      signup: vi.fn(),
+    } as unknown as AuthApi;
+    const api = createAuthApi(client);
+    const credentials = { email: account.email, password: "password123" };
+
+    await expect(api.login(credentials)).resolves.toEqual(account);
+    expect(client.login).toHaveBeenCalledWith(credentials);
+  });
+
+  it("wraps the generated health method", async () => {
+    const health = { status: "ok", db: "ok" };
+    const client = { get: vi.fn().mockResolvedValue(health) } as unknown as HealthApi;
+
+    await expect(createHealthApi(client).get()).resolves.toEqual(health);
+    expect(client.get).toHaveBeenCalledOnce();
+  });
+
   it("exposes generic brand method names", async () => {
     const client = {
       listBrands: vi.fn().mockResolvedValue(page),
