@@ -14,6 +14,8 @@ export type CreateCompetitor = CompetitorRequest;
 export type UpdateCompetitor = CompetitorPatchRequest;
 
 export interface CompetitorListParams extends BaseListParams {
+  pageSize?: 10 | 20 | 50;
+  q?: string;
   confirmed?: boolean;
 }
 
@@ -25,7 +27,14 @@ export function createCompetitorsApi(api: CompetitorsApi) {
       initOverrides?: RequestInit,
     ): Promise<ApiListResponse<Competitor>> => {
       const response = await callApi(() =>
-        api.listCompetitors(brandID, params.page, params.pageSize, params.confirmed, initOverrides),
+        api.listCompetitors(
+          brandID,
+          params.page,
+          params.pageSize,
+          params.q,
+          params.confirmed,
+          initOverrides,
+        ),
       );
       return mapPage(response, CompetitorResFromJSON);
     },

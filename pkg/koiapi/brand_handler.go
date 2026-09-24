@@ -4,6 +4,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -117,6 +118,17 @@ func optionalBoolQuery(r *http.Request, key string) (*bool, error) {
 	}
 	value := values[0] == "true"
 	return &value, nil
+}
+
+func optionalStringQuery(r *http.Request, key string) (string, error) {
+	values, present := r.URL.Query()[key]
+	if !present {
+		return "", nil
+	}
+	if len(values) != 1 {
+		return "", koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
+	}
+	return strings.TrimSpace(values[0]), nil
 }
 
 func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (int, error) {

@@ -86,13 +86,3 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	err = NewPromptCommander(store).Delete(t.Context(), userID, brandID, promptID)
 	require.ErrorIs(t, err, ErrNotFound)
 }
-
-func TestListsReady(t *testing.T) {
-	confirmedPrompt := Prompt{Confirmed: true}
-	confirmedCompetitor := Competitor{Confirmed: true}
-	require.False(t, ListsReady(nil, []Competitor{confirmedCompetitor}))
-	require.False(t, ListsReady([]Prompt{confirmedPrompt}, nil))
-	require.False(t, ListsReady([]Prompt{{Confirmed: false}}, []Competitor{confirmedCompetitor}))
-	require.False(t, ListsReady([]Prompt{confirmedPrompt}, []Competitor{{Confirmed: false}}))
-	require.True(t, ListsReady([]Prompt{confirmedPrompt}, []Competitor{confirmedCompetitor}))
-}

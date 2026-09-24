@@ -61,7 +61,12 @@ func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	competitors, err := h.querier.List(r.Context(), userID, brandID, page, confirmed)
+	query, err := optionalStringQuery(r, "q")
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	competitors, err := h.querier.List(r.Context(), userID, brandID, page, query, confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return

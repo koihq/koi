@@ -91,10 +91,15 @@ describe("entity API wrappers", () => {
     } as unknown as PromptsApi;
     const api = createPromptsApi(client);
 
-    const result = await api.list("brand", { page: 3, pageSize: 10, confirmed: false });
+    const result = await api.list("brand", {
+      page: 3,
+      pageSize: 10,
+      q: "best tools",
+      confirmed: false,
+    });
     await api.confirmAll("brand");
     expect(result.items[0]).toMatchObject({ brandId: "brand", text: "What is Koi?" });
-    expect(client.listPrompts).toHaveBeenCalledWith("brand", 3, 10, false, undefined);
+    expect(client.listPrompts).toHaveBeenCalledWith("brand", 3, 10, "best tools", false, undefined);
     expect(client.confirmAllPrompts).toHaveBeenCalledWith("brand");
   });
 
@@ -110,7 +115,7 @@ describe("entity API wrappers", () => {
     } as unknown as CompetitorsApi;
     const api = createCompetitorsApi(client);
 
-    await api.list("brand", { page: 1, pageSize: 1, confirmed: true });
-    expect(client.listCompetitors).toHaveBeenCalledWith("brand", 1, 1, true, undefined);
+    await api.list("brand", { page: 1, pageSize: 10, q: "acme", confirmed: true });
+    expect(client.listCompetitors).toHaveBeenCalledWith("brand", 1, 10, "acme", true, undefined);
   });
 });

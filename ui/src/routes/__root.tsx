@@ -1,6 +1,7 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 
 import type { Api } from "@/api/apiProvider";
 import "../styles.css";
@@ -35,7 +36,9 @@ function RootComponent() {
 
   return (
     <>
-      <Outlet />
+      <NuqsAdapter>
+        <Outlet />
+      </NuqsAdapter>
       {import.meta.env.DEV ? (
         <TanStackDevtools
           config={{

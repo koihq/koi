@@ -9,6 +9,8 @@ export type CreatePrompt = PromptRequest;
 export type UpdatePrompt = PromptPatchRequest;
 
 export interface PromptListParams extends BaseListParams {
+  pageSize?: 10 | 20 | 50;
+  q?: string;
   confirmed?: boolean;
 }
 
@@ -20,7 +22,14 @@ export function createPromptsApi(api: PromptsApi) {
       initOverrides?: RequestInit,
     ): Promise<ApiListResponse<Prompt>> => {
       const response = await callApi(() =>
-        api.listPrompts(brandID, params.page, params.pageSize, params.confirmed, initOverrides),
+        api.listPrompts(
+          brandID,
+          params.page,
+          params.pageSize,
+          params.q,
+          params.confirmed,
+          initOverrides,
+        ),
       );
       return mapPage(response, PromptResFromJSON);
     },

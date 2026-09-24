@@ -2,9 +2,7 @@
   "setup": {
     "title": "Set up your brand",
     "description": "Tell Koi which brand and market to measure.",
-    "submit": "Create brand",
-    "reviewTitle": "Review what Koi will track",
-    "reviewDescription": "Confirm the questions and competitors that should shape each visibility run."
+    "submit": "Create brand"
   },
   "settings": {
     "title": "Brand settings",
@@ -30,8 +28,6 @@
     "delete": "Delete",
     "save": "Save",
     "cancel": "Cancel",
-    "finish": "Finish setup",
-    "notReady": "Add at least one prompt and competitor, then confirm every item.",
     "pagination": {
       "label": "List pagination",
       "previous": "Previous",

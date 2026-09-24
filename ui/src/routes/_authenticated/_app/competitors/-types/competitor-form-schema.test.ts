@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { competitorFormSchema } from "@/routes/_authenticated/_settings/settings/competitors/-utils/competitor-form-schema";
+import { competitorFormSchema } from "@/routes/_authenticated/_app/competitors/-types/competitor-form-schema";
 
 describe("competitorFormSchema", () => {
   it("normalizes competitor domains and aliases", () => {

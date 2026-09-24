@@ -5,6 +5,7 @@
   "toggleSidebar": "Toggle sidebar",
   "routes": {
     "mentions": "Mentions",
+    "prompts": "Prompts",
     "competitors": "Competitors",
     "citations": "Citations",
     "brief": "Brief"

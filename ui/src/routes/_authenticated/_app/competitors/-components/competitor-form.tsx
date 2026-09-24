@@ -5,7 +5,7 @@ import type { Competitor, CreateCompetitor } from "@/api/competitors.api";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { competitorFormSchema } from "@/routes/_authenticated/_settings/settings/competitors/-utils/competitor-form-schema";
+import { competitorFormSchema } from "@/routes/_authenticated/_app/competitors/-types/competitor-form-schema";
 
 export function CompetitorForm({
   initial,
@@ -16,9 +16,9 @@ export function CompetitorForm({
   initial?: Competitor;
   pending: boolean;
   onSave: (request: CreateCompetitor) => Promise<void>;
-  onCancel?: () => void;
+  onCancel: () => void;
 }) {
-  const { t } = useTranslation("brand");
+  const { t } = useTranslation("management");
   const [name, setName] = useState(initial?.name ?? "");
   const [domain, setDomain] = useState(initial?.domain ?? "");
   const [aliases, setAliases] = useState(initial?.aliases.join(", ") ?? "");
@@ -36,71 +36,55 @@ export function CompetitorForm({
     setFailed(false);
     try {
       await onSave(result.data);
-      if (!initial) {
-        setName("");
-        setDomain("");
-        setAliases("");
-      }
     } catch {
       setFailed(true);
     }
   }
 
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="space-y-4">
       <FieldGroup className="sm:grid sm:grid-cols-2">
         <Field data-invalid={invalidFields.has("name") || undefined}>
-          <FieldLabel htmlFor={`competitor-name-${initial?.id ?? "add"}`}>
-            {t("lists.competitors.name")}
-          </FieldLabel>
+          <FieldLabel htmlFor="competitor-name">{t("name")}</FieldLabel>
           <Input
-            id={`competitor-name-${initial?.id ?? "add"}`}
+            id="competitor-name"
+            autoFocus
             value={name}
             onChange={(event) => setName(event.target.value)}
             aria-invalid={invalidFields.has("name") || undefined}
           />
-          {invalidFields.has("name") ? (
-            <FieldError>{t("lists.competitors.nameInvalid")}</FieldError>
-          ) : null}
+          {invalidFields.has("name") ? <FieldError>{t("nameInvalid")}</FieldError> : null}
         </Field>
         <Field data-invalid={invalidFields.has("domain") || undefined}>
-          <FieldLabel htmlFor={`competitor-domain-${initial?.id ?? "add"}`}>
-            {t("lists.competitors.domain")}
-          </FieldLabel>
+          <FieldLabel htmlFor="competitor-domain">{t("domain")}</FieldLabel>
           <Input
-            id={`competitor-domain-${initial?.id ?? "add"}`}
+            id="competitor-domain"
             value={domain}
             onChange={(event) => setDomain(event.target.value)}
             aria-invalid={invalidFields.has("domain") || undefined}
-            placeholder={t("lists.competitors.domainPlaceholder")}
+            placeholder={t("domainPlaceholder")}
           />
-          {invalidFields.has("domain") ? (
-            <FieldError>{t("lists.competitors.domainInvalid")}</FieldError>
-          ) : null}
+          {invalidFields.has("domain") ? <FieldError>{t("domainInvalid")}</FieldError> : null}
         </Field>
         <Field className="sm:col-span-2">
-          <FieldLabel htmlFor={`competitor-aliases-${initial?.id ?? "add"}`}>
-            {t("lists.competitors.aliases")}
-          </FieldLabel>
+          <FieldLabel htmlFor="competitor-aliases">{t("aliases")}</FieldLabel>
           <Input
-            id={`competitor-aliases-${initial?.id ?? "add"}`}
+            id="competitor-aliases"
             value={aliases}
             onChange={(event) => setAliases(event.target.value)}
-            placeholder={t("lists.competitors.aliasesPlaceholder")}
+            placeholder={t("aliasesPlaceholder")}
           />
         </Field>
       </FieldGroup>
-      <div className="mt-3 flex gap-2">
-        {onCancel ? (
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            {t("lists.cancel")}
-          </Button>
-        ) : null}
+      {failed ? <FieldError>{t("competitorSaveError")}</FieldError> : null}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          {t("cancel")}
+        </Button>
         <Button type="submit" disabled={pending}>
-          {initial ? t("lists.save") : t("lists.competitors.add")}
+          {t("saveCompetitor")}
         </Button>
       </div>
-      {failed ? <FieldError className="mt-2">{t("lists.saveError")}</FieldError> : null}
     </form>
   );
 }

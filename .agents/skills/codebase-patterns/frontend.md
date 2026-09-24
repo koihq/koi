@@ -83,7 +83,7 @@ Full-CRUD feature structure:
 
 ```
 routes/featureName/
-├── index.tsx           # List view (/featureName)
+├── index.tsx           # List screen and route composition (/featureName)
 ├── create/index.tsx    # Create form
 ├── read/$id.tsx        # Detail view
 ├── update/$id.tsx      # Edit form
@@ -92,6 +92,8 @@ routes/featureName/
 ├── -types/             # Zod schemas, form types
 └── -constants/
 ```
+
+Keep the page composition in the file-based route's `index.tsx`. Extract focused reusable pieces (dialogs, forms, row actions, etc.) into `-components/`; do not add a feature-management/page component there whose only job is to render the route's list screen. This keeps the route entry point as the screen owner without preventing smaller components from being colocated.
 
 Entity list/mutation hooks wrap TanStack Query and call `useApi()`.
 

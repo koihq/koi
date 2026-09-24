@@ -2,6 +2,7 @@ package koidatabase
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -27,7 +28,15 @@ func applyPromptFilter(db *gorm.DB, filter koidomain.PromptFilter) *gorm.DB {
 	if filter.Confirmed != nil {
 		db = db.Where("confirmed = ?", *filter.Confirmed)
 	}
+	if filter.Query != "" {
+		db = db.Where("text ILIKE ? ESCAPE '!'", likePattern(filter.Query))
+	}
 	return db
+}
+
+func likePattern(query string) string {
+	replacer := strings.NewReplacer(`!`, `!!`, `%`, `!%`, `_`, `!_`)
+	return "%" + replacer.Replace(query) + "%"
 }
 
 func (r *GormPromptRepository) Get(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Prompt, error) {

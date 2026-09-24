@@ -65,7 +65,7 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	unconfirmed := false
 	prompts := NewGormPromptRepository(db)
 	_, err = prompts.List(t.Context(), koidomain.PromptFilter{
-		BrandID: brandID, Confirmed: &unconfirmed, Page: koidomain.PageParams{Page: 2, PageSize: 10},
+		BrandID: brandID, Query: "100%_Koi", Confirmed: &unconfirmed, Page: koidomain.PageParams{Page: 2, PageSize: 10},
 	})
 	require.NoError(t, err)
 	_, err = prompts.Get(t.Context(), koidomain.PromptFilter{ID: childID, BrandID: brandID})
@@ -81,7 +81,7 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 
 	competitors := NewGormCompetitorRepository(db)
 	_, err = competitors.List(t.Context(), koidomain.CompetitorFilter{
-		BrandID: brandID, Page: koidomain.PageParams{Page: 1, PageSize: 10},
+		BrandID: brandID, Query: "Acme", Page: koidomain.PageParams{Page: 1, PageSize: 10},
 	})
 	require.NoError(t, err)
 	_, err = competitors.Get(t.Context(), koidomain.CompetitorFilter{ID: childID, BrandID: brandID})
@@ -96,6 +96,12 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 		require.Contains(t, query, "brand_id =")
 	}
 	require.Contains(t, queries[0], "confirmed =")
+	require.Contains(t, queries[0], "text ILIKE")
+	require.NotContains(t, queries[0], "100%_Koi")
+	require.Equal(t, `%100!%!_Koi%`, likePattern("100%_Koi"))
+	require.Contains(t, queries[6], "name ILIKE")
+	require.Contains(t, queries[6], "domain ILIKE")
+	require.Contains(t, queries[6], "jsonb_array_elements_text(aliases)")
 	update := strings.ToLower(queries[2])
 	require.Contains(t, update, "text")
 	require.NotContains(t, update, "source")

@@ -27,6 +27,10 @@ func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm
 	if filter.Confirmed != nil {
 		db = db.Where("confirmed = ?", *filter.Confirmed)
 	}
+	if filter.Query != "" {
+		pattern := likePattern(filter.Query)
+		db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!' OR EXISTS (SELECT 1 FROM jsonb_array_elements_text(aliases) AS alias(value) WHERE alias.value ILIKE ? ESCAPE '!'))", pattern, pattern, pattern)
+	}
 	return db
 }
 

@@ -82,6 +82,7 @@ type CompetitorRepository interface {
 type CompetitorFilter struct {
 	ID        uuid.UUID
 	BrandID   uuid.UUID
+	Query     string
 	Confirmed *bool
 	Page      PageParams
 }
@@ -114,7 +115,7 @@ type CompetitorCommander interface {
 }
 
 type CompetitorQuerier interface {
-	List(context.Context, uuid.UUID, uuid.UUID, PageParams, *bool) (*Page[Competitor], error)
+	List(context.Context, uuid.UUID, uuid.UUID, PageParams, string, *bool) (*Page[Competitor], error)
 	Get(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Competitor, error)
 }
 
@@ -206,11 +207,11 @@ func (s *competitorService) ConfirmAll(ctx context.Context, userID, brandID uuid
 	)
 }
 
-func (s *competitorService) List(ctx context.Context, userID, brandID uuid.UUID, page PageParams, confirmed *bool) (*Page[Competitor], error) {
+func (s *competitorService) List(ctx context.Context, userID, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Competitor], error) {
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return nil, err
 	}
-	return s.store.CompetitorRepo().List(ctx, CompetitorFilter{BrandID: brandID, Confirmed: confirmed, Page: page})
+	return s.store.CompetitorRepo().List(ctx, CompetitorFilter{BrandID: brandID, Query: query, Confirmed: confirmed, Page: page})
 }
 
 func (s *competitorService) Get(ctx context.Context, userID, brandID, competitorID uuid.UUID) (*Competitor, error) {
@@ -218,21 +219,4 @@ func (s *competitorService) Get(ctx context.Context, userID, brandID, competitor
 		return nil, err
 	}
 	return s.store.CompetitorRepo().Get(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
-}
-
-func ListsReady(prompts []Prompt, competitors []Competitor) bool {
-	if len(prompts) == 0 || len(competitors) == 0 {
-		return false
-	}
-	for _, prompt := range prompts {
-		if !prompt.Confirmed {
-			return false
-		}
-	}
-	for _, competitor := range competitors {
-		if !competitor.Confirmed {
-			return false
-		}
-	}
-	return true
 }

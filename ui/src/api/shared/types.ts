@@ -3,6 +3,10 @@ export interface BaseListParams {
   pageSize?: number;
 }
 
+export interface BaseEntity {
+  id: string;
+}
+
 export interface ApiListResponse<T> {
   items: T[];
   totalItems: number;

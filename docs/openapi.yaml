@@ -202,6 +202,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/Confirmed"
       responses:
         "200":
@@ -342,6 +343,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/Confirmed"
       responses:
         "200":
@@ -504,6 +506,11 @@ components:
       in: query
       schema:
         type: boolean
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
     BrandID:
       name: brandID
       in: path

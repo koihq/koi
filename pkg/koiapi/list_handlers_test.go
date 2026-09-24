@@ -67,7 +67,7 @@ func TestPromptHandlerCreateMalformedAndUnowned(t *testing.T) {
 	commander := NewMockPromptCommander(t)
 	querier := NewMockPromptQuerier(t)
 	querier.EXPECT().List(mock.Anything, userID, brandID,
-		koidomain.PageParams{Page: 1, PageSize: 10}, (*bool)(nil),
+		koidomain.PageParams{Page: 1, PageSize: 10}, "", (*bool)(nil),
 	).Return(nil, koidomain.ErrNotFound)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
@@ -133,7 +133,7 @@ func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	querier := NewMockPromptQuerier(t)
 	querier.EXPECT().List(mock.Anything, userID, brandID,
-		koidomain.PageParams{Page: 2, PageSize: 5}, mock.MatchedBy(func(confirmed *bool) bool {
+		koidomain.PageParams{Page: 2, PageSize: 5}, "best tools", mock.MatchedBy(func(confirmed *bool) bool {
 			return confirmed != nil && !*confirmed
 		}),
 	).Return(&koidomain.Page[koidomain.Prompt]{
@@ -144,7 +144,7 @@ func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?page=2&pageSize=5&confirmed=false", "")
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?page=2&pageSize=5&q=best+tools&confirmed=false", "")
 	var page koidomain.Page[koidomain.Prompt]
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -160,7 +160,7 @@ func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {
 	brandSession(t, client, ts.URL, userID)
 
 	for _, query := range []string{
-		"page=0", "pageSize=101", "confirmed=maybe", "confirmed=true&confirmed=false",
+		"page=0", "pageSize=101", "confirmed=maybe", "confirmed=true&confirmed=false", "q=one&q=two",
 	} {
 		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?"+query, "")
 		var body api.Envelope
@@ -198,7 +198,7 @@ func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
 	querier := NewMockCompetitorQuerier(t)
 	commander := NewMockCompetitorCommander(t)
 	querier.EXPECT().List(mock.Anything, userID, brandID,
-		koidomain.PageParams{Page: 1, PageSize: 1}, mock.MatchedBy(func(confirmed *bool) bool {
+		koidomain.PageParams{Page: 1, PageSize: 1}, "acme", mock.MatchedBy(func(confirmed *bool) bool {
 			return confirmed != nil && *confirmed
 		}),
 	).Return(&koidomain.Page[koidomain.Competitor]{
@@ -209,7 +209,7 @@ func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors?pageSize=1&confirmed=true", "")
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors?pageSize=1&q=acme&confirmed=true", "")
 	var page koidomain.Page[koidomain.Competitor]
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)

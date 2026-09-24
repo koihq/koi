@@ -1,9 +1,4 @@
-import {
-  ArrowLeft02Icon,
-  Building02Icon,
-  MessageQuestionIcon,
-  UserMultipleIcon,
-} from "@hugeicons/core-free-icons";
+import { ArrowLeft02Icon, Building02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { createFileRoute, Link, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -69,12 +64,6 @@ function SettingsSidebar() {
   const pathname = useLocation({ select: (location) => location.pathname });
   const items = [
     { to: "/settings/brand", label: t("settings.brand"), icon: Building02Icon },
-    { to: "/settings/prompts", label: t("settings.prompts"), icon: MessageQuestionIcon },
-    {
-      to: "/settings/competitors",
-      label: t("settings.competitors"),
-      icon: UserMultipleIcon,
-    },
   ] as const;
 
   return (

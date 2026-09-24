@@ -60,6 +60,7 @@ type PromptRepository interface {
 type PromptFilter struct {
 	ID        uuid.UUID
 	BrandID   uuid.UUID
+	Query     string
 	Confirmed *bool
 	Page      PageParams
 }
@@ -81,7 +82,7 @@ type PromptCommander interface {
 }
 
 type PromptQuerier interface {
-	List(context.Context, uuid.UUID, uuid.UUID, PageParams, *bool) (*Page[Prompt], error)
+	List(context.Context, uuid.UUID, uuid.UUID, PageParams, string, *bool) (*Page[Prompt], error)
 	Get(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Prompt, error)
 }
 
@@ -167,11 +168,11 @@ func (s *promptService) ConfirmAll(ctx context.Context, userID, brandID uuid.UUI
 	)
 }
 
-func (s *promptService) List(ctx context.Context, userID, brandID uuid.UUID, page PageParams, confirmed *bool) (*Page[Prompt], error) {
+func (s *promptService) List(ctx context.Context, userID, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Prompt], error) {
 	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
 		return nil, err
 	}
-	return s.store.PromptRepo().List(ctx, PromptFilter{BrandID: brandID, Confirmed: confirmed, Page: page})
+	return s.store.PromptRepo().List(ctx, PromptFilter{BrandID: brandID, Query: query, Confirmed: confirmed, Page: page})
 }
 
 func (s *promptService) Get(ctx context.Context, userID, brandID, promptID uuid.UUID) (*Prompt, error) {

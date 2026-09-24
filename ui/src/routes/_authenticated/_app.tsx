@@ -1,6 +1,7 @@
 import {
   Analytics01Icon,
   File01Icon,
+  MessageQuestionIcon,
   QuoteIcon,
   UserMultipleIcon,
 } from "@hugeicons/core-free-icons";
@@ -21,6 +22,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const navigation = [
   { to: "/mentions", key: "mentions", icon: Analytics01Icon },
+  { to: "/prompts", key: "prompts", icon: MessageQuestionIcon },
   { to: "/competitors", key: "competitors", icon: UserMultipleIcon },
   { to: "/citations", key: "citations", icon: QuoteIcon },
   { to: "/brief", key: "brief", icon: File01Icon },
@@ -89,10 +91,10 @@ function AppSidebar({ pathname }: { pathname: string }) {
   return (
     <KoiSidebar
       header={<WorkspaceMenu name={me.organization.name} />}
-      workspace={items.slice(0, 3)}
+      workspace={items.slice(0, 4)}
       workspaceLabel={t("workspace")}
       navigationLabel={t("navigation")}
-      action={items.slice(3)}
+      action={items.slice(4)}
       actionLabel={t("action")}
     />
   );

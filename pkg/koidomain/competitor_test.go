@@ -74,7 +74,7 @@ func TestCompetitorRejectsUnownedBrandBeforeChildLookup(t *testing.T) {
 	store.EXPECT().BrandRepo().Return(brands)
 	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(nil, ErrNotFound)
 
-	_, err := NewCompetitorQuerier(store).List(t.Context(), userID, brandID, PageParams{Page: 1, PageSize: 10}, nil)
+	_, err := NewCompetitorQuerier(store).List(t.Context(), userID, brandID, PageParams{Page: 1, PageSize: 10}, "", nil)
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
