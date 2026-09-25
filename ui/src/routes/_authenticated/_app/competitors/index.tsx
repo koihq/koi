@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Competitor, CreateCompetitor } from "@/api/competitors.api";
+import type { Competitor } from "@/api/competitors.api";
 import { DataTable } from "@/components/blocks/data-table";
 import { Button } from "@/components/ui/button";
 import { validateTableSearch } from "@/hooks/use-table-state";
@@ -25,7 +25,6 @@ function CompetitorPage() {
   const [deleting, setDeleting] = useState<Competitor>();
   const deleteTrigger = useRef<HTMLElement | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const { mutateAsync: updateAsync } = mutations.update;
   const { mutate: confirmMutation } = mutations.confirm;
   const { reset: resetDelete } = mutations.remove;
   const chooseDelete = useCallback(
@@ -37,20 +36,10 @@ function CompetitorPage() {
     [resetDelete],
   );
   const pending =
-    mutations.create.isPending ||
-    mutations.update.isPending ||
-    mutations.remove.isPending ||
-    mutations.confirm.isPending;
-  const update = useCallback(
-    async (id: string, request: CreateCompetitor) => {
-      await updateAsync({ id, request });
-    },
-    [updateAsync],
-  );
+    mutations.create.isPending || mutations.remove.isPending || mutations.confirm.isPending;
   const confirm = useCallback((id: string) => confirmMutation(id), [confirmMutation]);
   const columns = useCompetitorColumns({
     pending,
-    onUpdate: update,
     onDelete: chooseDelete,
     onConfirm: confirm,
   });
@@ -108,6 +97,7 @@ function CompetitorPage() {
         searchPlaceholder={t("searchCompetitors")}
         addAction={
           <CompetitorDialog
+            brandID={brand.id}
             label={t("addCompetitor")}
             pending={mutations.create.isPending}
             onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}
@@ -122,6 +112,7 @@ function CompetitorPage() {
           <div className="space-y-3">
             <p>{t("competitorEmpty")}</p>
             <CompetitorDialog
+              brandID={brand.id}
               label={t("addFirstCompetitor")}
               pending={mutations.create.isPending}
               onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}

@@ -46,12 +46,6 @@ export interface CompetitorRes {
     domain: string;
     /**
      * 
-     * @type {Array<string>}
-     * @memberof CompetitorRes
-     */
-    aliases: Array<string>;
-    /**
-     * 
      * @type {CompetitorResSourceEnum}
      * @memberof CompetitorRes
      */
@@ -84,7 +78,6 @@ export function instanceOfCompetitorRes(value: object): value is CompetitorRes {
     if (!('brandId' in value) || value['brandId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('domain' in value) || value['domain'] === undefined) return false;
-    if (!('aliases' in value) || value['aliases'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
     return true;
@@ -104,7 +97,6 @@ export function CompetitorResFromJSONTyped(json: any, ignoreDiscriminator: boole
         'brandId': json['brand_id'],
         'name': json['name'],
         'domain': json['domain'],
-        'aliases': json['aliases'],
         'source': json['source'],
         'confirmed': json['confirmed'],
     };
@@ -125,7 +117,6 @@ export function CompetitorResToJSONTyped(value?: CompetitorRes | null, ignoreDis
         'brand_id': value['brandId'],
         'name': value['name'],
         'domain': value['domain'],
-        'aliases': value['aliases'],
         'source': value['source'],
         'confirmed': value['confirmed'],
     };

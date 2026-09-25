@@ -1,9 +1,4 @@
-import type {
-  CompetitorPatchRequest,
-  CompetitorRequest,
-  CompetitorRes,
-  CompetitorsApi,
-} from "@/api/generated";
+import type { CompetitorRequest, CompetitorRes, CompetitorsApi } from "@/api/generated";
 import { CompetitorResFromJSON } from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
 import { mapPage } from "@/api/shared/mappers";
@@ -11,7 +6,10 @@ import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Competitor = CompetitorRes;
 export type CreateCompetitor = CompetitorRequest;
-export type UpdateCompetitor = CompetitorPatchRequest;
+export interface CompetitorSearchResult {
+  name: string;
+  domain: string;
+}
 
 export interface CompetitorListParams extends BaseListParams {
   pageSize?: 10 | 20 | 50;
@@ -40,10 +38,14 @@ export function createCompetitorsApi(api: CompetitorsApi) {
     },
     getById: (brandID: string, id: string): Promise<Competitor> =>
       callApi(() => api.getCompetitor(brandID, id)),
+    search: (
+      brandID: string,
+      query: string,
+      initOverrides?: RequestInit,
+    ): Promise<CompetitorSearchResult[]> =>
+      callApi(() => api.searchCompetitors(brandID, query, initOverrides)),
     create: (brandID: string, request: CreateCompetitor): Promise<Competitor> =>
       callApi(() => api.createCompetitor(brandID, request)),
-    update: (brandID: string, id: string, request: UpdateCompetitor): Promise<Competitor> =>
-      callApi(() => api.updateCompetitor(brandID, id, request)),
     delete: (brandID: string, id: string): Promise<void> =>
       callApi(() => api.deleteCompetitor(brandID, id)),
     confirm: (brandID: string, id: string): Promise<Competitor> =>

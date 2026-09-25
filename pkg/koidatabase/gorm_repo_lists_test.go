@@ -1,7 +1,6 @@
 package koidatabase
 
 import (
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -34,15 +33,7 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 
 	s, err := schema.Parse(&koidomain.Competitor{}, &sync.Map{}, schema.NamingStrategy{})
 	require.NoError(t, err)
-	aliases := s.LookUpField("aliases")
-	require.NotNil(t, aliases.Serializer)
-	source := koidomain.Competitor{Aliases: []string{"Acme", "Acme AI"}}
-	value, err := aliases.Serializer.Value(t.Context(), aliases, reflect.ValueOf(&source).Elem(), source.Aliases)
-	require.NoError(t, err)
-	require.Equal(t, `["Acme","Acme AI"]`, value)
-	var destination koidomain.Competitor
-	require.NoError(t, aliases.Serializer.Scan(t.Context(), aliases, reflect.ValueOf(&destination).Elem(), value))
-	require.Equal(t, source.Aliases, destination.Aliases)
+	require.Nil(t, s.LookUpField("aliases"))
 }
 
 func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
@@ -86,10 +77,10 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	require.NoError(t, err)
 	_, err = competitors.Get(t.Context(), koidomain.CompetitorFilter{ID: childID, BrandID: brandID})
 	require.NoError(t, err)
-	aliases := []string{}
+	competitorConfirmed := true
 	require.ErrorIs(t, competitors.Update(t.Context(), koidomain.CompetitorFilter{
 		ID: childID, BrandID: brandID,
-	}, koidomain.CompetitorUpdate{Aliases: &aliases}), koidomain.ErrNotFound)
+	}, koidomain.CompetitorUpdate{Confirmed: &competitorConfirmed}), koidomain.ErrNotFound)
 
 	require.Len(t, queries, 9)
 	for _, query := range queries {
@@ -101,15 +92,14 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	require.Equal(t, `%100!%!_Koi%`, likePattern("100%_Koi"))
 	require.Contains(t, queries[6], "name ILIKE")
 	require.Contains(t, queries[6], "domain ILIKE")
-	require.Contains(t, queries[6], "jsonb_array_elements_text(aliases)")
+	require.NotContains(t, queries[6], "aliases")
 	update := strings.ToLower(queries[2])
 	require.Contains(t, update, "text")
 	require.NotContains(t, update, "source")
 	require.NotContains(t, update, "confirmed")
 	competitorUpdate := strings.ToLower(queries[8])
-	require.Contains(t, competitorUpdate, "aliases")
+	require.Contains(t, competitorUpdate, "confirmed")
 	require.NotContains(t, competitorUpdate, "source")
-	require.NotContains(t, competitorUpdate, "confirmed")
 
 	listSQL := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		var items []koidomain.Prompt

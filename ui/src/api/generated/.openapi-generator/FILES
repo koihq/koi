@@ -8,7 +8,6 @@ index.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
 models/BrandRes.ts
-models/CompetitorPatchRequest.ts
 models/CompetitorRequest.ts
 models/CompetitorRes.ts
 models/CountryOption.ts
@@ -25,5 +24,6 @@ models/Page.ts
 models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts
+models/SearchCompetitors200ResponseInner.ts
 models/index.ts
 runtime.ts

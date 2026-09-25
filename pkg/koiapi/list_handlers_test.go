@@ -1,6 +1,7 @@
 package koiapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,12 +16,25 @@ import (
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
+type emptyCompetitorSearcher struct{}
+
+func (emptyCompetitorSearcher) Search(context.Context, string) ([]CompetitorSearchResult, error) {
+	return nil, nil
+}
+
+type competitorSearchFunc func(context.Context, string) ([]CompetitorSearchResult, error)
+
+func (f competitorSearchFunc) Search(ctx context.Context, query string) ([]CompetitorSearchResult, error) {
+	return f(ctx, query)
+}
+
 func newListsTestServer(
 	t *testing.T,
 	pq koidomain.PromptQuerier,
 	pc koidomain.PromptCommander,
 	cq koidomain.CompetitorQuerier,
 	cc koidomain.CompetitorCommander,
+	searchers ...CompetitorSearcher,
 ) *httptest.Server {
 	t.Helper()
 	sess := scs.New()
@@ -32,7 +46,11 @@ func newListsTestServer(
 		w.WriteHeader(http.StatusNoContent)
 	})
 	r.Route("/api/v1/brands/{brandID}/prompts", NewPromptHandler(pq, pc, sess).Routes())
-	r.Route("/api/v1/brands/{brandID}/competitors", NewCompetitorHandler(cq, cc, sess).Routes())
+	var searcher CompetitorSearcher = emptyCompetitorSearcher{}
+	if len(searchers) > 0 {
+		searcher = searchers[0]
+	}
+	r.Route("/api/v1/brands/{brandID}/competitors", NewCompetitorHandler(cq, cc, searcher, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 	return ts
@@ -52,6 +70,7 @@ func TestListHandlersRequireSession(t *testing.T) {
 		{http.MethodDelete, "/prompts/" + childID.String(), ""},
 		{http.MethodPost, "/prompts/" + childID.String() + "/confirm", ""},
 		{http.MethodGet, "/competitors", ""},
+		{http.MethodGet, "/competitors/search?q=acme", ""},
 	}
 	for _, request := range paths {
 		resp := doJSON(t, client, request.method, ts.URL+"/api/v1/brands/"+brandID.String()+request.path, request.body)
@@ -111,9 +130,9 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	commander := NewMockCompetitorCommander(t)
 	commander.EXPECT().Create(mock.Anything, userID, brandID, koidomain.CompetitorParams{
-		Name: "Acme", Domain: "acme.com", Aliases: []string{"Acme AI"},
+		Name: "Acme", Domain: "acme.com",
 	}).Return(&koidomain.Competitor{
-		BrandID: brandID, Name: "Acme", Domain: "acme.com", Aliases: []string{"Acme AI"},
+		BrandID: brandID, Name: "Acme", Domain: "acme.com",
 		Source: koidomain.CompetitorSourceManual, Confirmed: true,
 	}, nil)
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), NewMockCompetitorQuerier(t), commander)
@@ -121,7 +140,7 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 	brandSession(t, client, ts.URL, userID)
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors",
-		`{"name":"Acme","domain":"acme.com","aliases":["Acme AI"],"source":"observed","confirmed":false}`)
+		`{"name":"Acme","domain":"acme.com","source":"observed","confirmed":false}`)
 	var body koidomain.Competitor
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)

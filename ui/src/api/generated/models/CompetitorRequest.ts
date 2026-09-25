@@ -32,12 +32,6 @@ export interface CompetitorRequest {
      * @memberof CompetitorRequest
      */
     domain: string;
-    /**
-     * 
-     * @type {Array<string>}
-     * @memberof CompetitorRequest
-     */
-    aliases: Array<string>;
 }
 
 /**
@@ -46,7 +40,6 @@ export interface CompetitorRequest {
 export function instanceOfCompetitorRequest(value: object): value is CompetitorRequest {
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('domain' in value) || value['domain'] === undefined) return false;
-    if (!('aliases' in value) || value['aliases'] === undefined) return false;
     return true;
 }
 
@@ -62,7 +55,6 @@ export function CompetitorRequestFromJSONTyped(json: any, ignoreDiscriminator: b
         
         'name': json['name'],
         'domain': json['domain'],
-        'aliases': json['aliases'],
     };
 }
 
@@ -79,7 +71,6 @@ export function CompetitorRequestToJSONTyped(value?: CompetitorRequest | null, i
         
         'name': value['name'],
         'domain': value['domain'],
-        'aliases': value['aliases'],
     };
 }
 

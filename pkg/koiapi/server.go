@@ -2,6 +2,7 @@ package koiapi
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -53,6 +54,7 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager) http.Handl
 			r.Route("/{brandID}/competitors", NewCompetitorHandler(
 				koidomain.NewCompetitorQuerier(store),
 				koidomain.NewCompetitorCommander(store),
+				NewLogoDevSearcher(os.Getenv("LOGODEV_SECRET_KEY")),
 				sess,
 			).Routes())
 		})

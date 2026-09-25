@@ -382,6 +382,42 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/competitors/search:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    get:
+      tags: [competitors]
+      operationId: searchCompetitors
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+      responses:
+        "200":
+          description: Matching companies from Logo.dev
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name, domain]
+                  properties:
+                    name:
+                      type: string
+                    domain:
+                      type: string
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/competitors/{competitorID}:
     parameters:
       - $ref: "#/components/parameters/BrandID"
@@ -398,30 +434,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CompetitorRes"
-        "401":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/Error"
-    patch:
-      tags: [competitors]
-      operationId: updateCompetitor
-      security:
-        - cookieAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CompetitorPatchRequest"
-      responses:
-        "200":
-          description: Updated competitor with confirmation and source preserved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CompetitorRes"
-        "400":
-          $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -661,31 +673,15 @@ components:
     CompetitorRequest:
       type: object
       additionalProperties: false
-      required: [name, domain, aliases]
+      required: [name, domain]
       properties:
         name:
           type: string
         domain:
           type: string
-        aliases:
-          type: array
-          items:
-            type: string
-    CompetitorPatchRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        name:
-          type: string
-        domain:
-          type: string
-        aliases:
-          type: array
-          items:
-            type: string
     CompetitorRes:
       type: object
-      required: [id, brand_id, name, domain, aliases, source, confirmed]
+      required: [id, brand_id, name, domain, source, confirmed]
       properties:
         id:
           type: string
@@ -697,10 +693,6 @@ components:
           type: string
         domain:
           type: string
-        aliases:
-          type: array
-          items:
-            type: string
         source:
           type: string
           enum: [manual, drafted, observed]

@@ -11,11 +11,6 @@ export function useCompetitorMutations(brandID: string) {
     mutationFn: (request: CreateCompetitor) => api.competitors.create(brandID, request),
     onSuccess: invalidate,
   });
-  const update = useMutation({
-    mutationFn: ({ id, request }: { id: string; request: CreateCompetitor }) =>
-      api.competitors.update(brandID, id, request),
-    onSuccess: invalidate,
-  });
   const remove = useMutation({
     mutationFn: (id: string) => api.competitors.delete(brandID, id),
     onSuccess: invalidate,
@@ -28,5 +23,5 @@ export function useCompetitorMutations(brandID: string) {
     mutationFn: () => api.competitors.confirmAll(brandID),
     onSuccess: invalidate,
   });
-  return { create, update, remove, confirm, confirmAll };
+  return { create, remove, confirm, confirmAll };
 }

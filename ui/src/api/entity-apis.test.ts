@@ -108,7 +108,6 @@ describe("entity API wrappers", () => {
       listCompetitors: vi.fn().mockResolvedValue(page),
       getCompetitor: vi.fn(),
       createCompetitor: vi.fn(),
-      updateCompetitor: vi.fn(),
       deleteCompetitor: vi.fn(),
       confirmCompetitor: vi.fn(),
       confirmAllCompetitors: vi.fn(),

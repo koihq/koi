@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { brandfetchLogoURL, brandInitial } from "@/components/blocks/brand-icon";
+import { brandInitial, logoDevURL } from "@/components/blocks/brand-icon";
 
 describe("brand icon", () => {
-  it("builds a direct Brandfetch CDN URL only with a public client ID", () => {
-    expect(brandfetchLogoURL("acme.com", undefined)).toBeNull();
-    expect(brandfetchLogoURL("acme.com", " public id ")).toBe(
-      "https://cdn.brandfetch.io/domain/acme.com/w/64/h/64/fallback/404/type/icon?c=public%20id",
+  it("builds a Logo.dev CDN URL only with a publishable key", () => {
+    expect(logoDevURL("acme.com", undefined)).toBeNull();
+    expect(logoDevURL("acme.com", " public key ")).toBe(
+      "https://img.logo.dev/acme.com?token=public%20key&size=64&format=webp",
     );
   });
 

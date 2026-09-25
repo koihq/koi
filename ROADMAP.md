@@ -33,7 +33,7 @@ Onboarding and the first prompt × engine run. Includes competitor identificatio
 - [ ] Brand onboarding: name, domain or GitHub repo, country, optional one-line product
 - [ ] OpenRouter onboarding agent (not the collect pipeline) drafts, in one pass:
   - ~10–15 buyer prompts: category, alternatives-to, comparison, use-case — not only vanity branded queries
-  - ~5–8 likely competitors: `name`, `domain`, mention aliases
+  - ~5–8 likely competitors: `name`, `domain`
 - [ ] Human review of both lists (accept / edit / drop / add) before any collect
 - [ ] First run: persist prompt, engine, fetched_at, outcome, raw answer, sources, mentioned/cited entities
 - [ ] Who-shows-up: attach rows to confirmed competitors; repeating unknowns become suggestions, not silent adds
@@ -76,7 +76,7 @@ Replace the spreadsheet. Keep the loop closed.
 | Brief | copy / download | `koi brief` | `gap_brief` |
 | Recheck | re-run on a run | `koi check` | `check_run` |
 
-Tracked competitor: `name`, `domain`, aliases, source (`drafted` | `observed` | `manual`), confirmed boolean. Prompt mix uses confirmed competitors for `alternatives to X` and `X vs Y`. Mention/cite detection uses aliases.
+Tracked competitor: `name`, `domain`, source (`drafted` | `observed` | `manual`), confirmed boolean. Prompt mix uses confirmed competitors for `alternatives to X` and `X vs Y`. Mention/cite detection uses the selected brand name and domain.
 
 ## Next
 

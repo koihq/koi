@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-export function brandfetchLogoURL(domain: string, clientID: string | undefined): string | null {
-  const id = clientID?.trim();
-  if (!id || !domain) return null;
-  return `https://cdn.brandfetch.io/domain/${encodeURIComponent(domain)}/w/64/h/64/fallback/404/type/icon?c=${encodeURIComponent(id)}`;
+export function logoDevURL(domain: string, token: string | undefined): string | null {
+  const key = token?.trim();
+  if (!key || !domain) return null;
+  return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${encodeURIComponent(key)}&size=64&format=webp`;
 }
 
 export function brandInitial(name: string, domain: string): string {
@@ -11,7 +11,7 @@ export function brandInitial(name: string, domain: string): string {
 }
 
 export function BrandIcon({ name, domain }: { name: string; domain: string }) {
-  const logoURL = brandfetchLogoURL(domain, import.meta.env.VITE_BRANDFETCH_CLIENT_ID);
+  const logoURL = logoDevURL(domain, import.meta.env.VITE_LOGODEV_PUBLISHABLE_KEY);
   const [failedURL, setFailedURL] = useState<string>();
   const showLogo = logoURL !== null && failedURL !== logoURL;
 

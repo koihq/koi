@@ -2,6 +2,7 @@ package koidomain
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,7 +21,6 @@ type Competitor struct {
 	BrandID   uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;index"`
 	Name      string           `json:"name" gorm:"not null"`
 	Domain    string           `json:"domain" gorm:"not null"`
-	Aliases   []string         `json:"aliases" gorm:"serializer:json;type:jsonb;not null"`
 	Source    CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed bool             `json:"confirmed" gorm:"not null;default:false"`
 	Brand     *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
@@ -31,21 +31,6 @@ func (Competitor) TableName() string { return "competitors" }
 func (c *Competitor) Normalize() {
 	c.Name = normalizeWhitespace(c.Name)
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
-	aliases := make([]string, 0, len(c.Aliases))
-	seen := make(map[string]struct{}, len(c.Aliases))
-	for _, raw := range c.Aliases {
-		alias := normalizeWhitespace(raw)
-		key := strings.ToLower(alias)
-		if alias == "" {
-			continue
-		}
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		aliases = append(aliases, alias)
-	}
-	c.Aliases = aliases
 }
 
 func (c Competitor) Validate() error {
@@ -82,33 +67,23 @@ type CompetitorRepository interface {
 type CompetitorFilter struct {
 	ID        uuid.UUID
 	BrandID   uuid.UUID
+	Domain    string
 	Query     string
 	Confirmed *bool
 	Page      PageParams
 }
 
 type CompetitorUpdate struct {
-	Name      *string
-	Domain    *string
-	Aliases   *[]string
 	Confirmed *bool
 }
 
 type CompetitorParams struct {
-	Name    string
-	Domain  string
-	Aliases []string
-}
-
-type CompetitorPatch struct {
-	Name    *string
-	Domain  *string
-	Aliases *[]string
+	Name   string
+	Domain string
 }
 
 type CompetitorCommander interface {
 	Create(context.Context, uuid.UUID, uuid.UUID, CompetitorParams) (*Competitor, error)
-	Update(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, CompetitorPatch) (*Competitor, error)
 	Delete(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error
 	Confirm(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Competitor, error)
 	ConfirmAll(context.Context, uuid.UUID, uuid.UUID) error
@@ -129,44 +104,19 @@ func (s *competitorService) Create(ctx context.Context, userID, brandID uuid.UUI
 		return nil, err
 	}
 	competitor := &Competitor{
-		BrandID: brandID, Name: params.Name, Domain: params.Domain, Aliases: params.Aliases,
+		BrandID: brandID, Name: params.Name, Domain: params.Domain,
 		Source: CompetitorSourceManual, Confirmed: true,
 	}
 	competitor.Normalize()
 	if err := competitor.Validate(); err != nil {
 		return nil, err
 	}
+	if _, err := s.store.CompetitorRepo().Get(ctx, CompetitorFilter{BrandID: brandID, Domain: competitor.Domain}); err == nil {
+		return nil, Validation(FieldError{Field: "domain", Code: FieldTaken})
+	} else if !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
 	if err := s.store.CompetitorRepo().Create(ctx, competitor); err != nil {
-		return nil, err
-	}
-	return competitor, nil
-}
-
-func (s *competitorService) Update(ctx context.Context, userID, brandID, competitorID uuid.UUID, patch CompetitorPatch) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
-		return nil, err
-	}
-	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
-	competitor, err := s.store.CompetitorRepo().Get(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-	if patch.Name != nil {
-		competitor.Name = *patch.Name
-	}
-	if patch.Domain != nil {
-		competitor.Domain = *patch.Domain
-	}
-	if patch.Aliases != nil {
-		competitor.Aliases = *patch.Aliases
-	}
-	competitor.Normalize()
-	if err := competitor.Validate(); err != nil {
-		return nil, err
-	}
-	if err := s.store.CompetitorRepo().Update(ctx, filter, CompetitorUpdate{
-		Name: &competitor.Name, Domain: &competitor.Domain, Aliases: &competitor.Aliases,
-	}); err != nil {
 		return nil, err
 	}
 	return competitor, nil

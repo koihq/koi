@@ -4,7 +4,6 @@
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
 export * from './BrandRes';
-export * from './CompetitorPatchRequest';
 export * from './CompetitorRequest';
 export * from './CompetitorRes';
 export * from './CountryOption';
@@ -21,3 +20,4 @@ export * from './Page';
 export * from './PromptPatchRequest';
 export * from './PromptRequest';
 export * from './PromptRes';
+export * from './SearchCompetitors200ResponseInner';
