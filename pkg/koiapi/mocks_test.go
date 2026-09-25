@@ -209,8 +209,8 @@ func (_m *MockAuthQuerier) EXPECT() *MockAuthQuerier_Expecter {
 }
 
 // Me provides a mock function for the type MockAuthQuerier
-func (_mock *MockAuthQuerier) Me(ctx context.Context, userID uuid.UUID) (*koidomain.Me, error) {
-	ret := _mock.Called(ctx, userID)
+func (_mock *MockAuthQuerier) Me(ctx context.Context) (*koidomain.Me, error) {
+	ret := _mock.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Me")
@@ -218,18 +218,18 @@ func (_mock *MockAuthQuerier) Me(ctx context.Context, userID uuid.UUID) (*koidom
 
 	var r0 *koidomain.Me
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*koidomain.Me, error)); ok {
-		return returnFunc(ctx, userID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (*koidomain.Me, error)); ok {
+		return returnFunc(ctx)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *koidomain.Me); ok {
-		r0 = returnFunc(ctx, userID)
+	if returnFunc, ok := ret.Get(0).(func(context.Context) *koidomain.Me); ok {
+		r0 = returnFunc(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Me)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, userID)
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -243,24 +243,18 @@ type MockAuthQuerier_Me_Call struct {
 
 // Me is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID uuid.UUID
-func (_e *MockAuthQuerier_Expecter) Me(ctx interface{}, userID interface{}) *MockAuthQuerier_Me_Call {
-	return &MockAuthQuerier_Me_Call{Call: _e.mock.On("Me", ctx, userID)}
+func (_e *MockAuthQuerier_Expecter) Me(ctx interface{}) *MockAuthQuerier_Me_Call {
+	return &MockAuthQuerier_Me_Call{Call: _e.mock.On("Me", ctx)}
 }
 
-func (_c *MockAuthQuerier_Me_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockAuthQuerier_Me_Call {
+func (_c *MockAuthQuerier_Me_Call) Run(run func(ctx context.Context)) *MockAuthQuerier_Me_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
 		run(
 			arg0,
-			arg1,
 		)
 	})
 	return _c
@@ -271,7 +265,7 @@ func (_c *MockAuthQuerier_Me_Call) Return(me *koidomain.Me, err error) *MockAuth
 	return _c
 }
 
-func (_c *MockAuthQuerier_Me_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID) (*koidomain.Me, error)) *MockAuthQuerier_Me_Call {
+func (_c *MockAuthQuerier_Me_Call) RunAndReturn(run func(ctx context.Context) (*koidomain.Me, error)) *MockAuthQuerier_Me_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -304,8 +298,8 @@ func (_m *MockBrandCommander) EXPECT() *MockBrandCommander_Expecter {
 }
 
 // Create provides a mock function for the type MockBrandCommander
-func (_mock *MockBrandCommander) Create(ctx context.Context, userID uuid.UUID, p koidomain.BrandParams) (*koidomain.Brand, error) {
-	ret := _mock.Called(ctx, userID, p)
+func (_mock *MockBrandCommander) Create(ctx context.Context, p koidomain.BrandParams) (*koidomain.Brand, error) {
+	ret := _mock.Called(ctx, p)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -313,18 +307,18 @@ func (_mock *MockBrandCommander) Create(ctx context.Context, userID uuid.UUID, p
 
 	var r0 *koidomain.Brand
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.BrandParams) (*koidomain.Brand, error)); ok {
-		return returnFunc(ctx, userID, p)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, koidomain.BrandParams) (*koidomain.Brand, error)); ok {
+		return returnFunc(ctx, p)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.BrandParams) *koidomain.Brand); ok {
-		r0 = returnFunc(ctx, userID, p)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, koidomain.BrandParams) *koidomain.Brand); ok {
+		r0 = returnFunc(ctx, p)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Brand)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.BrandParams) error); ok {
-		r1 = returnFunc(ctx, userID, p)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, koidomain.BrandParams) error); ok {
+		r1 = returnFunc(ctx, p)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -338,30 +332,24 @@ type MockBrandCommander_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID uuid.UUID
 //   - p koidomain.BrandParams
-func (_e *MockBrandCommander_Expecter) Create(ctx interface{}, userID interface{}, p interface{}) *MockBrandCommander_Create_Call {
-	return &MockBrandCommander_Create_Call{Call: _e.mock.On("Create", ctx, userID, p)}
+func (_e *MockBrandCommander_Expecter) Create(ctx interface{}, p interface{}) *MockBrandCommander_Create_Call {
+	return &MockBrandCommander_Create_Call{Call: _e.mock.On("Create", ctx, p)}
 }
 
-func (_c *MockBrandCommander_Create_Call) Run(run func(ctx context.Context, userID uuid.UUID, p koidomain.BrandParams)) *MockBrandCommander_Create_Call {
+func (_c *MockBrandCommander_Create_Call) Run(run func(ctx context.Context, p koidomain.BrandParams)) *MockBrandCommander_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 koidomain.BrandParams
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 koidomain.BrandParams
-		if args[2] != nil {
-			arg2 = args[2].(koidomain.BrandParams)
+			arg1 = args[1].(koidomain.BrandParams)
 		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
@@ -372,14 +360,14 @@ func (_c *MockBrandCommander_Create_Call) Return(brand *koidomain.Brand, err err
 	return _c
 }
 
-func (_c *MockBrandCommander_Create_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID, p koidomain.BrandParams) (*koidomain.Brand, error)) *MockBrandCommander_Create_Call {
+func (_c *MockBrandCommander_Create_Call) RunAndReturn(run func(ctx context.Context, p koidomain.BrandParams) (*koidomain.Brand, error)) *MockBrandCommander_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type MockBrandCommander
-func (_mock *MockBrandCommander) Update(ctx context.Context, userID uuid.UUID, id uuid.UUID, p koidomain.BrandPatch) (*koidomain.Brand, error) {
-	ret := _mock.Called(ctx, userID, id, p)
+func (_mock *MockBrandCommander) Update(ctx context.Context, id uuid.UUID, p koidomain.BrandPatch) (*koidomain.Brand, error) {
+	ret := _mock.Called(ctx, id, p)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
@@ -387,18 +375,18 @@ func (_mock *MockBrandCommander) Update(ctx context.Context, userID uuid.UUID, i
 
 	var r0 *koidomain.Brand
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.BrandPatch) (*koidomain.Brand, error)); ok {
-		return returnFunc(ctx, userID, id, p)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.BrandPatch) (*koidomain.Brand, error)); ok {
+		return returnFunc(ctx, id, p)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.BrandPatch) *koidomain.Brand); ok {
-		r0 = returnFunc(ctx, userID, id, p)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.BrandPatch) *koidomain.Brand); ok {
+		r0 = returnFunc(ctx, id, p)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Brand)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.BrandPatch) error); ok {
-		r1 = returnFunc(ctx, userID, id, p)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.BrandPatch) error); ok {
+		r1 = returnFunc(ctx, id, p)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -412,14 +400,13 @@ type MockBrandCommander_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID uuid.UUID
 //   - id uuid.UUID
 //   - p koidomain.BrandPatch
-func (_e *MockBrandCommander_Expecter) Update(ctx interface{}, userID interface{}, id interface{}, p interface{}) *MockBrandCommander_Update_Call {
-	return &MockBrandCommander_Update_Call{Call: _e.mock.On("Update", ctx, userID, id, p)}
+func (_e *MockBrandCommander_Expecter) Update(ctx interface{}, id interface{}, p interface{}) *MockBrandCommander_Update_Call {
+	return &MockBrandCommander_Update_Call{Call: _e.mock.On("Update", ctx, id, p)}
 }
 
-func (_c *MockBrandCommander_Update_Call) Run(run func(ctx context.Context, userID uuid.UUID, id uuid.UUID, p koidomain.BrandPatch)) *MockBrandCommander_Update_Call {
+func (_c *MockBrandCommander_Update_Call) Run(run func(ctx context.Context, id uuid.UUID, p koidomain.BrandPatch)) *MockBrandCommander_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -429,19 +416,14 @@ func (_c *MockBrandCommander_Update_Call) Run(run func(ctx context.Context, user
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
+		var arg2 koidomain.BrandPatch
 		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
-		var arg3 koidomain.BrandPatch
-		if args[3] != nil {
-			arg3 = args[3].(koidomain.BrandPatch)
+			arg2 = args[2].(koidomain.BrandPatch)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -452,7 +434,7 @@ func (_c *MockBrandCommander_Update_Call) Return(brand *koidomain.Brand, err err
 	return _c
 }
 
-func (_c *MockBrandCommander_Update_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID, id uuid.UUID, p koidomain.BrandPatch) (*koidomain.Brand, error)) *MockBrandCommander_Update_Call {
+func (_c *MockBrandCommander_Update_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID, p koidomain.BrandPatch) (*koidomain.Brand, error)) *MockBrandCommander_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -485,8 +467,8 @@ func (_m *MockBrandQuerier) EXPECT() *MockBrandQuerier_Expecter {
 }
 
 // Get provides a mock function for the type MockBrandQuerier
-func (_mock *MockBrandQuerier) Get(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*koidomain.Brand, error) {
-	ret := _mock.Called(ctx, userID, id)
+func (_mock *MockBrandQuerier) Get(ctx context.Context, id uuid.UUID) (*koidomain.Brand, error) {
+	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
@@ -494,18 +476,18 @@ func (_mock *MockBrandQuerier) Get(ctx context.Context, userID uuid.UUID, id uui
 
 	var r0 *koidomain.Brand
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*koidomain.Brand, error)); ok {
-		return returnFunc(ctx, userID, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*koidomain.Brand, error)); ok {
+		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *koidomain.Brand); ok {
-		r0 = returnFunc(ctx, userID, id)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *koidomain.Brand); ok {
+		r0 = returnFunc(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Brand)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, userID, id)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, id)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -519,13 +501,12 @@ type MockBrandQuerier_Get_Call struct {
 
 // Get is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID uuid.UUID
 //   - id uuid.UUID
-func (_e *MockBrandQuerier_Expecter) Get(ctx interface{}, userID interface{}, id interface{}) *MockBrandQuerier_Get_Call {
-	return &MockBrandQuerier_Get_Call{Call: _e.mock.On("Get", ctx, userID, id)}
+func (_e *MockBrandQuerier_Expecter) Get(ctx interface{}, id interface{}) *MockBrandQuerier_Get_Call {
+	return &MockBrandQuerier_Get_Call{Call: _e.mock.On("Get", ctx, id)}
 }
 
-func (_c *MockBrandQuerier_Get_Call) Run(run func(ctx context.Context, userID uuid.UUID, id uuid.UUID)) *MockBrandQuerier_Get_Call {
+func (_c *MockBrandQuerier_Get_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockBrandQuerier_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -535,14 +516,9 @@ func (_c *MockBrandQuerier_Get_Call) Run(run func(ctx context.Context, userID uu
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
-		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
@@ -553,14 +529,14 @@ func (_c *MockBrandQuerier_Get_Call) Return(brand *koidomain.Brand, err error) *
 	return _c
 }
 
-func (_c *MockBrandQuerier_Get_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID, id uuid.UUID) (*koidomain.Brand, error)) *MockBrandQuerier_Get_Call {
+func (_c *MockBrandQuerier_Get_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (*koidomain.Brand, error)) *MockBrandQuerier_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type MockBrandQuerier
-func (_mock *MockBrandQuerier) List(ctx context.Context, userID uuid.UUID, page int, pageSize int) (*koidomain.Page[koidomain.Brand], error) {
-	ret := _mock.Called(ctx, userID, page, pageSize)
+func (_mock *MockBrandQuerier) List(ctx context.Context, page int, pageSize int) (*koidomain.Page[koidomain.Brand], error) {
+	ret := _mock.Called(ctx, page, pageSize)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -568,18 +544,18 @@ func (_mock *MockBrandQuerier) List(ctx context.Context, userID uuid.UUID, page 
 
 	var r0 *koidomain.Page[koidomain.Brand]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int, int) (*koidomain.Page[koidomain.Brand], error)); ok {
-		return returnFunc(ctx, userID, page, pageSize)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) (*koidomain.Page[koidomain.Brand], error)); ok {
+		return returnFunc(ctx, page, pageSize)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, int, int) *koidomain.Page[koidomain.Brand]); ok {
-		r0 = returnFunc(ctx, userID, page, pageSize)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) *koidomain.Page[koidomain.Brand]); ok {
+		r0 = returnFunc(ctx, page, pageSize)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Page[koidomain.Brand])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, int, int) error); ok {
-		r1 = returnFunc(ctx, userID, page, pageSize)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = returnFunc(ctx, page, pageSize)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -593,36 +569,30 @@ type MockBrandQuerier_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-//   - userID uuid.UUID
 //   - page int
 //   - pageSize int
-func (_e *MockBrandQuerier_Expecter) List(ctx interface{}, userID interface{}, page interface{}, pageSize interface{}) *MockBrandQuerier_List_Call {
-	return &MockBrandQuerier_List_Call{Call: _e.mock.On("List", ctx, userID, page, pageSize)}
+func (_e *MockBrandQuerier_Expecter) List(ctx interface{}, page interface{}, pageSize interface{}) *MockBrandQuerier_List_Call {
+	return &MockBrandQuerier_List_Call{Call: _e.mock.On("List", ctx, page, pageSize)}
 }
 
-func (_c *MockBrandQuerier_List_Call) Run(run func(ctx context.Context, userID uuid.UUID, page int, pageSize int)) *MockBrandQuerier_List_Call {
+func (_c *MockBrandQuerier_List_Call) Run(run func(ctx context.Context, page int, pageSize int)) *MockBrandQuerier_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 int
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(int)
 		}
 		var arg2 int
 		if args[2] != nil {
 			arg2 = args[2].(int)
 		}
-		var arg3 int
-		if args[3] != nil {
-			arg3 = args[3].(int)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -633,7 +603,7 @@ func (_c *MockBrandQuerier_List_Call) Return(page1 *koidomain.Page[koidomain.Bra
 	return _c
 }
 
-func (_c *MockBrandQuerier_List_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID, page int, pageSize int) (*koidomain.Page[koidomain.Brand], error)) *MockBrandQuerier_List_Call {
+func (_c *MockBrandQuerier_List_Call) RunAndReturn(run func(ctx context.Context, page int, pageSize int) (*koidomain.Page[koidomain.Brand], error)) *MockBrandQuerier_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -666,8 +636,8 @@ func (_m *MockCompetitorCommander) EXPECT() *MockCompetitorCommander_Expecter {
 }
 
 // Confirm provides a mock function for the type MockCompetitorCommander
-func (_mock *MockCompetitorCommander) Confirm(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Competitor, error) {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2)
+func (_mock *MockCompetitorCommander) Confirm(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Competitor, error) {
+	ret := _mock.Called(context1, uUID, uUID1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Confirm")
@@ -675,18 +645,18 @@ func (_mock *MockCompetitorCommander) Confirm(context1 context.Context, uUID uui
 
 	var r0 *koidomain.Competitor
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*koidomain.Competitor, error)); ok {
-		return returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*koidomain.Competitor, error)); ok {
+		return returnFunc(context1, uUID, uUID1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) *koidomain.Competitor); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *koidomain.Competitor); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Competitor)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -702,12 +672,11 @@ type MockCompetitorCommander_Confirm_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
-func (_e *MockCompetitorCommander_Expecter) Confirm(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}) *MockCompetitorCommander_Confirm_Call {
-	return &MockCompetitorCommander_Confirm_Call{Call: _e.mock.On("Confirm", context1, uUID, uUID1, uUID2)}
+func (_e *MockCompetitorCommander_Expecter) Confirm(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockCompetitorCommander_Confirm_Call {
+	return &MockCompetitorCommander_Confirm_Call{Call: _e.mock.On("Confirm", context1, uUID, uUID1)}
 }
 
-func (_c *MockCompetitorCommander_Confirm_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID)) *MockCompetitorCommander_Confirm_Call {
+func (_c *MockCompetitorCommander_Confirm_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockCompetitorCommander_Confirm_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -721,15 +690,10 @@ func (_c *MockCompetitorCommander_Confirm_Call) Run(run func(context1 context.Co
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -740,22 +704,22 @@ func (_c *MockCompetitorCommander_Confirm_Call) Return(competitor *koidomain.Com
 	return _c
 }
 
-func (_c *MockCompetitorCommander_Confirm_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Competitor, error)) *MockCompetitorCommander_Confirm_Call {
+func (_c *MockCompetitorCommander_Confirm_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Competitor, error)) *MockCompetitorCommander_Confirm_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ConfirmAll provides a mock function for the type MockCompetitorCommander
-func (_mock *MockCompetitorCommander) ConfirmAll(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error {
-	ret := _mock.Called(context1, uUID, uUID1)
+func (_mock *MockCompetitorCommander) ConfirmAll(context1 context.Context, uUID uuid.UUID) error {
+	ret := _mock.Called(context1, uUID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfirmAll")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r0 = returnFunc(context1, uUID, uUID1)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(context1, uUID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -770,12 +734,11 @@ type MockCompetitorCommander_ConfirmAll_Call struct {
 // ConfirmAll is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - uUID1 uuid.UUID
-func (_e *MockCompetitorCommander_Expecter) ConfirmAll(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockCompetitorCommander_ConfirmAll_Call {
-	return &MockCompetitorCommander_ConfirmAll_Call{Call: _e.mock.On("ConfirmAll", context1, uUID, uUID1)}
+func (_e *MockCompetitorCommander_Expecter) ConfirmAll(context1 interface{}, uUID interface{}) *MockCompetitorCommander_ConfirmAll_Call {
+	return &MockCompetitorCommander_ConfirmAll_Call{Call: _e.mock.On("ConfirmAll", context1, uUID)}
 }
 
-func (_c *MockCompetitorCommander_ConfirmAll_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockCompetitorCommander_ConfirmAll_Call {
+func (_c *MockCompetitorCommander_ConfirmAll_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockCompetitorCommander_ConfirmAll_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -785,14 +748,9 @@ func (_c *MockCompetitorCommander_ConfirmAll_Call) Run(run func(context1 context
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
-		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
@@ -803,14 +761,14 @@ func (_c *MockCompetitorCommander_ConfirmAll_Call) Return(err error) *MockCompet
 	return _c
 }
 
-func (_c *MockCompetitorCommander_ConfirmAll_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error) *MockCompetitorCommander_ConfirmAll_Call {
+func (_c *MockCompetitorCommander_ConfirmAll_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) error) *MockCompetitorCommander_ConfirmAll_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Create provides a mock function for the type MockCompetitorCommander
-func (_mock *MockCompetitorCommander) Create(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, competitorParams koidomain.CompetitorParams) (*koidomain.Competitor, error) {
-	ret := _mock.Called(context1, uUID, uUID1, competitorParams)
+func (_mock *MockCompetitorCommander) Create(context1 context.Context, uUID uuid.UUID, competitorParams koidomain.CompetitorParams) (*koidomain.Competitor, error) {
+	ret := _mock.Called(context1, uUID, competitorParams)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -818,18 +776,18 @@ func (_mock *MockCompetitorCommander) Create(context1 context.Context, uUID uuid
 
 	var r0 *koidomain.Competitor
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.CompetitorParams) (*koidomain.Competitor, error)); ok {
-		return returnFunc(context1, uUID, uUID1, competitorParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.CompetitorParams) (*koidomain.Competitor, error)); ok {
+		return returnFunc(context1, uUID, competitorParams)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.CompetitorParams) *koidomain.Competitor); ok {
-		r0 = returnFunc(context1, uUID, uUID1, competitorParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.CompetitorParams) *koidomain.Competitor); ok {
+		r0 = returnFunc(context1, uUID, competitorParams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Competitor)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.CompetitorParams) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, competitorParams)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.CompetitorParams) error); ok {
+		r1 = returnFunc(context1, uUID, competitorParams)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -844,13 +802,12 @@ type MockCompetitorCommander_Create_Call struct {
 // Create is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - uUID1 uuid.UUID
 //   - competitorParams koidomain.CompetitorParams
-func (_e *MockCompetitorCommander_Expecter) Create(context1 interface{}, uUID interface{}, uUID1 interface{}, competitorParams interface{}) *MockCompetitorCommander_Create_Call {
-	return &MockCompetitorCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, uUID1, competitorParams)}
+func (_e *MockCompetitorCommander_Expecter) Create(context1 interface{}, uUID interface{}, competitorParams interface{}) *MockCompetitorCommander_Create_Call {
+	return &MockCompetitorCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, competitorParams)}
 }
 
-func (_c *MockCompetitorCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, competitorParams koidomain.CompetitorParams)) *MockCompetitorCommander_Create_Call {
+func (_c *MockCompetitorCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, competitorParams koidomain.CompetitorParams)) *MockCompetitorCommander_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -860,19 +817,14 @@ func (_c *MockCompetitorCommander_Create_Call) Run(run func(context1 context.Con
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
+		var arg2 koidomain.CompetitorParams
 		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
-		var arg3 koidomain.CompetitorParams
-		if args[3] != nil {
-			arg3 = args[3].(koidomain.CompetitorParams)
+			arg2 = args[2].(koidomain.CompetitorParams)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -883,22 +835,22 @@ func (_c *MockCompetitorCommander_Create_Call) Return(competitor *koidomain.Comp
 	return _c
 }
 
-func (_c *MockCompetitorCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, competitorParams koidomain.CompetitorParams) (*koidomain.Competitor, error)) *MockCompetitorCommander_Create_Call {
+func (_c *MockCompetitorCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, competitorParams koidomain.CompetitorParams) (*koidomain.Competitor, error)) *MockCompetitorCommander_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Delete provides a mock function for the type MockCompetitorCommander
-func (_mock *MockCompetitorCommander) Delete(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) error {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2)
+func (_mock *MockCompetitorCommander) Delete(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error {
+	ret := _mock.Called(context1, uUID, uUID1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -914,12 +866,11 @@ type MockCompetitorCommander_Delete_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
-func (_e *MockCompetitorCommander_Expecter) Delete(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}) *MockCompetitorCommander_Delete_Call {
-	return &MockCompetitorCommander_Delete_Call{Call: _e.mock.On("Delete", context1, uUID, uUID1, uUID2)}
+func (_e *MockCompetitorCommander_Expecter) Delete(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockCompetitorCommander_Delete_Call {
+	return &MockCompetitorCommander_Delete_Call{Call: _e.mock.On("Delete", context1, uUID, uUID1)}
 }
 
-func (_c *MockCompetitorCommander_Delete_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID)) *MockCompetitorCommander_Delete_Call {
+func (_c *MockCompetitorCommander_Delete_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockCompetitorCommander_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -933,15 +884,10 @@ func (_c *MockCompetitorCommander_Delete_Call) Run(run func(context1 context.Con
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -952,7 +898,7 @@ func (_c *MockCompetitorCommander_Delete_Call) Return(err error) *MockCompetitor
 	return _c
 }
 
-func (_c *MockCompetitorCommander_Delete_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) error) *MockCompetitorCommander_Delete_Call {
+func (_c *MockCompetitorCommander_Delete_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error) *MockCompetitorCommander_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -985,8 +931,8 @@ func (_m *MockCompetitorQuerier) EXPECT() *MockCompetitorQuerier_Expecter {
 }
 
 // Get provides a mock function for the type MockCompetitorQuerier
-func (_mock *MockCompetitorQuerier) Get(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Competitor, error) {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2)
+func (_mock *MockCompetitorQuerier) Get(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Competitor, error) {
+	ret := _mock.Called(context1, uUID, uUID1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
@@ -994,18 +940,18 @@ func (_mock *MockCompetitorQuerier) Get(context1 context.Context, uUID uuid.UUID
 
 	var r0 *koidomain.Competitor
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*koidomain.Competitor, error)); ok {
-		return returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*koidomain.Competitor, error)); ok {
+		return returnFunc(context1, uUID, uUID1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) *koidomain.Competitor); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *koidomain.Competitor); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Competitor)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1021,12 +967,11 @@ type MockCompetitorQuerier_Get_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
-func (_e *MockCompetitorQuerier_Expecter) Get(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}) *MockCompetitorQuerier_Get_Call {
-	return &MockCompetitorQuerier_Get_Call{Call: _e.mock.On("Get", context1, uUID, uUID1, uUID2)}
+func (_e *MockCompetitorQuerier_Expecter) Get(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockCompetitorQuerier_Get_Call {
+	return &MockCompetitorQuerier_Get_Call{Call: _e.mock.On("Get", context1, uUID, uUID1)}
 }
 
-func (_c *MockCompetitorQuerier_Get_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID)) *MockCompetitorQuerier_Get_Call {
+func (_c *MockCompetitorQuerier_Get_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockCompetitorQuerier_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1040,15 +985,10 @@ func (_c *MockCompetitorQuerier_Get_Call) Run(run func(context1 context.Context,
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -1059,14 +999,14 @@ func (_c *MockCompetitorQuerier_Get_Call) Return(competitor *koidomain.Competito
 	return _c
 }
 
-func (_c *MockCompetitorQuerier_Get_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Competitor, error)) *MockCompetitorQuerier_Get_Call {
+func (_c *MockCompetitorQuerier_Get_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Competitor, error)) *MockCompetitorQuerier_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type MockCompetitorQuerier
-func (_mock *MockCompetitorQuerier) List(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Competitor], error) {
-	ret := _mock.Called(context1, uUID, uUID1, pageParams, s, b)
+func (_mock *MockCompetitorQuerier) List(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Competitor], error) {
+	ret := _mock.Called(context1, uUID, pageParams, s, b)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -1074,18 +1014,18 @@ func (_mock *MockCompetitorQuerier) List(context1 context.Context, uUID uuid.UUI
 
 	var r0 *koidomain.Page[koidomain.Competitor]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PageParams, string, *bool) (*koidomain.Page[koidomain.Competitor], error)); ok {
-		return returnFunc(context1, uUID, uUID1, pageParams, s, b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) (*koidomain.Page[koidomain.Competitor], error)); ok {
+		return returnFunc(context1, uUID, pageParams, s, b)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PageParams, string, *bool) *koidomain.Page[koidomain.Competitor]); ok {
-		r0 = returnFunc(context1, uUID, uUID1, pageParams, s, b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) *koidomain.Page[koidomain.Competitor]); ok {
+		r0 = returnFunc(context1, uUID, pageParams, s, b)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Page[koidomain.Competitor])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PageParams, string, *bool) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, pageParams, s, b)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) error); ok {
+		r1 = returnFunc(context1, uUID, pageParams, s, b)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1100,15 +1040,14 @@ type MockCompetitorQuerier_List_Call struct {
 // List is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - uUID1 uuid.UUID
 //   - pageParams koidomain.PageParams
 //   - s string
 //   - b *bool
-func (_e *MockCompetitorQuerier_Expecter) List(context1 interface{}, uUID interface{}, uUID1 interface{}, pageParams interface{}, s interface{}, b interface{}) *MockCompetitorQuerier_List_Call {
-	return &MockCompetitorQuerier_List_Call{Call: _e.mock.On("List", context1, uUID, uUID1, pageParams, s, b)}
+func (_e *MockCompetitorQuerier_Expecter) List(context1 interface{}, uUID interface{}, pageParams interface{}, s interface{}, b interface{}) *MockCompetitorQuerier_List_Call {
+	return &MockCompetitorQuerier_List_Call{Call: _e.mock.On("List", context1, uUID, pageParams, s, b)}
 }
 
-func (_c *MockCompetitorQuerier_List_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams koidomain.PageParams, s string, b *bool)) *MockCompetitorQuerier_List_Call {
+func (_c *MockCompetitorQuerier_List_Call) Run(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool)) *MockCompetitorQuerier_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1118,21 +1057,17 @@ func (_c *MockCompetitorQuerier_List_Call) Run(run func(context1 context.Context
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
+		var arg2 koidomain.PageParams
 		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
+			arg2 = args[2].(koidomain.PageParams)
 		}
-		var arg3 koidomain.PageParams
+		var arg3 string
 		if args[3] != nil {
-			arg3 = args[3].(koidomain.PageParams)
+			arg3 = args[3].(string)
 		}
-		var arg4 string
+		var arg4 *bool
 		if args[4] != nil {
-			arg4 = args[4].(string)
-		}
-		var arg5 *bool
-		if args[5] != nil {
-			arg5 = args[5].(*bool)
+			arg4 = args[4].(*bool)
 		}
 		run(
 			arg0,
@@ -1140,7 +1075,6 @@ func (_c *MockCompetitorQuerier_List_Call) Run(run func(context1 context.Context
 			arg2,
 			arg3,
 			arg4,
-			arg5,
 		)
 	})
 	return _c
@@ -1151,7 +1085,81 @@ func (_c *MockCompetitorQuerier_List_Call) Return(page *koidomain.Page[koidomain
 	return _c
 }
 
-func (_c *MockCompetitorQuerier_List_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Competitor], error)) *MockCompetitorQuerier_List_Call {
+func (_c *MockCompetitorQuerier_List_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Competitor], error)) *MockCompetitorQuerier_List_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Search provides a mock function for the type MockCompetitorQuerier
+func (_mock *MockCompetitorQuerier) Search(context1 context.Context, uUID uuid.UUID, s string) ([]koidomain.CompanySearchResult, error) {
+	ret := _mock.Called(context1, uUID, s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Search")
+	}
+
+	var r0 []koidomain.CompanySearchResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) ([]koidomain.CompanySearchResult, error)); ok {
+		return returnFunc(context1, uUID, s)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) []koidomain.CompanySearchResult); ok {
+		r0 = returnFunc(context1, uUID, s)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]koidomain.CompanySearchResult)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
+		r1 = returnFunc(context1, uUID, s)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockCompetitorQuerier_Search_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Search'
+type MockCompetitorQuerier_Search_Call struct {
+	*mock.Call
+}
+
+// Search is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+//   - s string
+func (_e *MockCompetitorQuerier_Expecter) Search(context1 interface{}, uUID interface{}, s interface{}) *MockCompetitorQuerier_Search_Call {
+	return &MockCompetitorQuerier_Search_Call{Call: _e.mock.On("Search", context1, uUID, s)}
+}
+
+func (_c *MockCompetitorQuerier_Search_Call) Run(run func(context1 context.Context, uUID uuid.UUID, s string)) *MockCompetitorQuerier_Search_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCompetitorQuerier_Search_Call) Return(companySearchResults []koidomain.CompanySearchResult, err error) *MockCompetitorQuerier_Search_Call {
+	_c.Call.Return(companySearchResults, err)
+	return _c
+}
+
+func (_c *MockCompetitorQuerier_Search_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, s string) ([]koidomain.CompanySearchResult, error)) *MockCompetitorQuerier_Search_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1184,8 +1192,8 @@ func (_m *MockPromptCommander) EXPECT() *MockPromptCommander_Expecter {
 }
 
 // Confirm provides a mock function for the type MockPromptCommander
-func (_mock *MockPromptCommander) Confirm(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Prompt, error) {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2)
+func (_mock *MockPromptCommander) Confirm(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Prompt, error) {
+	ret := _mock.Called(context1, uUID, uUID1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Confirm")
@@ -1193,18 +1201,18 @@ func (_mock *MockPromptCommander) Confirm(context1 context.Context, uUID uuid.UU
 
 	var r0 *koidomain.Prompt
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*koidomain.Prompt, error)); ok {
-		return returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*koidomain.Prompt, error)); ok {
+		return returnFunc(context1, uUID, uUID1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) *koidomain.Prompt); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *koidomain.Prompt); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Prompt)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1220,12 +1228,11 @@ type MockPromptCommander_Confirm_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
-func (_e *MockPromptCommander_Expecter) Confirm(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}) *MockPromptCommander_Confirm_Call {
-	return &MockPromptCommander_Confirm_Call{Call: _e.mock.On("Confirm", context1, uUID, uUID1, uUID2)}
+func (_e *MockPromptCommander_Expecter) Confirm(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockPromptCommander_Confirm_Call {
+	return &MockPromptCommander_Confirm_Call{Call: _e.mock.On("Confirm", context1, uUID, uUID1)}
 }
 
-func (_c *MockPromptCommander_Confirm_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID)) *MockPromptCommander_Confirm_Call {
+func (_c *MockPromptCommander_Confirm_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockPromptCommander_Confirm_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1239,15 +1246,10 @@ func (_c *MockPromptCommander_Confirm_Call) Run(run func(context1 context.Contex
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -1258,22 +1260,22 @@ func (_c *MockPromptCommander_Confirm_Call) Return(prompt *koidomain.Prompt, err
 	return _c
 }
 
-func (_c *MockPromptCommander_Confirm_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Prompt, error)) *MockPromptCommander_Confirm_Call {
+func (_c *MockPromptCommander_Confirm_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Prompt, error)) *MockPromptCommander_Confirm_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ConfirmAll provides a mock function for the type MockPromptCommander
-func (_mock *MockPromptCommander) ConfirmAll(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error {
-	ret := _mock.Called(context1, uUID, uUID1)
+func (_mock *MockPromptCommander) ConfirmAll(context1 context.Context, uUID uuid.UUID) error {
+	ret := _mock.Called(context1, uUID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ConfirmAll")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
-		r0 = returnFunc(context1, uUID, uUID1)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(context1, uUID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1288,12 +1290,11 @@ type MockPromptCommander_ConfirmAll_Call struct {
 // ConfirmAll is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - uUID1 uuid.UUID
-func (_e *MockPromptCommander_Expecter) ConfirmAll(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockPromptCommander_ConfirmAll_Call {
-	return &MockPromptCommander_ConfirmAll_Call{Call: _e.mock.On("ConfirmAll", context1, uUID, uUID1)}
+func (_e *MockPromptCommander_Expecter) ConfirmAll(context1 interface{}, uUID interface{}) *MockPromptCommander_ConfirmAll_Call {
+	return &MockPromptCommander_ConfirmAll_Call{Call: _e.mock.On("ConfirmAll", context1, uUID)}
 }
 
-func (_c *MockPromptCommander_ConfirmAll_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockPromptCommander_ConfirmAll_Call {
+func (_c *MockPromptCommander_ConfirmAll_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockPromptCommander_ConfirmAll_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1303,14 +1304,9 @@ func (_c *MockPromptCommander_ConfirmAll_Call) Run(run func(context1 context.Con
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
-		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
@@ -1321,14 +1317,14 @@ func (_c *MockPromptCommander_ConfirmAll_Call) Return(err error) *MockPromptComm
 	return _c
 }
 
-func (_c *MockPromptCommander_ConfirmAll_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error) *MockPromptCommander_ConfirmAll_Call {
+func (_c *MockPromptCommander_ConfirmAll_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) error) *MockPromptCommander_ConfirmAll_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Create provides a mock function for the type MockPromptCommander
-func (_mock *MockPromptCommander) Create(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, promptParams koidomain.PromptParams) (*koidomain.Prompt, error) {
-	ret := _mock.Called(context1, uUID, uUID1, promptParams)
+func (_mock *MockPromptCommander) Create(context1 context.Context, uUID uuid.UUID, promptParams koidomain.PromptParams) (*koidomain.Prompt, error) {
+	ret := _mock.Called(context1, uUID, promptParams)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -1336,18 +1332,18 @@ func (_mock *MockPromptCommander) Create(context1 context.Context, uUID uuid.UUI
 
 	var r0 *koidomain.Prompt
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PromptParams) (*koidomain.Prompt, error)); ok {
-		return returnFunc(context1, uUID, uUID1, promptParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PromptParams) (*koidomain.Prompt, error)); ok {
+		return returnFunc(context1, uUID, promptParams)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PromptParams) *koidomain.Prompt); ok {
-		r0 = returnFunc(context1, uUID, uUID1, promptParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PromptParams) *koidomain.Prompt); ok {
+		r0 = returnFunc(context1, uUID, promptParams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Prompt)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PromptParams) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, promptParams)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PromptParams) error); ok {
+		r1 = returnFunc(context1, uUID, promptParams)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1362,13 +1358,12 @@ type MockPromptCommander_Create_Call struct {
 // Create is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - uUID1 uuid.UUID
 //   - promptParams koidomain.PromptParams
-func (_e *MockPromptCommander_Expecter) Create(context1 interface{}, uUID interface{}, uUID1 interface{}, promptParams interface{}) *MockPromptCommander_Create_Call {
-	return &MockPromptCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, uUID1, promptParams)}
+func (_e *MockPromptCommander_Expecter) Create(context1 interface{}, uUID interface{}, promptParams interface{}) *MockPromptCommander_Create_Call {
+	return &MockPromptCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, promptParams)}
 }
 
-func (_c *MockPromptCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, promptParams koidomain.PromptParams)) *MockPromptCommander_Create_Call {
+func (_c *MockPromptCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, promptParams koidomain.PromptParams)) *MockPromptCommander_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1378,19 +1373,14 @@ func (_c *MockPromptCommander_Create_Call) Run(run func(context1 context.Context
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
+		var arg2 koidomain.PromptParams
 		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
-		var arg3 koidomain.PromptParams
-		if args[3] != nil {
-			arg3 = args[3].(koidomain.PromptParams)
+			arg2 = args[2].(koidomain.PromptParams)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -1401,22 +1391,22 @@ func (_c *MockPromptCommander_Create_Call) Return(prompt *koidomain.Prompt, err 
 	return _c
 }
 
-func (_c *MockPromptCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, promptParams koidomain.PromptParams) (*koidomain.Prompt, error)) *MockPromptCommander_Create_Call {
+func (_c *MockPromptCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, promptParams koidomain.PromptParams) (*koidomain.Prompt, error)) *MockPromptCommander_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Delete provides a mock function for the type MockPromptCommander
-func (_mock *MockPromptCommander) Delete(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) error {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2)
+func (_mock *MockPromptCommander) Delete(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error {
+	ret := _mock.Called(context1, uUID, uUID1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1432,12 +1422,11 @@ type MockPromptCommander_Delete_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
-func (_e *MockPromptCommander_Expecter) Delete(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}) *MockPromptCommander_Delete_Call {
-	return &MockPromptCommander_Delete_Call{Call: _e.mock.On("Delete", context1, uUID, uUID1, uUID2)}
+func (_e *MockPromptCommander_Expecter) Delete(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockPromptCommander_Delete_Call {
+	return &MockPromptCommander_Delete_Call{Call: _e.mock.On("Delete", context1, uUID, uUID1)}
 }
 
-func (_c *MockPromptCommander_Delete_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID)) *MockPromptCommander_Delete_Call {
+func (_c *MockPromptCommander_Delete_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockPromptCommander_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1451,15 +1440,10 @@ func (_c *MockPromptCommander_Delete_Call) Run(run func(context1 context.Context
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -1470,14 +1454,14 @@ func (_c *MockPromptCommander_Delete_Call) Return(err error) *MockPromptCommande
 	return _c
 }
 
-func (_c *MockPromptCommander_Delete_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) error) *MockPromptCommander_Delete_Call {
+func (_c *MockPromptCommander_Delete_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) error) *MockPromptCommander_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type MockPromptCommander
-func (_mock *MockPromptCommander) Update(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID, promptPatch koidomain.PromptPatch) (*koidomain.Prompt, error) {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2, promptPatch)
+func (_mock *MockPromptCommander) Update(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, promptPatch koidomain.PromptPatch) (*koidomain.Prompt, error) {
+	ret := _mock.Called(context1, uUID, uUID1, promptPatch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
@@ -1485,18 +1469,18 @@ func (_mock *MockPromptCommander) Update(context1 context.Context, uUID uuid.UUI
 
 	var r0 *koidomain.Prompt
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, koidomain.PromptPatch) (*koidomain.Prompt, error)); ok {
-		return returnFunc(context1, uUID, uUID1, uUID2, promptPatch)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PromptPatch) (*koidomain.Prompt, error)); ok {
+		return returnFunc(context1, uUID, uUID1, promptPatch)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, koidomain.PromptPatch) *koidomain.Prompt); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2, promptPatch)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PromptPatch) *koidomain.Prompt); ok {
+		r0 = returnFunc(context1, uUID, uUID1, promptPatch)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Prompt)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, koidomain.PromptPatch) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, uUID2, promptPatch)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PromptPatch) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1, promptPatch)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1512,13 +1496,12 @@ type MockPromptCommander_Update_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
 //   - promptPatch koidomain.PromptPatch
-func (_e *MockPromptCommander_Expecter) Update(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}, promptPatch interface{}) *MockPromptCommander_Update_Call {
-	return &MockPromptCommander_Update_Call{Call: _e.mock.On("Update", context1, uUID, uUID1, uUID2, promptPatch)}
+func (_e *MockPromptCommander_Expecter) Update(context1 interface{}, uUID interface{}, uUID1 interface{}, promptPatch interface{}) *MockPromptCommander_Update_Call {
+	return &MockPromptCommander_Update_Call{Call: _e.mock.On("Update", context1, uUID, uUID1, promptPatch)}
 }
 
-func (_c *MockPromptCommander_Update_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID, promptPatch koidomain.PromptPatch)) *MockPromptCommander_Update_Call {
+func (_c *MockPromptCommander_Update_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, promptPatch koidomain.PromptPatch)) *MockPromptCommander_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1532,20 +1515,15 @@ func (_c *MockPromptCommander_Update_Call) Run(run func(context1 context.Context
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
+		var arg3 koidomain.PromptPatch
 		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
-		var arg4 koidomain.PromptPatch
-		if args[4] != nil {
-			arg4 = args[4].(koidomain.PromptPatch)
+			arg3 = args[3].(koidomain.PromptPatch)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -1556,7 +1534,7 @@ func (_c *MockPromptCommander_Update_Call) Return(prompt *koidomain.Prompt, err 
 	return _c
 }
 
-func (_c *MockPromptCommander_Update_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID, promptPatch koidomain.PromptPatch) (*koidomain.Prompt, error)) *MockPromptCommander_Update_Call {
+func (_c *MockPromptCommander_Update_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, promptPatch koidomain.PromptPatch) (*koidomain.Prompt, error)) *MockPromptCommander_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1589,8 +1567,8 @@ func (_m *MockPromptQuerier) EXPECT() *MockPromptQuerier_Expecter {
 }
 
 // Get provides a mock function for the type MockPromptQuerier
-func (_mock *MockPromptQuerier) Get(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Prompt, error) {
-	ret := _mock.Called(context1, uUID, uUID1, uUID2)
+func (_mock *MockPromptQuerier) Get(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Prompt, error) {
+	ret := _mock.Called(context1, uUID, uUID1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
@@ -1598,18 +1576,18 @@ func (_mock *MockPromptQuerier) Get(context1 context.Context, uUID uuid.UUID, uU
 
 	var r0 *koidomain.Prompt
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*koidomain.Prompt, error)); ok {
-		return returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) (*koidomain.Prompt, error)); ok {
+		return returnFunc(context1, uUID, uUID1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) *koidomain.Prompt); ok {
-		r0 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) *koidomain.Prompt); ok {
+		r0 = returnFunc(context1, uUID, uUID1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Prompt)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, uUID2)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1625,12 +1603,11 @@ type MockPromptQuerier_Get_Call struct {
 //   - context1 context.Context
 //   - uUID uuid.UUID
 //   - uUID1 uuid.UUID
-//   - uUID2 uuid.UUID
-func (_e *MockPromptQuerier_Expecter) Get(context1 interface{}, uUID interface{}, uUID1 interface{}, uUID2 interface{}) *MockPromptQuerier_Get_Call {
-	return &MockPromptQuerier_Get_Call{Call: _e.mock.On("Get", context1, uUID, uUID1, uUID2)}
+func (_e *MockPromptQuerier_Expecter) Get(context1 interface{}, uUID interface{}, uUID1 interface{}) *MockPromptQuerier_Get_Call {
+	return &MockPromptQuerier_Get_Call{Call: _e.mock.On("Get", context1, uUID, uUID1)}
 }
 
-func (_c *MockPromptQuerier_Get_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID)) *MockPromptQuerier_Get_Call {
+func (_c *MockPromptQuerier_Get_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID)) *MockPromptQuerier_Get_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1644,15 +1621,10 @@ func (_c *MockPromptQuerier_Get_Call) Run(run func(context1 context.Context, uUI
 		if args[2] != nil {
 			arg2 = args[2].(uuid.UUID)
 		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -1663,14 +1635,14 @@ func (_c *MockPromptQuerier_Get_Call) Return(prompt *koidomain.Prompt, err error
 	return _c
 }
 
-func (_c *MockPromptQuerier_Get_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, uUID2 uuid.UUID) (*koidomain.Prompt, error)) *MockPromptQuerier_Get_Call {
+func (_c *MockPromptQuerier_Get_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID) (*koidomain.Prompt, error)) *MockPromptQuerier_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type MockPromptQuerier
-func (_mock *MockPromptQuerier) List(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Prompt], error) {
-	ret := _mock.Called(context1, uUID, uUID1, pageParams, s, b)
+func (_mock *MockPromptQuerier) List(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Prompt], error) {
+	ret := _mock.Called(context1, uUID, pageParams, s, b)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -1678,18 +1650,18 @@ func (_mock *MockPromptQuerier) List(context1 context.Context, uUID uuid.UUID, u
 
 	var r0 *koidomain.Page[koidomain.Prompt]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PageParams, string, *bool) (*koidomain.Page[koidomain.Prompt], error)); ok {
-		return returnFunc(context1, uUID, uUID1, pageParams, s, b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) (*koidomain.Page[koidomain.Prompt], error)); ok {
+		return returnFunc(context1, uUID, pageParams, s, b)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PageParams, string, *bool) *koidomain.Page[koidomain.Prompt]); ok {
-		r0 = returnFunc(context1, uUID, uUID1, pageParams, s, b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) *koidomain.Page[koidomain.Prompt]); ok {
+		r0 = returnFunc(context1, uUID, pageParams, s, b)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Page[koidomain.Prompt])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.PageParams, string, *bool) error); ok {
-		r1 = returnFunc(context1, uUID, uUID1, pageParams, s, b)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) error); ok {
+		r1 = returnFunc(context1, uUID, pageParams, s, b)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1704,15 +1676,14 @@ type MockPromptQuerier_List_Call struct {
 // List is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - uUID1 uuid.UUID
 //   - pageParams koidomain.PageParams
 //   - s string
 //   - b *bool
-func (_e *MockPromptQuerier_Expecter) List(context1 interface{}, uUID interface{}, uUID1 interface{}, pageParams interface{}, s interface{}, b interface{}) *MockPromptQuerier_List_Call {
-	return &MockPromptQuerier_List_Call{Call: _e.mock.On("List", context1, uUID, uUID1, pageParams, s, b)}
+func (_e *MockPromptQuerier_Expecter) List(context1 interface{}, uUID interface{}, pageParams interface{}, s interface{}, b interface{}) *MockPromptQuerier_List_Call {
+	return &MockPromptQuerier_List_Call{Call: _e.mock.On("List", context1, uUID, pageParams, s, b)}
 }
 
-func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams koidomain.PageParams, s string, b *bool)) *MockPromptQuerier_List_Call {
+func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool)) *MockPromptQuerier_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1722,21 +1693,17 @@ func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uU
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 uuid.UUID
+		var arg2 koidomain.PageParams
 		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
+			arg2 = args[2].(koidomain.PageParams)
 		}
-		var arg3 koidomain.PageParams
+		var arg3 string
 		if args[3] != nil {
-			arg3 = args[3].(koidomain.PageParams)
+			arg3 = args[3].(string)
 		}
-		var arg4 string
+		var arg4 *bool
 		if args[4] != nil {
-			arg4 = args[4].(string)
-		}
-		var arg5 *bool
-		if args[5] != nil {
-			arg5 = args[5].(*bool)
+			arg4 = args[4].(*bool)
 		}
 		run(
 			arg0,
@@ -1744,7 +1711,6 @@ func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uU
 			arg2,
 			arg3,
 			arg4,
-			arg5,
 		)
 	})
 	return _c
@@ -1755,7 +1721,7 @@ func (_c *MockPromptQuerier_List_Call) Return(page *koidomain.Page[koidomain.Pro
 	return _c
 }
 
-func (_c *MockPromptQuerier_List_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Prompt], error)) *MockPromptQuerier_List_Call {
+func (_c *MockPromptQuerier_List_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Prompt], error)) *MockPromptQuerier_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

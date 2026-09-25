@@ -14,6 +14,8 @@ import (
 
 	"github.com/koihq/koi/pkg/koiapi"
 	"github.com/koihq/koi/pkg/koidatabase"
+	"github.com/koihq/koi/pkg/koidomain"
+	"github.com/koihq/koi/pkg/koiproviders/logodev"
 )
 
 type Config struct {
@@ -110,7 +112,11 @@ func (a *App) Run() error {
 		sess.Store = postgresstore.New(sqlDB)
 	}
 
-	server := koiapi.NewServer(store, sess)
+	var searcher koidomain.CompanySearcher
+	if key := strings.TrimSpace(os.Getenv("LOGODEV_SECRET_KEY")); key != "" {
+		searcher = logodev.NewSearcher(key)
+	}
+	server := koiapi.NewServer(store, sess, searcher)
 
 	slog.Info("koi listening", "addr", a.cfg.HTTPAddr)
 	return http.ListenAndServe(a.cfg.HTTPAddr, server)

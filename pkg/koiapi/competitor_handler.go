@@ -19,12 +19,11 @@ type CompetitorRequest struct {
 type CompetitorHandler struct {
 	querier   koidomain.CompetitorQuerier
 	commander koidomain.CompetitorCommander
-	searcher  CompetitorSearcher
 	sess      *scs.SessionManager
 }
 
-func NewCompetitorHandler(q koidomain.CompetitorQuerier, c koidomain.CompetitorCommander, searcher CompetitorSearcher, sess *scs.SessionManager) *CompetitorHandler {
-	return &CompetitorHandler{querier: q, commander: c, searcher: searcher, sess: sess}
+func NewCompetitorHandler(q koidomain.CompetitorQuerier, c koidomain.CompetitorCommander, sess *scs.SessionManager) *CompetitorHandler {
+	return &CompetitorHandler{querier: q, commander: c, sess: sess}
 }
 
 func (h *CompetitorHandler) Routes() func(chi.Router) {
@@ -41,7 +40,7 @@ func (h *CompetitorHandler) Routes() func(chi.Router) {
 }
 
 func (h *CompetitorHandler) Search(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -50,15 +49,7 @@ func (h *CompetitorHandler) Search(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	if len([]rune(query)) < 3 {
-		api.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "q", Code: koidomain.FieldMinLength}))
-		return
-	}
-	if _, err := h.querier.List(r.Context(), userID, brandID, koidomain.PageParams{Page: 1, PageSize: 1}, "", nil); err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	results, err := h.searcher.Search(r.Context(), query)
+	results, err := h.querier.Search(r.Context(), brandID, query)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -67,7 +58,7 @@ func (h *CompetitorHandler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -86,7 +77,7 @@ func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	competitors, err := h.querier.List(r.Context(), userID, brandID, page, query, confirmed)
+	competitors, err := h.querier.List(r.Context(), brandID, page, query, confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -95,7 +86,7 @@ func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CompetitorHandler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -103,7 +94,7 @@ func (h *CompetitorHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	competitor, err := h.querier.Get(r.Context(), userID, brandID, competitorID)
+	competitor, err := h.querier.Get(r.Context(), brandID, competitorID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -112,12 +103,12 @@ func (h *CompetitorHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
 	req := middlewares.Body[CompetitorRequest](r)
-	competitor, err := h.commander.Create(r.Context(), userID, brandID, koidomain.CompetitorParams{
+	competitor, err := h.commander.Create(r.Context(), brandID, koidomain.CompetitorParams{
 		Name: req.Name, Domain: req.Domain,
 	})
 	if err != nil {
@@ -128,7 +119,7 @@ func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CompetitorHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -136,7 +127,7 @@ func (h *CompetitorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.commander.Delete(r.Context(), userID, brandID, competitorID); err != nil {
+	if err := h.commander.Delete(r.Context(), brandID, competitorID); err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
@@ -144,7 +135,7 @@ func (h *CompetitorHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CompetitorHandler) Confirm(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -152,7 +143,7 @@ func (h *CompetitorHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	competitor, err := h.commander.Confirm(r.Context(), userID, brandID, competitorID)
+	competitor, err := h.commander.Confirm(r.Context(), brandID, competitorID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -161,11 +152,11 @@ func (h *CompetitorHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CompetitorHandler) ConfirmAll(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
-	if err := h.commander.ConfirmAll(r.Context(), userID, brandID); err != nil {
+	if err := h.commander.ConfirmAll(r.Context(), brandID); err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}

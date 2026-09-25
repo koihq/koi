@@ -62,7 +62,7 @@ func requestOwnerAndBrand(w http.ResponseWriter, r *http.Request) (uuid.UUID, uu
 }
 
 func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -81,7 +81,7 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	prompts, err := h.querier.List(r.Context(), userID, brandID, page, query, confirmed)
+	prompts, err := h.querier.List(r.Context(), brandID, page, query, confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -90,7 +90,7 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromptHandler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -98,7 +98,7 @@ func (h *PromptHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	prompt, err := h.querier.Get(r.Context(), userID, brandID, promptID)
+	prompt, err := h.querier.Get(r.Context(), brandID, promptID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -107,11 +107,11 @@ func (h *PromptHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromptHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
-	prompt, err := h.commander.Create(r.Context(), userID, brandID, koidomain.PromptParams{
+	prompt, err := h.commander.Create(r.Context(), brandID, koidomain.PromptParams{
 		Text: middlewares.Body[PromptRequest](r).Text,
 	})
 	if err != nil {
@@ -122,7 +122,7 @@ func (h *PromptHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromptHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -130,7 +130,7 @@ func (h *PromptHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	prompt, err := h.commander.Update(r.Context(), userID, brandID, promptID, koidomain.PromptPatch{
+	prompt, err := h.commander.Update(r.Context(), brandID, promptID, koidomain.PromptPatch{
 		Text: middlewares.Body[PromptPatchRequest](r).Text,
 	})
 	if err != nil {
@@ -141,7 +141,7 @@ func (h *PromptHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromptHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -149,7 +149,7 @@ func (h *PromptHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := h.commander.Delete(r.Context(), userID, brandID, promptID); err != nil {
+	if err := h.commander.Delete(r.Context(), brandID, promptID); err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
@@ -157,7 +157,7 @@ func (h *PromptHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromptHandler) Confirm(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
@@ -165,7 +165,7 @@ func (h *PromptHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	prompt, err := h.commander.Confirm(r.Context(), userID, brandID, promptID)
+	prompt, err := h.commander.Confirm(r.Context(), brandID, promptID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -174,11 +174,11 @@ func (h *PromptHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PromptHandler) ConfirmAll(w http.ResponseWriter, r *http.Request) {
-	userID, brandID, ok := requestOwnerAndBrand(w, r)
+	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
-	if err := h.commander.ConfirmAll(r.Context(), userID, brandID); err != nil {
+	if err := h.commander.ConfirmAll(r.Context(), brandID); err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}

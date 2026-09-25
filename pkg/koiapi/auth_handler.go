@@ -99,11 +99,11 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	id, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
-	me, err := h.querier.Me(r.Context(), id)
+	me, err := h.querier.Me(r.Context())
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return

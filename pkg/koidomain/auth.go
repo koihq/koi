@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/koihq/koi/pkg/koiauth"
 )
 
 const minPasswordLen = 8
@@ -37,7 +38,7 @@ type AuthCommander interface {
 }
 
 type AuthQuerier interface {
-	Me(ctx context.Context, userID uuid.UUID) (*Me, error)
+	Me(ctx context.Context) (*Me, error)
 }
 
 type authCommander struct {
@@ -121,8 +122,12 @@ func (c *authCommander) Login(ctx context.Context, email, password string) (*Me,
 	return loadMe(ctx, c.store, user.ID)
 }
 
-func (q *authQuerier) Me(ctx context.Context, userID uuid.UUID) (*Me, error) {
-	return loadMe(ctx, q.store, userID)
+func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
+	identity, ok := koiauth.FromContext(ctx)
+	if !ok {
+		return nil, ErrUnauthorized
+	}
+	return loadMe(ctx, q.store, identity.UserID)
 }
 
 func loadMe(ctx context.Context, store Store, userID uuid.UUID) (*Me, error) {

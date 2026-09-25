@@ -26,7 +26,8 @@ export const ErrorCode = {
     NOT_FOUND: 'not_found',
     UNAUTHORIZED: 'unauthorized',
     INVALID_JSON: 'invalid_json',
-    INTERNAL: 'internal'
+    INTERNAL: 'internal',
+    FEATURE_UNAVAILABLE: 'feature_unavailable'
 } as const;
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
 

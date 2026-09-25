@@ -33,7 +33,7 @@ func TestPromptManualCreateAndImmutableProvenance(t *testing.T) {
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
 	store.EXPECT().BrandRepo().Return(brands).Twice()
 	store.EXPECT().PromptRepo().Return(prompts).Times(3)
-	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(&Brand{}, nil).Twice()
+	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Twice()
 	prompts.EXPECT().Create(mock.Anything, mock.MatchedBy(func(prompt *Prompt) bool {
 		return prompt.Text == "What is Koi?" && prompt.Source == PromptSourceManual && prompt.Confirmed
 	})).RunAndReturn(func(_ context.Context, prompt *Prompt) error {
@@ -41,7 +41,7 @@ func TestPromptManualCreateAndImmutableProvenance(t *testing.T) {
 		return nil
 	})
 
-	created, err := NewPromptCommander(store).Create(t.Context(), userID, brandID, PromptParams{Text: " What   is Koi? "})
+	created, err := NewPromptCommander(store).Create(identityCtx(t, userID), brandID, PromptParams{Text: " What   is Koi? "})
 	require.NoError(t, err)
 	require.Equal(t, promptID, created.ID)
 
@@ -51,7 +51,7 @@ func TestPromptManualCreateAndImmutableProvenance(t *testing.T) {
 		return update.Text != nil && *update.Text == "New text" && update.Confirmed == nil
 	})).Return(nil)
 	text := " New   text "
-	updated, err := NewPromptCommander(store).Update(t.Context(), userID, brandID, promptID, PromptPatch{Text: &text})
+	updated, err := NewPromptCommander(store).Update(identityCtx(t, userID), brandID, promptID, PromptPatch{Text: &text})
 	require.NoError(t, err)
 	require.Equal(t, PromptSourceDrafted, updated.Source)
 	require.False(t, updated.Confirmed)
@@ -64,15 +64,15 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
 	store.EXPECT().BrandRepo().Return(brands).Times(3)
 	store.EXPECT().PromptRepo().Return(prompts).Times(3)
-	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(&Brand{}, nil).Twice()
-	brands.EXPECT().GetByIDAndUserID(mock.Anything, brandID, userID).Return(nil, ErrNotFound).Once()
+	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Twice()
+	brands.EXPECT().Get(mock.Anything, brandID).Return(nil, ErrNotFound).Once()
 	confirmed := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Source: PromptSourceDrafted}
 	prompts.EXPECT().Get(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}).Return(confirmed, nil)
 	prompts.EXPECT().Update(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}, mock.MatchedBy(func(update PromptUpdate) bool {
 		return update.Confirmed != nil && *update.Confirmed
 	})).Return(nil)
 
-	got, err := NewPromptCommander(store).Confirm(t.Context(), userID, brandID, promptID)
+	got, err := NewPromptCommander(store).Confirm(identityCtx(t, userID), brandID, promptID)
 	require.NoError(t, err)
 	require.True(t, got.Confirmed)
 
@@ -81,8 +81,8 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	}), mock.MatchedBy(func(update PromptUpdate) bool {
 		return update.Confirmed != nil && *update.Confirmed
 	})).Return(nil)
-	require.NoError(t, NewPromptCommander(store).ConfirmAll(t.Context(), userID, brandID))
+	require.NoError(t, NewPromptCommander(store).ConfirmAll(identityCtx(t, userID), brandID))
 
-	err = NewPromptCommander(store).Delete(t.Context(), userID, brandID, promptID)
+	err = NewPromptCommander(store).Delete(identityCtx(t, userID), brandID, promptID)
 	require.ErrorIs(t, err, ErrNotFound)
 }

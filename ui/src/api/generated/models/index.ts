@@ -4,6 +4,7 @@
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
 export * from './BrandRes';
+export * from './CapabilitiesResponse';
 export * from './CompetitorRequest';
 export * from './CompetitorRes';
 export * from './CountryOption';

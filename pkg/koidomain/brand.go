@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/koihq/koi/pkg/koiauth"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
@@ -59,12 +60,11 @@ func (b Brand) Validate() error {
 }
 
 func supportedCountry(code string) bool {
-	return slices.Contains(cloroCountries, code)
+	return slices.Contains(countryCodes, code)
 }
 
-// SupportedCountries returns the Cloro snapshot used by Brand.Validate.
 func SupportedCountries() []string {
-	return slices.Clone(cloroCountries)
+	return slices.Clone(countryCodes)
 }
 
 type CountryOption struct {
@@ -76,8 +76,8 @@ var countryOptions = loadCountryOptions()
 
 func loadCountryOptions() []CountryOption {
 	namer := display.English.Regions()
-	opts := make([]CountryOption, 0, len(cloroCountries))
-	for _, code := range cloroCountries {
+	opts := make([]CountryOption, 0, len(countryCodes))
+	for _, code := range countryCodes {
 		name := code
 		if region, err := language.ParseRegion(code); err == nil {
 			if n := namer.Name(region); n != "" {
@@ -96,7 +96,7 @@ func loadCountryOptions() []CountryOption {
 	return opts
 }
 
-// SearchSupportedCountries returns all Cloro-supported countries by English
+// SearchSupportedCountries returns supported countries by English
 // name when query is empty. Searches return up to 20 countries ordered by
 // exact code, code prefix, then name prefix.
 func SearchSupportedCountries(query string) []CountryOption {
@@ -167,11 +167,10 @@ func validGitHubRepo(raw string) bool {
 }
 
 type BrandRepository interface {
-	Create(context.Context, *Brand) error
-	CountByUserID(context.Context, uuid.UUID) (int64, error)
-	ListByUserID(context.Context, uuid.UUID, int, int) ([]Brand, error)
-	GetByIDAndUserID(context.Context, uuid.UUID, uuid.UUID) (*Brand, error)
-	UpdateByIDAndUserID(context.Context, uuid.UUID, *Brand) error
+	BaseEntityRepository[Brand, uuid.UUID]
+	Count(context.Context) (int64, error)
+	List(context.Context, PageParams) (*Page[Brand], error)
+	Update(context.Context, *Brand) error
 }
 
 type BrandParams struct {
@@ -183,13 +182,13 @@ type BrandParams struct {
 }
 
 type BrandCommander interface {
-	Create(ctx context.Context, userID uuid.UUID, p BrandParams) (*Brand, error)
-	Update(ctx context.Context, userID, id uuid.UUID, p BrandPatch) (*Brand, error)
+	Create(ctx context.Context, p BrandParams) (*Brand, error)
+	Update(ctx context.Context, id uuid.UUID, p BrandPatch) (*Brand, error)
 }
 
 type BrandQuerier interface {
-	List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*Page[Brand], error)
-	Get(ctx context.Context, userID, id uuid.UUID) (*Brand, error)
+	List(ctx context.Context, page, pageSize int) (*Page[Brand], error)
+	Get(ctx context.Context, id uuid.UUID) (*Brand, error)
 }
 
 type BrandPatch struct {
@@ -204,9 +203,13 @@ type brandCommander struct{ store Store }
 
 func NewBrandCommander(store Store) BrandCommander { return &brandCommander{store: store} }
 
-func (c *brandCommander) Create(ctx context.Context, userID uuid.UUID, p BrandParams) (*Brand, error) {
+func (c *brandCommander) Create(ctx context.Context, p BrandParams) (*Brand, error) {
+	identity, ok := koiauth.FromContext(ctx)
+	if !ok {
+		return nil, ErrUnauthorized
+	}
 	brand := &Brand{
-		UserID: userID, Name: p.Name, Domain: p.Domain, GitHubRepo: p.GitHubRepo,
+		UserID: identity.UserID, Name: p.Name, Domain: p.Domain, GitHubRepo: p.GitHubRepo,
 		Country: p.Country, Description: p.Description,
 	}
 	brand.Normalize()
@@ -214,10 +217,10 @@ func (c *brandCommander) Create(ctx context.Context, userID uuid.UUID, p BrandPa
 		return nil, err
 	}
 	err := c.store.Atomic(ctx, func(s Store) error {
-		if err := s.UserRepo().LockForUpdate(ctx, userID); err != nil {
+		if err := s.UserRepo().LockForUpdate(ctx, identity.UserID); err != nil {
 			return err
 		}
-		count, err := s.BrandRepo().CountByUserID(ctx, userID)
+		count, err := s.BrandRepo().Count(ctx)
 		if err != nil {
 			return err
 		}
@@ -232,8 +235,8 @@ func (c *brandCommander) Create(ctx context.Context, userID uuid.UUID, p BrandPa
 	return brand, nil
 }
 
-func (c *brandCommander) Update(ctx context.Context, userID, id uuid.UUID, p BrandPatch) (*Brand, error) {
-	brand, err := c.store.BrandRepo().GetByIDAndUserID(ctx, id, userID)
+func (c *brandCommander) Update(ctx context.Context, id uuid.UUID, p BrandPatch) (*Brand, error) {
+	brand, err := c.store.BrandRepo().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +259,7 @@ func (c *brandCommander) Update(ctx context.Context, userID, id uuid.UUID, p Bra
 	if err := brand.Validate(); err != nil {
 		return nil, err
 	}
-	if err := c.store.BrandRepo().UpdateByIDAndUserID(ctx, userID, brand); err != nil {
+	if err := c.store.BrandRepo().Update(ctx, brand); err != nil {
 		return nil, err
 	}
 	return brand, nil
@@ -266,29 +269,10 @@ type brandQuerier struct{ store Store }
 
 func NewBrandQuerier(store Store) BrandQuerier { return &brandQuerier{store: store} }
 
-func (q *brandQuerier) List(ctx context.Context, userID uuid.UUID, page, pageSize int) (*Page[Brand], error) {
-	total, err := q.store.BrandRepo().CountByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	result := &Page[Brand]{
-		Items: make([]Brand, 0), TotalItems: total,
-		CurrentPage: page, HasPrev: page > 1,
-	}
-	if total > 0 {
-		result.TotalPages = (total-1)/int64(pageSize) + 1
-	}
-	result.HasNext = int64(page) < result.TotalPages
-	if int64(page) > result.TotalPages {
-		return result, nil
-	}
-	result.Items, err = q.store.BrandRepo().ListByUserID(ctx, userID, pageSize, (page-1)*pageSize)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+func (q *brandQuerier) List(ctx context.Context, page, pageSize int) (*Page[Brand], error) {
+	return q.store.BrandRepo().List(ctx, PageParams{Page: page, PageSize: pageSize})
 }
 
-func (q *brandQuerier) Get(ctx context.Context, userID, id uuid.UUID) (*Brand, error) {
-	return q.store.BrandRepo().GetByIDAndUserID(ctx, id, userID)
+func (q *brandQuerier) Get(ctx context.Context, id uuid.UUID) (*Brand, error) {
+	return q.store.BrandRepo().Get(ctx, id)
 }

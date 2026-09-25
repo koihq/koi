@@ -62,12 +62,12 @@ func brandID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 }
 
 func (h *BrandHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
 	req := middlewares.Body[BrandRequest](r)
-	brand, err := h.commander.Create(r.Context(), userID, koidomain.BrandParams{
+	brand, err := h.commander.Create(r.Context(), koidomain.BrandParams{
 		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
 		Country: req.Country, Description: req.Description,
 	})
@@ -79,7 +79,7 @@ func (h *BrandHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -88,7 +88,7 @@ func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	brands, err := h.querier.List(r.Context(), userID, page.Page, page.PageSize)
+	brands, err := h.querier.List(r.Context(), page.Page, page.PageSize)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -147,7 +147,7 @@ func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (
 }
 
 func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -155,7 +155,7 @@ func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	brand, err := h.querier.Get(r.Context(), userID, id)
+	brand, err := h.querier.Get(r.Context(), id)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -164,7 +164,7 @@ func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -173,7 +173,7 @@ func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req := middlewares.Body[BrandPatchRequest](r)
-	brand, err := h.commander.Update(r.Context(), userID, id, koidomain.BrandPatch{
+	brand, err := h.commander.Update(r.Context(), id, koidomain.BrandPatch{
 		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
 		Country: req.Country, Description: req.Description,
 	})

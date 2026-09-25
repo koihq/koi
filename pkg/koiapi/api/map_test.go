@@ -65,6 +65,12 @@ func TestMapError(t *testing.T) {
 			code:   koidomain.CodeNotFound,
 		},
 		{
+			name:   "feature_unavailable",
+			err:    koidomain.ErrFeatureUnavailable,
+			status: http.StatusServiceUnavailable,
+			code:   koidomain.CodeFeatureUnavailable,
+		},
+		{
 			name:   "internal",
 			err:    errors.New("boom"),
 			status: http.StatusInternalServerError,
@@ -77,7 +83,7 @@ func TestMapError(t *testing.T) {
 			require.Equal(t, tt.status, status)
 			require.Equal(t, tt.code, env.Error.Code)
 			require.Equal(t, tt.fields, env.Error.Fields)
-			if tt.status >= 500 {
+			if tt.code == koidomain.CodeInternal {
 				require.Equal(t, "internal error", env.Error.Message)
 			}
 		})

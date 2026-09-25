@@ -2,7 +2,6 @@ package koidomain
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -18,9 +17,9 @@ const (
 
 type Competitor struct {
 	BaseEntity
-	BrandID   uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;index"`
+	BrandID   uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;uniqueIndex:idx_competitors_brand_domain"`
 	Name      string           `json:"name" gorm:"not null"`
-	Domain    string           `json:"domain" gorm:"not null"`
+	Domain    string           `json:"domain" gorm:"not null;uniqueIndex:idx_competitors_brand_domain"`
 	Source    CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed bool             `json:"confirmed" gorm:"not null;default:false"`
 	Brand     *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
@@ -57,8 +56,7 @@ func (c Competitor) Validate() error {
 }
 
 type CompetitorRepository interface {
-	Create(context.Context, *Competitor) error
-	Get(context.Context, CompetitorFilter) (*Competitor, error)
+	BaseEntityRepository[Competitor, CompetitorFilter]
 	List(context.Context, CompetitorFilter) (*Page[Competitor], error)
 	Update(context.Context, CompetitorFilter, CompetitorUpdate) error
 	Delete(context.Context, CompetitorFilter) error
@@ -82,25 +80,40 @@ type CompetitorParams struct {
 	Domain string
 }
 
+type CompanySearchResult struct {
+	Name   string `json:"name"`
+	Domain string `json:"domain"`
+}
+
+type CompanySearcher interface {
+	Search(context.Context, string) ([]CompanySearchResult, error)
+}
+
 type CompetitorCommander interface {
-	Create(context.Context, uuid.UUID, uuid.UUID, CompetitorParams) (*Competitor, error)
-	Delete(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error
-	Confirm(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Competitor, error)
-	ConfirmAll(context.Context, uuid.UUID, uuid.UUID) error
+	Create(context.Context, uuid.UUID, CompetitorParams) (*Competitor, error)
+	Delete(context.Context, uuid.UUID, uuid.UUID) error
+	Confirm(context.Context, uuid.UUID, uuid.UUID) (*Competitor, error)
+	ConfirmAll(context.Context, uuid.UUID) error
 }
 
 type CompetitorQuerier interface {
-	List(context.Context, uuid.UUID, uuid.UUID, PageParams, string, *bool) (*Page[Competitor], error)
-	Get(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*Competitor, error)
+	List(context.Context, uuid.UUID, PageParams, string, *bool) (*Page[Competitor], error)
+	Get(context.Context, uuid.UUID, uuid.UUID) (*Competitor, error)
+	Search(context.Context, uuid.UUID, string) ([]CompanySearchResult, error)
 }
 
-type competitorService struct{ store Store }
+type competitorService struct {
+	store    Store
+	searcher CompanySearcher
+}
 
 func NewCompetitorCommander(store Store) CompetitorCommander { return &competitorService{store: store} }
-func NewCompetitorQuerier(store Store) CompetitorQuerier     { return &competitorService{store: store} }
+func NewCompetitorQuerier(store Store, searcher CompanySearcher) CompetitorQuerier {
+	return &competitorService{store: store, searcher: searcher}
+}
 
-func (s *competitorService) Create(ctx context.Context, userID, brandID uuid.UUID, params CompetitorParams) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+func (s *competitorService) Create(ctx context.Context, brandID uuid.UUID, params CompetitorParams) (*Competitor, error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
 	competitor := &Competitor{
@@ -111,26 +124,21 @@ func (s *competitorService) Create(ctx context.Context, userID, brandID uuid.UUI
 	if err := competitor.Validate(); err != nil {
 		return nil, err
 	}
-	if _, err := s.store.CompetitorRepo().Get(ctx, CompetitorFilter{BrandID: brandID, Domain: competitor.Domain}); err == nil {
-		return nil, Validation(FieldError{Field: "domain", Code: FieldTaken})
-	} else if !errors.Is(err, ErrNotFound) {
-		return nil, err
-	}
 	if err := s.store.CompetitorRepo().Create(ctx, competitor); err != nil {
 		return nil, err
 	}
 	return competitor, nil
 }
 
-func (s *competitorService) Delete(ctx context.Context, userID, brandID, competitorID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+func (s *competitorService) Delete(ctx context.Context, brandID, competitorID uuid.UUID) error {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return err
 	}
 	return s.store.CompetitorRepo().Delete(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
 }
 
-func (s *competitorService) Confirm(ctx context.Context, userID, brandID, competitorID uuid.UUID) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+func (s *competitorService) Confirm(ctx context.Context, brandID, competitorID uuid.UUID) (*Competitor, error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
 	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
@@ -146,8 +154,8 @@ func (s *competitorService) Confirm(ctx context.Context, userID, brandID, compet
 	return competitor, nil
 }
 
-func (s *competitorService) ConfirmAll(ctx context.Context, userID, brandID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+func (s *competitorService) ConfirmAll(ctx context.Context, brandID uuid.UUID) error {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return err
 	}
 	unconfirmed, confirmed := false, true
@@ -157,16 +165,29 @@ func (s *competitorService) ConfirmAll(ctx context.Context, userID, brandID uuid
 	)
 }
 
-func (s *competitorService) List(ctx context.Context, userID, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Competitor], error) {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+func (s *competitorService) List(ctx context.Context, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Competitor], error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
 	return s.store.CompetitorRepo().List(ctx, CompetitorFilter{BrandID: brandID, Query: query, Confirmed: confirmed, Page: page})
 }
 
-func (s *competitorService) Get(ctx context.Context, userID, brandID, competitorID uuid.UUID) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, userID, brandID); err != nil {
+func (s *competitorService) Get(ctx context.Context, brandID, competitorID uuid.UUID) (*Competitor, error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
 	return s.store.CompetitorRepo().Get(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
+}
+
+func (s *competitorService) Search(ctx context.Context, brandID uuid.UUID, query string) ([]CompanySearchResult, error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
+		return nil, err
+	}
+	if len([]rune(strings.TrimSpace(query))) < 3 {
+		return nil, Validation(FieldError{Field: "q", Code: FieldMinLength})
+	}
+	if s.searcher == nil {
+		return nil, ErrFeatureUnavailable
+	}
+	return s.searcher.Search(ctx, query)
 }

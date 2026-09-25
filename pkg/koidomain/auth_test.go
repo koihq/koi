@@ -149,6 +149,6 @@ func TestAuthQuerier_MeNotFound(t *testing.T) {
 	id := uuid.New()
 	d.users.EXPECT().Get(mock.Anything, id).Return(nil, ErrNotFound)
 
-	_, err := NewAuthQuerier(d.store).Me(t.Context(), id)
+	_, err := NewAuthQuerier(d.store).Me(identityCtx(t, id))
 	require.ErrorIs(t, err, ErrNotFound)
 }

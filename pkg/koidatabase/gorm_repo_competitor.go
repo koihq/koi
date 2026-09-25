@@ -14,7 +14,14 @@ type GormCompetitorRepository struct {
 }
 
 func NewGormCompetitorRepository(db *gorm.DB) *GormCompetitorRepository {
-	return &GormCompetitorRepository{Repository: NewRepository[koidomain.Competitor](db)}
+	return &GormCompetitorRepository{Repository: newScopedRepository[koidomain.Competitor](db, childOwnerScope("competitors"))}
+}
+
+func (r *GormCompetitorRepository) Create(ctx context.Context, competitor *koidomain.Competitor) error {
+	if _, err := NewGormBrandRepository(r.db).Get(ctx, competitor.BrandID); err != nil {
+		return err
+	}
+	return r.Repository.Create(ctx, competitor)
 }
 
 func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm.DB {
@@ -38,20 +45,11 @@ func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm
 }
 
 func (r *GormCompetitorRepository) Get(ctx context.Context, filter koidomain.CompetitorFilter) (*koidomain.Competitor, error) {
-	var competitor koidomain.Competitor
-	err := applyCompetitorFilter(r.db.WithContext(ctx), filter).Take(&competitor).Error
-	if err != nil {
-		return nil, mapDBError(err)
-	}
-	return &competitor, nil
+	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) })
 }
 
 func (r *GormCompetitorRepository) List(ctx context.Context, filter koidomain.CompetitorFilter) (*koidomain.Page[koidomain.Competitor], error) {
-	return paginate[koidomain.Competitor](
-		applyCompetitorFilter(r.db.WithContext(ctx), filter),
-		filter.Page,
-		"created_at ASC, id ASC",
-	)
+	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, filter.Page, "created_at ASC, id ASC")
 }
 
 func (r *GormCompetitorRepository) Update(ctx context.Context, filter koidomain.CompetitorFilter, update koidomain.CompetitorUpdate) error {
@@ -61,12 +59,9 @@ func (r *GormCompetitorRepository) Update(ctx context.Context, filter koidomain.
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
-	result := applyCompetitorFilter(r.db.WithContext(ctx).Model(&koidomain.Competitor{}), filter).
-		Select(columns).Updates(values)
-	return updated(result, filter.ID != uuid.Nil)
+	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, values, columns, filter.ID != uuid.Nil)
 }
 
 func (r *GormCompetitorRepository) Delete(ctx context.Context, filter koidomain.CompetitorFilter) error {
-	result := applyCompetitorFilter(r.db.WithContext(ctx), filter).Delete(&koidomain.Competitor{})
-	return updated(result, filter.ID != uuid.Nil)
+	return r.deleteBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, filter.ID != uuid.Nil)
 }

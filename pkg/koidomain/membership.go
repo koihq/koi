@@ -28,6 +28,6 @@ func (m Membership) Validate() error {
 }
 
 type MembershipRepository interface {
-	BaseEntityRepository[Membership]
+	BaseEntityRepository[Membership, uuid.UUID]
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*Membership, error)
 }

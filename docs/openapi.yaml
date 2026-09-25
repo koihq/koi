@@ -10,7 +10,23 @@ tags:
   - name: prompts
   - name: competitors
   - name: health
+  - name: capabilities
 paths:
+  /api/v1/capabilities:
+    get:
+      tags: [capabilities]
+      operationId: getCapabilities
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Optional server features available to this installation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilitiesResponse"
+        "401":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/signup:
     post:
       tags: [auth]
@@ -123,7 +139,7 @@ paths:
     get:
       tags: [brands]
       operationId: listBrandCountries
-      description: Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+      description: Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
       security:
         - cookieAuth: []
       parameters:
@@ -399,7 +415,7 @@ paths:
             minLength: 3
       responses:
         "200":
-          description: Matching companies from Logo.dev
+          description: Matching companies from the configured search provider
           content:
             application/json:
               schema:
@@ -418,6 +434,12 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+        "503":
+          description: Competitor search is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
   /api/v1/brands/{brandID}/competitors/{competitorID}:
     parameters:
       - $ref: "#/components/parameters/BrandID"
@@ -734,6 +756,12 @@ components:
           type: string
         db:
           type: string
+    CapabilitiesResponse:
+      type: object
+      required: [competitorSearch]
+      properties:
+        competitorSearch:
+          type: boolean
     Envelope:
       type: object
       required: [error]
@@ -771,6 +799,7 @@ components:
         - unauthorized
         - invalid_json
         - internal
+        - feature_unavailable
     FieldCode:
       type: string
       enum:

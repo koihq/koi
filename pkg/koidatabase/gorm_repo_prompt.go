@@ -15,7 +15,14 @@ type GormPromptRepository struct {
 }
 
 func NewGormPromptRepository(db *gorm.DB) *GormPromptRepository {
-	return &GormPromptRepository{Repository: NewRepository[koidomain.Prompt](db)}
+	return &GormPromptRepository{Repository: newScopedRepository[koidomain.Prompt](db, childOwnerScope("prompts"))}
+}
+
+func (r *GormPromptRepository) Create(ctx context.Context, prompt *koidomain.Prompt) error {
+	if _, err := NewGormBrandRepository(r.db).Get(ctx, prompt.BrandID); err != nil {
+		return err
+	}
+	return r.Repository.Create(ctx, prompt)
 }
 
 func applyPromptFilter(db *gorm.DB, filter koidomain.PromptFilter) *gorm.DB {
@@ -40,20 +47,11 @@ func likePattern(query string) string {
 }
 
 func (r *GormPromptRepository) Get(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Prompt, error) {
-	var prompt koidomain.Prompt
-	err := applyPromptFilter(r.db.WithContext(ctx), filter).Take(&prompt).Error
-	if err != nil {
-		return nil, mapDBError(err)
-	}
-	return &prompt, nil
+	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) })
 }
 
 func (r *GormPromptRepository) List(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Page[koidomain.Prompt], error) {
-	return paginate[koidomain.Prompt](
-		applyPromptFilter(r.db.WithContext(ctx), filter),
-		filter.Page,
-		"created_at ASC, id ASC",
-	)
+	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, filter.Page, "created_at ASC, id ASC")
 }
 
 func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.PromptFilter, update koidomain.PromptUpdate) error {
@@ -67,22 +65,9 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
-	result := applyPromptFilter(r.db.WithContext(ctx).Model(&koidomain.Prompt{}), filter).
-		Select(columns).Updates(values)
-	return updated(result, filter.ID != uuid.Nil)
+	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, values, columns, filter.ID != uuid.Nil)
 }
 
 func (r *GormPromptRepository) Delete(ctx context.Context, filter koidomain.PromptFilter) error {
-	result := applyPromptFilter(r.db.WithContext(ctx), filter).Delete(&koidomain.Prompt{})
-	return updated(result, filter.ID != uuid.Nil)
-}
-
-func updated(result *gorm.DB, requireMatch bool) error {
-	if err := mapDBError(result.Error); err != nil {
-		return err
-	}
-	if requireMatch && result.RowsAffected == 0 {
-		return koidomain.ErrNotFound
-	}
-	return nil
+	return r.deleteBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, filter.ID != uuid.Nil)
 }

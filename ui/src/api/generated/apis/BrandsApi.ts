@@ -125,7 +125,7 @@ export interface BrandsApiInterface {
     listBrandCountriesRequestOpts(requestParameters: ListBrandCountriesRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
      * @param {string} [q] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -134,7 +134,7 @@ export interface BrandsApiInterface {
     listBrandCountriesRaw(requestParameters: ListBrandCountriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CountryOption>>>;
 
     /**
-     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
      */
     listBrandCountries(q?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>>;
 
@@ -303,7 +303,7 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
     }
 
     /**
-     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
      */
     async listBrandCountriesRaw(requestParameters: ListBrandCountriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CountryOption>>> {
         const requestOptions = await this.listBrandCountriesRequestOpts(requestParameters);
@@ -313,7 +313,7 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
     }
 
     /**
-     * Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+     * Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
      */
     async listBrandCountries(q?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>> {
         const response = await this.listBrandCountriesRaw({ q: q }, initOverrides);

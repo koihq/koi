@@ -1,6 +1,7 @@
 package koiapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,8 +13,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/koihq/koi/pkg/koiapi/api"
+	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
+
+func identityIs(userID uuid.UUID) any {
+	return mock.MatchedBy(func(ctx context.Context) bool {
+		identity, ok := koiauth.FromContext(ctx)
+		return ok && identity.UserID == userID
+	})
+}
 
 func newBrandTestServer(t *testing.T, q koidomain.BrandQuerier, c koidomain.BrandCommander) *httptest.Server {
 	t.Helper()
@@ -66,7 +75,7 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	userID := uuid.New()
 	q := NewMockBrandQuerier(t)
-	q.EXPECT().List(mock.Anything, userID, 3, 100).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, 3, 100).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 3, HasPrev: true,
 	}, nil)
 	ts := newBrandTestServer(t, q, NewMockBrandCommander(t))
@@ -134,23 +143,23 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	}
 	q := NewMockBrandQuerier(t)
 	c := NewMockBrandCommander(t)
-	q.EXPECT().List(mock.Anything, userA, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, userA, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{*brand}, TotalItems: 1, TotalPages: 1, CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, userB, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 1,
 	}, nil)
-	q.EXPECT().Get(mock.Anything, userA, brandID).Return(brand, nil)
-	q.EXPECT().Get(mock.Anything, userB, brandID).Return(nil, koidomain.ErrNotFound)
-	c.EXPECT().Create(mock.Anything, userA, mock.MatchedBy(func(p koidomain.BrandParams) bool {
+	q.EXPECT().Get(identityIs(userA), brandID).Return(brand, nil)
+	q.EXPECT().Get(identityIs(userB), brandID).Return(nil, koidomain.ErrNotFound)
+	c.EXPECT().Create(mock.Anything, mock.MatchedBy(func(p koidomain.BrandParams) bool {
 		return p.Name == "Koi" && p.Domain == "koi.dev" && p.Country == "IT"
 	})).Return(brand, nil)
-	c.EXPECT().Create(mock.Anything, userA, mock.Anything).Return(nil, koidomain.ErrBrandLimitReached)
-	c.EXPECT().Update(mock.Anything, userB, brandID, mock.Anything).Return(nil, koidomain.ErrNotFound)
-	c.EXPECT().Update(mock.Anything, userA, brandID, mock.MatchedBy(func(p koidomain.BrandPatch) bool {
+	c.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, koidomain.ErrBrandLimitReached)
+	c.EXPECT().Update(identityIs(userB), brandID, mock.Anything).Return(nil, koidomain.ErrNotFound)
+	c.EXPECT().Update(identityIs(userA), brandID, mock.MatchedBy(func(p koidomain.BrandPatch) bool {
 		return p.Description != nil && *p.Description == "AI visibility"
 	})).Return(brand, nil)
 
