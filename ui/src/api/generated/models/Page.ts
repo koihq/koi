@@ -14,62 +14,54 @@
  */
 
 import { mapValues } from '../runtime';
-import type { BrandRes } from './BrandRes';
-import {
-    BrandResFromJSON,
-    BrandResFromJSONTyped,
-    BrandResToJSON,
-    BrandResToJSONTyped,
-} from './BrandRes';
-
 /**
  * 
  * @export
- * @interface BrandPage
+ * @interface Page
  */
-export interface BrandPage {
+export interface Page {
     /**
      * 
-     * @type {Array<BrandRes>}
-     * @memberof BrandPage
+     * @type {Array<any>}
+     * @memberof Page
      */
-    items: Array<BrandRes>;
+    items: Array<any>;
     /**
      * 
      * @type {number}
-     * @memberof BrandPage
+     * @memberof Page
      */
     totalItems: number;
     /**
      * 
      * @type {number}
-     * @memberof BrandPage
+     * @memberof Page
      */
     totalPages: number;
     /**
      * 
      * @type {number}
-     * @memberof BrandPage
+     * @memberof Page
      */
     currentPage: number;
     /**
      * 
      * @type {boolean}
-     * @memberof BrandPage
+     * @memberof Page
      */
     hasNext: boolean;
     /**
      * 
      * @type {boolean}
-     * @memberof BrandPage
+     * @memberof Page
      */
     hasPrev: boolean;
 }
 
 /**
- * Check if a given object implements the BrandPage interface.
+ * Check if a given object implements the Page interface.
  */
-export function instanceOfBrandPage(value: object): value is BrandPage {
+export function instanceOfPage(value: object): value is Page {
     if (!('items' in value) || value['items'] === undefined) return false;
     if (!('totalItems' in value) || value['totalItems'] === undefined) return false;
     if (!('totalPages' in value) || value['totalPages'] === undefined) return false;
@@ -79,17 +71,17 @@ export function instanceOfBrandPage(value: object): value is BrandPage {
     return true;
 }
 
-export function BrandPageFromJSON(json: any): BrandPage {
-    return BrandPageFromJSONTyped(json, false);
+export function PageFromJSON(json: any): Page {
+    return PageFromJSONTyped(json, false);
 }
 
-export function BrandPageFromJSONTyped(json: any, ignoreDiscriminator: boolean): BrandPage {
+export function PageFromJSONTyped(json: any, ignoreDiscriminator: boolean): Page {
     if (json == null) {
         return json;
     }
     return {
         
-        'items': ((json['items'] as Array<any>).map(BrandResFromJSON)),
+        'items': json['items'],
         'totalItems': json['totalItems'],
         'totalPages': json['totalPages'],
         'currentPage': json['currentPage'],
@@ -98,18 +90,18 @@ export function BrandPageFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     };
 }
 
-export function BrandPageToJSON(json: any): BrandPage {
-    return BrandPageToJSONTyped(json, false);
+export function PageToJSON(json: any): Page {
+    return PageToJSONTyped(json, false);
 }
 
-export function BrandPageToJSONTyped(value?: BrandPage | null, ignoreDiscriminator: boolean = false): any {
+export function PageToJSONTyped(value?: Page | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
 
     return {
         
-        'items': ((value['items'] as Array<any>).map(BrandResToJSON)),
+        'items': value['items'],
         'totalItems': value['totalItems'],
         'totalPages': value['totalPages'],
         'currentPage': value['currentPage'],

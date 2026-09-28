@@ -22,6 +22,8 @@ func MapError(err error) (int, Envelope) {
 			return http.StatusUnauthorized, envelope(de)
 		case koidomain.CodeNotFound:
 			return http.StatusNotFound, envelope(de)
+		case koidomain.CodeFeatureUnavailable:
+			return http.StatusServiceUnavailable, envelope(de)
 		}
 	}
 	return http.StatusInternalServerError, envelope(koidomain.ErrInternal)
@@ -29,7 +31,7 @@ func MapError(err error) (int, Envelope) {
 
 func WriteDomainError(w http.ResponseWriter, r *http.Request, err error) {
 	status, env := MapError(err)
-	if status >= 500 {
+	if status == http.StatusInternalServerError {
 		slog.ErrorContext(r.Context(), "internal error",
 			"err", err,
 			"request_id", middleware.GetReqID(r.Context()),

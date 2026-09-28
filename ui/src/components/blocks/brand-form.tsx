@@ -3,8 +3,8 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
+import type { Brand, BrandCountry, CreateBrand } from "@/api/brands.api";
 import { ApiError, messageFromUnknown } from "@/api/errors";
-import type { BrandRequest, BrandRes, CountryOption } from "@/api/generated";
 import {
   type BrandField,
   brandFormFields,
@@ -29,9 +29,9 @@ export function BrandForm({
   submitLabel,
   onSubmit,
 }: {
-  brand?: BrandRes;
+  brand?: Brand;
   submitLabel: string;
-  onSubmit: (body: BrandRequest) => Promise<void>;
+  onSubmit: (body: CreateBrand) => Promise<void>;
 }) {
   const { t } = useTranslation("brand");
   const [country, setCountry] = useState(brand?.country ?? "");
@@ -197,13 +197,13 @@ export function BrandForm({
   );
 }
 
-function countryLabel(country: CountryOption): string {
+function countryLabel(country: BrandCountry): string {
   return `${country.code} (${country.name})`;
 }
 
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 
-function countryFromCode(code: string): CountryOption | null {
+function countryFromCode(code: string): BrandCountry | null {
   const normalized = code.trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(normalized)) return null;
   return { code: normalized, name: countryNames.of(normalized) ?? normalized };
@@ -227,13 +227,13 @@ function CountryCombobox({
   const [inputValue, setInputValue] = useState(() =>
     initialCountry ? countryLabel(initialCountry) : "",
   );
-  const [selected, setSelected] = useState<CountryOption | null>(initialCountry);
+  const [selected, setSelected] = useState<BrandCountry | null>(initialCountry);
   const trimmed = query.trim();
   const debounced = useDebouncedValue(trimmed);
   const search = trimmed ? debounced : "";
   const countries = useQuery({
     queryKey: ["brands", "countries", search],
-    queryFn: ({ signal }) => api.brands.listBrandCountries(search || undefined, { signal }),
+    queryFn: ({ signal }) => api.brands.listCountries(search || undefined, { signal }),
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
   });

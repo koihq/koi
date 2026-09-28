@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import type { BrandRequest } from "@/api/generated";
+import type { CreateBrand } from "@/api/brands.api";
 
-function validHostname(host: string): boolean {
+export function validHostname(host: string): boolean {
   if (host.length === 0 || host.length > 253) return false;
 
   const ipv4 = host.split(".");
@@ -69,7 +69,7 @@ export const brandFormSchema = z
     if (value.githubRepo && !validGitHubRepo(value.githubRepo)) {
       context.addIssue({ code: "custom", path: ["githubRepo"] });
     }
-  }) satisfies z.ZodType<BrandRequest>;
+  }) satisfies z.ZodType<CreateBrand>;
 
 export type BrandField = "name" | "domain" | "github_repo" | "country" | "description";
 

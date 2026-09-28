@@ -9,6 +9,7 @@ const (
 	CodeUnauthorized       = "unauthorized"
 	CodeInvalidJSON        = "invalid_json"
 	CodeInternal           = "internal"
+	CodeFeatureUnavailable = "feature_unavailable"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"
@@ -24,6 +25,7 @@ var (
 	ErrUnauthorized       = &Error{Code: CodeUnauthorized, Message: "unauthorized"}
 	ErrInvalidJSON        = &Error{Code: CodeInvalidJSON, Message: "invalid json"}
 	ErrInternal           = &Error{Code: CodeInternal, Message: "internal error"}
+	ErrFeatureUnavailable = &Error{Code: CodeFeatureUnavailable, Message: "feature unavailable"}
 )
 
 type FieldError struct {

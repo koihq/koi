@@ -13,6 +13,7 @@ vendor/
 
 # Node
 node_modules/
+.pnpm-store/
 ui/.vite/
 
 # Vite → Go embed output

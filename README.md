@@ -11,6 +11,11 @@ cp .env.example .env
 make dev
 ```
 
+Set `KOI_SESSION_SECRET` in `.env` to a random value (`openssl rand -base64 32`).
+Logo.dev keys are optional: without them, add competitors by name and domain in the UI
+and use initial-letter icons. Set `LOGODEV_SECRET_KEY` to enable company search;
+set `VITE_LOGODEV_PUBLISHABLE_KEY` before building the UI to show logos.
+
 Dev serves the UI with Vite HMR at `http://localhost:5173` and the API (Air) at `:8080`. Vite proxies `/health` and `/api` to the API. Check `GET http://localhost:5173/health` — `{ "status": "ok", "db": "ok"|"down" }`.
 
 To run the production-shaped binary (embedded UI, no HMR):

@@ -42,6 +42,10 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 | Text field | `Input` + `Field` / `FieldLabel` / `FieldError` / `FieldGroup` |
 | Searchable choice | `Combobox` / `ComboboxInput` / `ComboboxContent` / `ComboboxItem` |
 | Action menu | `DropdownMenu` / `DropdownMenuTrigger` / `DropdownMenuContent` / `DropdownMenuItem` |
+| Data table | `Table` / `TableHeader` / `TableBody` / `TableRow` / `TableHead` / `TableCell` |
+| Modal form | `Dialog` / `DialogContent` / `DialogHeader` / `DialogTitle` / `DialogDescription` |
+| Destructive confirmation | `AlertDialog` / `AlertDialogContent` / `AlertDialogAction` / `AlertDialogCancel` |
+| Compact choice | `Select` / `SelectTrigger` / `SelectValue` / `SelectContent` / `SelectItem` |
 | Label | `Label` (prefer `FieldLabel` in forms) |
 | Structural split | `Separator` — **one split**, never as grouping. Do not put `FieldSeparator` between form fields |
 

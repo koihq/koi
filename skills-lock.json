@@ -133,6 +133,12 @@
       "skillPath": "plugins/tanstack-router/skills/tanstack-router/SKILL.md",
       "computedHash": "24beccc4016f91bab65547209cfd849ea5e66f3d5d92820683a9dd84669ced56"
     },
+    "tanstack-table": {
+      "source": "tanstack-skills/tanstack-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/tanstack-table/skills/tanstack-table/SKILL.md",
+      "computedHash": "d5ac71bd795696cd3310165c3ea0e435c310a0ac3c4e9dd45b39ed91b8dbcbb1"
+    },
     "variant": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",

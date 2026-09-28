@@ -7,10 +7,11 @@ import common from "@/locales/en/common.json";
 import dev from "@/locales/en/dev.json";
 import errors from "@/locales/en/errors.json";
 import home from "@/locales/en/home.json";
+import management from "@/locales/en/management.json";
 
 export const defaultNS = "common";
 export const resources = {
-  en: { common, auth, brand, errors, home, dev },
+  en: { common, auth, brand, errors, home, dev, management },
 } as const;
 
 i18n.use(initReactI18next).init({
@@ -18,7 +19,7 @@ i18n.use(initReactI18next).init({
   lng: "en",
   fallbackLng: "en",
   defaultNS,
-  ns: ["common", "auth", "brand", "errors", "home", "dev"],
+  ns: ["common", "auth", "brand", "errors", "home", "dev", "management"],
   interpolation: {
     escapeValue: false,
     prefix: "{",

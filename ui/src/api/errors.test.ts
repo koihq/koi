@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { displayMessage, envelopeMiddleware } from "@/api/errors";
+import { apiErrorFromResponse, displayMessage } from "@/api/errors";
 import i18n from "@/config/i18n";
 
 describe("displayMessage", () => {
@@ -21,20 +21,13 @@ describe("displayMessage", () => {
   });
 });
 
-describe("envelopeMiddleware", () => {
-  it("throws ApiError with code and fields, not UI copy", async () => {
+describe("apiErrorFromResponse", () => {
+  it("creates ApiError with code and fields, not UI copy", async () => {
     const response = new Response(
       JSON.stringify({ error: { code: "invalid_credentials", message: "invalid credentials" } }),
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
-    await expect(
-      envelopeMiddleware.post?.({
-        fetch,
-        url: "/api/v1/auth/login",
-        init: { method: "POST" },
-        response,
-      }),
-    ).rejects.toMatchObject({
+    await expect(apiErrorFromResponse(response)).resolves.toMatchObject({
       name: "ApiError",
       code: "invalid_credentials",
       message: "invalid_credentials",

@@ -26,11 +26,19 @@ func Migrate(db *gorm.DB) error {
 			return err
 		}
 	}
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&koidomain.User{},
 		&koidomain.Organization{},
 		&koidomain.Membership{},
 		&koidomain.Brand{},
+		&koidomain.Prompt{},
+		&koidomain.Competitor{},
 		&sessionRow{},
-	)
+	); err != nil {
+		return err
+	}
+	if db.Migrator().HasColumn("competitors", "aliases") {
+		return db.Migrator().DropColumn("competitors", "aliases")
+	}
+	return nil
 }

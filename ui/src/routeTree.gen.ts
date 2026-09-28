@@ -18,7 +18,6 @@ import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/_app/index'
 import { Route as AuthenticatedAppBriefRouteImport } from './routes/_authenticated/_app/brief'
 import { Route as AuthenticatedAppCitationsRouteImport } from './routes/_authenticated/_app/citations'
-import { Route as AuthenticatedAppCompetitorsRouteImport } from './routes/_authenticated/_app/competitors'
 import { Route as AuthenticatedAppMentionsRouteImport } from './routes/_authenticated/_app/mentions'
 import { Route as AuthenticatedSetupIndexRouteImport } from './routes/_authenticated/setup/index'
 import { Route as DevUiIndexRouteImport } from './routes/dev/ui/index'
@@ -27,7 +26,11 @@ import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
 import { Route as DevUiMarkRouteImport } from './routes/dev/ui/mark'
 import { Route as DevUiSeparatorRouteImport } from './routes/dev/ui/separator'
 import { Route as DevUiSidebarRouteImport } from './routes/dev/ui/sidebar'
+import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_authenticated/_app/competitors/index'
+import { Route as AuthenticatedAppPromptsIndexRouteImport } from './routes/_authenticated/_app/prompts/index'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
+import { Route as AuthenticatedSettingsSettingsCompetitorsIndexRouteImport } from './routes/_authenticated/_settings/settings/competitors/index'
+import { Route as AuthenticatedSettingsSettingsPromptsIndexRouteImport } from './routes/_authenticated/_settings/settings/prompts/index'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -72,12 +75,6 @@ const AuthenticatedAppCitationsRoute =
     path: '/citations',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
-const AuthenticatedAppCompetitorsRoute =
-  AuthenticatedAppCompetitorsRouteImport.update({
-    id: '/competitors',
-    path: '/competitors',
-    getParentRoute: () => AuthenticatedAppRoute,
-  } as any)
 const AuthenticatedAppMentionsRoute =
   AuthenticatedAppMentionsRouteImport.update({
     id: '/mentions',
@@ -119,10 +116,34 @@ const DevUiSidebarRoute = DevUiSidebarRouteImport.update({
   path: '/sidebar',
   getParentRoute: () => DevUiRouteRoute,
 } as any)
+const AuthenticatedAppCompetitorsIndexRoute =
+  AuthenticatedAppCompetitorsIndexRouteImport.update({
+    id: '/competitors/',
+    path: '/competitors/',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppPromptsIndexRoute =
+  AuthenticatedAppPromptsIndexRouteImport.update({
+    id: '/prompts/',
+    path: '/prompts/',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedSettingsSettingsBrandRoute =
   AuthenticatedSettingsSettingsBrandRouteImport.update({
     id: '/settings/brand',
     path: '/settings/brand',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsSettingsCompetitorsIndexRoute =
+  AuthenticatedSettingsSettingsCompetitorsIndexRouteImport.update({
+    id: '/settings/competitors/',
+    path: '/settings/competitors/',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsSettingsPromptsIndexRoute =
+  AuthenticatedSettingsSettingsPromptsIndexRouteImport.update({
+    id: '/settings/prompts/',
+    path: '/settings/prompts/',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
 
@@ -133,7 +154,6 @@ export interface FileRoutesByFullPath {
   '/sign-up/': typeof SignUpIndexRoute
   '/brief': typeof AuthenticatedAppBriefRoute
   '/citations': typeof AuthenticatedAppCitationsRoute
-  '/competitors': typeof AuthenticatedAppCompetitorsRoute
   '/mentions': typeof AuthenticatedAppMentionsRoute
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
@@ -143,6 +163,10 @@ export interface FileRoutesByFullPath {
   '/setup/': typeof AuthenticatedSetupIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
+  '/prompts/': typeof AuthenticatedAppPromptsIndexRoute
+  '/settings/competitors/': typeof AuthenticatedSettingsSettingsCompetitorsIndexRoute
+  '/settings/prompts/': typeof AuthenticatedSettingsSettingsPromptsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedAppIndexRoute
@@ -150,7 +174,6 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpIndexRoute
   '/brief': typeof AuthenticatedAppBriefRoute
   '/citations': typeof AuthenticatedAppCitationsRoute
-  '/competitors': typeof AuthenticatedAppCompetitorsRoute
   '/mentions': typeof AuthenticatedAppMentionsRoute
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
@@ -160,6 +183,10 @@ export interface FileRoutesByTo {
   '/setup': typeof AuthenticatedSetupIndexRoute
   '/dev/ui': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
+  '/prompts': typeof AuthenticatedAppPromptsIndexRoute
+  '/settings/competitors': typeof AuthenticatedSettingsSettingsCompetitorsIndexRoute
+  '/settings/prompts': typeof AuthenticatedSettingsSettingsPromptsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -171,7 +198,6 @@ export interface FileRoutesById {
   '/sign-up/': typeof SignUpIndexRoute
   '/_authenticated/_app/brief': typeof AuthenticatedAppBriefRoute
   '/_authenticated/_app/citations': typeof AuthenticatedAppCitationsRoute
-  '/_authenticated/_app/competitors': typeof AuthenticatedAppCompetitorsRoute
   '/_authenticated/_app/mentions': typeof AuthenticatedAppMentionsRoute
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
@@ -182,6 +208,10 @@ export interface FileRoutesById {
   '/_authenticated/setup/': typeof AuthenticatedSetupIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
+  '/_authenticated/_app/prompts/': typeof AuthenticatedAppPromptsIndexRoute
+  '/_authenticated/_settings/settings/competitors/': typeof AuthenticatedSettingsSettingsCompetitorsIndexRoute
+  '/_authenticated/_settings/settings/prompts/': typeof AuthenticatedSettingsSettingsPromptsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -192,7 +222,6 @@ export interface FileRouteTypes {
     | '/sign-up/'
     | '/brief'
     | '/citations'
-    | '/competitors'
     | '/mentions'
     | '/dev/ui/button'
     | '/dev/ui/field'
@@ -202,6 +231,10 @@ export interface FileRouteTypes {
     | '/setup/'
     | '/dev/ui/'
     | '/settings/brand'
+    | '/competitors/'
+    | '/prompts/'
+    | '/settings/competitors/'
+    | '/settings/prompts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,7 +242,6 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/brief'
     | '/citations'
-    | '/competitors'
     | '/mentions'
     | '/dev/ui/button'
     | '/dev/ui/field'
@@ -219,6 +251,10 @@ export interface FileRouteTypes {
     | '/setup'
     | '/dev/ui'
     | '/settings/brand'
+    | '/competitors'
+    | '/prompts'
+    | '/settings/competitors'
+    | '/settings/prompts'
   id:
     | '__root__'
     | '/_authenticated'
@@ -229,7 +265,6 @@ export interface FileRouteTypes {
     | '/sign-up/'
     | '/_authenticated/_app/brief'
     | '/_authenticated/_app/citations'
-    | '/_authenticated/_app/competitors'
     | '/_authenticated/_app/mentions'
     | '/dev/ui/button'
     | '/dev/ui/field'
@@ -240,6 +275,10 @@ export interface FileRouteTypes {
     | '/_authenticated/setup/'
     | '/dev/ui/'
     | '/_authenticated/_settings/settings/brand'
+    | '/_authenticated/_app/competitors/'
+    | '/_authenticated/_app/prompts/'
+    | '/_authenticated/_settings/settings/competitors/'
+    | '/_authenticated/_settings/settings/prompts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -314,13 +353,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppCitationsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
-    '/_authenticated/_app/competitors': {
-      id: '/_authenticated/_app/competitors'
-      path: '/competitors'
-      fullPath: '/competitors'
-      preLoaderRoute: typeof AuthenticatedAppCompetitorsRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
     '/_authenticated/_app/mentions': {
       id: '/_authenticated/_app/mentions'
       path: '/mentions'
@@ -377,11 +409,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiSidebarRouteImport
       parentRoute: typeof DevUiRouteRoute
     }
+    '/_authenticated/_app/competitors/': {
+      id: '/_authenticated/_app/competitors/'
+      path: '/competitors'
+      fullPath: '/competitors/'
+      preLoaderRoute: typeof AuthenticatedAppCompetitorsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/prompts/': {
+      id: '/_authenticated/_app/prompts/'
+      path: '/prompts'
+      fullPath: '/prompts/'
+      preLoaderRoute: typeof AuthenticatedAppPromptsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/_settings/settings/brand': {
       id: '/_authenticated/_settings/settings/brand'
       path: '/settings/brand'
       fullPath: '/settings/brand'
       preLoaderRoute: typeof AuthenticatedSettingsSettingsBrandRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/_settings/settings/competitors/': {
+      id: '/_authenticated/_settings/settings/competitors/'
+      path: '/settings/competitors'
+      fullPath: '/settings/competitors/'
+      preLoaderRoute: typeof AuthenticatedSettingsSettingsCompetitorsIndexRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/_settings/settings/prompts/': {
+      id: '/_authenticated/_settings/settings/prompts/'
+      path: '/settings/prompts'
+      fullPath: '/settings/prompts/'
+      preLoaderRoute: typeof AuthenticatedSettingsSettingsPromptsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
   }
@@ -390,17 +450,19 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppBriefRoute: typeof AuthenticatedAppBriefRoute
   AuthenticatedAppCitationsRoute: typeof AuthenticatedAppCitationsRoute
-  AuthenticatedAppCompetitorsRoute: typeof AuthenticatedAppCompetitorsRoute
   AuthenticatedAppMentionsRoute: typeof AuthenticatedAppMentionsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppCompetitorsIndexRoute: typeof AuthenticatedAppCompetitorsIndexRoute
+  AuthenticatedAppPromptsIndexRoute: typeof AuthenticatedAppPromptsIndexRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppBriefRoute: AuthenticatedAppBriefRoute,
   AuthenticatedAppCitationsRoute: AuthenticatedAppCitationsRoute,
-  AuthenticatedAppCompetitorsRoute: AuthenticatedAppCompetitorsRoute,
   AuthenticatedAppMentionsRoute: AuthenticatedAppMentionsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppCompetitorsIndexRoute: AuthenticatedAppCompetitorsIndexRoute,
+  AuthenticatedAppPromptsIndexRoute: AuthenticatedAppPromptsIndexRoute,
 }
 
 const AuthenticatedAppRouteWithChildren =
@@ -408,11 +470,17 @@ const AuthenticatedAppRouteWithChildren =
 
 interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsSettingsBrandRoute: typeof AuthenticatedSettingsSettingsBrandRoute
+  AuthenticatedSettingsSettingsCompetitorsIndexRoute: typeof AuthenticatedSettingsSettingsCompetitorsIndexRoute
+  AuthenticatedSettingsSettingsPromptsIndexRoute: typeof AuthenticatedSettingsSettingsPromptsIndexRoute
 }
 
 const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
   AuthenticatedSettingsSettingsBrandRoute:
     AuthenticatedSettingsSettingsBrandRoute,
+  AuthenticatedSettingsSettingsCompetitorsIndexRoute:
+    AuthenticatedSettingsSettingsCompetitorsIndexRoute,
+  AuthenticatedSettingsSettingsPromptsIndexRoute:
+    AuthenticatedSettingsSettingsPromptsIndexRoute,
 }
 
 const AuthenticatedSettingsRouteWithChildren =

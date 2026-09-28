@@ -1,10 +1,7 @@
 package koidomain
 
-// cloroCountries was captured on 2026-09-18 from the authenticated
-// GET https://api.cloro.dev/v1/countries response.
-// Source: https://cloro.mintlify.app/api-reference/endpoint/countries
-// Refresh this snapshot deliberately when Cloro coverage changes.
-var cloroCountries = []string{
+// countryCodes is the committed set accepted by brand validation.
+var countryCodes = []string{
 	"AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AS", "AT", "AU", "AW", "AX", "AZ",
 	"BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BL", "BM", "BN", "BO", "BQ", "BR", "BS", "BT", "BV", "BW", "BY", "BZ",
 	"CA", "CC", "CD", "CF", "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU", "CV", "CW", "CX", "CY", "CZ",

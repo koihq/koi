@@ -19,11 +19,25 @@ type BaseEntity struct {
 
 func (b BaseEntity) GetID() uuid.UUID { return b.ID }
 
-type BaseEntityQuerier[T Entity] interface {
-	Get(ctx context.Context, id uuid.UUID) (*T, error)
+type BaseEntityQuerier[T Entity, F any] interface {
+	Get(ctx context.Context, filter F) (*T, error)
 }
 
-type BaseEntityRepository[T Entity] interface {
-	BaseEntityQuerier[T]
+type BaseEntityRepository[T Entity, F any] interface {
+	BaseEntityQuerier[T, F]
 	Create(ctx context.Context, entity *T) error
+}
+
+type PageParams struct {
+	Page     int
+	PageSize int
+}
+
+type Page[T any] struct {
+	Items       []T   `json:"items"`
+	TotalItems  int64 `json:"totalItems"`
+	TotalPages  int64 `json:"totalPages"`
+	CurrentPage int   `json:"currentPage"`
+	HasNext     bool  `json:"hasNext"`
+	HasPrev     bool  `json:"hasPrev"`
 }

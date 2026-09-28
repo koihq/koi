@@ -4,6 +4,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -61,12 +62,12 @@ func brandID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 }
 
 func (h *BrandHandler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
 	req := middlewares.Body[BrandRequest](r)
-	brand, err := h.commander.Create(r.Context(), userID, koidomain.BrandParams{
+	brand, err := h.commander.Create(r.Context(), koidomain.BrandParams{
 		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
 		Country: req.Country, Description: req.Description,
 	})
@@ -78,26 +79,56 @@ func (h *BrandHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
-	page, err := positiveQueryInt(r, "page", 1, math.MaxInt)
+	page, err := pageParams(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	pageSize, err := positiveQueryInt(r, "pageSize", 10, 100)
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	brands, err := h.querier.List(r.Context(), userID, page, pageSize)
+	brands, err := h.querier.List(r.Context(), page.Page, page.PageSize)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
 	api.JSON(w, r, http.StatusOK, brands)
+}
+
+func pageParams(r *http.Request) (koidomain.PageParams, error) {
+	page, err := positiveQueryInt(r, "page", 1, math.MaxInt)
+	if err != nil {
+		return koidomain.PageParams{}, err
+	}
+	pageSize, err := positiveQueryInt(r, "pageSize", 10, 100)
+	if err != nil {
+		return koidomain.PageParams{}, err
+	}
+	return koidomain.PageParams{Page: page, PageSize: pageSize}, nil
+}
+
+func optionalBoolQuery(r *http.Request, key string) (*bool, error) {
+	values, present := r.URL.Query()[key]
+	if !present {
+		return nil, nil
+	}
+	if len(values) != 1 || values[0] != "true" && values[0] != "false" {
+		return nil, koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
+	}
+	value := values[0] == "true"
+	return &value, nil
+}
+
+func optionalStringQuery(r *http.Request, key string) (string, error) {
+	values, present := r.URL.Query()[key]
+	if !present {
+		return "", nil
+	}
+	if len(values) != 1 {
+		return "", koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
+	}
+	return strings.TrimSpace(values[0]), nil
 }
 
 func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (int, error) {
@@ -116,7 +147,7 @@ func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (
 }
 
 func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -124,7 +155,7 @@ func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	brand, err := h.querier.Get(r.Context(), userID, id)
+	brand, err := h.querier.Get(r.Context(), id)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -133,7 +164,7 @@ func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := authenticatedUserID(w, r)
+	_, ok := authenticatedUserID(w, r)
 	if !ok {
 		return
 	}
@@ -142,7 +173,7 @@ func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req := middlewares.Body[BrandPatchRequest](r)
-	brand, err := h.commander.Update(r.Context(), userID, id, koidomain.BrandPatch{
+	brand, err := h.commander.Update(r.Context(), id, koidomain.BrandPatch{
 		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
 		Country: req.Country, Description: req.Description,
 	})

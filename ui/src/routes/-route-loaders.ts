@@ -12,6 +12,6 @@ export async function requireAccount(api: Api) {
 
 export async function loadAccountBrand(api: Api) {
   const me = await requireAccount(api);
-  const page = await api.brands.listBrands(1, 1);
+  const page = await api.brands.list({ page: 1, pageSize: 1 });
   return { me, brand: page.items[0] };
 }

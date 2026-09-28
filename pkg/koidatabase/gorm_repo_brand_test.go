@@ -51,14 +51,15 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 	}))
 
 	id := uuid.New()
+	ctx := identityCtx(t, id)
 	require.NoError(t, NewGormUserRepository(db).LockForUpdate(t.Context(), id))
-	_, err = NewGormBrandRepository(db).CountByUserID(t.Context(), id)
+	_, err = NewGormBrandRepository(db).Count(ctx)
 	require.NoError(t, err)
-	_, err = NewGormBrandRepository(db).ListByUserID(t.Context(), id, 10, 20)
+	_, err = NewGormBrandRepository(db).List(ctx, koidomain.PageParams{Page: 3, PageSize: 10})
 	require.NoError(t, err)
-	_, err = NewGormBrandRepository(db).GetByIDAndUserID(t.Context(), uuid.New(), id)
+	_, err = NewGormBrandRepository(db).Get(ctx, uuid.New())
 	require.NoError(t, err)
-	require.ErrorIs(t, NewGormBrandRepository(db).UpdateByIDAndUserID(t.Context(), id, &koidomain.Brand{
+	require.ErrorIs(t, NewGormBrandRepository(db).Update(ctx, &koidomain.Brand{
 		BaseEntity: koidomain.BaseEntity{ID: uuid.New()}, UserID: uuid.New(), Name: "Koi",
 	}), koidomain.ErrNotFound)
 	require.Len(t, queries, 5)
@@ -67,11 +68,8 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 	for _, query := range queries[1:] {
 		require.Contains(t, query, "user_id =")
 	}
-	require.Contains(t, queries[2], "ORDER BY created_at DESC, id DESC")
-	require.Contains(t, queries[2], "LIMIT")
-	require.Contains(t, queries[2], "OFFSET")
-	require.Contains(t, args[2], 10)
-	require.Contains(t, args[2], 20)
+	// DryRun has no rows, so shared pagination stops after its count query.
+	require.Contains(t, queries[2], "count")
 	require.Contains(t, queries[3], "id =")
 	require.Contains(t, queries[4], "id =")
 	for _, queryArgs := range args[1:] {

@@ -1,8 +1,8 @@
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
+import type { CreateBrand } from "@/api/brands.api";
 import { ApiError } from "@/api/errors";
-import type { BrandRequest } from "@/api/generated";
 import { BrandForm } from "@/components/blocks/brand-form";
 import { KoiMark } from "@/components/blocks/koi-mark";
 export const Route = createFileRoute("/_authenticated/setup/")({
@@ -19,15 +19,16 @@ function Setup() {
   const api = useApi();
   const router = useRouter();
 
-  async function createBrand(body: BrandRequest) {
+  async function createBrand(body: CreateBrand) {
     try {
-      await api.brands.createBrand(body);
+      await api.brands.create(body);
     } catch (error) {
       if (!(error instanceof ApiError) || error.code !== "brand_limit_reached") {
         throw error;
       }
     }
     await router.invalidate();
+    await router.navigate({ to: "/mentions" });
   }
 
   return (

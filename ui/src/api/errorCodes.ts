@@ -9,6 +9,7 @@ export const errorCodes = [
   "unauthorized",
   "invalid_json",
   "internal",
+  "feature_unavailable",
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

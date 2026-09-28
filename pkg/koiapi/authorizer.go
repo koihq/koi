@@ -1,25 +1,23 @@
 package koiapi
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/google/uuid"
 
 	"github.com/koihq/koi/pkg/koiapi/api"
+	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
-type userIDContextKey struct{}
-
 func authenticatedUserID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	id, ok := r.Context().Value(userIDContextKey{}).(uuid.UUID)
-	if !ok || id == uuid.Nil {
+	identity, ok := koiauth.FromContext(r.Context())
+	if !ok {
 		api.WriteDomainError(w, r, koidomain.ErrUnauthorized)
 		return uuid.Nil, false
 	}
-	return id, true
+	return identity.UserID, true
 }
 
 func Authorizer(sess *scs.SessionManager) func(http.Handler) http.Handler {
@@ -30,7 +28,8 @@ func Authorizer(sess *scs.SessionManager) func(http.Handler) http.Handler {
 				api.WriteDomainError(w, r, koidomain.ErrUnauthorized)
 				return
 			}
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userIDContextKey{}, id)))
+			ctx := koiauth.WithIdentity(r.Context(), koiauth.Identity{UserID: id})
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

@@ -3,61 +3,39 @@ package koidatabase
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
 type GormBrandRepository struct {
-	db *gorm.DB
+	*Repository[koidomain.Brand]
 }
 
 func NewGormBrandRepository(db *gorm.DB) *GormBrandRepository {
-	return &GormBrandRepository{db: db}
-}
-
-func brandOwner(userID uuid.UUID) func(*gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB { return db.Where("user_id = ?", userID) }
+	return &GormBrandRepository{Repository: newScopedRepository[koidomain.Brand](db, brandOwnerScope)}
 }
 
 func (r *GormBrandRepository) Create(ctx context.Context, brand *koidomain.Brand) error {
-	return mapDBError(r.db.WithContext(ctx).Create(brand).Error)
-}
-
-func (r *GormBrandRepository) CountByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&koidomain.Brand{}).Scopes(brandOwner(userID)).Count(&count).Error
-	return count, mapDBError(err)
-}
-
-func (r *GormBrandRepository) ListByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]koidomain.Brand, error) {
-	brands := make([]koidomain.Brand, 0)
-	err := r.db.WithContext(ctx).Scopes(brandOwner(userID)).Order("created_at DESC, id DESC").Limit(limit).Offset(offset).Find(&brands).Error
-	return brands, mapDBError(err)
-}
-
-func (r *GormBrandRepository) GetByIDAndUserID(ctx context.Context, id, userID uuid.UUID) (*koidomain.Brand, error) {
-	var brand koidomain.Brand
-	err := r.db.WithContext(ctx).Scopes(brandOwner(userID)).Where("id = ?", id).Take(&brand).Error
-	if err != nil {
-		return nil, mapDBError(err)
+	identity, ok := koiauth.FromContext(ctx)
+	if !ok {
+		return koidomain.ErrUnauthorized
 	}
-	return &brand, nil
+	brand.UserID = identity.UserID
+	return r.Repository.Create(ctx, brand)
 }
 
-func (r *GormBrandRepository) UpdateByIDAndUserID(ctx context.Context, actorID uuid.UUID, brand *koidomain.Brand) error {
-	result := r.db.WithContext(ctx).Model(&koidomain.Brand{}).Scopes(brandOwner(actorID)).
-		Where("id = ?", brand.ID).
-		Updates(map[string]any{
+func (r *GormBrandRepository) List(ctx context.Context, params koidomain.PageParams) (*koidomain.Page[koidomain.Brand], error) {
+	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB { return db }, params, "created_at DESC, id DESC")
+}
+
+func (r *GormBrandRepository) Update(ctx context.Context, brand *koidomain.Brand) error {
+	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return db.Where("id = ?", brand.ID) },
+		map[string]any{
 			"name": brand.Name, "domain": brand.Domain, "github_repo": brand.GitHubRepo,
 			"country": brand.Country, "description": brand.Description,
-		})
-	if err := mapDBError(result.Error); err != nil {
-		return err
-	}
-	if result.RowsAffected == 0 {
-		return koidomain.ErrNotFound
-	}
-	return nil
+		}, []string{"name", "domain", "github_repo", "country", "description"}, true)
 }
+
+var _ koidomain.BrandRepository = (*GormBrandRepository)(nil)

@@ -1,17 +1,21 @@
 import { createContext, type ReactNode, useContext } from "react";
-import { envelopeMiddleware } from "@/api/errors";
-import { AuthApi, BrandsApi, Configuration, HealthApi } from "@/api/generated";
+import { createAuthApi } from "@/api/auth.api";
+import { createBrandsApi } from "@/api/brands.api";
+import { createCapabilitiesApi } from "@/api/capabilities.api";
+import { createCompetitorsApi } from "@/api/competitors.api";
+import { createHealthApi } from "@/api/health.api";
+import { createPromptsApi } from "@/api/prompts.api";
+import { createApiClient } from "@/api/shared/apiClient";
 
 export function createApi() {
-  const config = new Configuration({
-    basePath: "",
-    credentials: "include",
-    middleware: [envelopeMiddleware],
-  });
+  const client = createApiClient();
   return {
-    auth: new AuthApi(config),
-    brands: new BrandsApi(config),
-    health: new HealthApi(config),
+    auth: createAuthApi(client.auth),
+    brands: createBrandsApi(client.brands),
+    capabilities: createCapabilitiesApi(client.capabilities),
+    prompts: createPromptsApi(client.prompts),
+    competitors: createCompetitorsApi(client.competitors),
+    health: createHealthApi(client.health),
   };
 }
 

@@ -1,6 +1,6 @@
 import { ArrowLeft02Icon, Building02Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { RouteLoadError } from "@/components/blocks/route-load-error";
@@ -61,6 +61,10 @@ function SettingsLayout() {
 function SettingsSidebar() {
   const { t } = useTranslation("brand");
   const { setOpenMobile } = useSidebar();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const items = [
+    { to: "/settings/brand", label: t("settings.brand"), icon: Building02Icon },
+  ] as const;
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -79,22 +83,27 @@ function SettingsSidebar() {
           <SidebarGroup>
             <SidebarGroupLabel>{t("settings.section")}</SidebarGroupLabel>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={
-                    <Link
-                      to="/settings/brand"
-                      aria-current="page"
-                      onClick={() => setOpenMobile(false)}
-                    />
-                  }
-                  isActive
-                  tooltip={t("settings.brand")}
-                >
-                  <HugeiconsIcon icon={Building02Icon} strokeWidth={2} />
-                  <span>{t("settings.brand")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {items.map((item) => {
+                const active = pathname === item.to;
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton
+                      render={
+                        <Link
+                          to={item.to}
+                          aria-current={active ? "page" : undefined}
+                          onClick={() => setOpenMobile(false)}
+                        />
+                      }
+                      isActive={active}
+                      tooltip={item.label}
+                    >
+                      <HugeiconsIcon icon={item.icon} strokeWidth={2} />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroup>
         </nav>

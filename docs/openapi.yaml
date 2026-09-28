@@ -7,8 +7,26 @@ servers:
 tags:
   - name: auth
   - name: brands
+  - name: prompts
+  - name: competitors
   - name: health
+  - name: capabilities
 paths:
+  /api/v1/capabilities:
+    get:
+      tags: [capabilities]
+      operationId: getCapabilities
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Optional server features available to this installation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilitiesResponse"
+        "401":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/signup:
     post:
       tags: [auth]
@@ -80,26 +98,15 @@ paths:
       security:
         - cookieAuth: []
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-        - name: pageSize
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
       responses:
         "200":
           description: Page of brands owned by the session user, newest first
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BrandPage"
+                $ref: "#/components/schemas/Page"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -132,7 +139,7 @@ paths:
     get:
       tags: [brands]
       operationId: listBrandCountries
-      description: Returns all supported countries when q is omitted or blank; otherwise filters the committed Cloro country snapshot by a case-insensitive code or English-name prefix.
+      description: Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
       security:
         - cookieAuth: []
       parameters:
@@ -200,6 +207,306 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/prompts:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    get:
+      tags: [prompts]
+      operationId: listPrompts
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+        - $ref: "#/components/parameters/Confirmed"
+      responses:
+        "200":
+          description: Prompts for the owned brand in creation order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [prompts]
+      operationId: createPrompt
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptRequest"
+      responses:
+        "201":
+          description: Manually created and confirmed prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/prompts/{promptID}:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/PromptID"
+    get:
+      tags: [prompts]
+      operationId: getPrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Prompt belonging to the owned brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [prompts]
+      operationId: updatePrompt
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptPatchRequest"
+      responses:
+        "200":
+          description: Updated prompt with confirmation and source preserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [prompts]
+      operationId: deletePrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/prompts/{promptID}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/PromptID"
+    post:
+      tags: [prompts]
+      operationId: confirmPrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Confirmed prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/prompts/confirm:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    post:
+      tags: [prompts]
+      operationId: confirmAllPrompts
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: All prompts confirmed
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/competitors:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    get:
+      tags: [competitors]
+      operationId: listCompetitors
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+        - $ref: "#/components/parameters/Confirmed"
+      responses:
+        "200":
+          description: Tracked competitors for the owned brand in creation order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Page"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [competitors]
+      operationId: createCompetitor
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitorRequest"
+      responses:
+        "201":
+          description: Manually created and confirmed competitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/competitors/search:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    get:
+      tags: [competitors]
+      operationId: searchCompetitors
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+      responses:
+        "200":
+          description: Matching companies from the configured search provider
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name, domain]
+                  properties:
+                    name:
+                      type: string
+                    domain:
+                      type: string
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "503":
+          description: Competitor search is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /api/v1/brands/{brandID}/competitors/{competitorID}:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/CompetitorID"
+    get:
+      tags: [competitors]
+      operationId: getCompetitor
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Competitor belonging to the owned brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [competitors]
+      operationId: deleteCompetitor
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/competitors/{competitorID}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/CompetitorID"
+    post:
+      tags: [competitors]
+      operationId: confirmCompetitor
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Confirmed competitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/competitors/confirm:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    post:
+      tags: [competitors]
+      operationId: confirmAllCompetitors
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: All competitors confirmed
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /health:
     get:
       tags: [health]
@@ -212,6 +519,53 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
 components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    Confirmed:
+      name: confirmed
+      in: query
+      schema:
+        type: boolean
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+    BrandID:
+      name: brandID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PromptID:
+      name: promptID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CompetitorID:
+      name: competitorID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   securitySchemes:
     cookieAuth:
       type: apiKey
@@ -280,14 +634,13 @@ components:
           type: string
         description:
           type: string
-    BrandPage:
+    Page:
       type: object
       required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
       properties:
         items:
           type: array
-          items:
-            $ref: "#/components/schemas/BrandRes"
+          items: {}
         totalItems:
           type: integer
           format: int64
@@ -309,6 +662,64 @@ components:
           pattern: "^[A-Z]{2}$"
         name:
           type: string
+    PromptRequest:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+    PromptPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+    PromptRes:
+      type: object
+      required: [id, brand_id, text, source, confirmed]
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand_id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        source:
+          type: string
+          enum: [manual, drafted]
+        confirmed:
+          type: boolean
+    CompetitorRequest:
+      type: object
+      additionalProperties: false
+      required: [name, domain]
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+    CompetitorRes:
+      type: object
+      required: [id, brand_id, name, domain, source, confirmed]
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+        source:
+          type: string
+          enum: [manual, drafted, observed]
+        confirmed:
+          type: boolean
     CredentialsReq:
       type: object
       required: [email, password]
@@ -345,6 +756,12 @@ components:
           type: string
         db:
           type: string
+    CapabilitiesResponse:
+      type: object
+      required: [competitorSearch]
+      properties:
+        competitorSearch:
+          type: boolean
     Envelope:
       type: object
       required: [error]
@@ -382,6 +799,7 @@ components:
         - unauthorized
         - invalid_json
         - internal
+        - feature_unavailable
     FieldCode:
       type: string
       enum:

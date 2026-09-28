@@ -140,7 +140,7 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 	cmd := NewMockAuthCommander(t)
 	q := NewMockAuthQuerier(t)
 	cmd.EXPECT().Signup(mock.Anything, mock.Anything).Return(me, nil)
-	q.EXPECT().Me(mock.Anything, me.User.ID).Return(me, nil)
+	q.EXPECT().Me(mock.Anything).Return(me, nil)
 	ts := newAuthTestServer(t, q, cmd)
 	client := newCookieClient(t)
 	creds := `{"email":"you@example.com","password":"password1"}`

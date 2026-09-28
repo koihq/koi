@@ -11,8 +11,59 @@
     "navigation": "Settings navigation",
     "section": "Settings",
     "brand": "Brand",
+    "prompts": "Prompts",
+    "competitors": "Tracked competitors",
     "save": "Save changes",
     "saved": "Brand settings saved"
+  },
+  "lists": {
+    "loading": "Loading tracking lists…",
+    "loadError": "Unable to load these lists. Check your connection and try again.",
+    "saveError": "Unable to save this change. Try again.",
+    "confirmed": "Confirmed",
+    "unconfirmed": "Needs confirmation",
+    "confirm": "Confirm",
+    "confirmAll": "Confirm all",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "pagination": {
+      "label": "List pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "source": {
+      "manual": "Added manually",
+      "drafted": "Drafted by Koi",
+      "observed": "Observed by Koi"
+    },
+    "prompts": {
+      "title": "Prompts",
+      "description": "Questions Koi will ask answer engines about your market.",
+      "field": "Prompt",
+      "placeholder": "What are the best AEO tools for technical founders?",
+      "invalid": "Enter a prompt",
+      "add": "Add prompt",
+      "empty": "Add the first question you want Koi to track.",
+      "deleteConfirm": "Delete this prompt?"
+    },
+    "competitors": {
+      "title": "Tracked competitors",
+      "description": "Brands Koi will compare with yours. New discoveries can be reviewed here later.",
+      "name": "Competitor name",
+      "nameInvalid": "Enter a competitor name",
+      "domain": "Domain",
+      "domainPlaceholder": "example.com",
+      "domainInvalid": "Enter a valid hostname without https://",
+      "aliases": "Aliases",
+      "aliasesPlaceholder": "Example AI, Example Labs",
+      "aliasesValue": "Also known as: {aliases}",
+      "add": "Add competitor",
+      "empty": "Add the first competitor you want Koi to track.",
+      "deleteConfirm": "Delete this competitor?"
+    }
   },
   "menu": {
     "open": "Open {name} menu",
