@@ -30,6 +30,10 @@ Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/a
 
 `GET /health` returns `{ "status": "ok", "db": "ok"|"down" }`.
 
+## Self-hosting rule
+
+Self-hosted Koi must work without requiring users to create accounts with, obtain API keys from, or pay for third-party services. Apply this to every new feature and roadmap integration, including logos and auth. Provide a usable built-in path for self-hosted users; vendor integrations may be optional, but must not be required for the core experience. Do not rely on Koi Cloud to supply credentials or services to a self-hosted instance.
+
 ## Agent rules
 
 - Before Go API, domain, or GORM work, read `.agents/skills/codebase-patterns` (`backend.md`).
