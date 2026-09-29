@@ -11,6 +11,7 @@ tags:
   - name: competitors
   - name: health
   - name: capabilities
+  - name: generations
 paths:
   /api/v1/capabilities:
     get:
@@ -507,6 +508,106 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/generations:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    post:
+      tags: [generations]
+      operationId: createGeneration
+      description: Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerationRequest"
+            example:
+              mode: initial
+      responses:
+        "200":
+          description: Terminal run replayed with the same idempotency key and mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationAccepted"
+        "202":
+          description: New or compatible active run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationAccepted"
+              example:
+                id: 22222222-2222-4222-8222-222222222222
+                mode: initial
+                state: queued
+                status_url: /api/v1/brands/11111111-1111-4111-8111-111111111111/generations/22222222-2222-4222-8222-222222222222
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Active mode conflict, idempotency key reused for another mode, or initial already completed. Active mode conflicts include error.status_url.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "503":
+          $ref: "#/components/responses/Error"
+    get:
+      tags: [generations]
+      operationId: listGenerations
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Page of runs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/generations/{generationID}:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/GenerationID"
+    get:
+      tags: [generations]
+      operationId: getGeneration
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Public status of an owned run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationStatus"
+              example:
+                id: 22222222-2222-4222-8222-222222222222
+                mode: initial
+                state: queued
+                attempt: 0
+                prompt_count: 0
+                competitor_count: 0
+                created_at: "2026-09-28T10:00:00Z"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /health:
     get:
       tags: [health]
@@ -566,6 +667,21 @@ components:
       schema:
         type: string
         format: uuid
+    GenerationID:
+      name: generationID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
   securitySchemes:
     cookieAuth:
       type: apiKey
@@ -758,9 +874,89 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch]
+      required: [competitorSearch, aiDrafting]
       properties:
         competitorSearch:
+          type: boolean
+        aiDrafting:
+          type: boolean
+    GenerationRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [initial, prompts, competitors]
+    GenerationAccepted:
+      type: object
+      required: [id, mode, state, status_url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [initial, prompts, competitors]
+        state:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        status_url:
+          type: string
+    GenerationStatus:
+      type: object
+      required: [id, mode, state, attempt, prompt_count, competitor_count, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [initial, prompts, competitors]
+        state:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        attempt:
+          type: integer
+          minimum: 0
+        prompt_count:
+          type: integer
+          minimum: 0
+        competitor_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        next_retry_at:
+          type: string
+          format: date-time
+        error_code:
+          type: string
+    GenerationPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenerationStatus"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
           type: boolean
     Envelope:
       type: object
@@ -780,6 +976,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldError"
+        status_url:
+          type: string
+          description: Present for generation_conflict to locate the active run.
     FieldError:
       type: object
       required: [field, code]
@@ -800,6 +999,9 @@ components:
         - invalid_json
         - internal
         - feature_unavailable
+        - generation_conflict
+        - idempotency_conflict
+        - initial_already_completed
     FieldCode:
       type: string
       enum:

@@ -166,8 +166,6 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 			return fmt.Errorf("migrate river: %w", err)
 		}
 	}
-	store := koidatabase.NewStore(db)
-
 	sess := scs.New()
 	sess.Lifetime = 30 * 24 * time.Hour
 	sess.Cookie.Name = "koi_session"
@@ -185,20 +183,25 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		searcher = logodev.NewSearcher(key)
 	}
 	var riverClient *river.Client[*sql.Tx]
-	if sqlDB != nil && a.cfg.OpenRouterAPIKey != "" && a.workers != nil {
-		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), &river.Config{
-			Queues:          map[string]river.QueueConfig{"drafting": {MaxWorkers: a.cfg.WorkerConcurrency}},
-			Workers:         a.workers,
-			SoftStopTimeout: 60 * time.Second,
-		})
+	if sqlDB != nil && a.cfg.OpenRouterAPIKey != "" {
+		config := &river.Config{}
+		if a.workers != nil {
+			config.Queues = map[string]river.QueueConfig{"drafting": {MaxWorkers: a.cfg.WorkerConcurrency}}
+			config.Workers = a.workers
+			config.SoftStopTimeout = 60 * time.Second
+		}
+		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
-		if err := riverClient.Start(context.Background()); err != nil {
-			return fmt.Errorf("start river client: %w", err)
+		if a.workers != nil {
+			if err := riverClient.Start(context.Background()); err != nil {
+				return fmt.Errorf("start river client: %w", err)
+			}
 		}
 	}
-	server := &http.Server{Handler: koiapi.NewServer(store, sess, searcher)}
+	store := koidatabase.NewStore(db, riverClient)
+	server := &http.Server{Handler: koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil)}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- server.Serve(listener) }()
 
@@ -217,7 +220,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		_ = server.Close()
 	}
 	cancelHTTP()
-	if riverClient != nil {
+	if riverClient != nil && a.workers != nil {
 		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 60*time.Second)
 		if err := riverClient.Stop(riverCtx); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("stop river: %w", err))

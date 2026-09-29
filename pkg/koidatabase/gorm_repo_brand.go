@@ -3,7 +3,9 @@ package koidatabase
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
@@ -24,6 +26,12 @@ func (r *GormBrandRepository) Create(ctx context.Context, brand *koidomain.Brand
 	}
 	brand.UserID = identity.UserID
 	return r.Repository.Create(ctx, brand)
+}
+
+func (r *GormBrandRepository) LockForUpdate(ctx context.Context, id uuid.UUID) (*koidomain.Brand, error) {
+	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB {
+		return db.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id)
+	})
 }
 
 func (r *GormBrandRepository) List(ctx context.Context, params koidomain.PageParams) (*koidomain.Page[koidomain.Brand], error) {

@@ -13,9 +13,10 @@ type Envelope struct {
 }
 
 type Body struct {
-	Code    string                 `json:"code"`
-	Message string                 `json:"message"`
-	Fields  []koidomain.FieldError `json:"fields,omitempty"`
+	Code      string                 `json:"code"`
+	Message   string                 `json:"message"`
+	Fields    []koidomain.FieldError `json:"fields,omitempty"`
+	StatusURL string                 `json:"status_url,omitempty"`
 }
 
 func JSON(w http.ResponseWriter, r *http.Request, status int, v any) {

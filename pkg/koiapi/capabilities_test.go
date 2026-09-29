@@ -21,17 +21,19 @@ func (staticCompanySearcher) Search(context.Context, string) ([]koidomain.Compan
 
 func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		searcher koidomain.CompanySearcher
-		enabled  bool
+		name            string
+		searcher        koidomain.CompanySearcher
+		searchEnabled   bool
+		draftingEnabled bool
 	}{
 		{name: "unconfigured"},
-		{name: "configured", searcher: staticCompanySearcher{}, enabled: true},
+		{name: "search configured", searcher: staticCompanySearcher{}, searchEnabled: true},
+		{name: "drafting configured", draftingEnabled: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sess := scs.New()
 			sess.Cookie.Name = "koi_session"
-			app := NewServer(NewMockStore(t), sess, tc.searcher)
+			app := NewServer(NewMockStore(t), sess, tc.searcher, tc.draftingEnabled)
 			testSession := sess.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				sess.Put(r.Context(), "user_id", uuid.NewString())
 				w.WriteHeader(http.StatusNoContent)
@@ -54,10 +56,12 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 			resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/capabilities", "")
 			var body struct {
 				CompetitorSearch bool `json:"competitorSearch"`
+				AIDrafting       bool `json:"aiDrafting"`
 			}
 			readJSON(t, resp, &body)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
-			require.Equal(t, tc.enabled, body.CompetitorSearch)
+			require.Equal(t, tc.searchEnabled, body.CompetitorSearch)
+			require.Equal(t, tc.draftingEnabled, body.AIDrafting)
 		})
 	}
 }

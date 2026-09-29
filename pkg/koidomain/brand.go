@@ -168,6 +168,7 @@ func validGitHubRepo(raw string) bool {
 
 type BrandRepository interface {
 	BaseEntityRepository[Brand, uuid.UUID]
+	LockForUpdate(context.Context, uuid.UUID) (*Brand, error)
 	Count(context.Context) (int64, error)
 	List(context.Context, PageParams) (*Page[Brand], error)
 	Update(context.Context, *Brand) error
