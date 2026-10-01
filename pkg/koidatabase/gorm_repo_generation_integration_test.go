@@ -2,6 +2,7 @@ package koidatabase
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -117,6 +118,114 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, page2.HasPrev)
 	require.Equal(t, first.run.ID, page2.Items[0].ID)
+
+	for i := range 120 {
+		require.NoError(t, store.PromptRepo().Create(ctx, &koidomain.Prompt{
+			BrandID: brand.ID, Text: fmt.Sprintf("Question %d?", i), Source: koidomain.PromptSourceManual, Confirmed: true,
+		}))
+	}
+	started, draftInput, err := store.BeginDraftAttempt(ctx, newer.ID, *newer.RiverJobID, 1)
+	require.NoError(t, err)
+	require.NotNil(t, started)
+	require.Len(t, draftInput.ExistingPrompts, 120)
+	require.Equal(t, newer.BrandSnapshot, draftInput.Brand)
+	retryAt := time.Now().Add(time.Minute)
+	require.NoError(t, store.RecordDraftFailure(ctx, newer.ID, 1, "provider_rate_limited", &retryAt))
+	var retrying koidomain.GenerationRun
+	require.NoError(t, db.First(&retrying, "id = ?", newer.ID).Error)
+	require.Equal(t, koidomain.GenerationRunning, retrying.State)
+	require.Equal(t, "provider_rate_limited", *retrying.ErrorCode)
+	require.NotNil(t, retrying.NextRetryAt)
+	started, draftInput, err = store.BeginDraftAttempt(ctx, newer.ID, *newer.RiverJobID, 2)
+	require.NoError(t, err)
+	require.NotNil(t, started)
+	require.Len(t, draftInput.ExistingPrompts, 120)
+	require.NoError(t, store.PromptRepo().Create(ctx, &koidomain.Prompt{
+		BrandID: brand.ID, Text: "Added during generation?", Source: koidomain.PromptSourceManual, Confirmed: true,
+	}))
+	promptCount, competitorCount, err := store.FinishDraftAttempt(ctx, newer.ID, 2, koidomain.DraftOutput{
+		Prompts: []string{"Question 7?", "Added during generation?", "New AI question?", "New AI question?", "  "},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, promptCount)
+	require.Zero(t, competitorCount)
+	require.NoError(t, db.First(&retrying, "id = ?", newer.ID).Error)
+	require.Equal(t, koidomain.GenerationSucceeded, retrying.State)
+	require.Equal(t, 2, retrying.Attempt)
+	require.Equal(t, 1, retrying.PromptCount)
+	require.Nil(t, retrying.ErrorCode)
+	require.Nil(t, retrying.NextRetryAt)
+	started, _, err = store.BeginDraftAttempt(ctx, newer.ID, *newer.RiverJobID, 3)
+	require.NoError(t, err)
+	require.Nil(t, started)
+
+	raceRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
+	require.NoError(t, err)
+	_, _, err = store.BeginDraftAttempt(ctx, raceRun.ID, *raceRun.RiverJobID, 1)
+	require.NoError(t, err)
+	manualResult := make(chan error, 1)
+	startRace := make(chan struct{})
+	go func() {
+		<-startRace
+		manualResult <- store.PromptRepo().Create(ctx, &koidomain.Prompt{
+			BrandID: brand.ID, Text: "Shared question?", Source: koidomain.PromptSourceManual, Confirmed: true,
+		})
+	}()
+	close(startRace)
+	raceCount, _, err := store.FinishDraftAttempt(ctx, raceRun.ID, 1, koidomain.DraftOutput{Prompts: []string{"Shared question?"}})
+	require.NoError(t, err)
+	manualErr := <-manualResult
+	if raceCount == 0 {
+		require.NoError(t, manualErr)
+	} else {
+		require.Error(t, manualErr)
+	}
+	var sharedCount int64
+	require.NoError(t, db.Model(&koidomain.Prompt{}).Where("brand_id = ? AND lower(text) = ?", brand.ID, "shared question?").Count(&sharedCount).Error)
+	require.EqualValues(t, 1, sharedCount)
+
+	require.NoError(t, store.CompetitorRepo().Create(ctx, &koidomain.Competitor{
+		BrandID: brand.ID, Name: "Atlas", Domain: "atlas.example", Source: koidomain.CompetitorSourceManual, Confirmed: true,
+	}))
+	competitorRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationCompetitors, nil)
+	require.NoError(t, err)
+	_, draftInput, err = store.BeginDraftAttempt(ctx, competitorRun.ID, *competitorRun.RiverJobID, 1)
+	require.NoError(t, err)
+	require.Equal(t, []koidomain.DraftCompany{{Name: "Atlas", Domain: "atlas.example"}}, draftInput.ExistingCompetitors)
+	promptCount, competitorCount, err = store.FinishDraftAttempt(ctx, competitorRun.ID, 1, koidomain.DraftOutput{Competitors: []koidomain.DraftCompany{
+		{Name: "Atlas again", Domain: "ATLAS.EXAMPLE"},
+		{Name: "Koi", Domain: "koi.dev"},
+		{Name: "Beta", Domain: "beta.example"},
+		{Name: "Invalid", Domain: "https://invalid.example"},
+	}})
+	require.NoError(t, err)
+	require.Zero(t, promptCount)
+	require.Equal(t, 1, competitorCount)
+	var beta koidomain.Competitor
+	require.NoError(t, db.Where("brand_id = ? AND domain = ?", brand.ID, "beta.example").First(&beta).Error)
+	require.Equal(t, koidomain.CompetitorSourceDrafted, beta.Source)
+	require.False(t, beta.Confirmed)
+
+	zeroRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationCompetitors, nil)
+	require.NoError(t, err)
+	_, _, err = store.BeginDraftAttempt(ctx, zeroRun.ID, *zeroRun.RiverJobID, 1)
+	require.NoError(t, err)
+	_, competitorCount, err = store.FinishDraftAttempt(ctx, zeroRun.ID, 1, koidomain.DraftOutput{Competitors: []koidomain.DraftCompany{{Name: "Atlas", Domain: "atlas.example"}}})
+	require.NoError(t, err)
+	require.Zero(t, competitorCount)
+	var zeroStatus koidomain.GenerationRun
+	require.NoError(t, db.First(&zeroStatus, "id = ?", zeroRun.ID).Error)
+	require.Equal(t, koidomain.GenerationSucceeded, zeroStatus.State)
+	require.Zero(t, zeroStatus.CompetitorCount)
+
+	lostRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
+	require.NoError(t, err)
+	require.NoError(t, db.Table("river_job").Where("id = ?", *lostRun.RiverJobID).Update("state", "discarded").Error)
+	require.NoError(t, store.ReconcileDraftRuns(ctx))
+	var lostStatus koidomain.GenerationRun
+	require.NoError(t, db.First(&lostStatus, "id = ?", lostRun.ID).Error)
+	require.Equal(t, koidomain.GenerationFailed, lostStatus.State)
+	require.Equal(t, "job_lost", *lostStatus.ErrorCode)
 
 	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), otherUser))

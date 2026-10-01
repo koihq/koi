@@ -26,6 +26,7 @@ import (
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koiproviders/logodev"
+	"github.com/koihq/koi/pkg/koiproviders/openrouter"
 )
 
 type Config struct {
@@ -102,8 +103,9 @@ func requireEnv(key string) (string, error) {
 }
 
 type App struct {
-	cfg     Config
-	workers *river.Workers // Populated when a drafting worker is registered.
+	cfg      Config
+	workers  *river.Workers
+	provider *openrouter.Client
 }
 
 func NewKoiApp() (*App, error) {
@@ -165,6 +167,9 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if err := migrateRiver(ctx, sqlDB); err != nil {
 			return fmt.Errorf("migrate river: %w", err)
 		}
+		if err := koidatabase.NewStore(db).ReconcileDraftRuns(ctx); err != nil {
+			return fmt.Errorf("reconcile drafting runs: %w", err)
+		}
 	}
 	sess := scs.New()
 	sess.Lifetime = 30 * 24 * time.Hour
@@ -183,21 +188,25 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		searcher = logodev.NewSearcher(key)
 	}
 	var riverClient *river.Client[*sql.Tx]
+	workers := a.workers
 	if sqlDB != nil && a.cfg.OpenRouterAPIKey != "" {
-		config := &river.Config{}
-		if a.workers != nil {
-			config.Queues = map[string]river.QueueConfig{"drafting": {MaxWorkers: a.cfg.WorkerConcurrency}}
-			config.Workers = a.workers
-			config.SoftStopTimeout = 60 * time.Second
+		if workers == nil {
+			workers = river.NewWorkers()
+			if a.provider == nil {
+				a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
+			}
+			river.AddWorker(workers, &draftWorker{store: koidatabase.NewStore(db), provider: a.provider})
+		}
+		config := &river.Config{
+			Queues:  map[string]river.QueueConfig{"drafting": {MaxWorkers: a.cfg.WorkerConcurrency}},
+			Workers: workers, SoftStopTimeout: 60 * time.Second,
 		}
 		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
-		if a.workers != nil {
-			if err := riverClient.Start(context.Background()); err != nil {
-				return fmt.Errorf("start river client: %w", err)
-			}
+		if err := riverClient.Start(context.Background()); err != nil {
+			return fmt.Errorf("start river client: %w", err)
 		}
 	}
 	store := koidatabase.NewStore(db, riverClient)
@@ -220,7 +229,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		_ = server.Close()
 	}
 	cancelHTTP()
-	if riverClient != nil && a.workers != nil {
+	if riverClient != nil {
 		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 60*time.Second)
 		if err := riverClient.Stop(riverCtx); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("stop river: %w", err))

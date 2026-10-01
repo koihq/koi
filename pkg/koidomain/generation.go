@@ -38,6 +38,23 @@ type BrandSnapshot struct {
 	Description string `json:"description,omitempty"`
 }
 
+type DraftCompany struct {
+	Name   string `json:"name"`
+	Domain string `json:"domain"`
+}
+
+type DraftInput struct {
+	Brand               BrandSnapshot  `json:"brand"`
+	Mode                GenerationMode `json:"mode"`
+	ExistingPrompts     []string       `json:"existing_prompts"`
+	ExistingCompetitors []DraftCompany `json:"existing_competitors"`
+}
+
+type DraftOutput struct {
+	Prompts     []string       `json:"prompts"`
+	Competitors []DraftCompany `json:"competitors"`
+}
+
 type GenerationRun struct {
 	BaseEntity
 	BrandID         uuid.UUID       `json:"-" gorm:"type:uuid;not null"`

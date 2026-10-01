@@ -79,7 +79,7 @@ func (r *GormGenerationRepository) CreateAndEnqueue(ctx context.Context, run *ko
 	if err := tx.Create(run).Error; err != nil {
 		return mapDBError(err)
 	}
-	inserted, err := r.client.InsertTx(ctx, sqlTx, GenerationJobArgs{RunID: run.ID}, &river.InsertOpts{Queue: "drafting"})
+	inserted, err := r.client.InsertTx(ctx, sqlTx, GenerationJobArgs{RunID: run.ID}, &river.InsertOpts{Queue: "drafting", MaxAttempts: 3})
 	if err != nil {
 		return err
 	}

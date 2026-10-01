@@ -3,6 +3,7 @@ module github.com/koihq/koi
 go 1.26.1
 
 require (
+	github.com/OpenRouterTeam/go-sdk v0.9.9
 	github.com/alexedwards/scs/postgresstore v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/go-chi/chi/v5 v5.3.2
@@ -71,6 +72,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spyzhov/ajson v0.8.0 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/tdewolff/parse/v2 v2.8.12 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect

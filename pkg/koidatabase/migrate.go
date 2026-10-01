@@ -39,6 +39,7 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 	for _, statement := range []string{
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_brand_text ON prompts (brand_id, lower(text))",
 		"CREATE INDEX IF NOT EXISTS idx_generation_runs_recent ON generation_runs (brand_id, created_at DESC, id DESC)",
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_runs_key ON generation_runs (brand_id, idempotency_key) WHERE idempotency_key IS NOT NULL",
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_runs_active ON generation_runs (brand_id) WHERE state IN ('queued', 'running')",
