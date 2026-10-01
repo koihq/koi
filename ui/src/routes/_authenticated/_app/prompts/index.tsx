@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createStandardSchemaV1, parseAsStringLiteral } from "nuqs";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Prompt } from "@/api/prompts.api";
 import { DataTable } from "@/components/blocks/data-table";
 import { Button } from "@/components/ui/button";
-import { validateTableSearch } from "@/hooks/use-table-state";
+import { tableSearchParams } from "@/hooks/use-table-state";
+import { GenerationControls } from "@/routes/_authenticated/_app/-components/generation-controls";
 import { DeletePromptDialog } from "@/routes/_authenticated/_app/prompts/-components/delete-prompt-dialog";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
 import { usePromptColumns } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-columns";
@@ -13,12 +15,16 @@ import { usePromptList } from "@/routes/_authenticated/_app/prompts/-hooks/use-p
 import { usePromptMutations } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-mutations";
 
 export const Route = createFileRoute("/_authenticated/_app/prompts/")({
-  validateSearch: validateTableSearch,
+  validateSearch: createStandardSchemaV1(
+    { ...tableSearchParams, draftStart: parseAsStringLiteral(["failed"] as const) },
+    { partialOutput: true },
+  ),
   component: PromptPage,
 });
 
 function PromptPage() {
   const { brand } = Route.useRouteContext();
+  const { draftStart } = Route.useSearch();
   const { t } = useTranslation("management");
   const list = usePromptList(brand.id);
   const mutations = usePromptMutations(brand.id);
@@ -98,6 +104,11 @@ function PromptPage() {
           {t("unconfirmedError")}
         </p>
       ) : null}
+      <GenerationControls
+        brandID={brand.id}
+        mode="prompts"
+        setupStartFailed={draftStart === "failed"}
+      />
       <DataTable
         response={list.prompts.data}
         columns={columns}

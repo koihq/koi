@@ -2,6 +2,7 @@ apis/AuthApi.ts
 apis/BrandsApi.ts
 apis/CapabilitiesApi.ts
 apis/CompetitorsApi.ts
+apis/GenerationsApi.ts
 apis/HealthApi.ts
 apis/PromptsApi.ts
 apis/index.ts
@@ -19,6 +20,10 @@ models/ErrorBody.ts
 models/ErrorCode.ts
 models/FieldCode.ts
 models/FieldError.ts
+models/GenerationAccepted.ts
+models/GenerationPage.ts
+models/GenerationRequest.ts
+models/GenerationStatus.ts
 models/HealthResponse.ts
 models/MeRes.ts
 models/OrgRes.ts

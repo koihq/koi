@@ -53,6 +53,12 @@ export interface ErrorBody {
      * @memberof ErrorBody
      */
     fields?: Array<FieldError>;
+    /**
+     * Present for generation_conflict to locate the active run.
+     * @type {string}
+     * @memberof ErrorBody
+     */
+    statusUrl?: string;
 }
 
 
@@ -79,6 +85,7 @@ export function ErrorBodyFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'code': ErrorCodeFromJSON(json['code']),
         'message': json['message'],
         'fields': json['fields'] == null ? undefined : ((json['fields'] as Array<any>).map(FieldErrorFromJSON)),
+        'statusUrl': json['status_url'] == null ? undefined : json['status_url'],
     };
 }
 
@@ -96,6 +103,7 @@ export function ErrorBodyToJSONTyped(value?: ErrorBody | null, ignoreDiscriminat
         'code': ErrorCodeToJSON(value['code']),
         'message': value['message'],
         'fields': value['fields'] == null ? undefined : ((value['fields'] as Array<any>).map(FieldErrorToJSON)),
+        'status_url': value['statusUrl'],
     };
 }
 

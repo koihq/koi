@@ -5,6 +5,7 @@ import {
   CapabilitiesApi,
   CompetitorsApi,
   Configuration,
+  GenerationsApi,
   HealthApi,
   PromptsApi,
 } from "@/api/generated";
@@ -20,6 +21,7 @@ export function createApiClient() {
     brands: new BrandsApi(configuration),
     capabilities: new CapabilitiesApi(configuration),
     competitors: new CompetitorsApi(configuration),
+    generations: new GenerationsApi(configuration),
     health: new HealthApi(configuration),
     prompts: new PromptsApi(configuration),
   };
