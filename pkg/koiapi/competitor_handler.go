@@ -12,8 +12,9 @@ import (
 )
 
 type CompetitorRequest struct {
-	Name   string `json:"name"`
-	Domain string `json:"domain"`
+	Name       string `json:"name"`
+	Domain     string `json:"domain"`
+	GitHubRepo string `json:"github_repo"`
 }
 
 type CompetitorHandler struct {
@@ -109,7 +110,7 @@ func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	req := middlewares.Body[CompetitorRequest](r)
 	competitor, err := h.commander.Create(r.Context(), brandID, koidomain.CompetitorParams{
-		Name: req.Name, Domain: req.Domain,
+		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)

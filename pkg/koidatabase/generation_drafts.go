@@ -35,11 +35,11 @@ func (s *Store) BeginDraftAttempt(ctx context.Context, runID uuid.UUID, jobID in
 		}
 		if run.Mode != koidomain.GenerationPrompts {
 			var companies []koidomain.Competitor
-			if err := tx.Select("name", "domain").Where("brand_id = ?", run.BrandID).Order("created_at, id").Find(&companies).Error; err != nil {
+			if err := tx.Select("name", "domain", "github_repo").Where("brand_id = ?", run.BrandID).Order("created_at, id").Find(&companies).Error; err != nil {
 				return err
 			}
 			for _, company := range companies {
-				input.ExistingCompetitors = append(input.ExistingCompetitors, koidomain.DraftCompany{Name: company.Name, Domain: company.Domain})
+				input.ExistingCompetitors = append(input.ExistingCompetitors, koidomain.DraftCompany{Name: company.Name, Domain: company.Domain, GitHubRepo: company.GitHubRepo})
 			}
 		}
 		return nil
@@ -85,9 +85,26 @@ func (s *Store) FinishDraftAttempt(ctx context.Context, runID uuid.UUID, attempt
 		}
 		domainSeen := make(map[string]bool, len(existingDomains)+len(draft.Competitors)+1)
 		for _, value := range existingDomains {
-			domainSeen[strings.ToLower(value)] = true
+			if value != "" {
+				domainSeen[strings.ToLower(value)] = true
+			}
 		}
-		domainSeen[strings.ToLower(run.BrandSnapshot.Domain)] = true
+		if run.BrandSnapshot.Domain != "" {
+			domainSeen[strings.ToLower(run.BrandSnapshot.Domain)] = true
+		}
+		var existingRepos []string
+		if err := tx.Model(&koidomain.Competitor{}).Where("brand_id = ?", run.BrandID).Pluck("github_repo", &existingRepos).Error; err != nil {
+			return err
+		}
+		repoSeen := make(map[string]bool, len(existingRepos)+len(draft.Competitors)+1)
+		for _, value := range existingRepos {
+			if value != "" {
+				repoSeen[strings.ToLower(strings.TrimSuffix(value, "/"))] = true
+			}
+		}
+		if run.BrandSnapshot.GitHubRepo != "" {
+			repoSeen[strings.ToLower(strings.TrimSuffix(run.BrandSnapshot.GitHubRepo, "/"))] = true
+		}
 		if run.Mode != koidomain.GenerationCompetitors {
 			for _, value := range draft.Prompts {
 				prompt := koidomain.Prompt{BrandID: run.BrandID, Text: value, Source: koidomain.PromptSourceDrafted}
@@ -106,12 +123,17 @@ func (s *Store) FinishDraftAttempt(ctx context.Context, runID uuid.UUID, attempt
 		}
 		if run.Mode != koidomain.GenerationPrompts {
 			for _, value := range draft.Competitors {
-				company := koidomain.Competitor{BrandID: run.BrandID, Name: value.Name, Domain: value.Domain, Source: koidomain.CompetitorSourceDrafted}
+				company := koidomain.Competitor{BrandID: run.BrandID, Name: value.Name, Domain: value.Domain, GitHubRepo: value.GitHubRepo, Source: koidomain.CompetitorSourceDrafted}
 				company.Normalize()
-				if len(company.Name) > 255 || domainSeen[company.Domain] || company.Validate() != nil {
+				if len(company.Name) > 255 || company.Domain != "" && domainSeen[company.Domain] || company.GitHubRepo != "" && repoSeen[company.GitHubRepo] || company.Validate() != nil {
 					continue
 				}
-				domainSeen[company.Domain] = true
+				if company.Domain != "" {
+					domainSeen[company.Domain] = true
+				}
+				if company.GitHubRepo != "" {
+					repoSeen[company.GitHubRepo] = true
+				}
 				result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&company)
 				if result.Error != nil {
 					return result.Error

@@ -39,8 +39,9 @@ type BrandSnapshot struct {
 }
 
 type DraftCompany struct {
-	Name   string `json:"name"`
-	Domain string `json:"domain"`
+	Name       string `json:"name"`
+	Domain     string `json:"domain"`
+	GitHubRepo string `json:"github_repo"`
 }
 
 type DraftInput struct {

@@ -39,7 +39,7 @@ func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm
 	}
 	if filter.Query != "" {
 		pattern := likePattern(filter.Query)
-		db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!')", pattern, pattern)
+		db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!' OR github_repo ILIKE ? ESCAPE '!')", pattern, pattern, pattern)
 	}
 	return db
 }

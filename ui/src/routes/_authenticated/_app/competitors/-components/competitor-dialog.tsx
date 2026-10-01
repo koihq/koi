@@ -46,6 +46,7 @@ export function CompetitorDialog({
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
+	const [githubRepo, setGithubRepo] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [saveError, setSaveError] = useState<"duplicate" | "invalidDomain" | "other">();
   const saving = useRef(false);
@@ -77,6 +78,7 @@ export function CompetitorDialog({
     setQuery("");
     setName("");
     setDomain("");
+	setGithubRepo("");
     setInvalid(false);
     setSaveError(undefined);
   }
@@ -92,7 +94,7 @@ export function CompetitorDialog({
     } catch (error) {
       const domainField =
         error instanceof ApiError
-          ? error.fields?.find((field) => field.field === "domain")
+          ? error.fields?.find((field) => field.field === "domain" || field.field === "github_repo")
           : undefined;
       setSaveError(
         domainField?.code === "taken"
@@ -108,12 +110,12 @@ export function CompetitorDialog({
 
   async function submitManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!name.trim() || !domain.trim()) {
+    if (!name.trim() || (!domain.trim() && !githubRepo.trim())) {
       setInvalid(true);
       return;
     }
     setInvalid(false);
-    await save({ name: name.trim(), domain: domain.trim() });
+    await save({ name: name.trim(), domain: domain.trim(), githubRepo: githubRepo.trim() });
   }
 
   const emptyMessage =
@@ -158,15 +160,19 @@ export function CompetitorDialog({
                 placeholder={t("competitorNamePlaceholder")}
               />
             </Field>
-            <Field data-invalid={invalid && !domain.trim() ? true : undefined}>
+            <Field data-invalid={invalid && !domain.trim() && !githubRepo.trim() ? true : undefined}>
               <FieldLabel htmlFor="competitor-domain">{t("domain")}</FieldLabel>
               <Input
                 id="competitor-domain"
                 value={domain}
                 onChange={(event) => setDomain(event.target.value)}
-                aria-invalid={invalid && !domain.trim() ? true : undefined}
+                aria-invalid={invalid && !domain.trim() && !githubRepo.trim() ? true : undefined}
                 placeholder={t("competitorDomainPlaceholder")}
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="competitor-github">{t("competitorGithubLabel")}</FieldLabel>
+              <Input id="competitor-github" type="url" value={githubRepo} onChange={(event) => setGithubRepo(event.target.value)} placeholder="https://github.com/owner/repo" />
             </Field>
             {invalid ? <FieldError>{t("competitorInvalid")}</FieldError> : null}
             {saveError ? <FieldError>{saveErrorMessage}</FieldError> : null}

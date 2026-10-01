@@ -64,7 +64,7 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	providerTimeout := 45 * time.Second
+	providerTimeout := 3 * time.Minute
 	if raw, ok := os.LookupEnv("KOI_PROVIDER_TIMEOUT"); ok {
 		providerTimeout, err = time.ParseDuration(raw)
 		if err != nil || providerTimeout <= 0 {

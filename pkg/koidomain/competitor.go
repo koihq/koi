@@ -17,12 +17,13 @@ const (
 
 type Competitor struct {
 	BaseEntity
-	BrandID   uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;uniqueIndex:idx_competitors_brand_domain"`
-	Name      string           `json:"name" gorm:"not null"`
-	Domain    string           `json:"domain" gorm:"not null;uniqueIndex:idx_competitors_brand_domain"`
-	Source    CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
-	Confirmed bool             `json:"confirmed" gorm:"not null;default:false"`
-	Brand     *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	BrandID    uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null"`
+	Name       string           `json:"name" gorm:"not null"`
+	Domain     string           `json:"domain" gorm:"not null"`
+	GitHubRepo string           `json:"github_repo" gorm:"column:github_repo;not null;default:''"`
+	Source     CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
+	Confirmed  bool             `json:"confirmed" gorm:"not null;default:false"`
+	Brand      *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
 
 func (Competitor) TableName() string { return "competitors" }
@@ -30,6 +31,7 @@ func (Competitor) TableName() string { return "competitors" }
 func (c *Competitor) Normalize() {
 	c.Name = normalizeWhitespace(c.Name)
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
+	c.GitHubRepo = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(c.GitHubRepo)), "/")
 }
 
 func (c Competitor) Validate() error {
@@ -40,8 +42,13 @@ func (c Competitor) Validate() error {
 	if strings.TrimSpace(c.Name) == "" {
 		fields = append(fields, FieldError{Field: "name", Code: FieldInvalid})
 	}
-	if !validHostname(c.Domain) {
+	if c.Domain == "" && c.GitHubRepo == "" {
+		fields = append(fields, FieldError{Field: "domain", Code: FieldInvalid}, FieldError{Field: "github_repo", Code: FieldInvalid})
+	} else if c.Domain != "" && !validHostname(c.Domain) {
 		fields = append(fields, FieldError{Field: "domain", Code: FieldInvalid})
+	}
+	if c.GitHubRepo != "" && !validGitHubRepo(c.GitHubRepo) {
+		fields = append(fields, FieldError{Field: "github_repo", Code: FieldInvalid})
 	}
 	if c.Source != CompetitorSourceManual && c.Source != CompetitorSourceDrafted && c.Source != CompetitorSourceObserved {
 		fields = append(fields, FieldError{Field: "source", Code: FieldInvalid})
@@ -76,8 +83,9 @@ type CompetitorUpdate struct {
 }
 
 type CompetitorParams struct {
-	Name   string
-	Domain string
+	Name       string
+	Domain     string
+	GitHubRepo string
 }
 
 type CompanySearchResult struct {
@@ -117,7 +125,7 @@ func (s *competitorService) Create(ctx context.Context, brandID uuid.UUID, param
 		return nil, err
 	}
 	competitor := &Competitor{
-		BrandID: brandID, Name: params.Name, Domain: params.Domain,
+		BrandID: brandID, Name: params.Name, Domain: params.Domain, GitHubRepo: params.GitHubRepo,
 		Source: CompetitorSourceManual, Confirmed: true,
 	}
 	competitor.Normalize()

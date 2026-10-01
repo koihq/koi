@@ -811,15 +811,19 @@ components:
     CompetitorRequest:
       type: object
       additionalProperties: false
-      required: [name, domain]
+      description: At least one of domain or github_repo is required.
+      required: [name]
       properties:
         name:
           type: string
         domain:
           type: string
+        github_repo:
+          type: string
+          format: uri
     CompetitorRes:
       type: object
-      required: [id, brand_id, name, domain, source, confirmed]
+      required: [id, brand_id, name, domain, github_repo, source, confirmed]
       properties:
         id:
           type: string
@@ -831,6 +835,9 @@ components:
           type: string
         domain:
           type: string
+        github_repo:
+          type: string
+          format: uri
         source:
           type: string
           enum: [manual, drafted, observed]

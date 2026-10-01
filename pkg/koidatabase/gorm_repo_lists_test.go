@@ -34,16 +34,8 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 	s, err := schema.Parse(&koidomain.Competitor{}, &sync.Map{}, schema.NamingStrategy{})
 	require.NoError(t, err)
 	require.Nil(t, s.LookUpField("aliases"))
-	var uniqueFields []string
-	for _, index := range s.ParseIndexes() {
-		if index.Name == "idx_competitors_brand_domain" {
-			for _, field := range index.Fields {
-				uniqueFields = append(uniqueFields, field.Field.DBName)
-			}
-			require.Equal(t, "UNIQUE", index.Class)
-		}
-	}
-	require.Equal(t, []string{"brand_id", "domain"}, uniqueFields)
+	require.NotNil(t, s.LookUpField("github_repo"))
+	require.Empty(t, s.ParseIndexes()) // Partial uniqueness is installed explicitly by Migrate.
 }
 
 func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {

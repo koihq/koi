@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	sdk "github.com/OpenRouterTeam/go-sdk"
+	"github.com/OpenRouterTeam/go-sdk/models/components"
+	"github.com/OpenRouterTeam/go-sdk/optionalnullable"
 	"github.com/OpenRouterTeam/go-sdk/retry"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/stretchr/testify/require"
@@ -20,86 +21,96 @@ func testClient(url string) *Client {
 	return &Client{SDK: sdk.New(sdk.WithSecurity("test-key"), sdk.WithServerURL(url), sdk.WithTimeout(time.Second), sdk.WithRetryConfig(retry.Config{Strategy: "none"}))}
 }
 
-func TestGenerateUsesSchemaAndAllFittingEntries(t *testing.T) {
-	input := Input{Brand: koidomain.BrandSnapshot{Name: "Koi", Domain: "koi.dev", Country: "IT"}, Mode: koidomain.GenerationInitial}
-	for i := range 120 {
-		input.ExistingPrompts = append(input.ExistingPrompts, fmt.Sprintf("Question %d?", i))
+func TestMarshalRequestParts(t *testing.T) {
+	parts := []any{
+		components.CreateInputsUnionStr("https://github.com/a/b"),
+		components.CreateResponsesRequestToolUnionOpenrouterWebFetch(components.WebFetchServerTool{}),
+		components.CreateOpenAIResponsesToolChoiceUnionOpenAIResponsesToolChoiceRequired(components.OpenAIResponsesToolChoiceRequiredRequired),
+		optionalnullable.From(sdk.Pointer(researchPrompt)),
+		format("koi_research", researchSchema),
 	}
-	bounded, fits := BoundInput(input, koidomain.GenerationModelSlug, 128<<10)
-	require.True(t, fits)
-	require.Len(t, bounded.ExistingPrompts, 120)
-	require.LessOrEqual(t, requestSize(koidomain.GenerationModelSlug, bounded), 128<<10)
-
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		require.Equal(t, "/chat/completions", r.URL.Path)
-		require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
-		var body struct {
-			Messages []struct {
-				Content string `json:"content"`
-			} `json:"messages"`
-			ResponseFormat struct {
-				Type       string `json:"type"`
-				JSONSchema struct {
-					Name   string `json:"name"`
-					Strict bool   `json:"strict"`
-				} `json:"json_schema"`
-			} `json:"response_format"`
-		}
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		require.Equal(t, "json_schema", body.ResponseFormat.Type)
-		require.Equal(t, "koi_draft_v1", body.ResponseFormat.JSONSchema.Name)
-		require.True(t, body.ResponseFormat.JSONSchema.Strict)
-		var sent Input
-		require.NoError(t, json.Unmarshal([]byte(body.Messages[1].Content), &sent))
-		require.Len(t, sent.ExistingPrompts, 120)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"id":"test","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","content":"{\"prompts\":[\"Which tool?\"],\"competitors\":[{\"name\":\"Atlas\",\"domain\":\"atlas.example\"}]}"},"finish_reason":"stop"}]}`)
-	}))
-	defer server.Close()
-	draft, err := testClient(server.URL).Generate(t.Context(), koidomain.GenerationModelSlug, bounded)
+	for i, part := range parts {
+		_, err := json.Marshal(part)
+		require.NoErrorf(t, err, "part %d", i)
+	}
+	request := components.ResponsesRequest{Model: sdk.Pointer("test"), Input: sdk.Pointer(components.CreateInputsUnionStr("https://github.com/a/b")), Instructions: optionalnullable.From(sdk.Pointer(researchPrompt)), Tools: []components.ResponsesRequestToolUnion{parts[1].(components.ResponsesRequestToolUnion)}, ToolChoice: sdk.Pointer(parts[2].(components.OpenAIResponsesToolChoiceUnion)), Text: format("koi_research", researchSchema), ServiceTier: optionalnullable.From(sdk.Pointer(components.ResponsesRequestServiceTierAuto))}
+	_, err := json.Marshal(request)
 	require.NoError(t, err)
-	require.Equal(t, []string{"Which tool?"}, draft.Prompts)
-	require.Equal(t, []Company{{Name: "Atlas", Domain: "atlas.example"}}, draft.Competitors)
-	require.EqualValues(t, 1, calls.Load())
+}
+func result(content, tool, url string) string {
+	quoted, _ := json.Marshal(content)
+	output := `[]`
+	if tool == "openrouter:web_fetch" {
+		output = fmt.Sprintf(`[{"type":"openrouter:web_fetch","status":"completed","url":%q,"content":"repository content"}]`, url)
+	}
+	if tool == "openrouter:web_search" {
+		output = `[{"type":"openrouter:web_search","status":"completed"}]`
+	}
+	return fmt.Sprintf(`{"id":"test","object":"response","created_at":1,"model":"test","status":"completed","output":%s,"output_text":%s,"tool_choice":"auto","tools":[],"parallel_tool_calls":false}`, output, quoted)
 }
 
-func TestGenerateRejectsMalformedOutputWithoutAnotherCall(t *testing.T) {
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		calls.Add(1)
+func TestGenerateResearchesDejaAndSearchesAlternatives(t *testing.T) {
+	const repo = "https://github.com/Giammarco-Ferranti/deja"
+	input := Input{Brand: koidomain.BrandSnapshot{Name: "Deja", GitHubRepo: repo, Domain: "deja.example"}, Mode: koidomain.GenerationInitial}
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"id":"test","object":"chat.completion","created":1,"model":"test","choices":[{"index":0,"message":{"role":"assistant","content":"{\"prompts\":[],\"competitors\":{}}"},"finish_reason":"stop"}]}`)
+		require.Equal(t, "/responses", r.URL.Path)
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "required", body["tool_choice"])
+		require.Equal(t, "json_schema", body["text"].(map[string]any)["format"].(map[string]any)["type"])
+		if calls == 1 {
+			require.Equal(t, repo, body["input"])
+			require.Equal(t, "openrouter:web_fetch", body["tools"].([]any)[0].(map[string]any)["type"])
+			_, _ = fmt.Fprint(w, result("```json\n"+`{"source_url":"https://github.com/Giammarco-Ferranti/deja","product":"Deja","category":"zsh autosuggestion tool","audience":"terminal users","functions":["suggest shell commands from history"]}`+"\n```", "openrouter:web_fetch", repo))
+			return
+		}
+		require.Contains(t, body["input"], "zsh autosuggestion tool")
+		require.Equal(t, "high", body["reasoning"].(map[string]any)["effort"])
+		require.Equal(t, "openrouter:web_search", body["tools"].([]any)[0].(map[string]any)["type"])
+		require.Equal(t, float64(3), body["tools"].([]any)[0].(map[string]any)["parameters"].(map[string]any)["max_uses"])
+		_, _ = fmt.Fprint(w, result("```json\n"+`{"prompts":["What are the best zsh command autosuggestion tools?","Which shell history suggestion plugins work with zsh?"],"competitors":[{"name":"zsh-autosuggestions","domain":"","github_repo":"https://github.com/zsh-users/zsh-autosuggestions"}]}`+"\n```", "openrouter:web_search", ""))
 	}))
 	defer server.Close()
-	_, err := testClient(server.URL).Generate(t.Context(), "test", Input{Brand: koidomain.BrandSnapshot{Name: "Koi"}, Mode: koidomain.GenerationInitial})
-	var providerErr *Error
-	require.ErrorAs(t, err, &providerErr)
-	require.Equal(t, "invalid_output", providerErr.Code)
-	require.EqualValues(t, 1, calls.Load())
+	draft, err := testClient(server.URL).Generate(t.Context(), koidomain.GenerationModelSlug, input)
+	require.NoError(t, err)
+	require.Equal(t, 2, calls)
+	require.Len(t, draft.Prompts, 2)
+	require.NotContains(t, strings.ToLower(strings.Join(draft.Prompts, " ")), "personal memory")
+	require.Equal(t, "https://github.com/zsh-users/zsh-autosuggestions", draft.Competitors[0].GitHubRepo)
 }
 
-func TestGenerateDoesNotRetrySDKFailures(t *testing.T) {
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		calls.Add(1)
+func TestGenerateFetchFallback(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = fmt.Fprint(w, `{"error":{"message":"temporary"}}`)
+		if calls%2 == 1 {
+			w.WriteHeader(503)
+			_, _ = fmt.Fprint(w, `{"error":{"message":"unavailable"}}`)
+			return
+		}
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Contains(t, body["input"], "zsh terminal")
+		_, _ = fmt.Fprint(w, result(`{"prompts":[],"competitors":[]}`, "", ""))
 	}))
 	defer server.Close()
-	_, err := testClient(server.URL).Generate(t.Context(), "test", Input{Brand: koidomain.BrandSnapshot{Name: "Koi"}, Mode: koidomain.GenerationInitial})
+	input := Input{Brand: koidomain.BrandSnapshot{Name: "Deja", GitHubRepo: "https://github.com/Giammarco-Ferranti/deja", Description: "Deja suggests previous shell commands while typing in the zsh terminal."}, Mode: koidomain.GenerationPrompts}
+	_, err := testClient(server.URL).Generate(t.Context(), "test", input)
+	require.NoError(t, err)
+	input.Brand.Description = ""
+	_, err = testClient(server.URL).Generate(t.Context(), "test", input)
 	var providerErr *Error
 	require.ErrorAs(t, err, &providerErr)
-	require.True(t, providerErr.Retryable)
-	require.Equal(t, 500, providerErr.Status)
-	require.EqualValues(t, 1, calls.Load())
+	require.Equal(t, "insufficient_context", providerErr.Code)
+	require.Equal(t, 3, calls)
 }
 
 func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {
-	input := Input{Brand: koidomain.BrandSnapshot{Name: "Koi"}, Mode: koidomain.GenerationPrompts,
-		ExistingPrompts: []string{strings.Repeat("x", 2000), "short"}}
+	input := Input{Brand: koidomain.BrandSnapshot{Name: "Koi"}, Mode: koidomain.GenerationPrompts, ExistingPrompts: []string{strings.Repeat("x", 2000), "short"}}
 	limit := requestSize("test", Input{Brand: input.Brand, Mode: input.Mode, ExistingPrompts: []string{"short"}, ExistingCompetitors: []Company{}})
 	bounded, fits := BoundInput(input, "test", limit)
 	require.True(t, fits)

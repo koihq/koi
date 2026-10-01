@@ -22,7 +22,7 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
 	require.Equal(t, 4, cfg.WorkerConcurrency)
-	require.Equal(t, 45*time.Second, cfg.ProviderTimeout)
+	require.Equal(t, 3*time.Minute, cfg.ProviderTimeout)
 	require.Equal(t, 12, cfg.DBMaxOpenConns)
 	require.Empty(t, cfg.OpenRouterAPIKey)
 

@@ -18,11 +18,17 @@ func TestCompetitorValidationAndNormalization(t *testing.T) {
 	require.Equal(t, "Acme Labs", competitor.Name)
 	require.Equal(t, "acme.com", competitor.Domain)
 	require.NoError(t, competitor.Validate())
+	githubOnly := Competitor{BrandID: uuid.New(), Name: "Autosuggest", GitHubRepo: " HTTPS://GITHUB.COM/OWNER/REPO/ ", Source: CompetitorSourceManual, Confirmed: true}
+	githubOnly.Normalize()
+	require.Equal(t, "https://github.com/owner/repo", githubOnly.GitHubRepo)
+	require.NoError(t, githubOnly.Validate())
 
 	for _, invalid := range []Competitor{
 		{Name: "Acme", Domain: "acme.com", Source: CompetitorSourceManual, Confirmed: true},
 		{BrandID: uuid.New(), Domain: "acme.com", Source: CompetitorSourceManual, Confirmed: true},
 		{BrandID: uuid.New(), Name: "Acme", Domain: "https://acme.com", Source: CompetitorSourceManual, Confirmed: true},
+		{BrandID: uuid.New(), Name: "Acme", Source: CompetitorSourceManual, Confirmed: true},
+		{BrandID: uuid.New(), Name: "Acme", GitHubRepo: "https://github.com/owner", Source: CompetitorSourceManual, Confirmed: true},
 		{BrandID: uuid.New(), Name: "Acme", Domain: "acme.com", Source: "imported", Confirmed: true},
 		{BrandID: uuid.New(), Name: "Acme", Domain: "acme.com", Source: CompetitorSourceManual},
 	} {

@@ -145,6 +145,9 @@ func mapDBError(err error) error {
 		if pgErr.ConstraintName == "idx_competitors_brand_domain" {
 			return koidomain.Validation(koidomain.FieldError{Field: "domain", Code: koidomain.FieldTaken})
 		}
+		if pgErr.ConstraintName == "idx_competitors_brand_github_repo" {
+			return koidomain.Validation(koidomain.FieldError{Field: "github_repo", Code: koidomain.FieldTaken})
+		}
 		if strings.Contains(strings.ToLower(pgErr.ConstraintName), "email") ||
 			strings.EqualFold(pgErr.ColumnName, "email") {
 			return koidomain.ErrEmailTaken

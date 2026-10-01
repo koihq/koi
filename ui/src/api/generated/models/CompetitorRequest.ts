@@ -31,7 +31,8 @@ export interface CompetitorRequest {
      * @type {string}
      * @memberof CompetitorRequest
      */
-    domain: string;
+    domain?: string;
+    githubRepo?: string;
 }
 
 /**
@@ -39,7 +40,6 @@ export interface CompetitorRequest {
  */
 export function instanceOfCompetitorRequest(value: object): value is CompetitorRequest {
     if (!('name' in value) || value['name'] === undefined) return false;
-    if (!('domain' in value) || value['domain'] === undefined) return false;
     return true;
 }
 
@@ -55,6 +55,7 @@ export function CompetitorRequestFromJSONTyped(json: any, ignoreDiscriminator: b
         
         'name': json['name'],
         'domain': json['domain'],
+        'githubRepo': json['github_repo'],
     };
 }
 
@@ -71,6 +72,6 @@ export function CompetitorRequestToJSONTyped(value?: CompetitorRequest | null, i
         
         'name': value['name'],
         'domain': value['domain'],
+        'github_repo': value['githubRepo'],
     };
 }
-
