@@ -6,7 +6,7 @@ describe("brand icon", () => {
   it("builds a Logo.dev CDN URL only with a publishable key", () => {
     expect(logoDevURL("acme.com", undefined)).toBeNull();
     expect(logoDevURL("acme.com", " public key ")).toBe(
-      "https://img.logo.dev/acme.com?token=public%20key&size=64&format=webp",
+      "https://img.logo.dev/acme.com?token=public%20key&size=64&format=webp&fallback=404",
     );
   });
 

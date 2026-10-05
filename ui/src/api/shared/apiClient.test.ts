@@ -10,6 +10,7 @@ describe("shared API client", () => {
     expect(client.auth.login).toBeTypeOf("function");
     expect(client.brands.listBrands).toBeTypeOf("function");
     expect(client.competitors.listCompetitors).toBeTypeOf("function");
+    expect(client.generations.listGenerations).toBeTypeOf("function");
     expect(client.health.get).toBeTypeOf("function");
     expect(client.prompts.listPrompts).toBeTypeOf("function");
   });

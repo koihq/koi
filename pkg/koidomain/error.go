@@ -1,15 +1,20 @@
 package koidomain
 
+import "github.com/google/uuid"
+
 const (
-	CodeValidation         = "validation"
-	CodeEmailTaken         = "email_taken"
-	CodeBrandLimitReached  = "brand_limit_reached"
-	CodeInvalidCredentials = "invalid_credentials"
-	CodeNotFound           = "not_found"
-	CodeUnauthorized       = "unauthorized"
-	CodeInvalidJSON        = "invalid_json"
-	CodeInternal           = "internal"
-	CodeFeatureUnavailable = "feature_unavailable"
+	CodeValidation              = "validation"
+	CodeEmailTaken              = "email_taken"
+	CodeBrandLimitReached       = "brand_limit_reached"
+	CodeInvalidCredentials      = "invalid_credentials"
+	CodeNotFound                = "not_found"
+	CodeUnauthorized            = "unauthorized"
+	CodeInvalidJSON             = "invalid_json"
+	CodeInternal                = "internal"
+	CodeFeatureUnavailable      = "feature_unavailable"
+	CodeGenerationConflict      = "generation_conflict"
+	CodeIdempotencyConflict     = "idempotency_conflict"
+	CodeInitialAlreadyCompleted = "initial_already_completed"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"
@@ -17,15 +22,18 @@ const (
 )
 
 var (
-	ErrNotFound           = &Error{Code: CodeNotFound, Message: "not found"}
-	ErrEmailTaken         = &Error{Code: CodeEmailTaken, Message: "email taken", Fields: []FieldError{{Field: "email", Code: FieldTaken}}}
-	ErrBrandLimitReached  = &Error{Code: CodeBrandLimitReached, Message: "brand limit reached"}
-	ErrInvalidCredentials = &Error{Code: CodeInvalidCredentials, Message: "invalid credentials"}
-	ErrValidation         = &Error{Code: CodeValidation, Message: "validation"}
-	ErrUnauthorized       = &Error{Code: CodeUnauthorized, Message: "unauthorized"}
-	ErrInvalidJSON        = &Error{Code: CodeInvalidJSON, Message: "invalid json"}
-	ErrInternal           = &Error{Code: CodeInternal, Message: "internal error"}
-	ErrFeatureUnavailable = &Error{Code: CodeFeatureUnavailable, Message: "feature unavailable"}
+	ErrNotFound                = &Error{Code: CodeNotFound, Message: "not found"}
+	ErrEmailTaken              = &Error{Code: CodeEmailTaken, Message: "email taken", Fields: []FieldError{{Field: "email", Code: FieldTaken}}}
+	ErrBrandLimitReached       = &Error{Code: CodeBrandLimitReached, Message: "brand limit reached"}
+	ErrInvalidCredentials      = &Error{Code: CodeInvalidCredentials, Message: "invalid credentials"}
+	ErrValidation              = &Error{Code: CodeValidation, Message: "validation"}
+	ErrUnauthorized            = &Error{Code: CodeUnauthorized, Message: "unauthorized"}
+	ErrInvalidJSON             = &Error{Code: CodeInvalidJSON, Message: "invalid json"}
+	ErrInternal                = &Error{Code: CodeInternal, Message: "internal error"}
+	ErrFeatureUnavailable      = &Error{Code: CodeFeatureUnavailable, Message: "feature unavailable"}
+	ErrGenerationConflict      = &Error{Code: CodeGenerationConflict, Message: "generation conflict"}
+	ErrIdempotencyConflict     = &Error{Code: CodeIdempotencyConflict, Message: "idempotency conflict"}
+	ErrInitialAlreadyCompleted = &Error{Code: CodeInitialAlreadyCompleted, Message: "initial already completed"}
 )
 
 type FieldError struct {
@@ -37,6 +45,7 @@ type Error struct {
 	Code    string
 	Fields  []FieldError
 	Message string
+	RunID   uuid.UUID
 }
 
 func (e *Error) Error() string {

@@ -12,8 +12,9 @@ import (
 )
 
 type CompetitorRequest struct {
-	Name   string `json:"name"`
-	Domain string `json:"domain"`
+	Name       string `json:"name"`
+	Domain     string `json:"domain"`
+	GitHubRepo string `json:"github_repo"`
 }
 
 type CompetitorHandler struct {
@@ -62,22 +63,12 @@ func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	page, err := pageParams(r)
+	params, err := readListQuery(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	confirmed, err := optionalBoolQuery(r, "confirmed")
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	query, err := optionalStringQuery(r, "q")
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	competitors, err := h.querier.List(r.Context(), brandID, page, query, confirmed)
+	competitors, err := h.querier.List(r.Context(), brandID, params.Page, params.Query, params.Confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -109,7 +100,7 @@ func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	req := middlewares.Body[CompetitorRequest](r)
 	competitor, err := h.commander.Create(r.Context(), brandID, koidomain.CompetitorParams{
-		Name: req.Name, Domain: req.Domain,
+		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)

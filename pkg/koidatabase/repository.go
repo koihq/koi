@@ -139,8 +139,14 @@ func mapDBError(err error) error {
 	}
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
+		if pgErr.ConstraintName == "idx_prompts_brand_text" {
+			return koidomain.Validation(koidomain.FieldError{Field: "text", Code: koidomain.FieldTaken})
+		}
 		if pgErr.ConstraintName == "idx_competitors_brand_domain" {
 			return koidomain.Validation(koidomain.FieldError{Field: "domain", Code: koidomain.FieldTaken})
+		}
+		if pgErr.ConstraintName == "idx_competitors_brand_github_repo" {
+			return koidomain.Validation(koidomain.FieldError{Field: "github_repo", Code: koidomain.FieldTaken})
 		}
 		if strings.Contains(strings.ToLower(pgErr.ConstraintName), "email") ||
 			strings.EqualFold(pgErr.ColumnName, "email") {

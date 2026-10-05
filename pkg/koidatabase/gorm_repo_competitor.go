@@ -18,28 +18,25 @@ func NewGormCompetitorRepository(db *gorm.DB) *GormCompetitorRepository {
 }
 
 func (r *GormCompetitorRepository) Create(ctx context.Context, competitor *koidomain.Competitor) error {
-	if _, err := NewGormBrandRepository(r.db).Get(ctx, competitor.BrandID); err != nil {
+	if _, err := r.Repository.query(ctx); err != nil {
 		return err
 	}
-	return r.Repository.Create(ctx, competitor)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, competitor.BrandID); err != nil {
+			return err
+		}
+		return NewGormCompetitorRepository(tx).Repository.Create(ctx, competitor)
+	})
 }
 
 func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm.DB {
-	if filter.ID != uuid.Nil {
-		db = db.Where("id = ?", filter.ID)
-	}
-	if filter.BrandID != uuid.Nil {
-		db = db.Where("brand_id = ?", filter.BrandID)
-	}
+	db = applyChildListFilter(db, filter.ID, filter.BrandID, filter.Confirmed)
 	if filter.Domain != "" {
 		db = db.Where("domain = ?", filter.Domain)
 	}
-	if filter.Confirmed != nil {
-		db = db.Where("confirmed = ?", *filter.Confirmed)
-	}
 	if filter.Query != "" {
 		pattern := likePattern(filter.Query)
-		db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!')", pattern, pattern)
+		db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!' OR github_repo ILIKE ? ESCAPE '!')", pattern, pattern, pattern)
 	}
 	return db
 }

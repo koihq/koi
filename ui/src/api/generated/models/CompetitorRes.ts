@@ -44,6 +44,7 @@ export interface CompetitorRes {
      * @memberof CompetitorRes
      */
     domain: string;
+    githubRepo: string;
     /**
      * 
      * @type {CompetitorResSourceEnum}
@@ -78,6 +79,7 @@ export function instanceOfCompetitorRes(value: object): value is CompetitorRes {
     if (!('brandId' in value) || value['brandId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('domain' in value) || value['domain'] === undefined) return false;
+    if (!('githubRepo' in value) || value['githubRepo'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
     return true;
@@ -97,6 +99,7 @@ export function CompetitorResFromJSONTyped(json: any, ignoreDiscriminator: boole
         'brandId': json['brand_id'],
         'name': json['name'],
         'domain': json['domain'],
+        'githubRepo': json['github_repo'],
         'source': json['source'],
         'confirmed': json['confirmed'],
     };
@@ -117,8 +120,8 @@ export function CompetitorResToJSONTyped(value?: CompetitorRes | null, ignoreDis
         'brand_id': value['brandId'],
         'name': value['name'],
         'domain': value['domain'],
+        'github_repo': value['githubRepo'],
         'source': value['source'],
         'confirmed': value['confirmed'],
     };
 }
-

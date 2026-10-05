@@ -46,6 +46,15 @@ Self-hosted Koi must work without requiring users to create accounts with, obtai
 - Before an agent runs pnpm install, add, or update, check `pnpm --dir ui store path`. If it resolves inside this repo, request escalation so pnpm can use the normal user store; never set `store-dir` inside this repo.
 - Cookie session auth (email/password, `koi_session`). `KOI_SESSION_SECRET` is required (`openssl rand -base64 32`). Browse `:5173` during `make dev`. Dual-surface CLI/MCP comes later.
 
+## API and implementation conventions
+
+- Persisted-resource `GET` lists accept `page` and `pageSize` and return `Page[T]`, even when empty: `items: []`, `totalItems: 0`, `totalPages: 0`, `currentPage: 1`, `hasNext: false`, `hasPrev: false`. Keep OpenAPI and UI wrappers aligned. Country options and competitor search are bounded combobox lookups, so they are exceptions.
+- Put shared UI blocks in `ui/src/components/blocks/`, shared hooks in `ui/src/hooks/`, and shared query keys in `ui/src/lib/query-keys.ts`. Route-private code stays under a route's `-` folders.
+- For external APIs, inspect installed clients, read official vendor documentation, and verify the implementation against the pinned SDK version. Use the installed OpenRouter SDK for Responses API; use the repo's Resty pattern for direct JSON HTTP integrations without a suitable SDK.
+- Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.
+- Break up nested Go literals for readability even when `gofmt` accepts a one-line form.
+- Postgres integration tests run during `go test ./...`. `internal/testdb.URL(t)` reads `KOI_DATABASE_URL` from the environment or repo `.env`, isolates a schema in that database, and fails if Postgres is unavailable. Tests explicitly run their own migrations.
+
 ## Pin dependencies
 
 When adding or bumping a dependency (pnpm, Go modules, Docker base images, GitHub Actions):

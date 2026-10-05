@@ -26,6 +26,12 @@ export interface CapabilitiesResponse {
      * @memberof CapabilitiesResponse
      */
     competitorSearch: boolean;
+    /**
+     *
+     * @type {boolean}
+     * @memberof CapabilitiesResponse
+     */
+    aiDrafting: boolean;
 }
 
 /**
@@ -33,6 +39,7 @@ export interface CapabilitiesResponse {
  */
 export function instanceOfCapabilitiesResponse(value: object): value is CapabilitiesResponse {
     if (!('competitorSearch' in value) || value['competitorSearch'] === undefined) return false;
+    if (!('aiDrafting' in value) || value['aiDrafting'] === undefined) return false;
     return true;
 }
 
@@ -47,6 +54,7 @@ export function CapabilitiesResponseFromJSONTyped(json: any, ignoreDiscriminator
     return {
         
         'competitorSearch': json['competitorSearch'],
+        'aiDrafting': json['aiDrafting'],
     };
 }
 
@@ -62,6 +70,6 @@ export function CapabilitiesResponseToJSONTyped(value?: CapabilitiesResponse | n
     return {
         
         'competitorSearch': value['competitorSearch'],
+        'aiDrafting': value['aiDrafting'],
     };
 }
-

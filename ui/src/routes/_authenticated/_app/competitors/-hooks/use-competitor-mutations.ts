@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { CreateCompetitor } from "@/api/competitors.api";
-import { competitorKey } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-list";
+import { competitorKey } from "@/lib/query-keys";
 
 export function useCompetitorMutations(brandID: string) {
   const api = useApi();

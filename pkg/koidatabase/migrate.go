@@ -33,9 +33,25 @@ func Migrate(db *gorm.DB) error {
 		&koidomain.Brand{},
 		&koidomain.Prompt{},
 		&koidomain.Competitor{},
+		&koidomain.GenerationRun{},
 		&sessionRow{},
 	); err != nil {
 		return err
+	}
+	if err := db.Exec("DROP INDEX IF EXISTS idx_competitors_brand_domain").Error; err != nil {
+		return err
+	}
+	for _, statement := range []string{
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_competitors_brand_domain ON competitors (brand_id, domain) WHERE domain <> ''",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_competitors_brand_github_repo ON competitors (brand_id, github_repo) WHERE github_repo <> ''",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_prompts_brand_text ON prompts (brand_id, lower(text))",
+		"CREATE INDEX IF NOT EXISTS idx_generation_runs_recent ON generation_runs (brand_id, created_at DESC, id DESC)",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_runs_key ON generation_runs (brand_id, idempotency_key) WHERE idempotency_key IS NOT NULL",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_runs_active ON generation_runs (brand_id) WHERE state IN ('queued', 'running')",
+	} {
+		if err := db.Exec(statement).Error; err != nil {
+			return err
+		}
 	}
 	if db.Migrator().HasColumn("competitors", "aliases") {
 		return db.Migrator().DropColumn("competitors", "aliases")

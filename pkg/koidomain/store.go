@@ -13,4 +13,5 @@ type Store interface {
 	BrandRepo() BrandRepository
 	PromptRepo() PromptRepository
 	CompetitorRepo() CompetitorRepository
+	GenerationRepo() GenerationRepository
 }

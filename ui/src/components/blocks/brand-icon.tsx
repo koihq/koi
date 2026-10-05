@@ -3,7 +3,7 @@ import { useState } from "react";
 export function logoDevURL(domain: string, token: string | undefined): string | null {
   const key = token?.trim();
   if (!key || !domain) return null;
-  return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${encodeURIComponent(key)}&size=64&format=webp`;
+  return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${encodeURIComponent(key)}&size=64&format=webp&fallback=404`;
 }
 
 export function brandInitial(name: string, domain: string): string {

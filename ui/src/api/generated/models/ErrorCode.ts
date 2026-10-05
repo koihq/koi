@@ -27,7 +27,10 @@ export const ErrorCode = {
     UNAUTHORIZED: 'unauthorized',
     INVALID_JSON: 'invalid_json',
     INTERNAL: 'internal',
-    FEATURE_UNAVAILABLE: 'feature_unavailable'
+    FEATURE_UNAVAILABLE: 'feature_unavailable',
+    GENERATION_CONFLICT: 'generation_conflict',
+    IDEMPOTENCY_CONFLICT: 'idempotency_conflict',
+    INITIAL_ALREADY_COMPLETED: 'initial_already_completed'
 } as const;
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
 

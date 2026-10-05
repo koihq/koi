@@ -3,8 +3,8 @@ import { useEffect } from "react";
 
 import { useApi } from "@/api/apiProvider";
 import { useTableState } from "@/hooks/use-table-state";
+import { promptKey } from "@/lib/query-keys";
 
-export const promptKey = (brandID: string) => ["brands", brandID, "prompts"] as const;
 
 export function usePromptList(brandID: string) {
   const api = useApi();

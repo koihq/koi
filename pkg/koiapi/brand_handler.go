@@ -88,7 +88,7 @@ func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	brands, err := h.querier.List(r.Context(), page.Page, page.PageSize)
+	brands, err := h.querier.List(r.Context(), page)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -106,6 +106,28 @@ func pageParams(r *http.Request) (koidomain.PageParams, error) {
 		return koidomain.PageParams{}, err
 	}
 	return koidomain.PageParams{Page: page, PageSize: pageSize}, nil
+}
+
+type listQuery struct {
+	Page      koidomain.PageParams
+	Query     string
+	Confirmed *bool
+}
+
+func readListQuery(r *http.Request) (listQuery, error) {
+	page, err := pageParams(r)
+	if err != nil {
+		return listQuery{}, err
+	}
+	confirmed, err := optionalBoolQuery(r, "confirmed")
+	if err != nil {
+		return listQuery{}, err
+	}
+	query, err := optionalStringQuery(r, "q")
+	if err != nil {
+		return listQuery{}, err
+	}
+	return listQuery{Page: page, Query: query, Confirmed: confirmed}, nil
 }
 
 func optionalBoolQuery(r *http.Request, key string) (*bool, error) {

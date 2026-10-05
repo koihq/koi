@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { CreatePrompt } from "@/api/prompts.api";
-import { promptKey } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-list";
+import { promptKey } from "@/lib/query-keys";
 
 export function usePromptMutations(brandID: string) {
   const api = useApi();

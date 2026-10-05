@@ -7,10 +7,12 @@ import type {
   AuthApi,
   BrandsApi,
   CompetitorsApi,
+  GenerationsApi,
   HealthApi,
   Page,
   PromptsApi,
 } from "@/api/generated";
+import { createGenerationsApi } from "@/api/generations.api";
 import { createHealthApi } from "@/api/health.api";
 import { createPromptsApi } from "@/api/prompts.api";
 
@@ -49,6 +51,43 @@ describe("entity API wrappers", () => {
 
     await expect(createHealthApi(client).get()).resolves.toEqual(health);
     expect(client.get).toHaveBeenCalledOnce();
+  });
+
+  it("sends generation modes and uses the setup key only when supplied", async () => {
+    const accepted = { id: "run-id", mode: "initial", state: "queued", statusUrl: "/status" };
+    const client = {
+      createGeneration: vi.fn().mockResolvedValue(accepted),
+      listGenerations: vi.fn().mockResolvedValue({ ...page, items: [] }),
+      getGeneration: vi.fn().mockResolvedValue({ ...accepted, attempt: 0 }),
+    } as unknown as GenerationsApi;
+    const api = createGenerationsApi(client);
+
+    await api.create("brand-id", "initial", "setup-brand-id");
+    await api.create("brand-id", "prompts");
+    await api.create("brand-id", "competitors");
+    await api.list("brand-id");
+    await api.getById("brand-id", "run-id");
+
+    expect(client.createGeneration).toHaveBeenNthCalledWith(
+      1,
+      "brand-id",
+      { mode: "initial" },
+      "setup-brand-id",
+    );
+    expect(client.createGeneration).toHaveBeenNthCalledWith(
+      2,
+      "brand-id",
+      { mode: "prompts" },
+      undefined,
+    );
+    expect(client.createGeneration).toHaveBeenNthCalledWith(
+      3,
+      "brand-id",
+      { mode: "competitors" },
+      undefined,
+    );
+    expect(client.listGenerations).toHaveBeenCalledWith("brand-id", 1, 1, undefined);
+    expect(client.getGeneration).toHaveBeenCalledWith("brand-id", "run-id", undefined);
   });
 
   it("exposes generic brand method names", async () => {

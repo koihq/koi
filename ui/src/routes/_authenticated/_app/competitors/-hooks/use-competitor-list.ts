@@ -3,8 +3,8 @@ import { useEffect } from "react";
 
 import { useApi } from "@/api/apiProvider";
 import { useTableState } from "@/hooks/use-table-state";
+import { competitorKey } from "@/lib/query-keys";
 
-export const competitorKey = (brandID: string) => ["brands", brandID, "competitors"] as const;
 
 export function useCompetitorList(brandID: string) {
   const api = useApi();

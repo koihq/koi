@@ -8,7 +8,10 @@
     "unauthorized": "Sign in to continue",
     "invalid_json": "Check the form and try again",
     "internal": "Something went wrong",
-    "feature_unavailable": "This feature is unavailable on this installation"
+    "feature_unavailable": "This feature is unavailable on this installation",
+    "generation_conflict": "Another draft is in progress. Check its status and try again when it finishes.",
+    "idempotency_conflict": "This draft request could not be repeated. Try again.",
+    "initial_already_completed": "The first draft is complete. Use a single-list draft action instead."
   },
   "fields": {
     "email": {

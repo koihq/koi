@@ -151,7 +151,10 @@ func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotNil(t, page.Items)
 	require.EqualValues(t, 6, page.TotalItems)
+	require.EqualValues(t, 2, page.TotalPages)
 	require.Equal(t, 2, page.CurrentPage)
+	require.True(t, page.HasPrev)
+	require.False(t, page.HasNext)
 }
 
 func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {

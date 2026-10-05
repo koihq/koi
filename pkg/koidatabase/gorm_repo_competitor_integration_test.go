@@ -1,36 +1,22 @@
 package koidatabase
 
 import (
-	"net/url"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/koihq/koi/internal/testdb"
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
 func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
-	dsn := os.Getenv("KOI_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("set KOI_TEST_DATABASE_URL to run the Postgres integration test")
-	}
-	admin, err := Open(dsn)
+	db, err := Open(testdb.URL(t))
 	require.NoError(t, err)
-	schemaName := "koi_test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	require.NoError(t, admin.Exec("CREATE SCHEMA "+schemaName).Error)
-	t.Cleanup(func() { require.NoError(t, admin.Exec("DROP SCHEMA "+schemaName+" CASCADE").Error) })
-
-	scopedURL, err := url.Parse(dsn)
+	sqlDB, err := db.DB()
 	require.NoError(t, err)
-	params := scopedURL.Query()
-	params.Set("search_path", schemaName)
-	scopedURL.RawQuery = params.Encode()
-	db, err := Open(scopedURL.String())
-	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, Migrate(db))
 	store := NewStore(db)
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
@@ -70,6 +56,22 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, 1, page.TotalItems)
+
+	// Upgrade a pre-GitHub schema with an existing row and its old index.
+	require.NoError(t, db.Exec("DROP INDEX idx_competitors_brand_domain").Error)
+	require.NoError(t, db.Exec("CREATE UNIQUE INDEX idx_competitors_brand_domain ON competitors (brand_id, domain)").Error)
+	require.NoError(t, Migrate(db))
+	var oldRow koidomain.Competitor
+	require.NoError(t, db.First(&oldRow, "id = ?", page.Items[0].ID).Error)
+	require.Equal(t, "acme.com", oldRow.Domain)
+	for _, repo := range []string{"https://github.com/zsh-users/zsh-autosuggestions", "https://github.com/atuinsh/atuin"} {
+		_, err := koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{Name: repo, GitHubRepo: repo})
+		require.NoError(t, err)
+	}
+	_, err = koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{Name: "Duplicate", GitHubRepo: "https://github.com/zsh-users/zsh-autosuggestions"})
+	var repoErr *koidomain.Error
+	require.ErrorAs(t, err, &repoErr)
+	require.Equal(t, []koidomain.FieldError{{Field: "github_repo", Code: koidomain.FieldTaken}}, repoErr.Fields)
 
 	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), otherUser))

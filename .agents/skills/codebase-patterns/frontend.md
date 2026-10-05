@@ -112,3 +112,9 @@ Routes import `@/components/ui/*` and `@/components/blocks/*`. Do not change a p
 ## Dev
 
 `make dev` runs Vite on `:5173` and proxies `/health` and `/api` to the Go API on `:8080`. Browse `http://localhost:5173`. Keep `createApiClient()` on a relative/empty base URL so requests go through the proxy — do not point the browser at `:8080`.
+
+## Shared UI and lists
+
+Shared UI blocks live in `src/components/blocks/`, shared hooks in `src/hooks/`, and shared query keys in `src/lib/query-keys.ts`. Route `-components/` and `-hooks/` hold code used only by that route.
+
+Persisted-resource lists accept `page` and `pageSize` and use the `Page[T]` envelope, including empty results with page metadata. Keep wrappers and OpenAPI aligned. Country options and competitor search are bounded combobox lookups.

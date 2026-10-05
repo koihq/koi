@@ -15,11 +15,11 @@ import (
 	"github.com/koihq/koi/pkg/web"
 )
 
-func NewServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher) http.Handler {
-	return buildHTTPServer(store, sess, searcher)
+func NewServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool) http.Handler {
+	return buildHTTPServer(store, sess, searcher, aiDrafting)
 }
 
-func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher) http.Handler {
+func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middlewares.RequestLogger)
@@ -28,7 +28,7 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Idempotency-Key"},
 		AllowCredentials: true,
 	}))
 	r.Use(sess.LoadAndSave)
@@ -36,7 +36,7 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 	r.Get("/health", NewHealthHandler(store).Get)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(Authorizer(sess)).Get("/capabilities", func(w http.ResponseWriter, req *http.Request) {
-			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil})
+			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting})
 		})
 		r.Route("/auth", NewAuthHandler(
 			koidomain.NewAuthQuerier(store),
@@ -57,6 +57,11 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 			r.Route("/{brandID}/competitors", NewCompetitorHandler(
 				koidomain.NewCompetitorQuerier(store, searcher),
 				koidomain.NewCompetitorCommander(store),
+				sess,
+			).Routes())
+			r.Route("/{brandID}/generations", NewGenerationHandler(
+				koidomain.NewGenerationQuerier(store),
+				koidomain.NewGenerationCommander(store, aiDrafting),
 				sess,
 			).Routes())
 		})
