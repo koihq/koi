@@ -175,7 +175,7 @@ func TestBrandQuerierPages(t *testing.T) {
 		Items: []Brand{{UserID: userID}}, TotalItems: 21, TotalPages: 3,
 		CurrentPage: 2, HasNext: true, HasPrev: true,
 	}, nil)
-	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), 2, 10)
+	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), PageParams{Page: 2, PageSize: 10})
 	require.NoError(t, err)
 	require.Equal(t, &Page[Brand]{
 		Items: []Brand{{UserID: userID}}, TotalItems: 21, TotalPages: 3,
@@ -185,7 +185,7 @@ func TestBrandQuerierPages(t *testing.T) {
 	repo.EXPECT().List(mock.Anything, PageParams{Page: 10, PageSize: 10}).Return(&Page[Brand]{
 		Items: []Brand{}, TotalItems: 21, TotalPages: 3, CurrentPage: 10, HasPrev: true,
 	}, nil)
-	page, err = NewBrandQuerier(store).List(identityCtx(t, userID), 10, 10)
+	page, err = NewBrandQuerier(store).List(identityCtx(t, userID), PageParams{Page: 10, PageSize: 10})
 	require.NoError(t, err)
 	require.Empty(t, page.Items)
 	require.EqualValues(t, 21, page.TotalItems)
@@ -201,7 +201,7 @@ func TestBrandQuerierEmptyPage(t *testing.T) {
 	store.EXPECT().BrandRepo().Return(repo)
 	userID := uuid.New()
 	repo.EXPECT().List(mock.Anything, PageParams{Page: 1, PageSize: 10}).Return(&Page[Brand]{Items: []Brand{}, CurrentPage: 1}, nil)
-	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), 1, 10)
+	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	require.Equal(t, &Page[Brand]{Items: []Brand{}, CurrentPage: 1}, page)
 }

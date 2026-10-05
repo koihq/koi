@@ -167,8 +167,8 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if err := migrateRiver(ctx, sqlDB); err != nil {
 			return fmt.Errorf("migrate river: %w", err)
 		}
-		if err := koidatabase.NewStore(db).ReconcileDraftRuns(ctx); err != nil {
-			return fmt.Errorf("reconcile drafting runs: %w", err)
+		if err := koidatabase.NewStore(db).ReconcileGenerationRuns(ctx); err != nil {
+			return fmt.Errorf("reconcile generation runs: %w", err)
 		}
 	}
 	sess := scs.New()
@@ -195,10 +195,10 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 			if a.provider == nil {
 				a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
 			}
-			river.AddWorker(workers, &draftWorker{store: koidatabase.NewStore(db), provider: a.provider})
+			river.AddWorker(workers, &generationWorker{store: koidatabase.NewStore(db), provider: a.provider})
 		}
 		config := &river.Config{
-			Queues:  map[string]river.QueueConfig{"drafting": {MaxWorkers: a.cfg.WorkerConcurrency}},
+			Queues:  map[string]river.QueueConfig{"generation": {MaxWorkers: a.cfg.WorkerConcurrency}},
 			Workers: workers, SoftStopTimeout: 60 * time.Second,
 		}
 		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)

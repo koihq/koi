@@ -3,10 +3,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { useApi } from "@/api/apiProvider";
 import type { Generation, GenerationMode } from "@/api/generations.api";
-import { competitorKey } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-list";
-import { promptKey } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-list";
+import { competitorKey, generationKey, promptKey } from "@/lib/query-keys";
 
-const generationKey = (brandID: string) => ["brands", brandID, "generations"] as const;
 
 export function generationPollDelay(
   state: Generation["state"] | undefined,
@@ -17,7 +15,7 @@ export function generationPollDelay(
   return Math.min(60_000, 15_000 * 2 ** Math.min(failures, 2) + jitter);
 }
 
-export function useGenerationDrafting(brandID: string) {
+export function useGeneration(brandID: string) {
   const api = useApi();
   const queryClient = useQueryClient();
   const [jitter] = useState(() => Math.floor(Math.random() * 3000));

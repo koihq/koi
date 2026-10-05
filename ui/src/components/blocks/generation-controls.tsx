@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { messageFromUnknown } from "@/api/errors";
 import type { GenerationMode } from "@/api/generations.api";
 import { Button } from "@/components/ui/button";
-import { useGenerationDrafting } from "@/routes/_authenticated/_app/-hooks/use-generation-drafting";
+import { useGeneration } from "@/hooks/use-generation";
 
 export function GenerationControls({
   brandID,
@@ -15,7 +15,7 @@ export function GenerationControls({
   setupStartFailed?: boolean;
 }) {
   const { t } = useTranslation("management");
-  const { capabilities, runs, status, run, create } = useGenerationDrafting(brandID);
+  const { capabilities, runs, status, run, create } = useGeneration(brandID);
   const enabled = capabilities.data?.aiDrafting === true;
   const busy = run?.state === "queued" || run?.state === "running" || create.isPending;
   const showStatus =

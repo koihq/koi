@@ -16,7 +16,7 @@ type GenerationJobArgs struct {
 	RunID uuid.UUID `json:"run_id"`
 }
 
-func (GenerationJobArgs) Kind() string { return "koi_generation_v1" }
+func (GenerationJobArgs) Kind() string { return "koi_generation" }
 
 type GormGenerationRepository struct {
 	*Repository[koidomain.GenerationRun]
@@ -79,7 +79,7 @@ func (r *GormGenerationRepository) CreateAndEnqueue(ctx context.Context, run *ko
 	if err := tx.Create(run).Error; err != nil {
 		return mapDBError(err)
 	}
-	inserted, err := r.client.InsertTx(ctx, sqlTx, GenerationJobArgs{RunID: run.ID}, &river.InsertOpts{Queue: "drafting", MaxAttempts: 3})
+	inserted, err := r.client.InsertTx(ctx, sqlTx, GenerationJobArgs{RunID: run.ID}, &river.InsertOpts{Queue: "generation", MaxAttempts: 3})
 	if err != nil {
 		return err
 	}

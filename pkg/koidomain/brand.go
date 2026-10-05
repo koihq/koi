@@ -188,7 +188,7 @@ type BrandCommander interface {
 }
 
 type BrandQuerier interface {
-	List(ctx context.Context, page, pageSize int) (*Page[Brand], error)
+	List(ctx context.Context, params PageParams) (*Page[Brand], error)
 	Get(ctx context.Context, id uuid.UUID) (*Brand, error)
 }
 
@@ -270,8 +270,8 @@ type brandQuerier struct{ store Store }
 
 func NewBrandQuerier(store Store) BrandQuerier { return &brandQuerier{store: store} }
 
-func (q *brandQuerier) List(ctx context.Context, page, pageSize int) (*Page[Brand], error) {
-	return q.store.BrandRepo().List(ctx, PageParams{Page: page, PageSize: pageSize})
+func (q *brandQuerier) List(ctx context.Context, params PageParams) (*Page[Brand], error) {
+	return q.store.BrandRepo().List(ctx, params)
 }
 
 func (q *brandQuerier) Get(ctx context.Context, id uuid.UUID) (*Brand, error) {

@@ -7,7 +7,7 @@ import type { Prompt } from "@/api/prompts.api";
 import { DataTable } from "@/components/blocks/data-table";
 import { Button } from "@/components/ui/button";
 import { tableSearchParams } from "@/hooks/use-table-state";
-import { GenerationControls } from "@/routes/_authenticated/_app/-components/generation-controls";
+import { GenerationControls } from "@/components/blocks/generation-controls";
 import { DeletePromptDialog } from "@/routes/_authenticated/_app/prompts/-components/delete-prompt-dialog";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
 import { usePromptColumns } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-columns";

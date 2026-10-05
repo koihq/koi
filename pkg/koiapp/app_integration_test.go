@@ -5,17 +5,14 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
-	"net/url"
-	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/stretchr/testify/require"
 
+	"github.com/koihq/koi/internal/testdb"
 	"github.com/koihq/koi/pkg/koidatabase"
 )
 
@@ -24,25 +21,7 @@ type shutdownJobArgs struct{}
 func (shutdownJobArgs) Kind() string { return "koi_test_shutdown" }
 
 func TestRunRiverMigrationsAndShutdown(t *testing.T) {
-	dsn := os.Getenv("KOI_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("set KOI_TEST_DATABASE_URL to run the Postgres integration test")
-	}
-	admin, err := koidatabase.Open(dsn)
-	require.NoError(t, err)
-	adminSQL, err := admin.DB()
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, adminSQL.Close()) })
-	schema := "koi_test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	require.NoError(t, admin.Exec("CREATE SCHEMA "+schema).Error)
-	t.Cleanup(func() { require.NoError(t, admin.Exec("DROP SCHEMA "+schema+" CASCADE").Error) })
-
-	scopedURL, err := url.Parse(dsn)
-	require.NoError(t, err)
-	params := scopedURL.Query()
-	params.Set("search_path", schema)
-	scopedURL.RawQuery = params.Encode()
-	scopedDSN := scopedURL.String()
+	scopedDSN := testdb.URL(t)
 	checkDB, err := koidatabase.Open(scopedDSN)
 	require.NoError(t, err)
 	checkSQL, err := checkDB.DB()
@@ -107,7 +86,7 @@ func TestRunRiverMigrationsAndShutdown(t *testing.T) {
 	cancel, done, address := startTestApp(t, &App{cfg: cfg, workers: workers}, httpClient)
 	inserter, err := river.NewClient(riverdatabasesql.New(checkSQL), &river.Config{})
 	require.NoError(t, err)
-	inserted, err := inserter.Insert(t.Context(), shutdownJobArgs{}, &river.InsertOpts{Queue: "drafting"})
+	inserted, err := inserter.Insert(t.Context(), shutdownJobArgs{}, &river.InsertOpts{Queue: "generation"})
 	require.NoError(t, err)
 	select {
 	case <-started:

@@ -2,9 +2,9 @@ package koidatabase
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"strings"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/koihq/koi/pkg/koidomain"
@@ -19,22 +19,19 @@ func NewGormPromptRepository(db *gorm.DB) *GormPromptRepository {
 }
 
 func (r *GormPromptRepository) Create(ctx context.Context, prompt *koidomain.Prompt) error {
-	if _, err := NewGormBrandRepository(r.db).Get(ctx, prompt.BrandID); err != nil {
+	if _, err := r.Repository.query(ctx); err != nil {
 		return err
 	}
-	return r.Repository.Create(ctx, prompt)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, prompt.BrandID); err != nil {
+			return err
+		}
+		return NewGormPromptRepository(tx).Repository.Create(ctx, prompt)
+	})
 }
 
 func applyPromptFilter(db *gorm.DB, filter koidomain.PromptFilter) *gorm.DB {
-	if filter.ID != uuid.Nil {
-		db = db.Where("id = ?", filter.ID)
-	}
-	if filter.BrandID != uuid.Nil {
-		db = db.Where("brand_id = ?", filter.BrandID)
-	}
-	if filter.Confirmed != nil {
-		db = db.Where("confirmed = ?", *filter.Confirmed)
-	}
+	db = applyChildListFilter(db, filter.ID, filter.BrandID, filter.Confirmed)
 	if filter.Query != "" {
 		db = db.Where("text ILIKE ? ESCAPE '!'", likePattern(filter.Query))
 	}

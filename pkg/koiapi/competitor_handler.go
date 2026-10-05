@@ -63,22 +63,12 @@ func (h *CompetitorHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	page, err := pageParams(r)
+	params, err := readListQuery(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	confirmed, err := optionalBoolQuery(r, "confirmed")
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	query, err := optionalStringQuery(r, "q")
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	competitors, err := h.querier.List(r.Context(), brandID, page, query, confirmed)
+	competitors, err := h.querier.List(r.Context(), brandID, params.Page, params.Query, params.Confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return

@@ -1,36 +1,22 @@
 package koidatabase
 
 import (
-	"net/url"
-	"os"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/koihq/koi/internal/testdb"
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
 func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
-	dsn := os.Getenv("KOI_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("set KOI_TEST_DATABASE_URL to run the Postgres integration test")
-	}
-	admin, err := Open(dsn)
+	db, err := Open(testdb.URL(t))
 	require.NoError(t, err)
-	schemaName := "koi_test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	require.NoError(t, admin.Exec("CREATE SCHEMA "+schemaName).Error)
-	t.Cleanup(func() { require.NoError(t, admin.Exec("DROP SCHEMA "+schemaName+" CASCADE").Error) })
-
-	scopedURL, err := url.Parse(dsn)
+	sqlDB, err := db.DB()
 	require.NoError(t, err)
-	params := scopedURL.Query()
-	params.Set("search_path", schemaName)
-	scopedURL.RawQuery = params.Encode()
-	db, err := Open(scopedURL.String())
-	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, Migrate(db))
 	store := NewStore(db)
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}

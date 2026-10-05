@@ -97,7 +97,6 @@ func TestGenerationCreateDecision(t *testing.T) {
 				require.Equal(t, GenerationQueued, got.State)
 				require.Equal(t, BrandSnapshot{Name: "Koi", Domain: "koi.dev", Country: "IT", Description: "Visibility"}, got.BrandSnapshot)
 				require.Equal(t, GenerationModelSlug, got.ModelSlug)
-				require.Equal(t, GenerationPromptVersion, got.PromptVersion)
 			} else if tc.byKey != nil {
 				require.Same(t, tc.byKey, got)
 			} else {

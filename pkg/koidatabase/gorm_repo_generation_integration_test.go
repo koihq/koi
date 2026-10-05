@@ -3,9 +3,6 @@ package koidatabase
 import (
 	"errors"
 	"fmt"
-	"net/url"
-	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,26 +14,13 @@ import (
 	"github.com/riverqueue/river/rivermigrate"
 	"github.com/stretchr/testify/require"
 
+	"github.com/koihq/koi/internal/testdb"
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
 func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
-	dsn := os.Getenv("KOI_TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("set KOI_TEST_DATABASE_URL to run the Postgres integration test")
-	}
-	admin, err := Open(dsn)
-	require.NoError(t, err)
-	schemaName := "koi_test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	require.NoError(t, admin.Exec("CREATE SCHEMA "+schemaName).Error)
-	t.Cleanup(func() { require.NoError(t, admin.Exec("DROP SCHEMA "+schemaName+" CASCADE").Error) })
-	scopedURL, err := url.Parse(dsn)
-	require.NoError(t, err)
-	params := scopedURL.Query()
-	params.Set("search_path", schemaName)
-	scopedURL.RawQuery = params.Encode()
-	db, err := Open(scopedURL.String())
+	db, err := Open(testdb.URL(t))
 	require.NoError(t, err)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
@@ -95,7 +79,7 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 
 	// The active and idempotency constraints remain effective for direct writes.
 	base := koidomain.GenerationRun{BrandID: brand.ID, Mode: koidomain.GenerationPrompts, State: koidomain.GenerationRunning,
-		ModelSlug: koidomain.GenerationModelSlug, PromptVersion: koidomain.GenerationPromptVersion,
+		ModelSlug:     koidomain.GenerationModelSlug,
 		BrandSnapshot: koidomain.BrandSnapshot{Name: "Koi", Domain: "koi.dev", Country: "IT"}}
 	requireConstraint(t, db.Create(&base).Error, "idx_generation_runs_active")
 	require.NoError(t, db.Model(&koidomain.GenerationRun{}).Where("id = ?", first.run.ID).Update("state", koidomain.GenerationFailed).Error)
@@ -124,44 +108,45 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 			BrandID: brand.ID, Text: fmt.Sprintf("Question %d?", i), Source: koidomain.PromptSourceManual, Confirmed: true,
 		}))
 	}
-	started, draftInput, err := store.BeginDraftAttempt(ctx, newer.ID, *newer.RiverJobID, 1)
+	started, draftInput, err := store.BeginGenerationAttempt(ctx, newer.ID, *newer.RiverJobID, 1)
 	require.NoError(t, err)
 	require.NotNil(t, started)
 	require.Len(t, draftInput.ExistingPrompts, 120)
 	require.Equal(t, newer.BrandSnapshot, draftInput.Brand)
 	retryAt := time.Now().Add(time.Minute)
-	require.NoError(t, store.RecordDraftFailure(ctx, newer.ID, 1, "provider_rate_limited", &retryAt))
+	require.NoError(t, store.RecordGenerationFailure(ctx, newer.ID, 1, "provider_rate_limited", &retryAt))
 	var retrying koidomain.GenerationRun
 	require.NoError(t, db.First(&retrying, "id = ?", newer.ID).Error)
 	require.Equal(t, koidomain.GenerationRunning, retrying.State)
 	require.Equal(t, "provider_rate_limited", *retrying.ErrorCode)
 	require.NotNil(t, retrying.NextRetryAt)
-	started, draftInput, err = store.BeginDraftAttempt(ctx, newer.ID, *newer.RiverJobID, 2)
+	started, draftInput, err = store.BeginGenerationAttempt(ctx, newer.ID, *newer.RiverJobID, 2)
 	require.NoError(t, err)
 	require.NotNil(t, started)
 	require.Len(t, draftInput.ExistingPrompts, 120)
 	require.NoError(t, store.PromptRepo().Create(ctx, &koidomain.Prompt{
 		BrandID: brand.ID, Text: "Added during generation?", Source: koidomain.PromptSourceManual, Confirmed: true,
 	}))
-	promptCount, competitorCount, err := store.FinishDraftAttempt(ctx, newer.ID, 2, koidomain.DraftOutput{
+	promptCount, competitorCount, err := store.FinishGenerationAttempt(ctx, newer.ID, 2, koidomain.GenerationResult{
 		Prompts: []string{"Question 7?", "Added during generation?", "New AI question?", "New AI question?", "  "},
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, promptCount)
 	require.Zero(t, competitorCount)
+	retrying = koidomain.GenerationRun{}
 	require.NoError(t, db.First(&retrying, "id = ?", newer.ID).Error)
 	require.Equal(t, koidomain.GenerationSucceeded, retrying.State)
 	require.Equal(t, 2, retrying.Attempt)
 	require.Equal(t, 1, retrying.PromptCount)
 	require.Nil(t, retrying.ErrorCode)
 	require.Nil(t, retrying.NextRetryAt)
-	started, _, err = store.BeginDraftAttempt(ctx, newer.ID, *newer.RiverJobID, 3)
+	started, _, err = store.BeginGenerationAttempt(ctx, newer.ID, *newer.RiverJobID, 3)
 	require.NoError(t, err)
 	require.Nil(t, started)
 
 	raceRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
 	require.NoError(t, err)
-	_, _, err = store.BeginDraftAttempt(ctx, raceRun.ID, *raceRun.RiverJobID, 1)
+	_, _, err = store.BeginGenerationAttempt(ctx, raceRun.ID, *raceRun.RiverJobID, 1)
 	require.NoError(t, err)
 	manualResult := make(chan error, 1)
 	startRace := make(chan struct{})
@@ -172,7 +157,7 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 		})
 	}()
 	close(startRace)
-	raceCount, _, err := store.FinishDraftAttempt(ctx, raceRun.ID, 1, koidomain.DraftOutput{Prompts: []string{"Shared question?"}})
+	raceCount, _, err := store.FinishGenerationAttempt(ctx, raceRun.ID, 1, koidomain.GenerationResult{Prompts: []string{"Shared question?"}})
 	require.NoError(t, err)
 	manualErr := <-manualResult
 	if raceCount == 0 {
@@ -189,10 +174,10 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	}))
 	competitorRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationCompetitors, nil)
 	require.NoError(t, err)
-	_, draftInput, err = store.BeginDraftAttempt(ctx, competitorRun.ID, *competitorRun.RiverJobID, 1)
+	_, draftInput, err = store.BeginGenerationAttempt(ctx, competitorRun.ID, *competitorRun.RiverJobID, 1)
 	require.NoError(t, err)
-	require.Equal(t, []koidomain.DraftCompany{{Name: "Atlas", Domain: "atlas.example"}}, draftInput.ExistingCompetitors)
-	promptCount, competitorCount, err = store.FinishDraftAttempt(ctx, competitorRun.ID, 1, koidomain.DraftOutput{Competitors: []koidomain.DraftCompany{
+	require.Equal(t, []koidomain.CompetitorIdentity{{Name: "Atlas", Domain: "atlas.example"}}, draftInput.ExistingCompetitors)
+	promptCount, competitorCount, err = store.FinishGenerationAttempt(ctx, competitorRun.ID, 1, koidomain.GenerationResult{Competitors: []koidomain.CompetitorIdentity{
 		{Name: "Atlas again", Domain: "ATLAS.EXAMPLE"},
 		{Name: "Koi", Domain: "koi.dev"},
 		{Name: "Beta", Domain: "beta.example"},
@@ -208,9 +193,9 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 
 	zeroRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationCompetitors, nil)
 	require.NoError(t, err)
-	_, _, err = store.BeginDraftAttempt(ctx, zeroRun.ID, *zeroRun.RiverJobID, 1)
+	_, _, err = store.BeginGenerationAttempt(ctx, zeroRun.ID, *zeroRun.RiverJobID, 1)
 	require.NoError(t, err)
-	_, competitorCount, err = store.FinishDraftAttempt(ctx, zeroRun.ID, 1, koidomain.DraftOutput{Competitors: []koidomain.DraftCompany{{Name: "Atlas", Domain: "atlas.example"}}})
+	_, competitorCount, err = store.FinishGenerationAttempt(ctx, zeroRun.ID, 1, koidomain.GenerationResult{Competitors: []koidomain.CompetitorIdentity{{Name: "Atlas", Domain: "atlas.example"}}})
 	require.NoError(t, err)
 	require.Zero(t, competitorCount)
 	var zeroStatus koidomain.GenerationRun
@@ -220,8 +205,9 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 
 	lostRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
 	require.NoError(t, err)
-	require.NoError(t, db.Table("river_job").Where("id = ?", *lostRun.RiverJobID).Update("state", "discarded").Error)
-	require.NoError(t, store.ReconcileDraftRuns(ctx))
+	require.NoError(t, db.Table("river_job").Where("id = ?", *lostRun.RiverJobID).
+		Updates(map[string]any{"state": "discarded", "finalized_at": time.Now().UTC()}).Error)
+	require.NoError(t, store.ReconcileGenerationRuns(ctx))
 	var lostStatus koidomain.GenerationRun
 	require.NoError(t, db.First(&lostStatus, "id = ?", lostRun.ID).Error)
 	require.Equal(t, koidomain.GenerationFailed, lostStatus.State)

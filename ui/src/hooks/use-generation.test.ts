@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { generationPollDelay } from "@/routes/_authenticated/_app/-hooks/use-generation-drafting";
+import { generationPollDelay } from "@/hooks/use-generation";
 
 describe("generation polling", () => {
   it("spaces active polls, backs off after read errors, and stops at a terminal state", () => {

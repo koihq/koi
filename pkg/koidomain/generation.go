@@ -25,10 +25,7 @@ const (
 	GenerationFailed    GenerationState = "failed"
 )
 
-const (
-	GenerationModelSlug     = "deepseek/deepseek-v4.1-flash"
-	GenerationPromptVersion = "draft_v1"
-)
+const GenerationModelSlug = "deepseek/deepseek-v4.1-flash"
 
 type BrandSnapshot struct {
 	Name        string `json:"name"`
@@ -38,22 +35,22 @@ type BrandSnapshot struct {
 	Description string `json:"description,omitempty"`
 }
 
-type DraftCompany struct {
+type CompetitorIdentity struct {
 	Name       string `json:"name"`
 	Domain     string `json:"domain"`
 	GitHubRepo string `json:"github_repo"`
 }
 
-type DraftInput struct {
-	Brand               BrandSnapshot  `json:"brand"`
-	Mode                GenerationMode `json:"mode"`
-	ExistingPrompts     []string       `json:"existing_prompts"`
-	ExistingCompetitors []DraftCompany `json:"existing_competitors"`
+type GenerationInput struct {
+	Brand               BrandSnapshot        `json:"brand"`
+	Mode                GenerationMode       `json:"mode"`
+	ExistingPrompts     []string             `json:"existing_prompts"`
+	ExistingCompetitors []CompetitorIdentity `json:"existing_competitors"`
 }
 
-type DraftOutput struct {
-	Prompts     []string       `json:"prompts"`
-	Competitors []DraftCompany `json:"competitors"`
+type GenerationResult struct {
+	Prompts     []string             `json:"prompts"`
+	Competitors []CompetitorIdentity `json:"competitors"`
 }
 
 type GenerationRun struct {
@@ -71,7 +68,6 @@ type GenerationRun struct {
 	NextRetryAt     *time.Time      `json:"-"`
 	ErrorCode       *string         `json:"-"`
 	ModelSlug       string          `json:"-" gorm:"not null"`
-	PromptVersion   string          `json:"-" gorm:"not null"`
 	BrandSnapshot   BrandSnapshot   `json:"-" gorm:"type:jsonb;serializer:json;not null"`
 	Brand           *Brand          `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
@@ -162,10 +158,18 @@ func (s *generationService) Create(ctx context.Context, brandID uuid.UUID, mode 
 			}
 		}
 		run = &GenerationRun{
-			BrandID: brandID, Mode: mode, State: GenerationQueued, IdempotencyKey: key,
-			ModelSlug: GenerationModelSlug, PromptVersion: GenerationPromptVersion,
-			BrandSnapshot: BrandSnapshot{Name: brand.Name, Domain: brand.Domain, GitHubRepo: brand.GitHubRepo,
-				Country: brand.Country, Description: brand.Description},
+			BrandID:        brandID,
+			Mode:           mode,
+			State:          GenerationQueued,
+			IdempotencyKey: key,
+			ModelSlug:      GenerationModelSlug,
+			BrandSnapshot: BrandSnapshot{
+				Name:        brand.Name,
+				Domain:      brand.Domain,
+				GitHubRepo:  brand.GitHubRepo,
+				Country:     brand.Country,
+				Description: brand.Description,
+			},
 		}
 		return repo.CreateAndEnqueue(ctx, run)
 	})

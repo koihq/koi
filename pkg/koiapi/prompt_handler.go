@@ -66,22 +66,12 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	page, err := pageParams(r)
+	params, err := readListQuery(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	confirmed, err := optionalBoolQuery(r, "confirmed")
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	query, err := optionalStringQuery(r, "q")
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-		return
-	}
-	prompts, err := h.querier.List(r.Context(), brandID, page, query, confirmed)
+	prompts, err := h.querier.List(r.Context(), brandID, params.Page, params.Query, params.Confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return

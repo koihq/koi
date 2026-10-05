@@ -75,7 +75,7 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	userID := uuid.New()
 	q := NewMockBrandQuerier(t)
-	q.EXPECT().List(mock.Anything, 3, 100).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 3, PageSize: 100}).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 3, HasPrev: true,
 	}, nil)
 	ts := newBrandTestServer(t, q, NewMockBrandCommander(t))
@@ -143,13 +143,13 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	}
 	q := NewMockBrandQuerier(t)
 	c := NewMockBrandCommander(t)
-	q.EXPECT().List(mock.Anything, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{*brand}, TotalItems: 1, TotalPages: 1, CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, 1, 10).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
 		Items: []koidomain.Brand{}, CurrentPage: 1,
 	}, nil)
 	q.EXPECT().Get(identityIs(userA), brandID).Return(brand, nil)
@@ -204,6 +204,10 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Empty(t, listB.Items)
 	require.Zero(t, listB.TotalItems)
+	require.Zero(t, listB.TotalPages)
+	require.Equal(t, 1, listB.CurrentPage)
+	require.False(t, listB.HasNext)
+	require.False(t, listB.HasPrev)
 
 	resp = doJSON(t, clientA, http.MethodGet, base+"/"+brandID.String(), "")
 	var own koidomain.Brand

@@ -12,10 +12,6 @@ import (
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
-type Company = koidomain.DraftCompany
-type Draft = koidomain.DraftOutput
-type Input = koidomain.DraftInput
-
 type Error struct {
 	Code      string
 	Retryable bool
@@ -33,8 +29,8 @@ func New(key string, timeout time.Duration) *Client {
 }
 
 // Context is bounded by serialized request bytes, not an arbitrary row count.
-func BoundInput(input Input, model string, maxBytes int) (Input, bool) {
-	bounded := Input{Brand: input.Brand, Mode: input.Mode, ExistingPrompts: []string{}, ExistingCompetitors: []Company{}}
+func BoundInput(input koidomain.GenerationInput, model string, maxBytes int) (koidomain.GenerationInput, bool) {
+	bounded := koidomain.GenerationInput{Brand: input.Brand, Mode: input.Mode, ExistingPrompts: []string{}, ExistingCompetitors: []koidomain.CompetitorIdentity{}}
 	if requestSize(model, bounded) > maxBytes {
 		return bounded, false
 	}
@@ -53,7 +49,7 @@ func BoundInput(input Input, model string, maxBytes int) (Input, bool) {
 	return bounded, true
 }
 func mustJSON(value any) []byte { b, _ := json.Marshal(value); return b }
-func requestSize(model string, input Input) int {
+func requestSize(model string, input koidomain.GenerationInput) int {
 	return len(mustJSON(map[string]any{"model": model, "input": input, "prompt": draftPrompt, "schema": responseSchema}))
 }
 

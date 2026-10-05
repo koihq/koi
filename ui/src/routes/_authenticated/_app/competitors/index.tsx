@@ -6,7 +6,7 @@ import type { Competitor } from "@/api/competitors.api";
 import { DataTable } from "@/components/blocks/data-table";
 import { Button } from "@/components/ui/button";
 import { validateTableSearch } from "@/hooks/use-table-state";
-import { GenerationControls } from "@/routes/_authenticated/_app/-components/generation-controls";
+import { GenerationControls } from "@/components/blocks/generation-controls";
 import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
 import { DeleteCompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/delete-competitor-dialog";
 import { useCompetitorColumns } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-columns";

@@ -51,7 +51,7 @@ func result(content, tool, url string) string {
 
 func TestGenerateResearchesDejaAndSearchesAlternatives(t *testing.T) {
 	const repo = "https://github.com/Giammarco-Ferranti/deja"
-	input := Input{Brand: koidomain.BrandSnapshot{Name: "Deja", GitHubRepo: repo, Domain: "deja.example"}, Mode: koidomain.GenerationInitial}
+	input := koidomain.GenerationInput{Brand: koidomain.BrandSnapshot{Name: "Deja", GitHubRepo: repo, Domain: "deja.example"}, Mode: koidomain.GenerationInitial}
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -98,7 +98,7 @@ func TestGenerateFetchFallback(t *testing.T) {
 		_, _ = fmt.Fprint(w, result(`{"prompts":[],"competitors":[]}`, "", ""))
 	}))
 	defer server.Close()
-	input := Input{Brand: koidomain.BrandSnapshot{Name: "Deja", GitHubRepo: "https://github.com/Giammarco-Ferranti/deja", Description: "Deja suggests previous shell commands while typing in the zsh terminal."}, Mode: koidomain.GenerationPrompts}
+	input := koidomain.GenerationInput{Brand: koidomain.BrandSnapshot{Name: "Deja", GitHubRepo: "https://github.com/Giammarco-Ferranti/deja", Description: "Deja suggests previous shell commands while typing in the zsh terminal."}, Mode: koidomain.GenerationPrompts}
 	_, err := testClient(server.URL).Generate(t.Context(), "test", input)
 	require.NoError(t, err)
 	input.Brand.Description = ""
@@ -110,8 +110,8 @@ func TestGenerateFetchFallback(t *testing.T) {
 }
 
 func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {
-	input := Input{Brand: koidomain.BrandSnapshot{Name: "Koi"}, Mode: koidomain.GenerationPrompts, ExistingPrompts: []string{strings.Repeat("x", 2000), "short"}}
-	limit := requestSize("test", Input{Brand: input.Brand, Mode: input.Mode, ExistingPrompts: []string{"short"}, ExistingCompetitors: []Company{}})
+	input := koidomain.GenerationInput{Brand: koidomain.BrandSnapshot{Name: "Koi"}, Mode: koidomain.GenerationPrompts, ExistingPrompts: []string{strings.Repeat("x", 2000), "short"}}
+	limit := requestSize("test", koidomain.GenerationInput{Brand: input.Brand, Mode: input.Mode, ExistingPrompts: []string{"short"}, ExistingCompetitors: []koidomain.CompetitorIdentity{}})
 	bounded, fits := BoundInput(input, "test", limit)
 	require.True(t, fits)
 	require.Equal(t, []string{"short"}, bounded.ExistingPrompts)

@@ -132,3 +132,11 @@ r.Route("/api/v1/auth", NewAuthHandler(
     sess,
 ).Routes())
 ```
+
+## Lists and integration tests
+
+Persisted-resource `GET` lists accept `page` and `pageSize` and return `Page[T]`, including empty results with `items: []`, `totalItems: 0`, `totalPages: 0`, `currentPage: 1`, `hasNext: false`, and `hasPrev: false`. Keep OpenAPI and UI wrappers aligned. Country options and competitor search are bounded combobox lookups.
+
+Postgres integration tests call `koidatabase.Open(testdb.URL(t))`, then run only the migrations that test needs. `internal/testdb` reads `KOI_DATABASE_URL` from the environment or repo `.env`, creates and cleans up a schema in that database, and fails if Postgres is unavailable. It does not migrate, because some tests verify behavior before River tables exist.
+
+Break up nested Go literals even when `gofmt` accepts one line. Keep resource handlers and domain operations explicit. For external APIs, inspect installed clients, read official vendor docs, and verify code against the pinned SDK version. Use the installed OpenRouter SDK for Responses API and Resty for direct JSON HTTP integrations without a suitable SDK. Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.
