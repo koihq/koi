@@ -15,6 +15,7 @@ const (
 	CodeGenerationConflict      = "generation_conflict"
 	CodeIdempotencyConflict     = "idempotency_conflict"
 	CodeInitialAlreadyCompleted = "initial_already_completed"
+	CodeRunNotReady             = "run_not_ready"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"

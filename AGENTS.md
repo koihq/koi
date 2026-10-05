@@ -50,6 +50,7 @@ Self-hosted Koi must work without requiring users to create accounts with, obtai
 
 - Persisted-resource `GET` lists accept `page` and `pageSize` and return `Page[T]`, even when empty: `items: []`, `totalItems: 0`, `totalPages: 0`, `currentPage: 1`, `hasNext: false`, `hasPrev: false`. Keep OpenAPI and UI wrappers aligned. Country options and competitor search are bounded combobox lookups, so they are exceptions.
 - Put shared UI blocks in `ui/src/components/blocks/`, shared hooks in `ui/src/hooks/`, and shared query keys in `ui/src/lib/query-keys.ts`. Route-private code stays under a route's `-` folders.
+- Live visibility runs collect engine answers and sources through Cloro. OpenRouter is for onboarding research and prompt/competitor drafting. Keep engine identity (ChatGPT, Perplexity, Gemini, Google AI Overviews) separate from the collection provider (stub or Cloro).
 - For external APIs, inspect installed clients, read official vendor documentation, and verify the implementation against the pinned SDK version. Use the installed OpenRouter SDK for Responses API; use the repo's Resty pattern for direct JSON HTTP integrations without a suitable SDK.
 - Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.
 - Break up nested Go literals for readability even when `gofmt` accepts a one-line form.

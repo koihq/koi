@@ -73,3 +73,7 @@ func (s *Store) CompetitorRepo() koidomain.CompetitorRepository {
 func (s *Store) GenerationRepo() koidomain.GenerationRepository {
 	return NewGormGenerationRepository(s.db, s.enqueueClient)
 }
+
+func (s *Store) VisibilityRepo() koidomain.VisibilityRepository {
+	return NewGormVisibilityRepository(s.db, s.enqueueClient)
+}

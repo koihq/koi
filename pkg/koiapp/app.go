@@ -27,6 +27,7 @@ import (
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koiproviders/logodev"
 	"github.com/koihq/koi/pkg/koiproviders/openrouter"
+	"github.com/koihq/koi/pkg/koiproviders/stub"
 )
 
 type Config struct {
@@ -170,6 +171,9 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if err := koidatabase.NewStore(db).ReconcileGenerationRuns(ctx); err != nil {
 			return fmt.Errorf("reconcile generation runs: %w", err)
 		}
+		if err := koidatabase.NewStore(db).ReconcileVisibilityRuns(ctx); err != nil {
+			return fmt.Errorf("reconcile visibility runs: %w", err)
+		}
 	}
 	sess := scs.New()
 	sess.Lifetime = 30 * 24 * time.Hour
@@ -189,17 +193,37 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 	var riverClient *river.Client[*sql.Tx]
 	workers := a.workers
-	if sqlDB != nil && a.cfg.OpenRouterAPIKey != "" {
+	if sqlDB != nil {
 		if workers == nil {
 			workers = river.NewWorkers()
-			if a.provider == nil {
-				a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
+			visibility := &visibilityWorker{
+				store:   koidatabase.NewStore(db),
+				collect: stub.Collect,
 			}
-			river.AddWorker(workers, &generationWorker{store: koidatabase.NewStore(db), provider: a.provider})
+			river.AddWorker(workers, visibility)
+			if a.cfg.OpenRouterAPIKey != "" {
+				if a.provider == nil {
+					a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
+				}
+				generation := &generationWorker{
+					store:    koidatabase.NewStore(db),
+					provider: a.provider,
+				}
+				river.AddWorker(workers, generation)
+			}
+		}
+		queues := map[string]river.QueueConfig{
+			"visibility": {
+				MaxWorkers: a.cfg.WorkerConcurrency,
+			},
+		}
+		if a.cfg.OpenRouterAPIKey != "" {
+			queues["generation"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
 		}
 		config := &river.Config{
-			Queues:  map[string]river.QueueConfig{"generation": {MaxWorkers: a.cfg.WorkerConcurrency}},
-			Workers: workers, SoftStopTimeout: 60 * time.Second,
+			Queues:          queues,
+			Workers:         workers,
+			SoftStopTimeout: 60 * time.Second,
 		}
 		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)
 		if err != nil {

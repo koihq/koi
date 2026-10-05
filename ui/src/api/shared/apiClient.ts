@@ -8,6 +8,7 @@ import {
   GenerationsApi,
   HealthApi,
   PromptsApi,
+  VisibilityApi,
 } from "@/api/generated";
 
 export function createApiClient() {
@@ -24,6 +25,7 @@ export function createApiClient() {
     generations: new GenerationsApi(configuration),
     health: new HealthApi(configuration),
     prompts: new PromptsApi(configuration),
+    runs: new VisibilityApi(configuration),
   };
 }
 

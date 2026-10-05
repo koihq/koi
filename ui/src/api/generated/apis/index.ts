@@ -8,3 +8,4 @@ export * from './CompetitorsApi';
 export * from './GenerationsApi';
 export * from './HealthApi';
 export * from './PromptsApi';
+export * from './VisibilityApi';

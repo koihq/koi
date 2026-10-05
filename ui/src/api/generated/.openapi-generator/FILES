@@ -5,6 +5,7 @@ apis/CompetitorsApi.ts
 apis/GenerationsApi.ts
 apis/HealthApi.ts
 apis/PromptsApi.ts
+apis/VisibilityApi.ts
 apis/index.ts
 index.ts
 models/BrandPatchRequest.ts
@@ -32,5 +33,10 @@ models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts
 models/SearchCompetitors200ResponseInner.ts
+models/VisibilityEngine.ts
+models/VisibilityResult.ts
+models/VisibilityResultPage.ts
+models/VisibilityRunPage.ts
+models/VisibilityRunStatus.ts
 models/index.ts
 runtime.ts

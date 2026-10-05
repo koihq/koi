@@ -1,0 +1,116 @@
+### Visibility API walkthrough (VS Code REST Client)
+### Run make dev and execute requests in order. No provider API keys are required.
+### All answers are stub/sample data. Live collection will use Cloro.
+### Explicit cookies keep users A and B separate.
+
+@host = http://localhost:5173
+@baseUrl = {{host}}/api/v1
+@password = password123
+
+### Signed out: 401
+# @no-cookie-jar
+POST {{baseUrl}}/brands/11111111-1111-4111-8111-111111111111/runs
+
+### Sign up A: 201
+# @no-cookie-jar
+# @name signupA
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{"email":"visibility-a-{{$guid}}@example.com","password":"{{password}}"}
+
+### Create A's brand: 201
+# @no-cookie-jar
+# @name brandA
+POST {{baseUrl}}/brands
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"name":"Northstar Metrics","domain":"northstar.example","country":"US"}
+
+### Empty history: 200 with items: [] and standard page metadata
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{brandA.response.body.$.id}}/runs?page=1&pageSize=10
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### No prompts: 409 run_not_ready, prompts/empty
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{brandA.response.body.$.id}}/runs
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Add first manual prompt (already confirmed): 201
+# @no-cookie-jar
+# @name firstPrompt
+POST {{baseUrl}}/brands/{{brandA.response.body.$.id}}/prompts
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"text":"Best analytics for startups?"}
+
+### Add second prompt: 201
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{brandA.response.body.$.id}}/prompts
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"text":"Alternatives to Example Analytics?"}
+
+### Start sample run with zero competitors: 202, total_results: 8
+### Repeated POST while active returns the same run; after completion it creates another.
+# @no-cookie-jar
+# @name startRun
+POST {{baseUrl}}/brands/{{brandA.response.body.$.id}}/runs
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Poll: 200, eventually succeeded and completed_results: 8 (including errors)
+# @no-cookie-jar
+GET {{host}}{{startRun.response.body.$.status_url}}
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Inspect matrix: 200, 8 results, collector: stub, all four outcomes
+# @no-cookie-jar
+GET {{host}}{{startRun.response.body.$.status_url}}/results?page=1&pageSize=40
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Delete a tracking prompt: 204. The saved matrix still contains its original text.
+# @no-cookie-jar
+DELETE {{baseUrl}}/brands/{{brandA.response.body.$.id}}/prompts/{{firstPrompt.response.body.$.id}}
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Reload persisted history: 200, including original results after restarting the app
+# @no-cookie-jar
+GET {{host}}{{startRun.response.body.$.status_url}}/results?page=1&pageSize=40
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Invalid pagination: 400 validation
+# @no-cookie-jar
+GET {{host}}{{startRun.response.body.$.status_url}}/results?pageSize=101
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Sign up B: 201
+# @no-cookie-jar
+# @name signupB
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{"email":"visibility-b-{{$guid}}@example.com","password":"{{password}}"}
+
+### B cannot read A's run: 404
+# @no-cookie-jar
+GET {{host}}{{startRun.response.body.$.status_url}}
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### B cannot read A's answers: 404
+# @no-cookie-jar
+GET {{host}}{{startRun.response.body.$.status_url}}/results
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### B cannot start A's run: 404
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{brandA.response.body.$.id}}/runs
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### Unconfirmed guard: use an existing draft from the optional drafting feature.
+### Starting a run returns 409 run_not_ready until unconfirmed prompts/competitors
+### are confirmed or removed. Automated integration tests seed drafts directly,
+### including an unconfirmed row beyond page one, without provider calls.

@@ -34,6 +34,8 @@ func Migrate(db *gorm.DB) error {
 		&koidomain.Prompt{},
 		&koidomain.Competitor{},
 		&koidomain.GenerationRun{},
+		&koidomain.VisibilityRun{},
+		&koidomain.VisibilityResult{},
 		&sessionRow{},
 	); err != nil {
 		return err
@@ -48,6 +50,10 @@ func Migrate(db *gorm.DB) error {
 		"CREATE INDEX IF NOT EXISTS idx_generation_runs_recent ON generation_runs (brand_id, created_at DESC, id DESC)",
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_runs_key ON generation_runs (brand_id, idempotency_key) WHERE idempotency_key IS NOT NULL",
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_generation_runs_active ON generation_runs (brand_id) WHERE state IN ('queued', 'running')",
+		"CREATE INDEX IF NOT EXISTS idx_visibility_runs_recent ON visibility_runs (brand_id, created_at DESC, id DESC)",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_visibility_runs_active ON visibility_runs (brand_id) WHERE state IN ('queued', 'running')",
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_visibility_results_cell ON visibility_results (run_id, prompt_id, engine)",
+		"CREATE INDEX IF NOT EXISTS idx_visibility_results_order ON visibility_results (run_id, prompt_position, engine)",
 	} {
 		if err := db.Exec(statement).Error; err != nil {
 			return err

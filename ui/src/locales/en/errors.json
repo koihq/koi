@@ -11,7 +11,8 @@
     "feature_unavailable": "This feature is unavailable on this installation",
     "generation_conflict": "Another draft is in progress. Check its status and try again when it finishes.",
     "idempotency_conflict": "This draft request could not be repeated. Try again.",
-    "initial_already_completed": "The first draft is complete. Use a single-list draft action instead."
+    "initial_already_completed": "The first draft is complete. Use a single-list draft action instead.",
+    "run_not_ready": "Add at least one prompt and confirm your tracking lists before starting a run."
   },
   "fields": {
     "email": {

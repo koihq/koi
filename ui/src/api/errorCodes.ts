@@ -13,6 +13,7 @@ export const errorCodes = [
   "generation_conflict",
   "idempotency_conflict",
   "initial_already_completed",
+  "run_not_ready",
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

@@ -18,7 +18,7 @@ func MapError(err error) (int, Envelope) {
 			return http.StatusBadRequest, envelope(de)
 		case koidomain.CodeEmailTaken, koidomain.CodeBrandLimitReached,
 			koidomain.CodeGenerationConflict, koidomain.CodeIdempotencyConflict,
-			koidomain.CodeInitialAlreadyCompleted:
+			koidomain.CodeInitialAlreadyCompleted, koidomain.CodeRunNotReady:
 			return http.StatusConflict, envelope(de)
 		case koidomain.CodeInvalidCredentials, koidomain.CodeUnauthorized:
 			return http.StatusUnauthorized, envelope(de)

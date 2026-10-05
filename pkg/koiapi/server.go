@@ -64,6 +64,11 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 				koidomain.NewGenerationCommander(store, aiDrafting),
 				sess,
 			).Routes())
+			r.Route("/{brandID}/runs", NewVisibilityHandler(
+				koidomain.NewVisibilityQuerier(store),
+				koidomain.NewVisibilityCommander(store),
+				sess,
+			).Routes())
 		})
 	})
 	r.Handle("/*", spaHandler(http.FileServer(web.FileSystem())))
