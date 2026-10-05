@@ -76,6 +76,11 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	var jobArgs string
 	require.NoError(t, sqlDB.QueryRowContext(t.Context(), "SELECT args::text FROM river_job WHERE id = $1", *first.run.RiverJobID).Scan(&jobArgs))
 	require.JSONEq(t, `{"run_id":"`+first.run.ID.String()+`"}`, jobArgs)
+	promptsFromInitial, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
+	require.NoError(t, err)
+	require.Equal(t, first.run.ID, promptsFromInitial.ID)
+	_, _, err = koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, &key)
+	require.ErrorIs(t, err, koidomain.ErrIdempotencyConflict)
 
 	// The active and idempotency constraints remain effective for direct writes.
 	base := koidomain.GenerationRun{BrandID: brand.ID, Mode: koidomain.GenerationPrompts, State: koidomain.GenerationRunning,
@@ -92,6 +97,8 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 		Update("created_at", time.Now().Add(-time.Hour)).Error)
 	newer, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
 	require.NoError(t, err)
+	_, _, err = koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationCompetitors, nil)
+	require.ErrorIs(t, err, koidomain.ErrGenerationConflict)
 	page1, err := koidomain.NewGenerationQuerier(store).List(ctx, brand.ID, koidomain.PageParams{Page: 1, PageSize: 1})
 	require.NoError(t, err)
 	require.EqualValues(t, 2, page1.TotalItems)
@@ -127,8 +134,21 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.NoError(t, store.PromptRepo().Create(ctx, &koidomain.Prompt{
 		BrandID: brand.ID, Text: "Added during generation?", Source: koidomain.PromptSourceManual, Confirmed: true,
 	}))
+	require.NoError(t, db.Exec("ALTER TABLE prompts ADD CONSTRAINT reject_draft_test CHECK (text <> 'New AI question?')").Error)
+	_, _, err = store.FinishGenerationAttempt(ctx, newer.ID, 2, koidomain.GenerationResult{
+		Prompts: []string{"First inserted?", "New AI question?"},
+	})
+	require.Error(t, err)
+	var rolledBack int64
+	require.NoError(t, db.Model(&koidomain.Prompt{}).Where("brand_id = ? AND text = ?", brand.ID, "First inserted?").Count(&rolledBack).Error)
+	require.Zero(t, rolledBack)
+	var stillRunning koidomain.GenerationRun
+	require.NoError(t, db.First(&stillRunning, "id = ?", newer.ID).Error)
+	require.Equal(t, koidomain.GenerationRunning, stillRunning.State)
+	require.NoError(t, db.Exec("ALTER TABLE prompts DROP CONSTRAINT reject_draft_test").Error)
 	promptCount, competitorCount, err := store.FinishGenerationAttempt(ctx, newer.ID, 2, koidomain.GenerationResult{
-		Prompts: []string{"Question 7?", "Added during generation?", "New AI question?", "New AI question?", "  "},
+		Prompts:     []string{"Question 7?", "Added during generation?", "New AI question?", "New AI question?", "  "},
+		Competitors: []koidomain.CompetitorIdentity{{Name: "Unexpected", Domain: "unexpected.example"}},
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, promptCount)
@@ -140,6 +160,9 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.Equal(t, 1, retrying.PromptCount)
 	require.Nil(t, retrying.ErrorCode)
 	require.Nil(t, retrying.NextRetryAt)
+	var unexpectedCount int64
+	require.NoError(t, db.Model(&koidomain.Competitor{}).Where("brand_id = ? AND domain = ?", brand.ID, "unexpected.example").Count(&unexpectedCount).Error)
+	require.Zero(t, unexpectedCount)
 	started, _, err = store.BeginGenerationAttempt(ctx, newer.ID, *newer.RiverJobID, 3)
 	require.NoError(t, err)
 	require.Nil(t, started)
@@ -182,7 +205,7 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 		{Name: "Koi", Domain: "koi.dev"},
 		{Name: "Beta", Domain: "beta.example"},
 		{Name: "Invalid", Domain: "https://invalid.example"},
-	}})
+	}, Prompts: []string{"Unexpected question?"}})
 	require.NoError(t, err)
 	require.Zero(t, promptCount)
 	require.Equal(t, 1, competitorCount)
@@ -190,6 +213,12 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.NoError(t, db.Where("brand_id = ? AND domain = ?", brand.ID, "beta.example").First(&beta).Error)
 	require.Equal(t, koidomain.CompetitorSourceDrafted, beta.Source)
 	require.False(t, beta.Confirmed)
+	require.NoError(t, db.Model(&koidomain.Prompt{}).Where("brand_id = ? AND text = ?", brand.ID, "Unexpected question?").Count(&unexpectedCount).Error)
+	require.Zero(t, unexpectedCount)
+	var atlas koidomain.Competitor
+	require.NoError(t, db.Where("brand_id = ? AND domain = ?", brand.ID, "atlas.example").First(&atlas).Error)
+	require.Equal(t, koidomain.CompetitorSourceManual, atlas.Source)
+	require.True(t, atlas.Confirmed)
 
 	zeroRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationCompetitors, nil)
 	require.NoError(t, err)
@@ -204,6 +233,8 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.Zero(t, zeroStatus.CompetitorCount)
 
 	lostRun, _, err := koidomain.NewGenerationCommander(store, true).Create(ctx, brand.ID, koidomain.GenerationPrompts, nil)
+	require.NoError(t, err)
+	_, _, err = store.BeginGenerationAttempt(ctx, lostRun.ID, *lostRun.RiverJobID, 1)
 	require.NoError(t, err)
 	require.NoError(t, db.Table("river_job").Where("id = ?", *lostRun.RiverJobID).
 		Updates(map[string]any{"state": "discarded", "finalized_at": time.Now().UTC()}).Error)

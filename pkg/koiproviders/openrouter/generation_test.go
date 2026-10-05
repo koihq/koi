@@ -1,10 +1,13 @@
 package openrouter
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	url2 "net/url"
 	"strings"
 	"testing"
 	"time"
@@ -18,7 +21,21 @@ import (
 )
 
 func testClient(url string) *Client {
-	return &Client{SDK: sdk.New(sdk.WithSecurity("test-key"), sdk.WithServerURL(url), sdk.WithTimeout(time.Second), sdk.WithRetryConfig(retry.Config{Strategy: "none"}))}
+	serverURL, _ := url2.Parse(url)
+	httpClient := &http.Client{Timeout: time.Second, Transport: localOnlyTransport{host: serverURL.Host, base: http.DefaultTransport}}
+	return &Client{SDK: sdk.New(sdk.WithSecurity("test-key"), sdk.WithServerURL(url), sdk.WithClient(httpClient), sdk.WithRetryConfig(retry.Config{Strategy: "none"}))}
+}
+
+type localOnlyTransport struct {
+	host string
+	base http.RoundTripper
+}
+
+func (t localOnlyTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if r.URL.Host != t.host {
+		return nil, errors.New("test client rejected non-local provider destination")
+	}
+	return t.base.RoundTrip(r)
 }
 
 func TestMarshalRequestParts(t *testing.T) {
@@ -115,4 +132,86 @@ func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {
 	bounded, fits := BoundInput(input, "test", limit)
 	require.True(t, fits)
 	require.Equal(t, []string{"short"}, bounded.ExistingPrompts)
+}
+
+func TestGenerationFixturesAndOutputValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name, site, category, output, wantCode string
+		mode                                   koidomain.GenerationMode
+		wantPrompts                            int
+	}{
+		{"Plausible Analytics", "plausible.io", "privacy-friendly website analytics", `{"prompts":["Which privacy-friendly analytics tools work for websites?"],"competitors":[]}`, "", koidomain.GenerationPrompts, 1},
+		{"sparse fictional brand", "acme.example", "", `{"prompts":[],"competitors":[]}`, "insufficient_context", koidomain.GenerationInitial, 0},
+		{"empty arrays", "plausible.io", "website analytics", `{"prompts":[],"competitors":[]}`, "", koidomain.GenerationPrompts, 0},
+		{"malformed JSON", "plausible.io", "website analytics", `{"prompts":[`, "invalid_output", koidomain.GenerationPrompts, 0},
+		{"extra field", "plausible.io", "website analytics", `{"prompts":[],"competitors":[],"secret":"x"}`, "invalid_output", koidomain.GenerationPrompts, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				w.Header().Set("Content-Type", "application/json")
+				var body map[string]any
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				require.Equal(t, "test-key", strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+				if calls == 1 {
+					require.Equal(t, "https://"+tc.site, body["input"])
+					require.Equal(t, "openrouter:web_fetch", body["tools"].([]any)[0].(map[string]any)["type"])
+					_, _ = fmt.Fprint(w, result(fmt.Sprintf(`{"source_url":"https://%s","product":"%s","category":"%s","audience":"site owners","functions":["measure website traffic"]}`, tc.site, tc.name, tc.category), "openrouter:web_fetch", "https://"+tc.site))
+					return
+				}
+				require.Contains(t, body["input"], tc.category)
+				require.Contains(t, body["input"], `"mode":"prompts"`)
+				_, _ = fmt.Fprint(w, result(tc.output, "", ""))
+			}))
+			defer server.Close()
+			draft, err := testClient(server.URL).Generate(t.Context(), "test", koidomain.GenerationInput{
+				Brand: koidomain.BrandSnapshot{Name: tc.name, Domain: tc.site}, Mode: tc.mode,
+			})
+			if tc.wantCode != "" {
+				var providerErr *Error
+				require.ErrorAs(t, err, &providerErr)
+				require.Equal(t, tc.wantCode, providerErr.Code)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, draft.Prompts, tc.wantPrompts)
+			}
+			if tc.wantCode == "insufficient_context" {
+				require.Equal(t, 1, calls)
+			} else {
+				require.Equal(t, 2, calls)
+			}
+		})
+	}
+}
+
+func TestProviderErrorClassification(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		code   string
+		retry  bool
+	}{
+		{"timeout", 408, "provider_unavailable", true},
+		{"rate limited", 429, "provider_rate_limited", true},
+		{"server error", 503, "provider_unavailable", true},
+		{"auth", 401, "provider_auth", false},
+		{"payment", 402, "provider_rejected", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = fmt.Fprint(w, `{"error":{"message":"provider detail must stay private"}}`)
+			}))
+			defer server.Close()
+			_, err := testClient(server.URL).suggest(context.Background(), "test", koidomain.GenerationInput{
+				Brand: koidomain.BrandSnapshot{Name: "Plausible", Domain: "plausible.io"}, Mode: koidomain.GenerationPrompts,
+			}, researchSummary{Product: "Plausible", Category: "website analytics"})
+			var providerErr *Error
+			require.ErrorAs(t, err, &providerErr)
+			require.Equal(t, tc.code, providerErr.Code)
+			require.Equal(t, tc.retry, providerErr.Retryable)
+		})
+	}
 }
