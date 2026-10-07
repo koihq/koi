@@ -28,6 +28,7 @@ func MapError(err error) (int, Envelope) {
 			return http.StatusServiceUnavailable, envelope(de)
 		}
 	}
+
 	return http.StatusInternalServerError, envelope(koidomain.ErrInternal)
 }
 
@@ -39,5 +40,6 @@ func WriteDomainError(w http.ResponseWriter, r *http.Request, err error) {
 			"request_id", middleware.GetReqID(r.Context()),
 		)
 	}
+
 	JSON(w, r, status, env)
 }

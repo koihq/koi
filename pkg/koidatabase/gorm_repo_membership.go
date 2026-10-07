@@ -23,5 +23,6 @@ func (r *GormMembershipRepository) GetByUserID(ctx context.Context, userID uuid.
 	if err != nil {
 		return nil, mapDBError(err)
 	}
+
 	return entity, nil
 }

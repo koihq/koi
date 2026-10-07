@@ -18,19 +18,26 @@ func TestSearchMapsProviderResults(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[{"name":"Acme","domain":"acme.com"},{"name":"Bad","domain":"acme.com/path"},{"name":"","domain":"empty.com"}]`))
 	}))
+
 	defer server.Close()
 	searcher := NewSearcher(" secret ")
 	searcher.url = server.URL
 
 	results, err := searcher.Search(t.Context(), "acme labs")
 	require.NoError(t, err)
-	require.Equal(t, []koidomain.CompanySearchResult{{Name: "Acme", Domain: "acme.com"}}, results)
+	require.Equal(t, []koidomain.CompanySearchResult{
+		{
+			Name:   "Acme",
+			Domain: "acme.com",
+		},
+	}, results)
 }
 
 func TestSearchFailureAndCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 	}))
+
 	defer server.Close()
 	searcher := NewSearcher("secret")
 	searcher.url = server.URL
@@ -48,6 +55,7 @@ func TestSearchRejectsMalformedResponse(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{`))
 	}))
+
 	defer server.Close()
 	searcher := NewSearcher("secret")
 	searcher.url = server.URL

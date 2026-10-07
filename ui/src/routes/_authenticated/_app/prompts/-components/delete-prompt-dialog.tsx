@@ -27,6 +27,7 @@ export function DeletePromptDialog({
   finalFocus: () => HTMLElement | null;
 }) {
   const { t } = useTranslation("management");
+
   return (
     <AlertDialog
       open={Boolean(item)}
@@ -51,6 +52,7 @@ export function DeletePromptDialog({
             disabled={pending}
             onClick={async () => {
               if (!item) return;
+
               try {
                 await onDelete(item.id);
                 onClose();

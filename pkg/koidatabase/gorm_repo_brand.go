@@ -24,7 +24,9 @@ func (r *GormBrandRepository) Create(ctx context.Context, brand *koidomain.Brand
 	if !ok {
 		return koidomain.ErrUnauthorized
 	}
+
 	brand.UserID = identity.UserID
+
 	return r.Repository.Create(ctx, brand)
 }
 
@@ -41,8 +43,11 @@ func (r *GormBrandRepository) List(ctx context.Context, params koidomain.PagePar
 func (r *GormBrandRepository) Update(ctx context.Context, brand *koidomain.Brand) error {
 	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return db.Where("id = ?", brand.ID) },
 		map[string]any{
-			"name": brand.Name, "domain": brand.Domain, "github_repo": brand.GitHubRepo,
-			"country": brand.Country, "description": brand.Description,
+			"name":        brand.Name,
+			"domain":      brand.Domain,
+			"github_repo": brand.GitHubRepo,
+			"country":     brand.Country,
+			"description": brand.Description,
 		}, []string{"name", "domain", "github_repo", "country", "description"}, true)
 }
 

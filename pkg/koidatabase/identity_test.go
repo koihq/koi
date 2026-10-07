@@ -10,5 +10,6 @@ import (
 
 func identityCtx(t *testing.T, userID uuid.UUID) context.Context {
 	t.Helper()
+
 	return koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: userID})
 }

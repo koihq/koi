@@ -37,6 +37,7 @@ func retryTime(job *river.Job[koidatabase.GenerationJobArgs]) time.Time {
 	if job.AttemptedAt != nil {
 		base = *job.AttemptedAt
 	}
+
 	return base.Add(time.Duration(job.Attempt*job.Attempt*5) * time.Second)
 }
 
@@ -50,31 +51,40 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	if err != nil {
 		return fmt.Errorf("begin generation: %w", err)
 	}
+
 	if run == nil {
 		return nil
 	}
+
 	var fits bool
 	input, fits = openrouter.BoundInput(input, run.ModelSlug, maxGenerationContextBytes)
 	if !fits {
 		return w.fail(ctx, job, "request_too_large", false, errors.New("brand snapshot exceeds request limit"))
 	}
+
 	result, err := w.provider.Generate(ctx, run.ModelSlug, input)
 	if err != nil {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
 		var providerErr *openrouter.Error
 		if errors.As(err, &providerErr) {
 			slog.Info("generation provider result", "run_id", run.ID, "attempt", job.Attempt, "status", providerErr.Status, "duration_ms", time.Since(started).Milliseconds())
+
 			return w.fail(ctx, job, providerErr.Code, providerErr.Retryable, err)
 		}
+
 		return w.fail(ctx, job, "provider_unavailable", true, err)
 	}
+
 	prompts, competitors, err := w.store.FinishGenerationAttempt(ctx, run.ID, job.Attempt, result)
 	if err != nil {
 		return w.fail(ctx, job, "storage_error", true, err)
 	}
+
 	slog.Info("generation completed", "run_id", run.ID, "attempt", job.Attempt, "prompt_count", prompts, "competitor_count", competitors, "duration_ms", time.Since(started).Milliseconds())
+
 	return nil
 }
 
@@ -84,12 +94,15 @@ func (w *generationWorker) fail(ctx context.Context, job *river.Job[koidatabase.
 		at := retryTime(job)
 		next = &at
 	}
+
 	if err := w.store.RecordGenerationFailure(ctx, job.Args.RunID, job.Attempt, code, next); err != nil {
 		return errors.Join(cause, err)
 	}
+
 	slog.Warn("generation failed", "run_id", job.Args.RunID, "attempt", job.Attempt, "error_code", code, "retry", next != nil)
 	if next == nil {
 		return river.JobCancel(cause)
 	}
+
 	return cause
 }

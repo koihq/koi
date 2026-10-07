@@ -62,6 +62,7 @@ export function DataTable<T extends BaseEntity>({
   onClearFilters: () => void;
 }) {
   const { t } = useTranslation("management");
+
   const table = useReactTable({
     data: response?.items ?? emptyRows,
     columns,
@@ -80,6 +81,7 @@ export function DataTable<T extends BaseEntity>({
     onColumnFiltersChange: (updater) => {
       const filters =
         typeof updater === "function" ? updater([{ id: "confirmed", value: status }]) : updater;
+
       onStatusChange(
         (filters.find((filter) => filter.id === "confirmed")?.value as TableStatus) ?? "all",
       );
@@ -91,6 +93,7 @@ export function DataTable<T extends BaseEntity>({
       else onPageChange(next.pageIndex + 1);
     },
   });
+
   const filtered = q !== "" || status !== "all";
 
   return (

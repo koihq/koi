@@ -5,7 +5,9 @@ import { mapPage } from "@/api/shared/mappers";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Competitor = CompetitorRes;
+
 export type CreateCompetitor = CompetitorRequest;
+
 export interface CompetitorSearchResult {
   name: string;
   domain: string;
@@ -34,6 +36,7 @@ export function createCompetitorsApi(api: CompetitorsApi) {
           initOverrides,
         ),
       );
+
       return mapPage(response, CompetitorResFromJSON);
     },
     getById: (brandID: string, id: string): Promise<Competitor> =>

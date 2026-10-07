@@ -26,6 +26,7 @@ func Migrate(db *gorm.DB) error {
 			return err
 		}
 	}
+
 	if err := db.AutoMigrate(
 		&koidomain.User{},
 		&koidomain.Organization{},
@@ -40,9 +41,11 @@ func Migrate(db *gorm.DB) error {
 	); err != nil {
 		return err
 	}
+
 	if err := db.Exec("DROP INDEX IF EXISTS idx_competitors_brand_domain").Error; err != nil {
 		return err
 	}
+
 	for _, statement := range []string{
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_competitors_brand_domain ON competitors (brand_id, domain) WHERE domain <> ''",
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_competitors_brand_github_repo ON competitors (brand_id, github_repo) WHERE github_repo <> ''",
@@ -59,8 +62,10 @@ func Migrate(db *gorm.DB) error {
 			return err
 		}
 	}
+
 	if db.Migrator().HasColumn("competitors", "aliases") {
 		return db.Migrator().DropColumn("competitors", "aliases")
 	}
+
 	return nil
 }

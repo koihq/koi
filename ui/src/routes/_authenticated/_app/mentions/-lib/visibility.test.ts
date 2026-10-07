@@ -34,11 +34,13 @@ describe("visibility matrix", () => {
       sources: [],
       errorCode: null,
     } satisfies Omit<VisibilityResult, "id">;
+
     const grouped = groupVisibilityResults([
       { ...result, id: "third", promptId: "second", promptPosition: 1 },
       { ...result, id: "second", engine: "perplexity", outcome: "error", errorCode: "stub_error" },
       { ...result, id: "first" },
     ]);
+
     expect(grouped.map((row) => row.promptID)).toEqual(["first", "second"]);
     expect(grouped[0].results.get("chatgpt")?.outcome).toBeNull();
     expect(grouped[0].results.get("perplexity")?.outcome).toBe("error");
@@ -46,6 +48,7 @@ describe("visibility matrix", () => {
   it("only makes HTTP sources clickable", () => {
     expect(safeSourceURL("https://koi.dev/docs")).toBe("https://koi.dev/docs");
     expect(safeSourceURL("http://example.com")).toBe("http://example.com/");
+
     for (const value of ["javascript:alert(1)", "data:text/html,bad", "/relative", "not a URL"]) {
       expect(safeSourceURL(value)).toBeUndefined();
     }

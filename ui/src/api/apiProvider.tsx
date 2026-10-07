@@ -11,6 +11,7 @@ import { createApiClient } from "@/api/shared/apiClient";
 
 export function createApi() {
   const client = createApiClient();
+
   return {
     auth: createAuthApi(client.auth),
     brands: createBrandsApi(client.brands),
@@ -36,5 +37,6 @@ export function useApi(): Api {
   if (!api) {
     throw new Error("useApi must be used within ApiProvider");
   }
+
   return api;
 }

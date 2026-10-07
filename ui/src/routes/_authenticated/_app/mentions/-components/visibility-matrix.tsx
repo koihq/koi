@@ -34,6 +34,7 @@ export function VisibilityMatrix({
 }) {
   const { t } = useTranslation("visibility");
   const rows = groupVisibilityResults(results);
+
   return (
     <div className="min-w-0 space-y-3">
       <p className="text-xs text-muted-foreground">{t("scrollHint")}</p>
@@ -59,6 +60,7 @@ export function VisibilityMatrix({
               </TableHead>
               {run.engines.map((engine) => {
                 const result = row.results.get(engine);
+
                 return (
                   <TableCell key={engine}>
                     {result?.outcome ? (
@@ -82,8 +84,10 @@ export function VisibilityMatrix({
 function VisibilityAnswerDialog({ result }: { result: VisibilityResult }) {
   const { t, i18n } = useTranslation("visibility");
   if (!result.outcome) return null;
+
   const engine = t(`engines.${result.engine}`);
   const outcome = t(`outcomes.${result.outcome}`);
+
   return (
     <Dialog>
       <DialogTrigger
@@ -121,6 +125,7 @@ function VisibilityAnswerDialog({ result }: { result: VisibilityResult }) {
             <ul className="space-y-2">
               {[...new Set(result.sources)].map((source) => {
                 const href = safeSourceURL(source);
+
                 return (
                   <li key={source} className="break-all">
                     {href ? (

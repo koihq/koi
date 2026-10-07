@@ -46,25 +46,31 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+
 	databaseURL, err := requireEnv("KOI_DATABASE_URL")
 	if err != nil {
 		return Config{}, err
 	}
+
 	sessionSecret, err := requireEnv("KOI_SESSION_SECRET")
 	if err != nil {
 		return Config{}, err
 	}
+
 	workerConcurrency, err := positiveIntEnv("KOI_WORKER_CONCURRENCY", 4)
 	if err != nil {
 		return Config{}, err
 	}
+
 	if workerConcurrency > river.QueueNumWorkersMax {
 		return Config{}, fmt.Errorf("KOI_WORKER_CONCURRENCY must be at most %d", river.QueueNumWorkersMax)
 	}
+
 	dbMaxOpenConns, err := positiveIntEnv("KOI_DB_MAX_OPEN_CONNS", 12)
 	if err != nil {
 		return Config{}, err
 	}
+
 	providerTimeout := 3 * time.Minute
 	if raw, ok := os.LookupEnv("KOI_PROVIDER_TIMEOUT"); ok {
 		providerTimeout, err = time.ParseDuration(raw)
@@ -72,6 +78,7 @@ func LoadConfig() (Config, error) {
 			return Config{}, fmt.Errorf("KOI_PROVIDER_TIMEOUT must be a positive duration")
 		}
 	}
+
 	return Config{
 		HTTPAddr:          httpAddr,
 		DatabaseURL:       databaseURL,
@@ -88,10 +95,12 @@ func positiveIntEnv(key string, fallback int) (int, error) {
 	if !ok {
 		return fallback, nil
 	}
+
 	n, err := strconv.Atoi(raw)
 	if err != nil || n <= 0 {
 		return 0, fmt.Errorf("%s must be a positive integer", key)
 	}
+
 	return n, nil
 }
 
@@ -100,6 +109,7 @@ func requireEnv(key string) (string, error) {
 	if !ok || v == "" {
 		return "", fmt.Errorf("required env %s is not set", key)
 	}
+
 	return v, nil
 }
 
@@ -116,11 +126,13 @@ func NewKoiApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &App{cfg: cfg}, nil
 }
 
 func initLogger() {
 	level := slog.LevelInfo
+
 	switch strings.ToLower(os.Getenv("KOI_LOG_LEVEL")) {
 	case "debug":
 		level = slog.LevelDebug
@@ -129,6 +141,7 @@ func initLogger() {
 	case "error":
 		level = slog.LevelError
 	}
+
 	opts := &slog.HandlerOptions{Level: level}
 	var h slog.Handler
 	if strings.EqualFold(os.Getenv("KOI_LOG_FORMAT"), "json") {
@@ -136,6 +149,7 @@ func initLogger() {
 	} else {
 		h = slog.NewTextHandler(os.Stderr, opts)
 	}
+
 	slog.SetDefault(slog.New(h))
 }
 
@@ -146,6 +160,7 @@ func (a *App) Run() error {
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
+
 	return a.run(ctx, listener)
 }
 
@@ -160,21 +175,26 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if err != nil {
 			return fmt.Errorf("sql db: %w", err)
 		}
+
 		defer sqlDB.Close()
 		configurePool(sqlDB, a.cfg.DBMaxOpenConns)
 		if err := koidatabase.Migrate(db); err != nil {
 			return fmt.Errorf("migrate koi: %w", err)
 		}
+
 		if err := migrateRiver(ctx, sqlDB); err != nil {
 			return fmt.Errorf("migrate river: %w", err)
 		}
+
 		if err := koidatabase.NewStore(db).ReconcileGenerationRuns(ctx); err != nil {
 			return fmt.Errorf("reconcile generation runs: %w", err)
 		}
+
 		if err := koidatabase.NewStore(db).ReconcileVisibilityRuns(ctx); err != nil {
 			return fmt.Errorf("reconcile visibility runs: %w", err)
 		}
 	}
+
 	sess := scs.New()
 	sess.Lifetime = 30 * 24 * time.Hour
 	sess.Cookie.Name = "koi_session"
@@ -191,27 +211,33 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	if key := strings.TrimSpace(os.Getenv("LOGODEV_SECRET_KEY")); key != "" {
 		searcher = logodev.NewSearcher(key)
 	}
+
 	var riverClient *river.Client[*sql.Tx]
 	workers := a.workers
 	if sqlDB != nil {
 		if workers == nil {
 			workers = river.NewWorkers()
+
 			visibility := &visibilityWorker{
 				store:   koidatabase.NewStore(db),
 				collect: stub.Collect,
 			}
+
 			river.AddWorker(workers, visibility)
 			if a.cfg.OpenRouterAPIKey != "" {
 				if a.provider == nil {
 					a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
 				}
+
 				generation := &generationWorker{
 					store:    koidatabase.NewStore(db),
 					provider: a.provider,
 				}
+
 				river.AddWorker(workers, generation)
 			}
 		}
+
 		queues := map[string]river.QueueConfig{
 			"visibility": {
 				MaxWorkers: a.cfg.WorkerConcurrency,
@@ -220,26 +246,33 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if a.cfg.OpenRouterAPIKey != "" {
 			queues["generation"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
 		}
+
 		config := &river.Config{
 			Queues:          queues,
 			Workers:         workers,
 			SoftStopTimeout: 60 * time.Second,
 		}
+
 		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
+
 		if err := riverClient.Start(context.Background()); err != nil {
 			return fmt.Errorf("start river client: %w", err)
 		}
 	}
+
 	store := koidatabase.NewStore(db, riverClient)
-	server := &http.Server{Handler: koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil)}
+	server := &http.Server{
+		Handler: koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil),
+	}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- server.Serve(listener) }()
 
 	slog.Info("koi listening", "addr", listener.Addr().String())
 	var runErr error
+
 	select {
 	case <-ctx.Done():
 	case err := <-serveErr:
@@ -247,19 +280,23 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 			runErr = err
 		}
 	}
+
 	httpCtx, cancelHTTP := context.WithTimeout(context.Background(), 10*time.Second)
 	if err := server.Shutdown(httpCtx); err != nil {
 		runErr = errors.Join(runErr, fmt.Errorf("shutdown http: %w", err))
 		_ = server.Close()
 	}
+
 	cancelHTTP()
 	if riverClient != nil {
 		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 60*time.Second)
 		if err := riverClient.Stop(riverCtx); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("stop river: %w", err))
 		}
+
 		cancelRiver()
 	}
+
 	return runErr
 }
 
@@ -273,6 +310,8 @@ func migrateRiver(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = migrator.Migrate(ctx, rivermigrate.DirectionUp, nil)
+
 	return err
 }

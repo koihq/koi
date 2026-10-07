@@ -28,10 +28,13 @@ export function PromptForm({
     const result = promptFormSchema.safeParse({ text });
     if (!result.success) {
       setInvalid(true);
+
       return;
     }
+
     setInvalid(false);
     setFailed(false);
+
     try {
       await onSave(result.data);
     } catch {

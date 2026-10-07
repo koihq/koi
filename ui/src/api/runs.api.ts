@@ -8,6 +8,7 @@ import type {
 import { callApi } from "@/api/shared/apiClient";
 
 export type VisibilityRun = VisibilityRunStatus;
+
 export type { VisibilityResult };
 
 export function createRunsApi(api: VisibilityApi) {

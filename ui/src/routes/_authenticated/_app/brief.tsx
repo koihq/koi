@@ -7,5 +7,6 @@ export const Route = createFileRoute("/_authenticated/_app/brief")({
 
 function Brief() {
   const { t } = useTranslation("home");
+
   return <p className="text-muted-foreground">{t("pages.brief")}</p>;
 }

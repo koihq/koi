@@ -21,12 +21,16 @@ import (
 func sampleMe() *koidomain.Me {
 	return &koidomain.Me{
 		User: koidomain.User{
-			BaseEntity: koidomain.BaseEntity{ID: uuid.MustParse("11111111-1111-1111-1111-111111111111")},
-			Email:      "you@example.com",
+			BaseEntity: koidomain.BaseEntity{
+				ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"),
+			},
+			Email: "you@example.com",
 		},
 		Organization: koidomain.Organization{
-			BaseEntity: koidomain.BaseEntity{ID: uuid.MustParse("22222222-2222-2222-2222-222222222222")},
-			Name:       "you",
+			BaseEntity: koidomain.BaseEntity{
+				ID: uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+			},
+			Name: "you",
 		},
 		Role: koidomain.RoleOwner,
 	}
@@ -41,6 +45,7 @@ func newAuthTestServer(t *testing.T, q koidomain.AuthQuerier, c koidomain.AuthCo
 	r.Route("/api/v1/auth", NewAuthHandler(q, c, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
+
 	return ts
 }
 
@@ -48,6 +53,7 @@ func newCookieClient(t *testing.T) *http.Client {
 	t.Helper()
 	jar, err := cookiejar.New(nil)
 	require.NoError(t, err)
+
 	return &http.Client{Jar: jar}
 }
 
@@ -58,8 +64,10 @@ func doJSON(t *testing.T, client *http.Client, method, url, body string) *http.R
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
+
 	resp, err := client.Do(req)
 	require.NoError(t, err)
+
 	return resp
 }
 
@@ -78,6 +86,7 @@ func TestAuthHandler_SignupSetsCookie(t *testing.T) {
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/signup",
 		`{"email":"you@example.com","password":"password1"}`)
+
 	var body MeRes
 	readJSON(t, resp, &body)
 
@@ -86,12 +95,14 @@ func TestAuthHandler_SignupSetsCookie(t *testing.T) {
 	require.Equal(t, "you", body.Organization.Name)
 	require.Equal(t, "owner", body.Organization.Role)
 	found := false
+
 	for _, c := range resp.Cookies() {
 		if c.Name == "koi_session" && c.Value != "" {
 			found = true
 			break
 		}
 	}
+
 	require.True(t, found, "expected Set-Cookie koi_session")
 }
 
@@ -104,6 +115,7 @@ func TestAuthHandler_LoginInvalidCredentials(t *testing.T) {
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/login",
 		`{"email":"you@example.com","password":"wrongpass"}`)
+
 	var body api.Envelope
 	readJSON(t, resp, &body)
 

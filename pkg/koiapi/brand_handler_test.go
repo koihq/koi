@@ -20,6 +20,7 @@ import (
 func identityIs(userID uuid.UUID) any {
 	return mock.MatchedBy(func(ctx context.Context) bool {
 		identity, ok := koiauth.FromContext(ctx)
+
 		return ok && identity.UserID == userID
 	})
 }
@@ -37,6 +38,7 @@ func newBrandTestServer(t *testing.T, q koidomain.BrandQuerier, c koidomain.Bran
 	r.Route("/api/v1/brands", NewBrandHandler(q, c, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
+
 	return ts
 }
 
@@ -52,6 +54,7 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 	ts := newBrandTestServer(t, NewMockBrandQuerier(t), NewMockBrandCommander(t))
 	client := newCookieClient(t)
 	id := uuid.New().String()
+
 	for _, path := range []string{"/brands", "/brands/countries", "/brands/" + id} {
 		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+path, "")
 		var body api.Envelope
@@ -59,11 +62,13 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
 	}
+
 	for _, method := range []string{http.MethodPost, http.MethodPatch} {
 		path := "/brands"
 		if method == http.MethodPatch {
 			path += "/" + id
 		}
+
 		resp := doJSON(t, client, method, ts.URL+"/api/v1"+path, `{}`)
 		var body api.Envelope
 		readJSON(t, resp, &body)
@@ -76,7 +81,9 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	userID := uuid.New()
 	q := NewMockBrandQuerier(t)
 	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 3, PageSize: 100}).Return(&koidomain.Page[koidomain.Brand]{
-		Items: []koidomain.Brand{}, CurrentPage: 3, HasPrev: true,
+		Items:       []koidomain.Brand{},
+		CurrentPage: 3,
+		HasPrev:     true,
 	}, nil)
 	ts := newBrandTestServer(t, q, NewMockBrandCommander(t))
 	client := newCookieClient(t)
@@ -90,18 +97,29 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	require.Equal(t, koidomain.CodeUnauthorized, denied.Error.Code)
 
 	brandSession(t, client, ts.URL, userID)
+
 	for _, query := range []struct{ value, field string }{
-		{"page=0", "page"}, {"page=-1", "page"}, {"page=abc", "page"},
-		{"page=", "page"}, {"page=1&page=2", "page"},
-		{"pageSize=0", "pageSize"}, {"pageSize=101", "pageSize"},
-		{"pageSize=abc", "pageSize"}, {"pageSize=", "pageSize"},
+		{"page=0", "page"},
+		{"page=-1", "page"},
+		{"page=abc", "page"},
+		{"page=", "page"},
+		{"page=1&page=2", "page"},
+		{"pageSize=0", "pageSize"},
+		{"pageSize=101", "pageSize"},
+		{"pageSize=abc", "pageSize"},
+		{"pageSize=", "pageSize"},
 	} {
 		resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?"+query.value, "")
 		var body api.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, query.value)
 		require.Equal(t, koidomain.CodeValidation, body.Error.Code)
-		require.Equal(t, []koidomain.FieldError{{Field: query.field, Code: koidomain.FieldInvalid}}, body.Error.Fields)
+		require.Equal(t, []koidomain.FieldError{
+			{
+				Field: query.field,
+				Code:  koidomain.FieldInvalid,
+			},
+		}, body.Error.Fields)
 	}
 
 	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?page=3&pageSize=100", "")
@@ -121,9 +139,25 @@ func TestBrandHandlerCountries(t *testing.T) {
 		query string
 		want  []koidomain.CountryOption
 	}{
-		{name: "omitted", want: koidomain.SearchSupportedCountries("")},
-		{name: "empty", query: "?q=", want: koidomain.SearchSupportedCountries("")},
-		{name: "search", query: "?q=italy", want: []koidomain.CountryOption{{Code: "IT", Name: "Italy"}}},
+		{
+			name: "omitted",
+			want: koidomain.SearchSupportedCountries(""),
+		},
+		{
+			name:  "empty",
+			query: "?q=",
+			want:  koidomain.SearchSupportedCountries(""),
+		},
+		{
+			name:  "search",
+			query: "?q=italy",
+			want: []koidomain.CountryOption{
+				{
+					Code: "IT",
+					Name: "Italy",
+				},
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/countries"+tt.query, "")
@@ -137,20 +171,32 @@ func TestBrandHandlerCountries(t *testing.T) {
 
 func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	userA, userB, brandID := uuid.New(), uuid.New(), uuid.New()
+
 	brand := &koidomain.Brand{
-		BaseEntity: koidomain.BaseEntity{ID: brandID}, UserID: userA,
-		Name: "Koi", Domain: "koi.dev", Country: "IT",
+		BaseEntity: koidomain.BaseEntity{
+			ID: brandID,
+		},
+		UserID:  userA,
+		Name:    "Koi",
+		Domain:  "koi.dev",
+		Country: "IT",
 	}
+
 	q := NewMockBrandQuerier(t)
 	c := NewMockBrandCommander(t)
 	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
-		Items: []koidomain.Brand{}, CurrentPage: 1,
+		Items:       []koidomain.Brand{},
+		CurrentPage: 1,
 	}, nil).Once()
 	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
-		Items: []koidomain.Brand{*brand}, TotalItems: 1, TotalPages: 1, CurrentPage: 1,
+		Items:       []koidomain.Brand{*brand},
+		TotalItems:  1,
+		TotalPages:  1,
+		CurrentPage: 1,
 	}, nil).Once()
 	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
-		Items: []koidomain.Brand{}, CurrentPage: 1,
+		Items:       []koidomain.Brand{},
+		CurrentPage: 1,
 	}, nil)
 	q.EXPECT().Get(identityIs(userA), brandID).Return(brand, nil)
 	q.EXPECT().Get(identityIs(userB), brandID).Return(nil, koidomain.ErrNotFound)
@@ -181,10 +227,16 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	var countries []koidomain.CountryOption
 	readJSON(t, resp, &countries)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, []koidomain.CountryOption{{Code: "IT", Name: "Italy"}}, countries)
+	require.Equal(t, []koidomain.CountryOption{
+		{
+			Code: "IT",
+			Name: "Italy",
+		},
+	}, countries)
 
 	resp = doJSON(t, clientA, http.MethodPost, base,
 		`{"user_id":"00000000-0000-0000-0000-000000000000","name":"Koi","domain":"koi.dev","country":"IT"}`)
+
 	var created koidomain.Brand
 	readJSON(t, resp, &created)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -228,6 +280,7 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 
 	resp = doJSON(t, clientA, http.MethodPatch, base+"/"+brandID.String(),
 		`{"description":"AI visibility","user_id":"00000000-0000-0000-0000-000000000000"}`)
+
 	var updated koidomain.Brand
 	readJSON(t, resp, &updated)
 	require.Equal(t, http.StatusOK, resp.StatusCode)

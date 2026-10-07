@@ -46,7 +46,7 @@ export function CompetitorDialog({
   const [query, setQuery] = useState("");
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
-	const [githubRepo, setGithubRepo] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [saveError, setSaveError] = useState<"duplicate" | "invalidDomain" | "other">();
   const saving = useRef(false);
@@ -59,9 +59,12 @@ export function CompetitorDialog({
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
+
   const searchEnabled = capabilities.data?.competitorSearch === true;
+
   const showManual =
     manual || capabilities.isError || capabilities.data?.competitorSearch === false;
+
   const search = useQuery({
     queryKey: ["competitor-search", brandID, debouncedQuery],
     queryFn: ({ signal }) => api.competitors.search(brandID, debouncedQuery, { signal }),
@@ -70,6 +73,7 @@ export function CompetitorDialog({
     gcTime: 10 * 60 * 1000,
     retry: false,
   });
+
   const results = query.trim() === debouncedQuery ? (search.data ?? []) : [];
 
   function reset() {
@@ -78,15 +82,17 @@ export function CompetitorDialog({
     setQuery("");
     setName("");
     setDomain("");
-	setGithubRepo("");
+    setGithubRepo("");
     setInvalid(false);
     setSaveError(undefined);
   }
 
   async function save(request: CreateCompetitor) {
     if (pending || saving.current) return;
+
     saving.current = true;
     setSaveError(undefined);
+
     try {
       await onSave(request);
       setOpen(false);
@@ -96,6 +102,7 @@ export function CompetitorDialog({
         error instanceof ApiError
           ? error.fields?.find((field) => field.field === "domain" || field.field === "github_repo")
           : undefined;
+
       setSaveError(
         domainField?.code === "taken"
           ? "duplicate"
@@ -112,8 +119,10 @@ export function CompetitorDialog({
     event.preventDefault();
     if (!name.trim() || (!domain.trim() && !githubRepo.trim())) {
       setInvalid(true);
+
       return;
     }
+
     setInvalid(false);
     await save({ name: name.trim(), domain: domain.trim(), githubRepo: githubRepo.trim() });
   }
@@ -126,6 +135,7 @@ export function CompetitorDialog({
         : search.isFetching
           ? t("loading")
           : t("competitorSearchEmpty");
+
   const saveErrorMessage =
     saveError === "duplicate"
       ? t("competitorAlreadyAdded")
@@ -160,7 +170,9 @@ export function CompetitorDialog({
                 placeholder={t("competitorNamePlaceholder")}
               />
             </Field>
-            <Field data-invalid={invalid && !domain.trim() && !githubRepo.trim() ? true : undefined}>
+            <Field
+              data-invalid={invalid && !domain.trim() && !githubRepo.trim() ? true : undefined}
+            >
               <FieldLabel htmlFor="competitor-domain">{t("domain")}</FieldLabel>
               <Input
                 id="competitor-domain"
@@ -172,7 +184,13 @@ export function CompetitorDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="competitor-github">{t("competitorGithubLabel")}</FieldLabel>
-              <Input id="competitor-github" type="url" value={githubRepo} onChange={(event) => setGithubRepo(event.target.value)} placeholder="https://github.com/owner/repo" />
+              <Input
+                id="competitor-github"
+                type="url"
+                value={githubRepo}
+                onChange={(event) => setGithubRepo(event.target.value)}
+                placeholder="https://github.com/owner/repo"
+              />
             </Field>
             {invalid ? <FieldError>{t("competitorInvalid")}</FieldError> : null}
             {saveError ? <FieldError>{saveErrorMessage}</FieldError> : null}

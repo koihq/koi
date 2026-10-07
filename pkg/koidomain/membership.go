@@ -21,9 +21,11 @@ func (m Membership) Validate() error {
 	if m.UserID == uuid.Nil || m.OrganizationID == uuid.Nil {
 		return Validation(FieldError{Field: "membership", Code: FieldInvalid})
 	}
+
 	if m.Role != RoleOwner {
 		return Validation(FieldError{Field: "role", Code: FieldInvalid})
 	}
+
 	return nil
 }
 

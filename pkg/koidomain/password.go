@@ -26,6 +26,7 @@ func mustHashPassword() string {
 	if err != nil {
 		panic(err)
 	}
+
 	return h
 }
 
@@ -34,7 +35,9 @@ func HashPassword(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
+
 	hash := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+
 	return fmt.Sprintf("argon2id$v=19$m=%d$t=%d$p=%d$%s$%s",
 		argonMemory, argonTime, argonThreads,
 		base64.RawStdEncoding.EncodeToString(salt),
@@ -47,25 +50,32 @@ func CheckPassword(encoded, password string) bool {
 	if len(parts) != 7 || parts[0] != "argon2id" {
 		return false
 	}
+
 	var memory, timeCost uint32
 	var threads uint8
 	if _, err := fmt.Sscanf(parts[2], "m=%d", &memory); err != nil {
 		return false
 	}
+
 	if _, err := fmt.Sscanf(parts[3], "t=%d", &timeCost); err != nil {
 		return false
 	}
+
 	if _, err := fmt.Sscanf(parts[4], "p=%d", &threads); err != nil {
 		return false
 	}
+
 	salt, err := base64.RawStdEncoding.DecodeString(parts[5])
 	if err != nil {
 		return false
 	}
+
 	want, err := base64.RawStdEncoding.DecodeString(parts[6])
 	if err != nil {
 		return false
 	}
+
 	got := argon2.IDKey([]byte(password), salt, timeCost, memory, threads, uint32(len(want)))
+
 	return subtle.ConstantTimeCompare(want, got) == 1
 }

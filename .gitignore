@@ -15,6 +15,7 @@ vendor/
 node_modules/
 .pnpm-store/
 ui/.vite/
+*.tsbuildinfo
 
 # Vite → Go embed output
 pkg/web/dist/

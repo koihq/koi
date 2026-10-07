@@ -9,11 +9,14 @@ func applyChildListFilter(db *gorm.DB, id, brandID uuid.UUID, confirmed *bool) *
 	if id != uuid.Nil {
 		db = db.Where("id = ?", id)
 	}
+
 	if brandID != uuid.Nil {
 		db = db.Where("brand_id = ?", brandID)
 	}
+
 	if confirmed != nil {
 		db = db.Where("confirmed = ?", *confirmed)
 	}
+
 	return db
 }

@@ -37,6 +37,7 @@ export async function callApi<T>(request: () => Promise<T>): Promise<T> {
       const response = (error as { response?: unknown }).response;
       if (response instanceof Response) throw await apiErrorFromResponse(response);
     }
+
     throw error;
   }
 }

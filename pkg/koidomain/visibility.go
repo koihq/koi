@@ -69,6 +69,7 @@ func (r VisibilityRun) Validate() error {
 	if r.BrandID == uuid.Nil || len(r.Engines) == 0 || r.TotalResults <= 0 || r.State != VisibilityQueued {
 		return Validation(FieldError{Field: "run", Code: FieldInvalid})
 	}
+
 	return nil
 }
 
@@ -95,16 +96,21 @@ func (r VisibilityResult) Validate() error {
 	if r.RunID == uuid.Nil || r.PromptID == uuid.Nil || strings.TrimSpace(r.PromptText) == "" || r.PromptPosition < 0 {
 		return Validation(FieldError{Field: "result", Code: FieldInvalid})
 	}
+
 	validEngine := false
+
 	for _, engine := range VisibilityEngines() {
 		validEngine = validEngine || r.Engine == engine
 	}
+
 	if !validEngine || r.Collector != CollectorStub && r.Collector != CollectorCloro || r.Sources == nil {
 		return Validation(FieldError{Field: "result", Code: FieldInvalid})
 	}
+
 	if (r.FetchedAt == nil) != (r.Outcome == nil) {
 		return Validation(FieldError{Field: "outcome", Code: FieldInvalid})
 	}
+
 	if r.Outcome != nil {
 		switch *r.Outcome {
 		case OutcomeCited, OutcomeMentioned, OutcomeMiss:
@@ -119,6 +125,7 @@ func (r VisibilityResult) Validate() error {
 			return Validation(FieldError{Field: "outcome", Code: FieldInvalid})
 		}
 	}
+
 	return nil
 }
 
@@ -149,69 +156,91 @@ type VisibilityQuerier interface {
 type visibilityService struct{ store Store }
 
 func NewVisibilityCommander(store Store) VisibilityCommander { return &visibilityService{store: store} }
-func NewVisibilityQuerier(store Store) VisibilityQuerier     { return &visibilityService{store: store} }
+
+func NewVisibilityQuerier(store Store) VisibilityQuerier { return &visibilityService{store: store} }
 
 func (s *visibilityService) Create(ctx context.Context, brandID uuid.UUID) (*VisibilityRun, error) {
 	var run *VisibilityRun
+
 	err := s.store.Atomic(ctx, func(tx Store) error {
 		brand, err := tx.BrandRepo().LockForUpdate(ctx, brandID)
 		if err != nil {
 			return err
 		}
+
 		repo := tx.VisibilityRepo()
 		run, err = repo.Active(ctx, brandID)
 		if err == nil {
 			return nil
 		}
+
 		if !errors.Is(err, ErrNotFound) {
 			return err
 		}
+
 		inputs, err := repo.Inputs(ctx, brandID)
 		if err != nil {
 			return err
 		}
+
 		var fields []FieldError
 		if len(inputs.Prompts) == 0 {
 			fields = append(fields, FieldError{Field: "prompts", Code: "empty"})
 		}
+
 		for _, prompt := range inputs.Prompts {
 			if !prompt.Confirmed {
 				fields = append(fields, FieldError{Field: "prompts", Code: "unconfirmed"})
 				break
 			}
 		}
+
 		if inputs.UnconfirmedCompetitors > 0 {
 			fields = append(fields, FieldError{Field: "competitors", Code: "unconfirmed"})
 		}
+
 		if len(fields) > 0 {
 			return &Error{Code: CodeRunNotReady, Message: "run not ready", Fields: fields}
 		}
+
 		run = &VisibilityRun{
 			BrandID: brandID,
 			BrandSnapshot: BrandSnapshot{
-				Name: brand.Name, Domain: brand.Domain, GitHubRepo: brand.GitHubRepo,
-				Country: brand.Country, Description: brand.Description,
+				Name:        brand.Name,
+				Domain:      brand.Domain,
+				GitHubRepo:  brand.GitHubRepo,
+				Country:     brand.Country,
+				Description: brand.Description,
 			},
-			Engines: VisibilityEngines(), State: VisibilityQueued,
+			Engines:      VisibilityEngines(),
+			State:        VisibilityQueued,
 			TotalResults: int64(len(inputs.Prompts) * len(VisibilityEngines())),
 		}
 		if err := run.Validate(); err != nil {
 			return err
 		}
+
 		results := make([]VisibilityResult, 0, run.TotalResults)
+
 		for position, prompt := range inputs.Prompts {
 			for _, engine := range run.Engines {
 				results = append(results, VisibilityResult{
-					PromptID: prompt.ID, PromptText: prompt.Text, PromptPosition: position,
-					Engine: engine, Collector: CollectorStub, Sources: []string{},
+					PromptID:       prompt.ID,
+					PromptText:     prompt.Text,
+					PromptPosition: position,
+					Engine:         engine,
+					Collector:      CollectorStub,
+					Sources:        []string{},
 				})
 			}
 		}
+
 		return repo.CreateAndEnqueue(ctx, run, results)
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return run, nil
 }
 
@@ -219,6 +248,7 @@ func (s *visibilityService) Get(ctx context.Context, brandID, runID uuid.UUID) (
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	return s.store.VisibilityRepo().Get(ctx, brandID, runID)
 }
 
@@ -226,6 +256,7 @@ func (s *visibilityService) List(ctx context.Context, brandID uuid.UUID, page Pa
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	return s.store.VisibilityRepo().List(ctx, brandID, page)
 }
 
@@ -233,5 +264,6 @@ func (s *visibilityService) ListResults(ctx context.Context, brandID, runID uuid
 	if _, err := s.Get(ctx, brandID, runID); err != nil {
 		return nil, err
 	}
+
 	return s.store.VisibilityRepo().ListResults(ctx, brandID, runID, page)
 }

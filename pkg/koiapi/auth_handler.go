@@ -61,18 +61,23 @@ func (h *AuthHandler) Routes() func(r chi.Router) {
 
 func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 	req := middlewares.Body[CredentialsReq](r)
+
 	me, err := h.commander.Signup(r.Context(), koidomain.SignupParams{
 		Email:    req.Email,
 		Password: req.Password,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	if err := h.saveUser(r, me); err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusCreated, MeToRes(me))
 }
 
@@ -81,20 +86,26 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	me, err := h.commander.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	if err := h.saveUser(r, me); err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, MeToRes(me))
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if err := h.sess.Destroy(r.Context()); err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -103,11 +114,14 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	me, err := h.querier.Me(r.Context())
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, MeToRes(me))
 }
 
@@ -115,6 +129,8 @@ func (h *AuthHandler) saveUser(r *http.Request, me *koidomain.Me) error {
 	if err := h.sess.RenewToken(r.Context()); err != nil {
 		return err
 	}
+
 	h.sess.Put(r.Context(), "user_id", me.User.ID.String())
+
 	return nil
 }

@@ -29,7 +29,9 @@ export type TableStatus = "all" | "confirmed" | "unconfirmed";
 
 export function confirmedFromStatus(status: TableStatus): boolean | undefined {
   if (status === "confirmed") return true;
+
   if (status === "unconfirmed") return false;
+
   return undefined;
 }
 
@@ -40,13 +42,16 @@ export function useTableState() {
   useEffect(() => {
     if (raw.page < 1) void setState({ page: 1 }, { history: "replace" });
   }, [raw.page, setState]);
+
   const clampPage = useCallback(
     (totalPages: number) =>
       setState({ page: Math.min(page, Math.max(1, totalPages)) }, { history: "replace" }),
     [page, setState],
   );
+
   const writeState = (updates: Partial<typeof raw>, history: "push" | "replace") => {
     const next = { ...raw, ...updates };
+
     return setState(
       {
         page: next.page === 1 ? null : next.page,

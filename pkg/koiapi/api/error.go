@@ -32,5 +32,12 @@ func envelope(e *koidomain.Error) Envelope {
 	if e == nil {
 		e = koidomain.ErrInternal
 	}
-	return Envelope{Error: Body{Code: e.Code, Message: e.Message, Fields: e.Fields}}
+
+	return Envelope{
+		Error: Body{
+			Code:    e.Code,
+			Message: e.Message,
+			Fields:  e.Fields,
+		},
+	}
 }

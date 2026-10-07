@@ -15,7 +15,7 @@ import {
 import { VisibilityMatrix } from "@/routes/_authenticated/_app/mentions/-components/visibility-matrix";
 import { useVisibility } from "@/routes/_authenticated/_app/mentions/-hooks/use-visibility";
 
-export const Route = createFileRoute("/_authenticated/_app/mentions")({
+export const Route = createFileRoute("/_authenticated/_app/mentions/")({
   validateSearch: createStandardSchemaV1(
     { run: parseAsString, page: parseAsInteger.withDefault(1) },
     { partialOutput: true },
@@ -29,17 +29,21 @@ function Mentions() {
   const navigate = Route.useNavigate();
   const { t, i18n } = useTranslation("visibility");
   const page = Math.max(1, search.page ?? 1);
+
   const selectRun = (runID: string) => {
     void navigate({ search: { run: runID, page: 1 } });
   };
+
   const state = useVisibility(brand.id, search.run ?? undefined, page, selectRun);
   const run = state.run;
   const history = [...(state.runs.data?.items ?? [])];
   if (run && !history.some((item) => item.id === run.id)) history.unshift(run);
+
   const options = history.map((item) => ({
     value: item.id,
     label: item.createdAt.toLocaleString(i18n.language),
   }));
+
   const pageLoading = state.results.isPending || state.results.isPlaceholderData;
 
   return (
@@ -135,7 +139,7 @@ function Mentions() {
       <output className="block text-sm tabular-nums" aria-live="polite">
         {run ? t(run.state, { completed: run.completedResults, total: run.totalResults }) : null}
       </output>
-      {state.status.isError ? (
+      {state.needsStatus && state.status.isError ? (
         <p role="alert" className="text-sm text-destructive">
           {t("statusError")}{" "}
           <Button

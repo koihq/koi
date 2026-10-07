@@ -14,17 +14,21 @@ type GormCompetitorRepository struct {
 }
 
 func NewGormCompetitorRepository(db *gorm.DB) *GormCompetitorRepository {
-	return &GormCompetitorRepository{Repository: newScopedRepository[koidomain.Competitor](db, childOwnerScope("competitors"))}
+	return &GormCompetitorRepository{
+		Repository: newScopedRepository[koidomain.Competitor](db, childOwnerScope("competitors")),
+	}
 }
 
 func (r *GormCompetitorRepository) Create(ctx context.Context, competitor *koidomain.Competitor) error {
 	if _, err := r.Repository.query(ctx); err != nil {
 		return err
 	}
+
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, competitor.BrandID); err != nil {
 			return err
 		}
+
 		return NewGormCompetitorRepository(tx).Repository.Create(ctx, competitor)
 	})
 }
@@ -34,10 +38,12 @@ func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm
 	if filter.Domain != "" {
 		db = db.Where("domain = ?", filter.Domain)
 	}
+
 	if filter.Query != "" {
 		pattern := likePattern(filter.Query)
 		db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!' OR github_repo ILIKE ? ESCAPE '!')", pattern, pattern, pattern)
 	}
+
 	return db
 }
 
@@ -56,6 +62,7 @@ func (r *GormCompetitorRepository) Update(ctx context.Context, filter koidomain.
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
+
 	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, values, columns, filter.ID != uuid.Nil)
 }
 

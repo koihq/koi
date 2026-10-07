@@ -15,8 +15,10 @@ func authenticatedUserID(w http.ResponseWriter, r *http.Request) (uuid.UUID, boo
 	identity, ok := koiauth.FromContext(r.Context())
 	if !ok {
 		api.WriteDomainError(w, r, koidomain.ErrUnauthorized)
+
 		return uuid.Nil, false
 	}
+
 	return identity.UserID, true
 }
 
@@ -26,8 +28,10 @@ func Authorizer(sess *scs.SessionManager) func(http.Handler) http.Handler {
 			id, err := uuid.Parse(sess.GetString(r.Context(), "user_id"))
 			if err != nil || id == uuid.Nil {
 				api.WriteDomainError(w, r, koidomain.ErrUnauthorized)
+
 				return
 			}
+
 			ctx := koiauth.WithIdentity(r.Context(), koiauth.Identity{UserID: id})
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

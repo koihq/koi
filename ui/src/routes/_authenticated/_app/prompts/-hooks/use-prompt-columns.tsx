@@ -18,6 +18,7 @@ export function usePromptColumns({
   onConfirm: (id: string) => void;
 }): ColumnDef<Prompt>[] {
   const { t } = useTranslation("management");
+
   return useMemo(
     () => [
       {

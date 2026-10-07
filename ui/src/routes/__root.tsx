@@ -13,6 +13,7 @@ export const Route = createRootRouteWithContext<{ api: Api }>()({
 function parkDevtoolsTrigger() {
   try {
     const key = "tanstack_devtools_settings";
+
     const prev = JSON.parse(localStorage.getItem(key) ?? "{}") as {
       triggerMode?: string;
       position?: string;
@@ -20,6 +21,7 @@ function parkDevtoolsTrigger() {
     if (prev.triggerMode === "fixed" && prev.position === "bottom-right") {
       return;
     }
+
     localStorage.setItem(
       key,
       JSON.stringify({ ...prev, triggerMode: "fixed", position: "bottom-right" }),

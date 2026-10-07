@@ -1,19 +1,15 @@
+set -eu
+
+echo "Go formatting"
+make go-format-check
+
 cd ui
 
-echo ""
-echo "==> UI pre-commit"
-echo ""
+echo "UI formatting, lint, and imports"
+pnpm check
 
-echo "→ lint"
-pnpm lint
-
-echo ""
-echo "→ typecheck"
+echo "UI typecheck"
 pnpm check-types
 
-echo ""
-echo "→ unit tests"
+echo "UI unit tests"
 pnpm test
-
-echo ""
-echo "==> UI pre-commit passed"

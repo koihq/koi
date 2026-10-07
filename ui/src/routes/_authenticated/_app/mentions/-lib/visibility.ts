@@ -31,6 +31,7 @@ export function groupVisibilityResults(results: VisibilityResult[]) {
       results: Map<VisibilityResult["engine"], VisibilityResult>;
     }
   >();
+
   for (const result of results) {
     let row = rows.get(result.promptId);
     if (!row) {
@@ -42,14 +43,17 @@ export function groupVisibilityResults(results: VisibilityResult[]) {
       };
       rows.set(result.promptId, row);
     }
+
     row.results.set(result.engine, result);
   }
+
   return [...rows.values()].sort((a, b) => a.promptPosition - b.promptPosition);
 }
 
 export function safeSourceURL(value: string) {
   try {
     const url = new URL(value);
+
     return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
   } catch {
     return undefined;

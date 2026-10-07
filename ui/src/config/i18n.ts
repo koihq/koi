@@ -11,6 +11,7 @@ import management from "@/locales/en/management.json";
 import visibility from "@/locales/en/visibility.json";
 
 export const defaultNS = "common";
+
 export const resources = {
   en: { common, auth, brand, errors, home, dev, management, visibility },
 } as const;

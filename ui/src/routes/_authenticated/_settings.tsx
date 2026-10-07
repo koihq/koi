@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/_settings")({
     if (!context.brand) {
       throw redirect({ to: "/setup" });
     }
+
     return { brand: context.brand };
   },
   errorComponent: RouteLoadError,
@@ -62,6 +63,7 @@ function SettingsSidebar() {
   const { t } = useTranslation("brand");
   const { setOpenMobile } = useSidebar();
   const pathname = useLocation({ select: (location) => location.pathname });
+
   const items = [
     { to: "/settings/brand", label: t("settings.brand"), icon: Building02Icon },
   ] as const;
@@ -85,6 +87,7 @@ function SettingsSidebar() {
             <SidebarMenu>
               {items.map((item) => {
                 const active = pathname === item.to;
+
                 return (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton

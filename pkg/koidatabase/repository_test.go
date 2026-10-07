@@ -26,7 +26,12 @@ func TestMapDBError(t *testing.T) {
 	var validation *koidomain.Error
 	require.ErrorAs(t, mapDBError(competitor), &validation)
 	require.Equal(t, koidomain.CodeValidation, validation.Code)
-	require.Equal(t, []koidomain.FieldError{{Field: "domain", Code: koidomain.FieldTaken}}, validation.Fields)
+	require.Equal(t, []koidomain.FieldError{
+		{
+			Field: "domain",
+			Code:  koidomain.FieldTaken,
+		},
+	}, validation.Fields)
 
 	other := &pgconn.PgError{Code: pgUniqueViolation, ConstraintName: "idx_memberships_user_org"}
 	require.Equal(t, other, mapDBError(other))

@@ -18,6 +18,7 @@ export const Route = createFileRoute("/dev/ui/button")({
 
 function DevUiButton() {
   const { t } = useTranslation("dev");
+
   return (
     <CatalogPage
       title="Button"

@@ -5,7 +5,9 @@ import { mapPage } from "@/api/shared/mappers";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Prompt = PromptRes;
+
 export type CreatePrompt = PromptRequest;
+
 export type UpdatePrompt = PromptPatchRequest;
 
 export interface PromptListParams extends BaseListParams {
@@ -31,6 +33,7 @@ export function createPromptsApi(api: PromptsApi) {
           initOverrides,
         ),
       );
+
       return mapPage(response, PromptResFromJSON);
     },
     getById: (brandID: string, id: string): Promise<Prompt> =>

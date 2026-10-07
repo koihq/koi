@@ -2,6 +2,7 @@ import type { AuthApi, CredentialsReq, MeRes } from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
 
 export type Credentials = CredentialsReq;
+
 export type Account = MeRes;
 
 export function createAuthApi(api: AuthApi) {

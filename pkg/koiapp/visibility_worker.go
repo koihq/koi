@@ -31,52 +31,75 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	if err != nil {
 		return w.fail(ctx, job, err)
 	}
+
 	if run == nil {
 		return nil
 	}
+
 	for _, pending := range results {
 		if err := ctx.Err(); err != nil {
-			return err
+			return w.fail(ctx, job, err)
 		}
+
 		answer, err := w.collect(ctx, run.BrandSnapshot, pending)
-		if ctx.Err() != nil {
-			return ctx.Err()
+		if err := ctx.Err(); err != nil {
+			return w.fail(ctx, job, err)
 		}
+
 		// Copy only answer fields: collectors cannot change persisted prompt/engine identity.
 		result := pending
-		result.Outcome, result.RawAnswer, result.Sources, result.ErrorCode = answer.Outcome, answer.RawAnswer, answer.Sources, answer.ErrorCode
+		result.Outcome = answer.Outcome
+		result.RawAnswer = answer.RawAnswer
+		result.Sources = answer.Sources
+		result.ErrorCode = answer.ErrorCode
 		if err != nil {
 			outcome, code := koidomain.OutcomeError, "collector_error"
 			result.Outcome, result.ErrorCode = &outcome, &code
 			result.RawAnswer, result.Sources = "", []string{}
 		}
+
 		if result.Sources == nil {
 			result.Sources = []string{}
 		}
+
 		now := time.Now().UTC()
 		result.FetchedAt = &now
 		if err := w.store.SaveVisibilityResult(ctx, run.ID, job.Attempt, result); err != nil {
 			return w.fail(ctx, job, err)
 		}
 	}
+
 	if err := w.store.FinishVisibilityAttempt(ctx, run.ID, job.Attempt); err != nil {
 		return w.fail(ctx, job, err)
 	}
+
 	slog.InfoContext(ctx, "visibility completed", "run_id", run.ID, "attempt", job.Attempt, "results", run.TotalResults)
+
 	return nil
 }
 
 func (w *visibilityWorker) fail(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs], cause error) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
 	terminal := job.Attempt >= job.MaxAttempts
-	if err := w.store.RecordVisibilityFailure(ctx, job.Args.RunID, job.ID, job.Attempt, "storage_error", terminal); err != nil {
+	code := "storage_error"
+	if err := ctx.Err(); err != nil {
+		if !terminal || !errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		ctx = cleanupCtx
+		code = "job_timeout"
+	}
+
+	if err := w.store.RecordVisibilityFailure(ctx, job.Args.RunID, job.ID, job.Attempt, code, terminal); err != nil {
 		return errors.Join(cause, err)
 	}
+
 	slog.WarnContext(ctx, "visibility failed", "run_id", job.Args.RunID, "attempt", job.Attempt, "terminal", terminal)
 	if terminal {
 		return river.JobCancel(cause)
 	}
+
 	return cause
 }

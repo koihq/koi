@@ -33,6 +33,7 @@ function validGitHubRepo(value: string): boolean {
   if (parts.length !== 3) return false;
 
   const [, owner, repo] = parts;
+
   return Boolean(
     owner &&
       repo &&
@@ -63,9 +64,11 @@ export const brandFormSchema = z
       context.addIssue({ code: "custom", path: ["domain"] });
       context.addIssue({ code: "custom", path: ["githubRepo"] });
     }
+
     if (value.domain && !validHostname(value.domain)) {
       context.addIssue({ code: "custom", path: ["domain"] });
     }
+
     if (value.githubRepo && !validGitHubRepo(value.githubRepo)) {
       context.addIssue({ code: "custom", path: ["githubRepo"] });
     }

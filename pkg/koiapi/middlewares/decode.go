@@ -17,8 +17,10 @@ func DecodeBody[T any]() func(http.Handler) http.Handler {
 			var v T
 			if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
 				api.WriteDomainError(w, r, koidomain.ErrInvalidJSON)
+
 				return
 			}
+
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), bodyKey{}, v)))
 		})
 	}
@@ -26,5 +28,6 @@ func DecodeBody[T any]() func(http.Handler) http.Handler {
 
 func Body[T any](r *http.Request) T {
 	v, _ := r.Context().Value(bodyKey{}).(T)
+
 	return v
 }

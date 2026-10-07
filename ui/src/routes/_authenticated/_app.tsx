@@ -33,6 +33,7 @@ export const Route = createFileRoute("/_authenticated/_app")({
     if (!context.brand) {
       throw redirect({ to: "/setup" });
     }
+
     return { brand: context.brand };
   },
   component: AppLayout,
@@ -74,6 +75,7 @@ function AppSidebar({ pathname }: { pathname: string }) {
 
   const items: KoiSidebarItem[] = navigation.map((item) => {
     const active = pathname === item.to;
+
     return {
       id: item.key,
       label: t(`routes.${item.key}`),
@@ -88,6 +90,7 @@ function AppSidebar({ pathname }: { pathname: string }) {
       ),
     };
   });
+
   return (
     <KoiSidebar
       header={<WorkspaceMenu name={me.organization.name} />}

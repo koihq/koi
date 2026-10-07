@@ -22,9 +22,11 @@ make compose-up          # Postgres
 make ui-build            # Vite → pkg/web/dist (embedded by Go)
 make run                 # Go API + embedded UI on :8080
 make test                # go test ./...
+make format              # Biome safe fixes + gofmt
+make go-format-check     # fail if Go files need formatting
 ```
 
-`pnpm --dir ui install` registers Git hooks. `ui/.husky/pre-commit` runs UI `lint`, `check-types`, and unit tests (`vitest run`).
+`pnpm --dir ui install` registers Git hooks. `ui/.husky/pre-commit` runs `go-format-check`, then UI `check` (formatting, lint, imports), `check-types`, and unit tests (`vitest run`). Checks fail without rewriting files. Type checking uses `tsc -p tsconfig.json --noEmit`; build-info caches are local artifacts and must not be committed.
 
 Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/api` to the Go API. `:8080` in dev serves the last embedded build — do not use it for UI work.
 
@@ -55,6 +57,19 @@ Self-hosted Koi must work without requiring users to create accounts with, obtai
 - Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.
 - Break up nested Go literals for readability even when `gofmt` accepts a one-line form.
 - Postgres integration tests run during `go test ./...`. `internal/testdb.URL(t)` reads `KOI_DATABASE_URL` from the environment or repo `.env`, isolates a schema in that database, and fails if Postgres is unavailable. Tests explicitly run their own migrations.
+
+## Readability
+
+Apply these conventions throughout handwritten source, tests, and configuration:
+
+- Separate logical steps with one blank line: setup, queries, transformations, mutations, and return. Separate multiline hook calls from surrounding steps.
+- Keep closely related declarations together, and keep an operation beside its error check.
+- Expand nested Go literals and long independent assignments onto separate lines. Preserve simultaneous assignments, swaps, and idiomatic value/error pairs.
+- Extract a function when it isolates a responsibility; use spacing to make ordinary sequencing readable.
+- Use Biome's existing two-space indentation and 100-column width for UI code, and `gofmt` for Go. Logical grouping is a review convention; formatters enforce mechanical consistency.
+- Exclude generated clients, route trees, mocks, vendored code, and build outputs from manual readability edits. Keep the existing generated-file formatter exclusions.
+
+Run `make format` to apply safe formatting fixes. CI checks UI formatting, lint, and imports with `pnpm --dir ui check`, and Go formatting with `make go-format-check`, alongside type checking, `go vet`, and tests.
 
 ## Pin dependencies
 

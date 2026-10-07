@@ -18,15 +18,18 @@ type authDeps struct {
 
 func newAuthDeps(t *testing.T) authDeps {
 	t.Helper()
+
 	d := authDeps{
 		store:   NewMockStore(t),
 		users:   NewMockUserRepository(t),
 		orgs:    NewMockOrganizationRepository(t),
 		members: NewMockMembershipRepository(t),
 	}
+
 	d.store.On("UserRepo").Return(d.users)
 	d.store.On("OrganizationRepo").Return(d.orgs).Maybe()
 	d.store.On("MembershipRepo").Return(d.members).Maybe()
+
 	return d
 }
 
@@ -38,11 +41,13 @@ func (d authDeps) mockAtomic() {
 
 func assignUserID(_ context.Context, u *User) error {
 	u.ID = uuid.New()
+
 	return nil
 }
 
 func assignOrgID(_ context.Context, o *Organization) error {
 	o.ID = uuid.New()
+
 	return nil
 }
 
@@ -55,8 +60,10 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
 
 	me, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
-		Email: "You@Example.com", Password: "password1",
+		Email:    "You@Example.com",
+		Password: "password1",
 	})
+
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, me.User.ID)
 	require.NotEqual(t, uuid.Nil, me.Organization.ID)
@@ -71,16 +78,21 @@ func TestSignup_DuplicateEmail(t *testing.T) {
 	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(&User{Email: "you@example.com"}, nil)
 
 	_, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
-		Email: "you@example.com", Password: "password1",
+		Email:    "you@example.com",
+		Password: "password1",
 	})
+
 	require.ErrorIs(t, err, ErrEmailTaken)
 }
 
 func TestLogin_WrongPasswordAndUnknownEmail(t *testing.T) {
 	hash, err := HashPassword("password1")
 	require.NoError(t, err)
+
 	user := &User{
-		BaseEntity:   BaseEntity{ID: uuid.New()},
+		BaseEntity: BaseEntity{
+			ID: uuid.New(),
+		},
 		Email:        "you@example.com",
 		PasswordHash: hash,
 	}
@@ -102,12 +114,22 @@ func TestSignup_Validate(t *testing.T) {
 	require.ErrorIs(t, err, ErrValidation)
 	var ve *Error
 	require.ErrorAs(t, err, &ve)
-	require.Equal(t, []FieldError{{Field: "email", Code: FieldInvalid}}, ve.Fields)
+	require.Equal(t, []FieldError{
+		{
+			Field: "email",
+			Code:  FieldInvalid,
+		},
+	}, ve.Fields)
 
 	_, err = cmd.Signup(t.Context(), SignupParams{Email: "you@example.com", Password: "short"})
 	require.ErrorIs(t, err, ErrValidation)
 	require.ErrorAs(t, err, &ve)
-	require.Equal(t, []FieldError{{Field: "password", Code: FieldMinLength}}, ve.Fields)
+	require.Equal(t, []FieldError{
+		{
+			Field: "password",
+			Code:  FieldMinLength,
+		},
+	}, ve.Fields)
 }
 
 func TestUserValidate(t *testing.T) {
@@ -128,8 +150,19 @@ func TestLogin_Me(t *testing.T) {
 	require.NoError(t, err)
 	userID := uuid.New()
 	orgID := uuid.New()
-	user := &User{BaseEntity: BaseEntity{ID: userID}, Email: "you@example.com", PasswordHash: hash}
-	org := &Organization{BaseEntity: BaseEntity{ID: orgID}, Name: "you"}
+	user := &User{
+		BaseEntity: BaseEntity{
+			ID: userID,
+		},
+		Email:        "you@example.com",
+		PasswordHash: hash,
+	}
+	org := &Organization{
+		BaseEntity: BaseEntity{
+			ID: orgID,
+		},
+		Name: "you",
+	}
 	member := &Membership{UserID: userID, OrganizationID: orgID, Role: RoleOwner}
 
 	d := newAuthDeps(t)
