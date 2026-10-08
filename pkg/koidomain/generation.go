@@ -113,50 +113,64 @@ func (s *generationService) Create(ctx context.Context, brandID uuid.UUID, mode 
 	if !validGenerationMode(mode) {
 		return nil, false, Validation(FieldError{Field: "mode", Code: FieldInvalid})
 	}
+
 	var run *GenerationRun
 	var terminalReplay bool
+
 	err := s.store.Atomic(ctx, func(tx Store) error {
 		brand, err := tx.BrandRepo().LockForUpdate(ctx, brandID)
 		if err != nil {
 			return err
 		}
+
 		if !s.enabled {
 			return ErrFeatureUnavailable
 		}
+
 		repo := tx.GenerationRepo()
 		if key != nil {
 			run, err = repo.ByKey(ctx, brandID, *key)
 			if err != nil && !errors.Is(err, ErrNotFound) {
 				return err
 			}
+
 			if err == nil {
 				if run.Mode != mode {
 					return ErrIdempotencyConflict
 				}
+
 				terminalReplay = run.State == GenerationSucceeded || run.State == GenerationFailed
+
 				return nil
 			}
 		}
+
 		active, err := repo.Active(ctx, brandID)
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
+
 		if err == nil {
 			if active.Mode == mode || active.Mode == GenerationInitial && mode != GenerationInitial {
 				run = active
+
 				return nil
 			}
+
 			return &Error{Code: CodeGenerationConflict, Message: ErrGenerationConflict.Message, RunID: active.ID}
 		}
+
 		if mode == GenerationInitial {
 			succeeded, err := repo.HasSucceededInitial(ctx, brandID)
 			if err != nil {
 				return err
 			}
+
 			if succeeded {
 				return ErrInitialAlreadyCompleted
 			}
 		}
+
 		run = &GenerationRun{
 			BrandID:        brandID,
 			Mode:           mode,
@@ -171,11 +185,13 @@ func (s *generationService) Create(ctx context.Context, brandID uuid.UUID, mode 
 				Description: brand.Description,
 			},
 		}
+
 		return repo.CreateAndEnqueue(ctx, run)
 	})
 	if err != nil {
 		return nil, false, err
 	}
+
 	return run, terminalReplay, nil
 }
 
@@ -183,6 +199,7 @@ func (s *generationService) Get(ctx context.Context, brandID, runID uuid.UUID) (
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	return s.store.GenerationRepo().Get(ctx, brandID, runID)
 }
 
@@ -190,5 +207,6 @@ func (s *generationService) List(ctx context.Context, brandID uuid.UUID, page Pa
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	return s.store.GenerationRepo().List(ctx, brandID, page)
 }

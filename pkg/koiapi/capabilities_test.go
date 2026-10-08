@@ -26,25 +26,39 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 		searchEnabled   bool
 		draftingEnabled bool
 	}{
-		{name: "unconfigured"},
-		{name: "search configured", searcher: staticCompanySearcher{}, searchEnabled: true},
-		{name: "drafting configured", draftingEnabled: true},
+		{
+			name: "unconfigured",
+		},
+		{
+			name:          "search configured",
+			searcher:      staticCompanySearcher{},
+			searchEnabled: true,
+		},
+		{
+			name:            "drafting configured",
+			draftingEnabled: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sess := scs.New()
 			sess.Cookie.Name = "koi_session"
 			app := NewServer(NewMockStore(t), sess, tc.searcher, tc.draftingEnabled)
+
 			testSession := sess.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				sess.Put(r.Context(), "user_id", uuid.NewString())
 				w.WriteHeader(http.StatusNoContent)
 			}))
+
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/test-session" {
 					testSession.ServeHTTP(w, r)
+
 					return
 				}
+
 				app.ServeHTTP(w, r)
 			}))
+
 			defer ts.Close()
 			client := newCookieClient(t)
 			resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/capabilities", "")

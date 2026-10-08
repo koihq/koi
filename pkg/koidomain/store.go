@@ -14,4 +14,5 @@ type Store interface {
 	PromptRepo() PromptRepository
 	CompetitorRepo() CompetitorRepository
 	GenerationRepo() GenerationRepository
+	VisibilityRepo() VisibilityRepository
 }

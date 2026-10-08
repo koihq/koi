@@ -35,6 +35,7 @@ func newListsTestServer(
 	r.Route("/api/v1/brands/{brandID}/competitors", NewCompetitorHandler(cq, cc, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
+
 	return ts
 }
 
@@ -43,8 +44,10 @@ func TestListHandlersRequireSession(t *testing.T) {
 		NewMockPromptQuerier(t), NewMockPromptCommander(t),
 		NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t),
 	)
+
 	client := newCookieClient(t)
 	brandID, childID := uuid.New(), uuid.New()
+
 	paths := []struct{ method, path, body string }{
 		{http.MethodGet, "/prompts", ""},
 		{http.MethodPost, "/prompts", `{}`},
@@ -54,6 +57,7 @@ func TestListHandlersRequireSession(t *testing.T) {
 		{http.MethodGet, "/competitors", ""},
 		{http.MethodGet, "/competitors/search?q=acme", ""},
 	}
+
 	for _, request := range paths {
 		resp := doJSON(t, client, request.method, ts.URL+"/api/v1/brands/"+brandID.String()+request.path, request.body)
 		var body api.Envelope
@@ -90,10 +94,17 @@ func TestPromptHandlerCreateMalformedAndUnowned(t *testing.T) {
 func TestPromptHandlerConfirmationIsIdempotent(t *testing.T) {
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
 	commander := NewMockPromptCommander(t)
+
 	prompt := &koidomain.Prompt{
-		BaseEntity: koidomain.BaseEntity{ID: promptID}, BrandID: brandID,
-		Text: "What is Koi?", Source: koidomain.PromptSourceDrafted, Confirmed: true,
+		BaseEntity: koidomain.BaseEntity{
+			ID: promptID,
+		},
+		BrandID:   brandID,
+		Text:      "What is Koi?",
+		Source:    koidomain.PromptSourceDrafted,
+		Confirmed: true,
 	}
+
 	commander.EXPECT().Confirm(mock.Anything, brandID, promptID).Return(prompt, nil).Twice()
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
@@ -112,10 +123,14 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	commander := NewMockCompetitorCommander(t)
 	commander.EXPECT().Create(mock.Anything, brandID, koidomain.CompetitorParams{
-		Name: "Acme", Domain: "acme.com",
+		Name:   "Acme",
+		Domain: "acme.com",
 	}).Return(&koidomain.Competitor{
-		BrandID: brandID, Name: "Acme", Domain: "acme.com",
-		Source: koidomain.CompetitorSourceManual, Confirmed: true,
+		BrandID:   brandID,
+		Name:      "Acme",
+		Domain:    "acme.com",
+		Source:    koidomain.CompetitorSourceManual,
+		Confirmed: true,
 	}, nil)
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), NewMockCompetitorQuerier(t), commander)
 	client := newCookieClient(t)
@@ -123,6 +138,7 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors",
 		`{"name":"Acme","domain":"acme.com","source":"observed","confirmed":false}`)
+
 	var body koidomain.Competitor
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -138,8 +154,11 @@ func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 			return confirmed != nil && !*confirmed
 		}),
 	).Return(&koidomain.Page[koidomain.Prompt]{
-		Items: []koidomain.Prompt{}, TotalItems: 6, TotalPages: 2,
-		CurrentPage: 2, HasPrev: true,
+		Items:       []koidomain.Prompt{},
+		TotalItems:  6,
+		TotalPages:  2,
+		CurrentPage: 2,
+		HasPrev:     true,
 	}, nil)
 	ts := newListsTestServer(t, querier, NewMockPromptCommander(t), NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
@@ -178,7 +197,12 @@ func TestPromptHandlerGetsOneAndConfirmsAllWithoutBody(t *testing.T) {
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
 	querier := NewMockPromptQuerier(t)
 	commander := NewMockPromptCommander(t)
-	prompt := &koidomain.Prompt{BaseEntity: koidomain.BaseEntity{ID: promptID}, BrandID: brandID}
+	prompt := &koidomain.Prompt{
+		BaseEntity: koidomain.BaseEntity{
+			ID: promptID,
+		},
+		BrandID: brandID,
+	}
 	querier.EXPECT().Get(mock.Anything, brandID, promptID).Return(prompt, nil)
 	commander.EXPECT().ConfirmAll(mock.Anything, brandID).Return(nil)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
@@ -206,7 +230,8 @@ func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
 			return confirmed != nil && *confirmed
 		}),
 	).Return(&koidomain.Page[koidomain.Competitor]{
-		Items: []koidomain.Competitor{}, CurrentPage: 1,
+		Items:       []koidomain.Competitor{},
+		CurrentPage: 1,
 	}, nil)
 	commander.EXPECT().ConfirmAll(mock.Anything, brandID).Return(nil)
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), querier, commander)

@@ -18,5 +18,6 @@ func WithIdentity(ctx context.Context, identity Identity) context.Context {
 
 func FromContext(ctx context.Context) (Identity, bool) {
 	identity, ok := ctx.Value(identityKey{}).(Identity)
+
 	return identity, ok && identity.UserID != uuid.Nil
 }

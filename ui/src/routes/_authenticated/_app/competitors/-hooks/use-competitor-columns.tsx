@@ -16,6 +16,7 @@ export function useCompetitorColumns({
   onConfirm: (id: string) => void;
 }): ColumnDef<Competitor>[] {
   const { t } = useTranslation("management");
+
   return useMemo(
     () => [
       {
@@ -26,7 +27,9 @@ export function useCompetitorColumns({
             <BrandIcon name={row.original.name} domain={row.original.domain} />
             <div>
               <p className="text-sm font-medium">{row.original.name}</p>
-              <p className="text-muted-foreground">{row.original.domain || row.original.githubRepo}</p>
+              <p className="text-muted-foreground">
+                {row.original.domain || row.original.githubRepo}
+              </p>
             </div>
           </div>
         ),

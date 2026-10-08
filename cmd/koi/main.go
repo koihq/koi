@@ -13,6 +13,7 @@ func main() {
 		slog.Error("koi exited", "err", err)
 		os.Exit(1)
 	}
+
 	if err := app.Run(); err != nil {
 		slog.Error("koi exited", "err", err)
 		os.Exit(1)

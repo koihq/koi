@@ -19,8 +19,14 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 		value any
 		table string
 	}{
-		{&koidomain.Prompt{}, "prompts"},
-		{&koidomain.Competitor{}, "competitors"},
+		{
+			&koidomain.Prompt{},
+			"prompts",
+		},
+		{
+			&koidomain.Competitor{},
+			"competitors",
+		},
 	} {
 		s, err := schema.Parse(entity.value, &sync.Map{}, schema.NamingStrategy{})
 		require.NoError(t, err)
@@ -40,8 +46,11 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 
 func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	db, err := gorm.Open(postgres.Open("host=localhost user=koi dbname=koi sslmode=disable"), &gorm.Config{
-		DryRun: true, DisableAutomaticPing: true, SkipDefaultTransaction: true,
+		DryRun:                 true,
+		DisableAutomaticPing:   true,
+		SkipDefaultTransaction: true,
 	})
+
 	require.NoError(t, err)
 	var queries []string
 	require.NoError(t, db.Callback().Query().After("gorm:query").Register("test:capture_child_query", func(tx *gorm.DB) {
@@ -58,9 +67,17 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	ctx := identityCtx(t, uuid.New())
 	unconfirmed := false
 	prompts := NewGormPromptRepository(db)
+
 	_, err = prompts.List(ctx, koidomain.PromptFilter{
-		BrandID: brandID, Query: "100%_Koi", Confirmed: &unconfirmed, Page: koidomain.PageParams{Page: 2, PageSize: 10},
+		BrandID:   brandID,
+		Query:     "100%_Koi",
+		Confirmed: &unconfirmed,
+		Page: koidomain.PageParams{
+			Page:     2,
+			PageSize: 10,
+		},
 	})
+
 	require.NoError(t, err)
 	_, err = prompts.Get(ctx, koidomain.PromptFilter{ID: childID, BrandID: brandID})
 	require.NoError(t, err)
@@ -70,26 +87,37 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	require.ErrorIs(t, prompts.Delete(ctx, filter), koidomain.ErrNotFound)
 	require.ErrorIs(t, prompts.Update(ctx, filter, koidomain.PromptUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
 	require.NoError(t, prompts.Update(ctx, koidomain.PromptFilter{
-		BrandID: brandID, Confirmed: &unconfirmed,
+		BrandID:   brandID,
+		Confirmed: &unconfirmed,
 	}, koidomain.PromptUpdate{Confirmed: &confirmed}))
 
 	competitors := NewGormCompetitorRepository(db)
+
 	_, err = competitors.List(ctx, koidomain.CompetitorFilter{
-		BrandID: brandID, Query: "Acme", Page: koidomain.PageParams{Page: 1, PageSize: 10},
+		BrandID: brandID,
+		Query:   "Acme",
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
 	})
+
 	require.NoError(t, err)
 	_, err = competitors.Get(ctx, koidomain.CompetitorFilter{ID: childID, BrandID: brandID})
 	require.NoError(t, err)
 	competitorConfirmed := true
 	require.ErrorIs(t, competitors.Update(ctx, koidomain.CompetitorFilter{
-		ID: childID, BrandID: brandID,
+		ID:      childID,
+		BrandID: brandID,
 	}, koidomain.CompetitorUpdate{Confirmed: &competitorConfirmed}), koidomain.ErrNotFound)
 
 	require.Len(t, queries, 9)
+
 	for _, query := range queries {
 		require.Contains(t, query, "brand_id =")
 		require.Contains(t, query, "brands.user_id =")
 	}
+
 	require.Contains(t, queries[0], "confirmed =")
 	require.Contains(t, queries[0], "text ILIKE")
 	require.NotContains(t, queries[0], "100%_Koi")
@@ -107,17 +135,22 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 
 	listSQL := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		var items []koidomain.Prompt
+
 		return applyPromptFilter(tx, koidomain.PromptFilter{BrandID: brandID}).
 			Order("created_at ASC, id ASC").Limit(10).Offset(10).Find(&items)
 	})
+
 	require.Contains(t, listSQL, "ORDER BY created_at ASC, id ASC")
 	require.Contains(t, listSQL, "LIMIT 10 OFFSET 10")
 }
 
 func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 	db, err := gorm.Open(postgres.Open("host=localhost user=koi dbname=koi sslmode=disable"), &gorm.Config{
-		DryRun: true, DisableAutomaticPing: true, SkipDefaultTransaction: true,
+		DryRun:                 true,
+		DisableAutomaticPing:   true,
+		SkipDefaultTransaction: true,
 	})
+
 	require.NoError(t, err)
 	ctx := t.Context()
 	brandID := uuid.New()
@@ -128,13 +161,23 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	_, err = brands.Get(ctx, brandID)
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
-	require.ErrorIs(t, brands.Update(ctx, &koidomain.Brand{BaseEntity: koidomain.BaseEntity{ID: brandID}}), koidomain.ErrUnauthorized)
+	require.ErrorIs(t, brands.Update(ctx, &koidomain.Brand{
+		BaseEntity: koidomain.BaseEntity{
+			ID: brandID,
+		},
+	}), koidomain.ErrUnauthorized)
 	require.ErrorIs(t, brands.Create(ctx, &koidomain.Brand{}), koidomain.ErrUnauthorized)
 
 	prompts := NewGormPromptRepository(db)
 	_, err = prompts.Get(ctx, koidomain.PromptFilter{BrandID: brandID})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
-	_, err = prompts.List(ctx, koidomain.PromptFilter{BrandID: brandID, Page: koidomain.PageParams{Page: 1, PageSize: 10}})
+	_, err = prompts.List(ctx, koidomain.PromptFilter{
+		BrandID: brandID,
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	require.ErrorIs(t, prompts.Update(ctx, koidomain.PromptFilter{BrandID: brandID}, koidomain.PromptUpdate{}), koidomain.ErrUnauthorized)
 	require.ErrorIs(t, prompts.Delete(ctx, koidomain.PromptFilter{BrandID: brandID}), koidomain.ErrUnauthorized)
@@ -143,7 +186,13 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 	competitors := NewGormCompetitorRepository(db)
 	_, err = competitors.Get(ctx, koidomain.CompetitorFilter{BrandID: brandID})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
-	_, err = competitors.List(ctx, koidomain.CompetitorFilter{BrandID: brandID, Page: koidomain.PageParams{Page: 1, PageSize: 10}})
+	_, err = competitors.List(ctx, koidomain.CompetitorFilter{
+		BrandID: brandID,
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	require.ErrorIs(t, competitors.Update(ctx, koidomain.CompetitorFilter{BrandID: brandID}, koidomain.CompetitorUpdate{}), koidomain.ErrUnauthorized)
 	require.ErrorIs(t, competitors.Delete(ctx, koidomain.CompetitorFilter{BrandID: brandID}), koidomain.ErrUnauthorized)

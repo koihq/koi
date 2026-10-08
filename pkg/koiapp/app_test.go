@@ -14,6 +14,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Setenv("KOI_PORT", ":8080")
 	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
 	t.Setenv("KOI_SESSION_SECRET", "test-secret")
+
 	for _, key := range []string{"KOI_OPENROUTER_API_KEY", "KOI_WORKER_CONCURRENCY", "KOI_PROVIDER_TIMEOUT", "KOI_DB_MAX_OPEN_CONNS"} {
 		t.Setenv(key, "")
 		require.NoError(t, os.Unsetenv(key))

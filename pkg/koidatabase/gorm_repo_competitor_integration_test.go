@@ -22,38 +22,60 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
 	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
-	brand := &koidomain.Brand{UserID: uuid.New(), Name: "Koi", Domain: "koi.dev", Country: "IT"}
+	brand := &koidomain.Brand{
+		UserID:  uuid.New(),
+		Name:    "Koi",
+		Domain:  "koi.dev",
+		Country: "IT",
+	}
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))
 	require.Equal(t, user.ID, brand.UserID)
 
 	errors := make(chan error, 2)
+
 	for range 2 {
 		go func() {
 			_, err := koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{
-				Name: "Acme", Domain: "ACME.COM",
+				Name:   "Acme",
+				Domain: "ACME.COM",
 			})
+
 			errors <- err
 		}()
 	}
+
 	var succeeded, taken int
+
 	for range 2 {
 		err := <-errors
 		if err == nil {
 			succeeded++
 			continue
 		}
+
 		var domainErr *koidomain.Error
 		require.ErrorAs(t, err, &domainErr)
 		require.Equal(t, koidomain.CodeValidation, domainErr.Code)
-		require.Equal(t, []koidomain.FieldError{{Field: "domain", Code: koidomain.FieldTaken}}, domainErr.Fields)
+		require.Equal(t, []koidomain.FieldError{
+			{
+				Field: "domain",
+				Code:  koidomain.FieldTaken,
+			},
+		}, domainErr.Fields)
 		taken++
 	}
+
 	require.Equal(t, 1, succeeded)
 	require.Equal(t, 1, taken)
 
 	page, err := store.CompetitorRepo().List(ctx, koidomain.CompetitorFilter{
-		BrandID: brand.ID, Page: koidomain.PageParams{Page: 1, PageSize: 10},
+		BrandID: brand.ID,
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
 	})
+
 	require.NoError(t, err)
 	require.EqualValues(t, 1, page.TotalItems)
 
@@ -64,23 +86,36 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	var oldRow koidomain.Competitor
 	require.NoError(t, db.First(&oldRow, "id = ?", page.Items[0].ID).Error)
 	require.Equal(t, "acme.com", oldRow.Domain)
+
 	for _, repo := range []string{"https://github.com/zsh-users/zsh-autosuggestions", "https://github.com/atuinsh/atuin"} {
 		_, err := koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{Name: repo, GitHubRepo: repo})
 		require.NoError(t, err)
 	}
-	_, err = koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{Name: "Duplicate", GitHubRepo: "https://github.com/zsh-users/zsh-autosuggestions"})
+
+	_, err = koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{
+		Name:       "Duplicate",
+		GitHubRepo: "https://github.com/zsh-users/zsh-autosuggestions",
+	})
 	var repoErr *koidomain.Error
 	require.ErrorAs(t, err, &repoErr)
-	require.Equal(t, []koidomain.FieldError{{Field: "github_repo", Code: koidomain.FieldTaken}}, repoErr.Fields)
+	require.Equal(t, []koidomain.FieldError{
+		{
+			Field: "github_repo",
+			Code:  koidomain.FieldTaken,
+		},
+	}, repoErr.Fields)
 
 	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), otherUser))
 	otherCtx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: otherUser.ID})
 	otherBrand := &koidomain.Brand{Name: "Other", Domain: "other.dev", Country: "IT"}
 	require.NoError(t, store.BrandRepo().Create(otherCtx, otherBrand))
+
 	_, err = koidomain.NewCompetitorCommander(store).Create(otherCtx, otherBrand.ID, koidomain.CompetitorParams{
-		Name: "Acme", Domain: "acme.com",
+		Name:   "Acme",
+		Domain: "acme.com",
 	})
+
 	require.NoError(t, err)
 	_, err = store.CompetitorRepo().Get(otherCtx, koidomain.CompetitorFilter{ID: page.Items[0].ID})
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
@@ -93,7 +128,12 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	require.ErrorIs(t, store.CompetitorRepo().Delete(otherCtx, filter), koidomain.ErrNotFound)
 	require.ErrorIs(t, store.CompetitorRepo().Create(otherCtx, &koidomain.Competitor{BrandID: brand.ID}), koidomain.ErrNotFound)
 
-	prompt := &koidomain.Prompt{BrandID: brand.ID, Text: "Who is Koi?", Source: koidomain.PromptSourceManual, Confirmed: true}
+	prompt := &koidomain.Prompt{
+		BrandID:   brand.ID,
+		Text:      "Who is Koi?",
+		Source:    koidomain.PromptSourceManual,
+		Confirmed: true,
+	}
 	require.NoError(t, store.PromptRepo().Create(ctx, prompt))
 	promptFilter := koidomain.PromptFilter{ID: prompt.ID, BrandID: brand.ID}
 	_, err = store.PromptRepo().Get(otherCtx, promptFilter)

@@ -24,17 +24,26 @@ type workerStore struct {
 }
 
 func (s *workerStore) BeginGenerationAttempt(context.Context, uuid.UUID, int64, int) (*koidomain.GenerationRun, koidomain.GenerationInput, error) {
-	return s.run, koidomain.GenerationInput{Brand: koidomain.BrandSnapshot{Name: "Koi", Domain: "koi.dev"}}, nil
+	return s.run, koidomain.GenerationInput{
+		Brand: koidomain.BrandSnapshot{
+			Name:   "Koi",
+			Domain: "koi.dev",
+		},
+	}, nil
 }
+
 func (s *workerStore) FinishGenerationAttempt(_ context.Context, _ uuid.UUID, _ int, result koidomain.GenerationResult) (int, int, error) {
 	s.result = result
 	if s.finishErr != nil {
 		return 0, 0, s.finishErr
 	}
+
 	return len(result.Prompts), len(result.Competitors), nil
 }
+
 func (s *workerStore) RecordGenerationFailure(_ context.Context, _ uuid.UUID, _ int, code string, retryAt *time.Time) error {
 	s.code, s.retryAt = code, retryAt
+
 	return nil
 }
 
@@ -55,17 +64,91 @@ func TestGenerationWorkerOutcomes(t *testing.T) {
 		code     string
 		retry    bool
 	}{
-		{name: "success", attempt: 1, provider: workerProvider{result: koidomain.GenerationResult{Prompts: []string{"Question?"}}}},
-		{name: "retry provider", attempt: 1, provider: workerProvider{err: &openrouter.Error{Code: "provider_rate_limited", Retryable: true, Err: errors.New("rate limit")}}, code: "provider_rate_limited", retry: true},
-		{name: "last retry", attempt: 3, provider: workerProvider{err: &openrouter.Error{Code: "provider_rate_limited", Retryable: true, Err: errors.New("rate limit")}}, code: "provider_rate_limited"},
-		{name: "terminal auth", attempt: 1, provider: workerProvider{err: &openrouter.Error{Code: "provider_auth", Err: errors.New("unauthorized")}}, code: "provider_auth"},
-		{name: "terminal payment", attempt: 1, provider: workerProvider{err: &openrouter.Error{Code: "provider_rejected", Err: errors.New("payment required")}}, code: "provider_rejected"},
-		{name: "invalid output retries", attempt: 1, provider: workerProvider{err: &openrouter.Error{Code: "invalid_output", Retryable: true, Err: errors.New("invalid")}}, code: "invalid_output", retry: true},
+		{
+			name:    "success",
+			attempt: 1,
+			provider: workerProvider{
+				result: koidomain.GenerationResult{
+					Prompts: []string{"Question?"},
+				},
+			},
+		},
+		{
+			name:    "retry provider",
+			attempt: 1,
+			provider: workerProvider{
+				err: &openrouter.Error{
+					Code:      "provider_rate_limited",
+					Retryable: true,
+					Err:       errors.New("rate limit"),
+				},
+			},
+			code:  "provider_rate_limited",
+			retry: true,
+		},
+		{
+			name:    "last retry",
+			attempt: 3,
+			provider: workerProvider{
+				err: &openrouter.Error{
+					Code:      "provider_rate_limited",
+					Retryable: true,
+					Err:       errors.New("rate limit"),
+				},
+			},
+			code: "provider_rate_limited",
+		},
+		{
+			name:    "terminal auth",
+			attempt: 1,
+			provider: workerProvider{
+				err: &openrouter.Error{
+					Code: "provider_auth",
+					Err:  errors.New("unauthorized"),
+				},
+			},
+			code: "provider_auth",
+		},
+		{
+			name:    "terminal payment",
+			attempt: 1,
+			provider: workerProvider{
+				err: &openrouter.Error{
+					Code: "provider_rejected",
+					Err:  errors.New("payment required"),
+				},
+			},
+			code: "provider_rejected",
+		},
+		{
+			name:    "invalid output retries",
+			attempt: 1,
+			provider: workerProvider{
+				err: &openrouter.Error{
+					Code:      "invalid_output",
+					Retryable: true,
+					Err:       errors.New("invalid"),
+				},
+			},
+			code:  "invalid_output",
+			retry: true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			store := &workerStore{run: &koidomain.GenerationRun{ModelSlug: "test"}}
+			store := &workerStore{
+				run: &koidomain.GenerationRun{
+					ModelSlug: "test",
+				},
+			}
 			worker := &generationWorker{store: store, provider: tc.provider}
-			job := &river.Job[koidatabase.GenerationJobArgs]{JobRow: &rivertype.JobRow{Attempt: tc.attempt}, Args: koidatabase.GenerationJobArgs{RunID: uuid.New()}}
+			job := &river.Job[koidatabase.GenerationJobArgs]{
+				JobRow: &rivertype.JobRow{
+					Attempt: tc.attempt,
+				},
+				Args: koidatabase.GenerationJobArgs{
+					RunID: uuid.New(),
+				},
+			}
 			err := worker.Work(t.Context(), job)
 			if tc.code == "" {
 				require.NoError(t, err)
@@ -83,9 +166,28 @@ func TestGenerationWorkerOutcomes(t *testing.T) {
 }
 
 func TestGenerationWorkerDraftSaveFailureRetries(t *testing.T) {
-	store := &workerStore{run: &koidomain.GenerationRun{ModelSlug: "test"}, finishErr: errors.New("database unavailable")}
-	worker := &generationWorker{store: store, provider: workerProvider{result: koidomain.GenerationResult{Prompts: []string{"Question?"}}}}
-	job := &river.Job[koidatabase.GenerationJobArgs]{JobRow: &rivertype.JobRow{Attempt: 1}, Args: koidatabase.GenerationJobArgs{RunID: uuid.New()}}
+	store := &workerStore{
+		run: &koidomain.GenerationRun{
+			ModelSlug: "test",
+		},
+		finishErr: errors.New("database unavailable"),
+	}
+	worker := &generationWorker{
+		store: store,
+		provider: workerProvider{
+			result: koidomain.GenerationResult{
+				Prompts: []string{"Question?"},
+			},
+		},
+	}
+	job := &river.Job[koidatabase.GenerationJobArgs]{
+		JobRow: &rivertype.JobRow{
+			Attempt: 1,
+		},
+		Args: koidatabase.GenerationJobArgs{
+			RunID: uuid.New(),
+		},
+	}
 	require.Error(t, worker.Work(t.Context(), job))
 	require.Equal(t, "storage_error", store.code)
 	require.NotNil(t, store.retryAt)

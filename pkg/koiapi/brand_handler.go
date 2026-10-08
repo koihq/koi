@@ -56,8 +56,10 @@ func brandID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		api.WriteDomainError(w, r, koidomain.ErrNotFound)
+
 		return uuid.Nil, false
 	}
+
 	return id, true
 }
 
@@ -66,15 +68,22 @@ func (h *BrandHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	req := middlewares.Body[BrandRequest](r)
+
 	brand, err := h.commander.Create(r.Context(), koidomain.BrandParams{
-		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
-		Country: req.Country, Description: req.Description,
+		Name:        req.Name,
+		Domain:      req.Domain,
+		GitHubRepo:  req.GitHubRepo,
+		Country:     req.Country,
+		Description: req.Description,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusCreated, brand)
 }
 
@@ -83,16 +92,21 @@ func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	page, err := pageParams(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	brands, err := h.querier.List(r.Context(), page)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, brands)
 }
 
@@ -101,10 +115,12 @@ func pageParams(r *http.Request) (koidomain.PageParams, error) {
 	if err != nil {
 		return koidomain.PageParams{}, err
 	}
+
 	pageSize, err := positiveQueryInt(r, "pageSize", 10, 100)
 	if err != nil {
 		return koidomain.PageParams{}, err
 	}
+
 	return koidomain.PageParams{Page: page, PageSize: pageSize}, nil
 }
 
@@ -119,14 +135,17 @@ func readListQuery(r *http.Request) (listQuery, error) {
 	if err != nil {
 		return listQuery{}, err
 	}
+
 	confirmed, err := optionalBoolQuery(r, "confirmed")
 	if err != nil {
 		return listQuery{}, err
 	}
+
 	query, err := optionalStringQuery(r, "q")
 	if err != nil {
 		return listQuery{}, err
 	}
+
 	return listQuery{Page: page, Query: query, Confirmed: confirmed}, nil
 }
 
@@ -135,10 +154,13 @@ func optionalBoolQuery(r *http.Request, key string) (*bool, error) {
 	if !present {
 		return nil, nil
 	}
+
 	if len(values) != 1 || values[0] != "true" && values[0] != "false" {
 		return nil, koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
 	}
+
 	value := values[0] == "true"
+
 	return &value, nil
 }
 
@@ -147,9 +169,11 @@ func optionalStringQuery(r *http.Request, key string) (string, error) {
 	if !present {
 		return "", nil
 	}
+
 	if len(values) != 1 {
 		return "", koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
 	}
+
 	return strings.TrimSpace(values[0]), nil
 }
 
@@ -158,13 +182,16 @@ func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (
 	if !present {
 		return defaultValue, nil
 	}
+
 	if len(values) != 1 {
 		return 0, koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
 	}
+
 	value, err := strconv.Atoi(values[0])
 	if err != nil || value < 1 || value > maxValue {
 		return 0, koidomain.Validation(koidomain.FieldError{Field: key, Code: koidomain.FieldInvalid})
 	}
+
 	return value, nil
 }
 
@@ -173,15 +200,19 @@ func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	id, ok := brandID(w, r)
 	if !ok {
 		return
 	}
+
 	brand, err := h.querier.Get(r.Context(), id)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, brand)
 }
 
@@ -190,19 +221,27 @@ func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	id, ok := brandID(w, r)
 	if !ok {
 		return
 	}
+
 	req := middlewares.Body[BrandPatchRequest](r)
+
 	brand, err := h.commander.Update(r.Context(), id, koidomain.BrandPatch{
-		Name: req.Name, Domain: req.Domain, GitHubRepo: req.GitHubRepo,
-		Country: req.Country, Description: req.Description,
+		Name:        req.Name,
+		Domain:      req.Domain,
+		GitHubRepo:  req.GitHubRepo,
+		Country:     req.Country,
+		Description: req.Description,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, brand)
 }
 

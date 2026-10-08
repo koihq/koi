@@ -47,8 +47,10 @@ func pathID(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, boo
 	id, err := uuid.Parse(chi.URLParam(r, name))
 	if err != nil {
 		api.WriteDomainError(w, r, koidomain.ErrNotFound)
+
 		return uuid.Nil, false
 	}
+
 	return id, true
 }
 
@@ -57,7 +59,9 @@ func requestOwnerAndBrand(w http.ResponseWriter, r *http.Request) (uuid.UUID, uu
 	if !ok {
 		return uuid.Nil, uuid.Nil, false
 	}
+
 	brandID, ok := pathID(w, r, "brandID")
+
 	return userID, brandID, ok
 }
 
@@ -66,16 +70,21 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	params, err := readListQuery(r)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	prompts, err := h.querier.List(r.Context(), brandID, params.Page, params.Query, params.Confirmed)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, prompts)
 }
 
@@ -84,15 +93,19 @@ func (h *PromptHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	promptID, ok := pathID(w, r, "promptID")
 	if !ok {
 		return
 	}
+
 	prompt, err := h.querier.Get(r.Context(), brandID, promptID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, prompt)
 }
 
@@ -101,13 +114,16 @@ func (h *PromptHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	prompt, err := h.commander.Create(r.Context(), brandID, koidomain.PromptParams{
 		Text: middlewares.Body[PromptRequest](r).Text,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusCreated, prompt)
 }
 
@@ -116,17 +132,21 @@ func (h *PromptHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	promptID, ok := pathID(w, r, "promptID")
 	if !ok {
 		return
 	}
+
 	prompt, err := h.commander.Update(r.Context(), brandID, promptID, koidomain.PromptPatch{
 		Text: middlewares.Body[PromptPatchRequest](r).Text,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, prompt)
 }
 
@@ -135,14 +155,18 @@ func (h *PromptHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	promptID, ok := pathID(w, r, "promptID")
 	if !ok {
 		return
 	}
+
 	if err := h.commander.Delete(r.Context(), brandID, promptID); err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -151,15 +175,19 @@ func (h *PromptHandler) Confirm(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	promptID, ok := pathID(w, r, "promptID")
 	if !ok {
 		return
 	}
+
 	prompt, err := h.commander.Confirm(r.Context(), brandID, promptID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	api.JSON(w, r, http.StatusOK, prompt)
 }
 
@@ -168,9 +196,12 @@ func (h *PromptHandler) ConfirmAll(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	if err := h.commander.ConfirmAll(r.Context(), brandID); err != nil {
 		api.WriteDomainError(w, r, err)
+
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }

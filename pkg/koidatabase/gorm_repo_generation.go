@@ -58,9 +58,12 @@ func (r *GormGenerationRepository) HasSucceededInitial(ctx context.Context, bran
 	if err != nil {
 		return false, err
 	}
+
 	var count int64
+
 	err = db.Model(&koidomain.GenerationRun{}).Where("brand_id = ? AND mode = ? AND state = ?",
 		brandID, koidomain.GenerationInitial, koidomain.GenerationSucceeded).Count(&count).Error
+
 	return count > 0, mapDBError(err)
 }
 
@@ -68,22 +71,28 @@ func (r *GormGenerationRepository) CreateAndEnqueue(ctx context.Context, run *ko
 	if r.client == nil {
 		return koidomain.ErrFeatureUnavailable
 	}
+
 	if _, err := NewGormBrandRepository(r.db).Get(ctx, run.BrandID); err != nil {
 		return err
 	}
+
 	tx := r.db.WithContext(ctx)
 	sqlTx, ok := tx.Statement.ConnPool.(*sql.Tx)
 	if !ok {
 		return errors.New("generation enqueue requires a SQL transaction")
 	}
+
 	if err := tx.Create(run).Error; err != nil {
 		return mapDBError(err)
 	}
+
 	inserted, err := r.client.InsertTx(ctx, sqlTx, GenerationJobArgs{RunID: run.ID}, &river.InsertOpts{Queue: "generation", MaxAttempts: 3})
 	if err != nil {
 		return err
 	}
+
 	run.RiverJobID = &inserted.Job.ID
+
 	return mapDBError(tx.Model(run).Update("river_job_id", inserted.Job.ID).Error)
 }
 

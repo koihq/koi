@@ -25,5 +25,6 @@ func (h *HealthHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if h.store == nil || h.store.Ping(r.Context()) != nil {
 		db = "down"
 	}
+
 	api.JSON(w, r, http.StatusOK, HealthResponse{Status: "ok", DB: db})
 }

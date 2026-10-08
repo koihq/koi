@@ -35,9 +35,16 @@ func TestRunRiverMigrationsAndShutdown(t *testing.T) {
 		ProviderTimeout:   45 * time.Second,
 		DBMaxOpenConns:    2,
 	}
-	httpClient := &http.Client{Transport: &http.Transport{DisableKeepAlives: true}, Timeout: time.Second}
+
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
+		Timeout: time.Second,
+	}
 	defer httpClient.CloseIdleConnections()
 	var firstMigrationCount int
+
 	for attempt := range 2 {
 		cancel, done, address := startTestApp(t, &App{cfg: cfg}, httpClient)
 		resp, err := httpClient.Get("http://" + address + "/health")
@@ -75,6 +82,7 @@ func TestRunRiverMigrationsAndShutdown(t *testing.T) {
 	}()
 	river.AddWorker(workers, river.WorkFunc(func(ctx context.Context, _ *river.Job[shutdownJobArgs]) error {
 		started <- struct{}{}
+
 		select {
 		case <-release:
 			return nil
@@ -88,30 +96,37 @@ func TestRunRiverMigrationsAndShutdown(t *testing.T) {
 	require.NoError(t, err)
 	inserted, err := inserter.Insert(t.Context(), shutdownJobArgs{}, &river.InsertOpts{Queue: "generation"})
 	require.NoError(t, err)
+
 	select {
 	case <-started:
 	case <-time.After(10 * time.Second):
 		t.Fatal("River did not start the registered worker")
 	}
+
 	cancel()
 	deadline := time.After(5 * time.Second)
+
 	for {
 		connection, err := net.DialTimeout("tcp", address, 100*time.Millisecond)
 		if err != nil {
 			break
 		}
+
 		_ = connection.Close()
+
 		select {
 		case <-deadline:
 			t.Fatal("HTTP server kept accepting requests during shutdown")
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
+
 	select {
 	case err := <-done:
 		t.Fatalf("app stopped before River worker finished: %v", err)
 	default:
 	}
+
 	close(release)
 	require.NoError(t, waitApp(t, done))
 	var state string
@@ -128,12 +143,15 @@ func startTestApp(t *testing.T, app *App, client *http.Client) (context.CancelFu
 	go func() { done <- app.run(ctx, listener) }()
 	address := listener.Addr().String()
 	deadline := time.After(10 * time.Second)
+
 	for {
 		resp, err := client.Get("http://" + address + "/health")
 		if err == nil {
 			_ = resp.Body.Close()
+
 			return cancel, done, address
 		}
+
 		select {
 		case runErr := <-done:
 			cancel()
@@ -148,6 +166,7 @@ func startTestApp(t *testing.T, app *App, client *http.Client) (context.CancelFu
 
 func waitApp(t *testing.T, done <-chan error) error {
 	t.Helper()
+
 	select {
 	case err := <-done:
 		return err

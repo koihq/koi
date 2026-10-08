@@ -13,6 +13,7 @@ func TestURLIsolatesAndCleansUpSchema(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, admin.Close()) })
 	var first string
+
 	for i := range 2 {
 		var schema string
 		t.Run(string(rune('a'+i)), func(t *testing.T) {
@@ -24,6 +25,7 @@ func TestURLIsolatesAndCleansUpSchema(t *testing.T) {
 			if first != "" {
 				require.NotEqual(t, first, schema)
 			}
+
 			db, err := sql.Open("pgx", scoped)
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, db.Close()) })

@@ -13,6 +13,7 @@ const valid = {
 function issuePaths(input: typeof valid): string[] {
   const result = brandFormSchema.safeParse(input);
   expect(result.success).toBe(false);
+
   return result.error?.issues.map((issue) => String(issue.path[0])) ?? [];
 }
 

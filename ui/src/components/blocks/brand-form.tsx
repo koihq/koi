@@ -60,6 +60,7 @@ export function BrandForm({
     if (!parsed.success) {
       setFieldErrors(fieldErrorsFromZod(parsed.error.issues, brandFormFields, validationMessage));
       requestAnimationFrame(() => form.querySelector<HTMLElement>("[aria-invalid=true]")?.focus());
+
       return;
     }
 
@@ -70,6 +71,7 @@ export function BrandForm({
     } catch (err) {
       if (err instanceof ApiError && err.fields?.length) {
         const next: Partial<Record<BrandField, string>> = {};
+
         for (const item of err.fields) {
           if (
             item.field === "name" ||
@@ -81,6 +83,7 @@ export function BrandForm({
             next[item.field] = validationMessage(item.field);
           }
         }
+
         if (Object.keys(next).length > 0) {
           setFieldErrors(next);
           requestAnimationFrame(() =>
@@ -206,6 +209,7 @@ const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 function countryFromCode(code: string): BrandCountry | null {
   const normalized = code.trim().toUpperCase();
   if (!/^[A-Z]{2}$/.test(normalized)) return null;
+
   return { code: normalized, name: countryNames.of(normalized) ?? normalized };
 }
 
@@ -224,25 +228,30 @@ function CountryCombobox({
   const api = useApi();
   const initialCountry = countryFromCode(initialCode);
   const [query, setQuery] = useState(initialCountry?.code ?? "");
+
   const [inputValue, setInputValue] = useState(() =>
     initialCountry ? countryLabel(initialCountry) : "",
   );
+
   const [selected, setSelected] = useState<BrandCountry | null>(initialCountry);
   const trimmed = query.trim();
   const debounced = useDebouncedValue(trimmed);
   const search = trimmed ? debounced : "";
+
   const countries = useQuery({
     queryKey: ["brands", "countries", search],
     queryFn: ({ signal }) => api.brands.listCountries(search || undefined, { signal }),
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
   });
+
   const options = countries.data ?? [];
 
   let emptyMessage = t("fields.country.noResults");
   if (countries.isPending || countries.isFetching || trimmed !== search) {
     emptyMessage = t("fields.country.searching");
   }
+
   if (countries.isError) emptyMessage = t("fields.country.searchError");
 
   return (

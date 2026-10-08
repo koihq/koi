@@ -23,6 +23,7 @@ func NewStore(db *gorm.DB, enqueueClient ...*river.Client[*sql.Tx]) *Store {
 	if len(enqueueClient) > 0 {
 		s.enqueueClient = enqueueClient[0]
 	}
+
 	return s
 }
 
@@ -30,10 +31,12 @@ func (s *Store) Ping(ctx context.Context) error {
 	if s == nil || s.db == nil {
 		return errNoDatabase
 	}
+
 	sqlDB, err := s.db.WithContext(ctx).DB()
 	if err != nil {
 		return err
 	}
+
 	return sqlDB.PingContext(ctx)
 }
 
@@ -41,6 +44,7 @@ func (s *Store) Atomic(ctx context.Context, fn func(koidomain.Store) error) erro
 	if s == nil || s.db == nil {
 		return errNoDatabase
 	}
+
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return fn(&Store{db: tx, enqueueClient: s.enqueueClient})
 	})
@@ -72,4 +76,8 @@ func (s *Store) CompetitorRepo() koidomain.CompetitorRepository {
 
 func (s *Store) GenerationRepo() koidomain.GenerationRepository {
 	return NewGormGenerationRepository(s.db, s.enqueueClient)
+}
+
+func (s *Store) VisibilityRepo() koidomain.VisibilityRepository {
+	return NewGormVisibilityRepository(s.db, s.enqueueClient)
 }

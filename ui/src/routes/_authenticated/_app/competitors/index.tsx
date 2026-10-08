@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 
 import type { Competitor } from "@/api/competitors.api";
 import { DataTable } from "@/components/blocks/data-table";
+import { GenerationControls } from "@/components/blocks/generation-controls";
 import { Button } from "@/components/ui/button";
 import { validateTableSearch } from "@/hooks/use-table-state";
-import { GenerationControls } from "@/components/blocks/generation-controls";
 import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
 import { DeleteCompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/delete-competitor-dialog";
 import { useCompetitorColumns } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-columns";
@@ -28,6 +28,7 @@ function CompetitorPage() {
   const heading = useRef<HTMLHeadingElement>(null);
   const { mutate: confirmMutation } = mutations.confirm;
   const { reset: resetDelete } = mutations.remove;
+
   const chooseDelete = useCallback(
     (item: Competitor) => {
       deleteTrigger.current = document.activeElement as HTMLElement;
@@ -36,9 +37,12 @@ function CompetitorPage() {
     },
     [resetDelete],
   );
+
   const pending =
     mutations.create.isPending || mutations.remove.isPending || mutations.confirm.isPending;
+
   const confirm = useCallback((id: string) => confirmMutation(id), [confirmMutation]);
+
   const columns = useCompetitorColumns({
     pending,
     onDelete: chooseDelete,

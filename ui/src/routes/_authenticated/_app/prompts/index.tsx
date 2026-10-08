@@ -5,9 +5,9 @@ import { useTranslation } from "react-i18next";
 
 import type { Prompt } from "@/api/prompts.api";
 import { DataTable } from "@/components/blocks/data-table";
+import { GenerationControls } from "@/components/blocks/generation-controls";
 import { Button } from "@/components/ui/button";
 import { tableSearchParams } from "@/hooks/use-table-state";
-import { GenerationControls } from "@/components/blocks/generation-controls";
 import { DeletePromptDialog } from "@/routes/_authenticated/_app/prompts/-components/delete-prompt-dialog";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
 import { usePromptColumns } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-columns";
@@ -34,6 +34,7 @@ function PromptPage() {
   const { mutateAsync: updateAsync } = mutations.update;
   const { mutate: confirmMutation } = mutations.confirm;
   const { reset: resetDelete } = mutations.remove;
+
   const chooseDelete = useCallback(
     (item: Prompt) => {
       deleteTrigger.current = document.activeElement as HTMLElement;
@@ -42,24 +43,29 @@ function PromptPage() {
     },
     [resetDelete],
   );
+
   const pending =
     mutations.create.isPending ||
     mutations.update.isPending ||
     mutations.remove.isPending ||
     mutations.confirm.isPending;
+
   const update = useCallback(
     async (id: string, request: { text: string }) => {
       await updateAsync({ id, request });
     },
     [updateAsync],
   );
+
   const confirm = useCallback((id: string) => confirmMutation(id), [confirmMutation]);
+
   const columns = usePromptColumns({
     pending,
     onUpdate: update,
     onDelete: chooseDelete,
     onConfirm: confirm,
   });
+
   const add = (
     <PromptDialog
       label={t("addPrompt")}

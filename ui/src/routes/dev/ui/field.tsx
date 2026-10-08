@@ -17,6 +17,7 @@ export const Route = createFileRoute("/dev/ui/field")({
 
 function DevUiField() {
   const { t } = useTranslation("dev");
+
   return (
     <CatalogPage
       title="Field and input"

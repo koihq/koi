@@ -17,6 +17,7 @@ func (o Organization) Validate() error {
 	if strings.TrimSpace(o.Name) == "" {
 		return Validation(FieldError{Field: "name", Code: FieldInvalid})
 	}
+
 	return nil
 }
 

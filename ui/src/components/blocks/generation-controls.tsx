@@ -18,17 +18,24 @@ export function GenerationControls({
   const { capabilities, runs, status, run, create } = useGeneration(brandID);
   const enabled = capabilities.data?.aiDrafting === true;
   const busy = run?.state === "queued" || run?.state === "running" || create.isPending;
+
   const showStatus =
     !create.isPending && run && (busy || run.mode === "initial" || run.mode === mode);
+
   const retryMode: GenerationMode | undefined =
     run?.state === "failed" && (run.mode === "initial" || run.mode === mode) ? run.mode : undefined;
+
   const showMore = run && !retryMode && (run.mode !== "initial" || run.state === "succeeded");
   function statusCopy() {
     if (!run) return "";
+
     const subject = t(`draftSubject.${run.mode}`);
     if (run.state === "queued") return t("draftQueued", { subject });
+
     if (run.state === "running") return t("draftRunning", { subject });
+
     if (run.state === "failed") return t("draftFailed", { subject });
+
     if (run.mode === "initial") {
       return run.promptCount + run.competitorCount === 0
         ? t("draftEmpty")
@@ -37,7 +44,9 @@ export function GenerationControls({
             competitorCount: run.competitorCount,
           });
     }
+
     const count = run.mode === "prompts" ? run.promptCount : run.competitorCount;
+
     return count === 0 ? t("draftEmpty") : t("draftListDone", { count, subject });
   }
 

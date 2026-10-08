@@ -32,12 +32,14 @@ describe("entity API wrappers", () => {
       email: "founder@example.com",
       organization: { id: "org-id", name: "Koi" },
     };
+
     const client = {
       login: vi.fn().mockResolvedValue(account),
       logout: vi.fn(),
       me: vi.fn(),
       signup: vi.fn(),
     } as unknown as AuthApi;
+
     const api = createAuthApi(client);
     const credentials = { email: account.email, password: "password123" };
 
@@ -55,11 +57,13 @@ describe("entity API wrappers", () => {
 
   it("sends generation modes and uses the setup key only when supplied", async () => {
     const accepted = { id: "run-id", mode: "initial", state: "queued", statusUrl: "/status" };
+
     const client = {
       createGeneration: vi.fn().mockResolvedValue(accepted),
       listGenerations: vi.fn().mockResolvedValue({ ...page, items: [] }),
       getGeneration: vi.fn().mockResolvedValue({ ...accepted, attempt: 0 }),
     } as unknown as GenerationsApi;
+
     const api = createGenerationsApi(client);
 
     await api.create("brand-id", "initial", "setup-brand-id");
@@ -98,6 +102,7 @@ describe("entity API wrappers", () => {
       updateBrand: vi.fn(),
       listBrandCountries: vi.fn(),
     } as unknown as BrandsApi;
+
     const api = createBrandsApi(client);
 
     await expect(api.list({ page: 2, pageSize: 5 })).resolves.toEqual(page);
@@ -119,6 +124,7 @@ describe("entity API wrappers", () => {
       totalItems: 1,
       totalPages: 1,
     };
+
     const client = {
       listPrompts: vi.fn().mockResolvedValue(promptPage),
       getPrompt: vi.fn(),
@@ -128,6 +134,7 @@ describe("entity API wrappers", () => {
       confirmPrompt: vi.fn(),
       confirmAllPrompts: vi.fn().mockResolvedValue(undefined),
     } as unknown as PromptsApi;
+
     const api = createPromptsApi(client);
 
     const result = await api.list("brand", {
@@ -136,6 +143,7 @@ describe("entity API wrappers", () => {
       q: "best tools",
       confirmed: false,
     });
+
     await api.confirmAll("brand");
     expect(result.items[0]).toMatchObject({ brandId: "brand", text: "What is Koi?" });
     expect(client.listPrompts).toHaveBeenCalledWith("brand", 3, 10, "best tools", false, undefined);
@@ -151,6 +159,7 @@ describe("entity API wrappers", () => {
       confirmCompetitor: vi.fn(),
       confirmAllCompetitors: vi.fn(),
     } as unknown as CompetitorsApi;
+
     const api = createCompetitorsApi(client);
 
     await api.list("brand", { page: 1, pageSize: 10, q: "acme", confirmed: true });

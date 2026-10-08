@@ -27,6 +27,7 @@ describe("apiErrorFromResponse", () => {
       JSON.stringify({ error: { code: "invalid_credentials", message: "invalid credentials" } }),
       { status: 401, headers: { "Content-Type": "application/json" } },
     );
+
     await expect(apiErrorFromResponse(response)).resolves.toMatchObject({
       name: "ApiError",
       code: "invalid_credentials",

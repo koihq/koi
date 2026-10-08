@@ -20,6 +20,7 @@ const pages = [
   { id: "citations", icon: QuoteIcon },
   { id: "brief", icon: File01Icon },
 ] as const;
+
 type Page = (typeof pages)[number]["id"];
 
 export const Route = createFileRoute("/dev/ui/sidebar")({
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/dev/ui/sidebar")({
 
 function SidebarCatalog() {
   const { t } = useTranslation("dev");
+
   return (
     <CatalogPage
       title="Koi sidebar"

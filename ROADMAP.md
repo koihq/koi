@@ -35,6 +35,7 @@ Onboarding and the first prompt × engine run. Includes competitor identificatio
   - ~10–15 buyer prompts: category, alternatives-to, comparison, use-case — not only vanity branded queries
   - ~5–8 likely competitors: `name`, `domain`
 - [ ] Human review of both lists (accept / edit / drop / add) before any collect
+- [ ] Live visibility collection through Cloro for ChatGPT, Perplexity, Gemini, and Google AI Overviews. OpenRouter handles onboarding research and drafting.
 - [ ] First run: persist prompt, engine, fetched_at, outcome, raw answer, sources, mentioned/cited entities
 - [ ] Who-shows-up: attach rows to confirmed competitors; repeating unknowns become suggestions, not silent adds
 - [ ] UI: live progress, per-engine breakdown, filters, answer detail, competitor panel

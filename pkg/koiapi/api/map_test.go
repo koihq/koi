@@ -21,11 +21,19 @@ func TestMapError(t *testing.T) {
 		fields []koidomain.FieldError
 	}{
 		{
-			name:   "validation",
-			err:    koidomain.Validation(koidomain.FieldError{Field: "email", Code: koidomain.FieldInvalid}),
+			name: "validation",
+			err: koidomain.Validation(koidomain.FieldError{
+				Field: "email",
+				Code:  koidomain.FieldInvalid,
+			}),
 			status: http.StatusBadRequest,
 			code:   koidomain.CodeValidation,
-			fields: []koidomain.FieldError{{Field: "email", Code: koidomain.FieldInvalid}},
+			fields: []koidomain.FieldError{
+				{
+					Field: "email",
+					Code:  koidomain.FieldInvalid,
+				},
+			},
 		},
 		{
 			name:   "invalid_json",
@@ -38,7 +46,12 @@ func TestMapError(t *testing.T) {
 			err:    koidomain.ErrEmailTaken,
 			status: http.StatusConflict,
 			code:   koidomain.CodeEmailTaken,
-			fields: []koidomain.FieldError{{Field: "email", Code: koidomain.FieldTaken}},
+			fields: []koidomain.FieldError{
+				{
+					Field: "email",
+					Code:  koidomain.FieldTaken,
+				},
+			},
 		},
 		{
 			name:   "brand_limit_reached",
@@ -77,6 +90,7 @@ func TestMapError(t *testing.T) {
 			code:   koidomain.CodeInternal,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			status, env := MapError(tt.err)
@@ -99,5 +113,10 @@ func TestWriteDomainError(t *testing.T) {
 	var env Envelope
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &env))
 	require.Equal(t, koidomain.CodeValidation, env.Error.Code)
-	require.Equal(t, []koidomain.FieldError{{Field: "password", Code: koidomain.FieldMinLength}}, env.Error.Fields)
+	require.Equal(t, []koidomain.FieldError{
+		{
+			Field: "password",
+			Code:  koidomain.FieldMinLength,
+		},
+	}, env.Error.Fields)
 }

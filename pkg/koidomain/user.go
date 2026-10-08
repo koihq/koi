@@ -19,15 +19,18 @@ func (u User) Validate() error {
 	if !validEmail(u.Email) {
 		return Validation(FieldError{Field: "email", Code: FieldInvalid})
 	}
+
 	if u.PasswordHash == "" {
 		return Validation(FieldError{Field: "password", Code: FieldInvalid})
 	}
+
 	return nil
 }
 
 func validEmail(email string) bool {
 	email = strings.TrimSpace(email)
 	at := strings.IndexByte(email, '@')
+
 	return at > 0 && at < len(email)-1
 }
 

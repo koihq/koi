@@ -28,6 +28,7 @@ export function CredentialsForm({
     const password = String(data.get("password") ?? "");
     setError(null);
     setPending(true);
+
     try {
       await onSubmit({ email, password });
     } catch (err) {

@@ -15,6 +15,7 @@ const (
 	CodeGenerationConflict      = "generation_conflict"
 	CodeIdempotencyConflict     = "idempotency_conflict"
 	CodeInitialAlreadyCompleted = "initial_already_completed"
+	CodeRunNotReady             = "run_not_ready"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"
@@ -22,8 +23,17 @@ const (
 )
 
 var (
-	ErrNotFound                = &Error{Code: CodeNotFound, Message: "not found"}
-	ErrEmailTaken              = &Error{Code: CodeEmailTaken, Message: "email taken", Fields: []FieldError{{Field: "email", Code: FieldTaken}}}
+	ErrNotFound   = &Error{Code: CodeNotFound, Message: "not found"}
+	ErrEmailTaken = &Error{
+		Code:    CodeEmailTaken,
+		Message: "email taken",
+		Fields: []FieldError{
+			{
+				Field: "email",
+				Code:  FieldTaken,
+			},
+		},
+	}
 	ErrBrandLimitReached       = &Error{Code: CodeBrandLimitReached, Message: "brand limit reached"}
 	ErrInvalidCredentials      = &Error{Code: CodeInvalidCredentials, Message: "invalid credentials"}
 	ErrValidation              = &Error{Code: CodeValidation, Message: "validation"}
@@ -52,9 +62,11 @@ func (e *Error) Error() string {
 	if e == nil {
 		return ""
 	}
+
 	if e.Message != "" {
 		return e.Message
 	}
+
 	return e.Code
 }
 
@@ -63,6 +75,7 @@ func (e *Error) Is(target error) bool {
 	if !ok {
 		return false
 	}
+
 	return e.Code == t.Code
 }
 

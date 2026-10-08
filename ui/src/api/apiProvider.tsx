@@ -6,15 +6,18 @@ import { createCompetitorsApi } from "@/api/competitors.api";
 import { createGenerationsApi } from "@/api/generations.api";
 import { createHealthApi } from "@/api/health.api";
 import { createPromptsApi } from "@/api/prompts.api";
+import { createRunsApi } from "@/api/runs.api";
 import { createApiClient } from "@/api/shared/apiClient";
 
 export function createApi() {
   const client = createApiClient();
+
   return {
     auth: createAuthApi(client.auth),
     brands: createBrandsApi(client.brands),
     capabilities: createCapabilitiesApi(client.capabilities),
     prompts: createPromptsApi(client.prompts),
+    runs: createRunsApi(client.runs),
     competitors: createCompetitorsApi(client.competitors),
     generations: createGenerationsApi(client.generations),
     health: createHealthApi(client.health),
@@ -34,5 +37,6 @@ export function useApi(): Api {
   if (!api) {
     throw new Error("useApi must be used within ApiProvider");
   }
+
   return api;
 }

@@ -17,6 +17,7 @@ export const Route = createFileRoute("/dev/ui/separator")({
 
 function DevUiSeparator() {
   const { t } = useTranslation("dev");
+
   return (
     <CatalogPage
       title="Separator"

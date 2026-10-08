@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export const VARIANTS = ["light", "dark"] as const;
+
 export type Variant = (typeof VARIANTS)[number];
 
 export const BUTTON_VARIANTS = [
@@ -20,6 +21,7 @@ export const BUTTON_VARIANTS = [
   "destructive",
   "link",
 ] as const;
+
 export const TEXT_SIZES = ["xs", "sm", "default", "lg"] as const;
 export const ICON_SIZES = ["icon-xs", "icon-sm", "icon", "icon-lg"] as const;
 export const MARK_SIZES = ["size-6", "size-8", "size-16"] as const;
@@ -37,6 +39,7 @@ export type CatalogTo = keyof typeof CATALOG_TO;
 
 export function catalogTo(pathname: string): CatalogTo {
   const path = pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
+
   return path in CATALOG_TO ? (path as CatalogTo) : "/dev/ui";
 }
 
@@ -66,6 +69,7 @@ function applyTheme(dark: boolean) {
 export function useCatalogTheme(variant: Variant) {
   useLayoutEffect(() => {
     applyTheme(variant === "dark");
+
     return () => {
       document.documentElement.classList.remove("dark");
       document.documentElement.style.colorScheme = "";

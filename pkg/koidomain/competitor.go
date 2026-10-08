@@ -39,26 +39,33 @@ func (c Competitor) Validate() error {
 	if c.BrandID == uuid.Nil {
 		fields = append(fields, FieldError{Field: "brand_id", Code: FieldInvalid})
 	}
+
 	if strings.TrimSpace(c.Name) == "" {
 		fields = append(fields, FieldError{Field: "name", Code: FieldInvalid})
 	}
+
 	if c.Domain == "" && c.GitHubRepo == "" {
 		fields = append(fields, FieldError{Field: "domain", Code: FieldInvalid}, FieldError{Field: "github_repo", Code: FieldInvalid})
 	} else if c.Domain != "" && !validHostname(c.Domain) {
 		fields = append(fields, FieldError{Field: "domain", Code: FieldInvalid})
 	}
+
 	if c.GitHubRepo != "" && !validGitHubRepo(c.GitHubRepo) {
 		fields = append(fields, FieldError{Field: "github_repo", Code: FieldInvalid})
 	}
+
 	if c.Source != CompetitorSourceManual && c.Source != CompetitorSourceDrafted && c.Source != CompetitorSourceObserved {
 		fields = append(fields, FieldError{Field: "source", Code: FieldInvalid})
 	}
+
 	if c.Source == CompetitorSourceManual && !c.Confirmed {
 		fields = append(fields, FieldError{Field: "confirmed", Code: FieldInvalid})
 	}
+
 	if len(fields) > 0 {
 		return Validation(fields...)
 	}
+
 	return nil
 }
 
@@ -116,6 +123,7 @@ type competitorService struct {
 }
 
 func NewCompetitorCommander(store Store) CompetitorCommander { return &competitorService{store: store} }
+
 func NewCompetitorQuerier(store Store, searcher CompanySearcher) CompetitorQuerier {
 	return &competitorService{store: store, searcher: searcher}
 }
@@ -124,17 +132,25 @@ func (s *competitorService) Create(ctx context.Context, brandID uuid.UUID, param
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	competitor := &Competitor{
-		BrandID: brandID, Name: params.Name, Domain: params.Domain, GitHubRepo: params.GitHubRepo,
-		Source: CompetitorSourceManual, Confirmed: true,
+		BrandID:    brandID,
+		Name:       params.Name,
+		Domain:     params.Domain,
+		GitHubRepo: params.GitHubRepo,
+		Source:     CompetitorSourceManual,
+		Confirmed:  true,
 	}
+
 	competitor.Normalize()
 	if err := competitor.Validate(); err != nil {
 		return nil, err
 	}
+
 	if err := s.store.CompetitorRepo().Create(ctx, competitor); err != nil {
 		return nil, err
 	}
+
 	return competitor, nil
 }
 
@@ -142,6 +158,7 @@ func (s *competitorService) Delete(ctx context.Context, brandID, competitorID uu
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return err
 	}
+
 	return s.store.CompetitorRepo().Delete(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
 }
 
@@ -149,16 +166,20 @@ func (s *competitorService) Confirm(ctx context.Context, brandID, competitorID u
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
 	competitor, err := s.store.CompetitorRepo().Get(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
+
 	confirmed := true
 	if err := s.store.CompetitorRepo().Update(ctx, filter, CompetitorUpdate{Confirmed: &confirmed}); err != nil {
 		return nil, err
 	}
+
 	competitor.Confirmed = true
+
 	return competitor, nil
 }
 
@@ -166,7 +187,9 @@ func (s *competitorService) ConfirmAll(ctx context.Context, brandID uuid.UUID) e
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return err
 	}
+
 	unconfirmed, confirmed := false, true
+
 	return s.store.CompetitorRepo().Update(ctx,
 		CompetitorFilter{BrandID: brandID, Confirmed: &unconfirmed},
 		CompetitorUpdate{Confirmed: &confirmed},
@@ -177,13 +200,20 @@ func (s *competitorService) List(ctx context.Context, brandID uuid.UUID, page Pa
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
-	return s.store.CompetitorRepo().List(ctx, CompetitorFilter{BrandID: brandID, Query: query, Confirmed: confirmed, Page: page})
+
+	return s.store.CompetitorRepo().List(ctx, CompetitorFilter{
+		BrandID:   brandID,
+		Query:     query,
+		Confirmed: confirmed,
+		Page:      page,
+	})
 }
 
 func (s *competitorService) Get(ctx context.Context, brandID, competitorID uuid.UUID) (*Competitor, error) {
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	return s.store.CompetitorRepo().Get(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
 }
 
@@ -191,11 +221,14 @@ func (s *competitorService) Search(ctx context.Context, brandID uuid.UUID, query
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
+
 	if len([]rune(strings.TrimSpace(query))) < 3 {
 		return nil, Validation(FieldError{Field: "q", Code: FieldMinLength})
 	}
+
 	if s.searcher == nil {
 		return nil, ErrFeatureUnavailable
 	}
+
 	return s.searcher.Search(ctx, query)
 }

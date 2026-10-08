@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down ui-build ensure-ui run test dev mocks openapi
+.PHONY: compose-up compose-down ui-build ensure-ui run test dev mocks openapi format go-format-check
 
 OPENAPI_GENERATOR_IMAGE := openapitools/openapi-generator-cli:v7.22.0
 
@@ -19,6 +19,14 @@ run: ensure-ui
 
 test: ensure-ui
 	go test ./...
+
+format:
+	pnpm --dir ui check:fix
+	gofmt -w cmd internal pkg
+
+go-format-check:
+	@files="$$(gofmt -l cmd internal pkg)" || exit $$?; \
+		if [ -n "$$files" ]; then printf '%s\n' "$$files"; exit 1; fi
 
 dev: compose-up ensure-ui
 	@trap 'kill $$(jobs -p) 2>/dev/null; docker compose stop' EXIT; \

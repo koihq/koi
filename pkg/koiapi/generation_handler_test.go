@@ -30,6 +30,7 @@ func newGenerationTestServer(t *testing.T, q koidomain.GenerationQuerier, c koid
 	r.Route("/api/v1/brands/{brandID}/generations", NewGenerationHandler(q, c, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
+
 	return ts
 }
 
@@ -39,6 +40,7 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 	ts := newGenerationTestServer(t, q, c)
 	client := newCookieClient(t)
 	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/generations"
+
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
 		resp := doJSON(t, client, method, base, `{"mode":"initial"}`)
 		var body api.Envelope
@@ -46,7 +48,9 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
 	}
+
 	brandSession(t, client, ts.URL, userID)
+
 	for _, body := range []string{"{", `{"mode":123}`} {
 		resp := doJSON(t, client, http.MethodPost, base, body)
 		var result api.Envelope
@@ -54,6 +58,7 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		require.Equal(t, koidomain.CodeInvalidJSON, result.Error.Code)
 	}
+
 	request, err := http.NewRequest(http.MethodPost, base, strings.NewReader(`{"mode":"initial"}`))
 	require.NoError(t, err)
 	request.Header.Set("Idempotency-Key", "bad key")
@@ -64,7 +69,13 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	require.Equal(t, koidomain.CodeValidation, invalidKey.Error.Code)
 
-	run := &koidomain.GenerationRun{BaseEntity: koidomain.BaseEntity{ID: runID}, Mode: koidomain.GenerationInitial, State: koidomain.GenerationQueued}
+	run := &koidomain.GenerationRun{
+		BaseEntity: koidomain.BaseEntity{
+			ID: runID,
+		},
+		Mode:  koidomain.GenerationInitial,
+		State: koidomain.GenerationQueued,
+	}
 	c.EXPECT().Create(identityIs(userID), brandID, koidomain.GenerationInitial, mock.MatchedBy(func(key *string) bool {
 		return key != nil && *key == "setup-1"
 	})).Return(run, false, nil)
@@ -78,7 +89,9 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 	readJSON(t, resp, &accepted)
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	require.Equal(t, map[string]any{
-		"id": runID.String(), "mode": "initial", "state": "queued",
+		"id":         runID.String(),
+		"mode":       "initial",
+		"state":      "queued",
 		"status_url": "/api/v1/brands/" + brandID.String() + "/generations/" + runID.String(),
 	}, accepted)
 	c.EXPECT().Create(identityIs(userID), brandID, koidomain.GenerationInitial, mock.Anything).Return(run, true, nil)
@@ -95,22 +108,43 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 	brandSession(t, client, ts.URL, userID)
 	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/generations"
 	createdAt := time.Date(2026, 9, 28, 10, 0, 0, 0, time.UTC)
+
 	run := &koidomain.GenerationRun{
-		BaseEntity: koidomain.BaseEntity{ID: runID, CreatedAt: createdAt},
-		BrandID:    brandID, Mode: koidomain.GenerationInitial, State: koidomain.GenerationQueued,
-		ModelSlug: "secret-model", BrandSnapshot: koidomain.BrandSnapshot{Name: "private"},
+		BaseEntity: koidomain.BaseEntity{
+			ID:        runID,
+			CreatedAt: createdAt,
+		},
+		BrandID:   brandID,
+		Mode:      koidomain.GenerationInitial,
+		State:     koidomain.GenerationQueued,
+		ModelSlug: "secret-model",
+		BrandSnapshot: koidomain.BrandSnapshot{
+			Name: "private",
+		},
 	}
+
 	q.EXPECT().Get(identityIs(userID), brandID, runID).Return(run, nil)
 	resp := doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "")
 	var status map[string]any
 	readJSON(t, resp, &status)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, map[string]any{
-		"id": runID.String(), "mode": "initial", "state": "queued", "attempt": float64(0),
-		"prompt_count": float64(0), "competitor_count": float64(0), "created_at": "2026-09-28T10:00:00Z",
+		"id":               runID.String(),
+		"mode":             "initial",
+		"state":            "queued",
+		"attempt":          float64(0),
+		"prompt_count":     float64(0),
+		"competitor_count": float64(0),
+		"created_at":       "2026-09-28T10:00:00Z",
 	}, status)
 	q.EXPECT().List(identityIs(userID), brandID, koidomain.PageParams{Page: 2, PageSize: 1}).Return(
-		&koidomain.Page[koidomain.GenerationRun]{Items: []koidomain.GenerationRun{*run}, TotalItems: 2, TotalPages: 2, CurrentPage: 2, HasPrev: true}, nil)
+		&koidomain.Page[koidomain.GenerationRun]{
+			Items:       []koidomain.GenerationRun{*run},
+			TotalItems:  2,
+			TotalPages:  2,
+			CurrentPage: 2,
+			HasPrev:     true,
+		}, nil)
 	resp = doJSON(t, client, http.MethodGet, base+"?page=2&pageSize=1", "")
 	var list koidomain.Page[map[string]any]
 	readJSON(t, resp, &list)
@@ -121,6 +155,7 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 	require.Equal(t, 2, list.CurrentPage)
 	require.True(t, list.HasPrev)
 	require.False(t, list.HasNext)
+
 	for _, query := range []string{"page=0", "page=abc", "page=1&page=2", "pageSize=0", "pageSize=101"} {
 		resp = doJSON(t, client, http.MethodGet, base+"?"+query, "")
 		var body api.Envelope
@@ -128,13 +163,18 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		require.Equal(t, koidomain.CodeValidation, body.Error.Code)
 	}
+
 	resp = doJSON(t, client, http.MethodGet, base+"/bad-id", "")
 	var missing api.Envelope
 	readJSON(t, resp, &missing)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 
 	c.EXPECT().Create(identityIs(userID), brandID, koidomain.GenerationInitial, mock.Anything).Return(nil, false,
-		&koidomain.Error{Code: koidomain.CodeGenerationConflict, Message: "generation conflict", RunID: runID})
+		&koidomain.Error{
+			Code:    koidomain.CodeGenerationConflict,
+			Message: "generation conflict",
+			RunID:   runID,
+		})
 	resp = doJSON(t, client, http.MethodPost, base, `{"mode":"initial"}`)
 	var conflict api.Envelope
 	readJSON(t, resp, &conflict)

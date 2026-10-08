@@ -15,17 +15,21 @@ type GormPromptRepository struct {
 }
 
 func NewGormPromptRepository(db *gorm.DB) *GormPromptRepository {
-	return &GormPromptRepository{Repository: newScopedRepository[koidomain.Prompt](db, childOwnerScope("prompts"))}
+	return &GormPromptRepository{
+		Repository: newScopedRepository[koidomain.Prompt](db, childOwnerScope("prompts")),
+	}
 }
 
 func (r *GormPromptRepository) Create(ctx context.Context, prompt *koidomain.Prompt) error {
 	if _, err := r.Repository.query(ctx); err != nil {
 		return err
 	}
+
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, prompt.BrandID); err != nil {
 			return err
 		}
+
 		return NewGormPromptRepository(tx).Repository.Create(ctx, prompt)
 	})
 }
@@ -35,11 +39,13 @@ func applyPromptFilter(db *gorm.DB, filter koidomain.PromptFilter) *gorm.DB {
 	if filter.Query != "" {
 		db = db.Where("text ILIKE ? ESCAPE '!'", likePattern(filter.Query))
 	}
+
 	return db
 }
 
 func likePattern(query string) string {
 	replacer := strings.NewReplacer(`!`, `!!`, `%`, `!%`, `_`, `!_`)
+
 	return "%" + replacer.Replace(query) + "%"
 }
 
@@ -58,10 +64,12 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 		values.Text = *update.Text
 		columns = append(columns, "text")
 	}
+
 	if update.Confirmed != nil {
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
+
 	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, values, columns, filter.ID != uuid.Nil)
 }
 

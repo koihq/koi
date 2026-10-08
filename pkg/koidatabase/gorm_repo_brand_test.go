@@ -23,12 +23,14 @@ func TestBrandSchema(t *testing.T) {
 	require.Equal(t, "gen_random_uuid()", s.LookUpField("id").DefaultValue)
 
 	var ownerIndex *schema.Index
+
 	for _, index := range s.ParseIndexes() {
 		if index.Name == "idx_brands_user_id" {
 			ownerIndex = index
 			break
 		}
 	}
+
 	require.NotNil(t, ownerIndex)
 	require.Empty(t, ownerIndex.Class)
 	require.Equal(t, "user_id", ownerIndex.Fields[0].Field.DBName)
@@ -36,8 +38,11 @@ func TestBrandSchema(t *testing.T) {
 
 func TestBrandQueriesScopeAndLock(t *testing.T) {
 	db, err := gorm.Open(postgres.Open("host=localhost user=koi dbname=koi sslmode=disable"), &gorm.Config{
-		DryRun: true, DisableAutomaticPing: true, SkipDefaultTransaction: true,
+		DryRun:                 true,
+		DisableAutomaticPing:   true,
+		SkipDefaultTransaction: true,
 	})
+
 	require.NoError(t, err)
 	var queries []string
 	var args [][]any
@@ -60,18 +65,25 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 	_, err = NewGormBrandRepository(db).Get(ctx, uuid.New())
 	require.NoError(t, err)
 	require.ErrorIs(t, NewGormBrandRepository(db).Update(ctx, &koidomain.Brand{
-		BaseEntity: koidomain.BaseEntity{ID: uuid.New()}, UserID: uuid.New(), Name: "Koi",
+		BaseEntity: koidomain.BaseEntity{
+			ID: uuid.New(),
+		},
+		UserID: uuid.New(),
+		Name:   "Koi",
 	}), koidomain.ErrNotFound)
 	require.Len(t, queries, 5)
 	require.Contains(t, strings.ToUpper(queries[0]), "FOR UPDATE")
 	require.Contains(t, queries[0], "id =")
+
 	for _, query := range queries[1:] {
 		require.Contains(t, query, "user_id =")
 	}
+
 	// DryRun has no rows, so shared pagination stops after its count query.
 	require.Contains(t, queries[2], "count")
 	require.Contains(t, queries[3], "id =")
 	require.Contains(t, queries[4], "id =")
+
 	for _, queryArgs := range args[1:] {
 		require.Contains(t, queryArgs, id)
 	}

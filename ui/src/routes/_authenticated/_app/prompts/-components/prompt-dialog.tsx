@@ -28,6 +28,7 @@ export function PromptDialog({
 }) {
   const { t } = useTranslation("management");
   const [open, setOpen] = useState(false);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button type="button" variant={variant} size="sm" />}>

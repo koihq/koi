@@ -8,6 +8,7 @@ import {
   GenerationsApi,
   HealthApi,
   PromptsApi,
+  VisibilityApi,
 } from "@/api/generated";
 
 export function createApiClient() {
@@ -24,6 +25,7 @@ export function createApiClient() {
     generations: new GenerationsApi(configuration),
     health: new HealthApi(configuration),
     prompts: new PromptsApi(configuration),
+    runs: new VisibilityApi(configuration),
   };
 }
 
@@ -35,6 +37,7 @@ export async function callApi<T>(request: () => Promise<T>): Promise<T> {
       const response = (error as { response?: unknown }).response;
       if (response instanceof Response) throw await apiErrorFromResponse(response);
     }
+
     throw error;
   }
 }

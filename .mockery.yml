@@ -29,6 +29,19 @@ packages:
       PromptRepository:
       CompetitorRepository:
       GenerationRepository:
+      VisibilityRepository:
+      VisibilityCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      VisibilityQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
       BrandCommander:
         config:
           dir: '{{.InterfaceDir}}/../koiapi'

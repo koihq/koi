@@ -23,15 +23,19 @@ export function displayMessage(code: string, fields?: FieldError[]): string {
   if (field?.field === "password" && field.code === "min_length") {
     return i18n.t("fields.password.min_length", { ns: "errors" });
   }
+
   if (field?.field === "email" && field.code === "invalid") {
     return i18n.t("fields.email.invalid", { ns: "errors" });
   }
+
   if (field?.field === "email" && field.code === "taken") {
     return i18n.t("fields.email.taken", { ns: "errors" });
   }
+
   if (isErrorCode(code)) {
     return i18n.t(`codes.${code}`, { ns: "errors" });
   }
+
   return i18n.t("codes.internal", { ns: "errors" });
 }
 
@@ -39,6 +43,7 @@ export function messageFromUnknown(err: unknown): string {
   if (err instanceof ApiError) {
     return displayMessage(err.code, err.fields);
   }
+
   return displayMessage("internal");
 }
 
@@ -46,6 +51,7 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
   try {
     const body = (await response.json()) as Envelope;
     const code = body.error?.code ?? "internal";
+
     return new ApiError(code, body.error?.fields);
   } catch {
     return new ApiError("internal");

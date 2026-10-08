@@ -12,7 +12,103 @@ tags:
   - name: health
   - name: capabilities
   - name: generations
+  - name: visibility
 paths:
+  /api/v1/brands/{brandID}/runs:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    post:
+      tags: [visibility]
+      operationId: createVisibilityRun
+      description: Creates a stub run, full prompt × engine matrix, and River job atomically. Requires at least one prompt and no unconfirmed prompts or competitors. Returns the existing run while one is active. Does not contact providers or require credentials.
+      security:
+        - cookieAuth: []
+      responses:
+        "202":
+          description: New or existing active visibility run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityRunStatus"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: run_not_ready with prompts/empty, prompts/unconfirmed, or competitors/unconfirmed fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "503":
+          $ref: "#/components/responses/Error"
+    get:
+      tags: [visibility]
+      operationId: listVisibilityRuns
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Saved visibility runs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityRunPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/runs/{runID}:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/RunID"
+    get:
+      tags: [visibility]
+      operationId: getVisibilityRun
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Saved run status and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityRunStatus"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/runs/{runID}/results:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/RunID"
+    get:
+      tags: [visibility]
+      operationId: listVisibilityResults
+      description: Results in prompt position then engine order. Pending results have null outcome and fetched_at. All completed results have one of the four outcomes, including collection errors. Prompt snapshots survive edits and deletion.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Page of persisted results, including pending cells
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityResultPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /api/v1/capabilities:
     get:
       tags: [capabilities]
@@ -674,6 +770,13 @@ components:
       schema:
         type: string
         format: uuid
+    RunID:
+      name: runID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -695,6 +798,132 @@ components:
           schema:
             $ref: "#/components/schemas/Envelope"
   schemas:
+    VisibilityRunStatus:
+      type: object
+      required: [id, brand_id, engines, state, total_results, completed_results, created_at, started_at, finished_at, error_code, status_url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand_id:
+          type: string
+          format: uuid
+        engines:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityEngine"
+        state:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        total_results:
+          type: integer
+          format: int64
+        completed_results:
+          type: integer
+          format: int64
+          description: Number of results with a terminal outcome, including errors
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_code:
+          type: string
+          nullable: true
+        status_url:
+          type: string
+    VisibilityEngine:
+      type: string
+      enum: [chatgpt, perplexity, gemini, google_ai_overviews]
+    VisibilityResult:
+      type: object
+      required: [id, run_id, prompt_id, prompt_text, prompt_position, engine, collector, fetched_at, outcome, raw_answer, sources, error_code]
+      properties:
+        id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        prompt_id:
+          type: string
+          format: uuid
+          description: Historical identifier; the live tracking prompt may have been deleted
+        prompt_text:
+          type: string
+        prompt_position:
+          type: integer
+          minimum: 0
+        engine:
+          $ref: "#/components/schemas/VisibilityEngine"
+        collector:
+          type: string
+          enum: [stub, cloro]
+          description: stub is sample data; cloro identifies future live collection
+        fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+        outcome:
+          type: string
+          enum: [cited, mentioned, miss, error]
+          nullable: true
+        raw_answer:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+            format: uri
+        error_code:
+          type: string
+          nullable: true
+    VisibilityRunPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityRunStatus"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    VisibilityResultPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityResult"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
     BrandRequest:
       type: object
       description: At least one of domain or github_repo is required.

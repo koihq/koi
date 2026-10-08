@@ -10,19 +10,43 @@ import (
 )
 
 func TestPromptValidationAndNormalization(t *testing.T) {
-	prompt := Prompt{BrandID: uuid.New(), Text: "  best\n  analytics   tools? ", Source: PromptSourceManual, Confirmed: true}
+	prompt := Prompt{
+		BrandID:   uuid.New(),
+		Text:      "  best\n  analytics   tools? ",
+		Source:    PromptSourceManual,
+		Confirmed: true,
+	}
 	prompt.Normalize()
 	require.Equal(t, "best analytics tools?", prompt.Text)
 	require.NoError(t, prompt.Validate())
 
 	for _, invalid := range []Prompt{
-		{Text: "Question", Source: PromptSourceManual, Confirmed: true},
-		{BrandID: uuid.New(), Text: " ", Source: PromptSourceManual, Confirmed: true},
-		{BrandID: uuid.New(), Text: "Question", Source: "observed", Confirmed: true},
-		{BrandID: uuid.New(), Text: "Question", Source: PromptSourceManual},
+		{
+			Text:      "Question",
+			Source:    PromptSourceManual,
+			Confirmed: true,
+		},
+		{
+			BrandID:   uuid.New(),
+			Text:      " ",
+			Source:    PromptSourceManual,
+			Confirmed: true,
+		},
+		{
+			BrandID:   uuid.New(),
+			Text:      "Question",
+			Source:    "observed",
+			Confirmed: true,
+		},
+		{
+			BrandID: uuid.New(),
+			Text:    "Question",
+			Source:  PromptSourceManual,
+		},
 	} {
 		require.ErrorIs(t, invalid.Validate(), ErrValidation)
 	}
+
 	require.NoError(t, (Prompt{BrandID: uuid.New(), Text: "Question", Source: PromptSourceDrafted}).Validate())
 }
 
@@ -38,6 +62,7 @@ func TestPromptManualCreateAndImmutableProvenance(t *testing.T) {
 		return prompt.Text == "What is Koi?" && prompt.Source == PromptSourceManual && prompt.Confirmed
 	})).RunAndReturn(func(_ context.Context, prompt *Prompt) error {
 		prompt.ID = promptID
+
 		return nil
 	})
 
@@ -45,7 +70,14 @@ func TestPromptManualCreateAndImmutableProvenance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, promptID, created.ID)
 
-	drafted := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Old", Source: PromptSourceDrafted}
+	drafted := &Prompt{
+		BaseEntity: BaseEntity{
+			ID: promptID,
+		},
+		BrandID: brandID,
+		Text:    "Old",
+		Source:  PromptSourceDrafted,
+	}
 	prompts.EXPECT().Get(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}).Return(drafted, nil)
 	prompts.EXPECT().Update(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}, mock.MatchedBy(func(update PromptUpdate) bool {
 		return update.Text != nil && *update.Text == "New text" && update.Confirmed == nil
@@ -66,7 +98,13 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	store.EXPECT().PromptRepo().Return(prompts).Times(3)
 	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Twice()
 	brands.EXPECT().Get(mock.Anything, brandID).Return(nil, ErrNotFound).Once()
-	confirmed := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Source: PromptSourceDrafted}
+	confirmed := &Prompt{
+		BaseEntity: BaseEntity{
+			ID: promptID,
+		},
+		BrandID: brandID,
+		Source:  PromptSourceDrafted,
+	}
 	prompts.EXPECT().Get(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}).Return(confirmed, nil)
 	prompts.EXPECT().Update(mock.Anything, PromptFilter{ID: promptID, BrandID: brandID}, mock.MatchedBy(func(update PromptUpdate) bool {
 		return update.Confirmed != nil && *update.Confirmed

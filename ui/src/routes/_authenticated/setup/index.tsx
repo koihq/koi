@@ -5,6 +5,7 @@ import type { Brand, CreateBrand } from "@/api/brands.api";
 import { ApiError } from "@/api/errors";
 import { BrandForm } from "@/components/blocks/brand-form";
 import { KoiMark } from "@/components/blocks/koi-mark";
+
 export const Route = createFileRoute("/_authenticated/setup/")({
   beforeLoad: ({ context }) => {
     if (context.brand) {
@@ -21,6 +22,7 @@ function Setup() {
 
   async function createBrand(body: CreateBrand) {
     let brand: Brand | undefined;
+
     try {
       brand = await api.brands.create(body);
     } catch (error) {
@@ -28,6 +30,7 @@ function Setup() {
         throw error;
       }
     }
+
     let draftStartFailed = false;
     if (brand) {
       try {
@@ -38,6 +41,7 @@ function Setup() {
         draftStartFailed = true;
       }
     }
+
     await router.invalidate();
     await router.navigate({
       to: "/prompts",

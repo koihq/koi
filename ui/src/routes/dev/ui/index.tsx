@@ -32,6 +32,7 @@ const spacingSteps = [
   { step: 6, className: "w-6" },
   { step: 8, className: "w-8" },
 ] as const;
+
 const radiusClasses = [
   "rounded-sm",
   "rounded-md",
@@ -45,7 +46,9 @@ const radiusClasses = [
 function declarations(selector: string) {
   const start = styles.indexOf(`${selector} {`);
   if (start < 0) return {} as Record<string, string>;
+
   const block = styles.slice(start, styles.indexOf("}", start));
+
   return Object.fromEntries(
     [...block.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((match) => [match[1], match[2].trim()]),
   );
@@ -77,6 +80,7 @@ function StyleMeasurement({
       setValue(getComputedStyle(ref.current)[property]);
     }
   }, [property, variant]);
+
   return (
     <div className="flex min-w-0 items-center gap-4">
       <div ref={ref} className={className} aria-hidden="true" />
@@ -90,6 +94,7 @@ function StyleMeasurement({
 function DevUiOverview() {
   const { t } = useTranslation("dev");
   const { variant } = useSearch({ from: "/dev/ui" });
+
   const components = [
     { to: "/dev/ui/button", name: "Button", detail: "Actions and their variants" },
     { to: "/dev/ui/field", name: "Field and input", detail: "Labels, values, and errors" },
@@ -130,6 +135,7 @@ function DevUiOverview() {
         <div className="grid gap-4 lg:grid-cols-2">
           {(["light", "dark"] as const).map((mode) => {
             const values = mode === "light" ? light : { ...light, ...dark };
+
             return (
               <div
                 key={mode}
