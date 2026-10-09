@@ -1,13 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { CreatePrompt } from "@/api/prompts.api";
-import { promptKey } from "@/lib/query-keys";
+import { promptKey, runKey, trackingKey } from "@/lib/query-keys";
 
 export function usePromptMutations(brandID: string) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: promptKey(brandID) });
-
+  const invalidate = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: promptKey(brandID) }),
+      queryClient.invalidateQueries({ queryKey: trackingKey(brandID) }),
+      queryClient.invalidateQueries({ queryKey: runKey(brandID) }),
+    ]);
   const create = useMutation({
     mutationFn: (request: CreatePrompt) => api.prompts.create(brandID, request),
     onSuccess: invalidate,

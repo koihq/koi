@@ -13,19 +13,17 @@ import (
 )
 
 type VisibilityHandler struct {
-	querier   koidomain.VisibilityQuerier
-	commander koidomain.VisibilityCommander
-	sess      *scs.SessionManager
+	querier koidomain.VisibilityQuerier
+	sess    *scs.SessionManager
 }
 
-func NewVisibilityHandler(q koidomain.VisibilityQuerier, c koidomain.VisibilityCommander, sess *scs.SessionManager) *VisibilityHandler {
-	return &VisibilityHandler{querier: q, commander: c, sess: sess}
+func NewVisibilityHandler(q koidomain.VisibilityQuerier, sess *scs.SessionManager) *VisibilityHandler {
+	return &VisibilityHandler{querier: q, sess: sess}
 }
 
 func (h *VisibilityHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
 		r.Use(Authorizer(h.sess))
-		r.Post("/", h.Create)
 		r.Get("/", h.List)
 		r.Get("/{runID}", h.Get)
 		r.Get("/{runID}/results", h.ListResults)
@@ -62,20 +60,17 @@ func publicVisibilityStatus(run *koidomain.VisibilityRun) visibilityStatus {
 	}
 }
 
-func (h *VisibilityHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (h *VisibilityHandler) Tracking(w http.ResponseWriter, r *http.Request) {
 	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
-
-	run, err := h.commander.Create(r.Context(), brandID)
+	status, err := h.querier.Tracking(r.Context(), brandID)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
-
 		return
 	}
-
-	api.JSON(w, r, http.StatusAccepted, publicVisibilityStatus(run))
+	api.JSON(w, r, http.StatusOK, status)
 }
 
 func (h *VisibilityHandler) Get(w http.ResponseWriter, r *http.Request) {

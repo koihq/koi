@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
 import { DataTable } from "@/components/blocks/data-table";
 import { GenerationControls } from "@/components/blocks/generation-controls";
-import { Button } from "@/components/ui/button";
+import { TrackingReview } from "@/components/blocks/tracking-review";
 import { tableSearchParams } from "@/hooks/use-table-state";
 import { DeletePromptDialog } from "@/routes/_authenticated/_app/prompts/-components/delete-prompt-dialog";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
@@ -88,17 +88,7 @@ function PromptPage() {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("promptDescription")}</p>
         </div>
-        {(list.unconfirmed.data?.totalItems ?? 0) > 0 ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={mutations.confirmAll.isPending}
-            onClick={() => mutations.confirmAll.mutate()}
-          >
-            {t("confirmAllCount", { count: list.unconfirmed.data?.totalItems ?? 0 })}
-          </Button>
-        ) : null}
+        <TrackingReview brandID={brand.id} kind="prompts" disabled={pending} />
       </div>
       {mutations.confirm.isError || mutations.confirmAll.isError ? (
         <p role="alert" className="mb-4 text-sm text-destructive">

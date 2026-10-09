@@ -140,15 +140,28 @@ func (c *Client) research(ctx context.Context, model string, input koidomain.Gen
 
 	var summary researchSummary
 	if err == nil {
-		err = decodeJSON(content, &summary)
+		if decodeErr := decodeJSON(content, &summary); decodeErr != nil {
+			err = &Error{
+				Code:      "invalid_output",
+				Retryable: true,
+				Err:       fmt.Errorf("research response does not match schema: %w", decodeErr),
+			}
+		}
+	}
+
+	canFallback := len(strings.Fields(input.Brand.Description)) >= 6
+	if err != nil {
+		var providerErr *Error
+		if !canFallback || (errors.As(err, &providerErr) && !providerErr.Retryable) {
+			return researchSummary{}, err
+		}
 	}
 
 	if err != nil || summary.SourceURL != url || summary.Product == "" || summary.Category == "" || len(summary.Functions) == 0 {
-		if len(strings.Fields(input.Brand.Description)) < 6 {
+		if !canFallback {
 			return researchSummary{}, &Error{
-				Code:      "insufficient_context",
-				Retryable: err != nil,
-				Err:       fmt.Errorf("could not identify product at %s: %v", url, err),
+				Code: "insufficient_context",
+				Err:  fmt.Errorf("could not identify product at %s", url),
 			}
 		}
 

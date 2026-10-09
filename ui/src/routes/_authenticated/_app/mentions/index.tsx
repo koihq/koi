@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { createStandardSchemaV1, parseAsInteger, parseAsString } from "nuqs";
 import { useTranslation } from "react-i18next";
 
-import { messageFromUnknown } from "@/api/errors";
+import { TrackingSummary } from "@/components/blocks/tracking-review";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 import {
@@ -34,7 +34,7 @@ function Mentions() {
     void navigate({ search: { run: runID, page: 1 } });
   };
 
-  const state = useVisibility(brand.id, search.run ?? undefined, page, selectRun);
+  const state = useVisibility(brand.id, search.run ?? undefined, page);
   const run = state.run;
   const history = [...(state.runs.data?.items ?? [])];
   if (run && !history.some((item) => item.id === run.id)) history.unshift(run);
@@ -53,50 +53,13 @@ function Mentions() {
           <h2 id="visibility-heading" className="text-2xl font-medium tracking-tight">
             {t("title")}
           </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">{t("sampleNotice")}</p>
+          <p className="max-w-prose text-sm text-muted-foreground">{t("description")}</p>
         </div>
-        <Button type="button" disabled={!state.canStart} onClick={() => state.create.mutate()}>
-          {t(state.create.isPending ? "starting" : "start")}
-        </Button>
       </div>
 
+      <TrackingSummary brandID={brand.id} />
+
       <div className="space-y-3 text-sm">
-        {state.readinessError ? (
-          <p role="alert" className="text-destructive">
-            {t("readinessError")}{" "}
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              onClick={() => void state.retryReadiness()}
-            >
-              {t("retry")}
-            </Button>
-          </p>
-        ) : !state.readinessLoaded ? (
-          <p className="text-muted-foreground">{t("readinessLoading")}</p>
-        ) : !state.readiness.ready ? (
-          <div className="space-y-2">
-            <p>{t(state.readiness.needsPrompts ? "needPrompts" : "needsConfirmation")}</p>
-            <div className="flex flex-wrap gap-4">
-              {state.readiness.needsPrompts || state.readiness.needsPromptReview ? (
-                <Link to="/prompts" className="underline underline-offset-4">
-                  {t("reviewPrompts")}
-                </Link>
-              ) : null}
-              {state.readiness.needsCompetitorReview ? (
-                <Link to="/competitors" className="underline underline-offset-4">
-                  {t("reviewCompetitors")}
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-        {state.create.isError ? (
-          <p role="alert" className="text-destructive">
-            {messageFromUnknown(state.create.error)} {t("requestErrorRecovery")}
-          </p>
-        ) : null}
         {state.runs.isError ? (
           <p role="alert" className="text-destructive">
             {t("historyError")}{" "}

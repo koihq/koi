@@ -28,8 +28,10 @@ func (r *GormCompetitorRepository) Create(ctx context.Context, competitor *koido
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, competitor.BrandID); err != nil {
 			return err
 		}
-
-		return NewGormCompetitorRepository(tx).Repository.Create(ctx, competitor)
+		if err := NewGormCompetitorRepository(tx).Repository.Create(ctx, competitor); err != nil {
+			return err
+		}
+		return invalidateReview(tx, competitor.BrandID, "competitors")
 	})
 }
 
@@ -56,16 +58,42 @@ func (r *GormCompetitorRepository) List(ctx context.Context, filter koidomain.Co
 }
 
 func (r *GormCompetitorRepository) Update(ctx context.Context, filter koidomain.CompetitorFilter, update koidomain.CompetitorUpdate) error {
+	if _, err := r.Repository.query(ctx); err != nil {
+		return err
+	}
+
 	values := &koidomain.Competitor{}
 	columns := make([]string, 0, 1)
 	if update.Confirmed != nil {
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
-
-	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, values, columns, filter.ID != uuid.Nil)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
+			return err
+		}
+		if err := NewGormCompetitorRepository(tx).updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, values, columns, filter.ID != uuid.Nil); err != nil {
+			return err
+		}
+		if update.Confirmed != nil && !*update.Confirmed {
+			return invalidateReview(tx, filter.BrandID, "competitors")
+		}
+		return nil
+	})
 }
 
 func (r *GormCompetitorRepository) Delete(ctx context.Context, filter koidomain.CompetitorFilter) error {
-	return r.deleteBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, filter.ID != uuid.Nil)
+	if _, err := r.Repository.query(ctx); err != nil {
+		return err
+	}
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
+			return err
+		}
+		if err := NewGormCompetitorRepository(tx).deleteBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, filter.ID != uuid.Nil); err != nil {
+			return err
+		}
+		return invalidateReview(tx, filter.BrandID, "competitors")
+	})
 }

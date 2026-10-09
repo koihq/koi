@@ -2,7 +2,6 @@ package koidomain
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -48,6 +47,7 @@ const (
 )
 
 type VisibilityRun struct {
+	ScheduledFor *time.Time `json:"-"`
 	BaseEntity
 	BrandID          uuid.UUID       `json:"-" gorm:"type:uuid;not null"`
 	BrandSnapshot    BrandSnapshot   `json:"-" gorm:"type:jsonb;serializer:json;not null"`
@@ -74,6 +74,9 @@ func (r VisibilityRun) Validate() error {
 }
 
 type VisibilityResult struct {
+	CheckedAt   *time.Time `json:"-"`
+	CloroTaskID *string    `json:"-"`
+	SubmittedAt *time.Time `json:"-"`
 	BaseEntity
 	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null"`
 	// PromptID is a snapshot identifier, deliberately independent of the live prompt row.
@@ -135,6 +138,8 @@ type VisibilityInputs struct {
 }
 
 type VisibilityRepository interface {
+	FinishReview(context.Context, uuid.UUID, string) error
+	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
 	Get(context.Context, uuid.UUID, uuid.UUID) (*VisibilityRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
 	Active(context.Context, uuid.UUID) (*VisibilityRun, error)
@@ -143,105 +148,27 @@ type VisibilityRepository interface {
 	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 }
 
-type VisibilityCommander interface {
-	Create(context.Context, uuid.UUID) (*VisibilityRun, error)
+type TrackingStatus struct {
+	PromptsReviewed     bool       `json:"prompts_reviewed"`
+	CompetitorsReviewed bool       `json:"competitors_reviewed"`
+	StartedAt           *time.Time `json:"started_at"`
+	NextRunAt           *time.Time `json:"next_run_at"`
+	BlockedReason       *string    `json:"blocked_reason"`
 }
 
 type VisibilityQuerier interface {
 	Get(context.Context, uuid.UUID, uuid.UUID) (*VisibilityRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
 	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
+	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
 }
 
 type visibilityService struct{ store Store }
 
-func NewVisibilityCommander(store Store) VisibilityCommander { return &visibilityService{store: store} }
-
 func NewVisibilityQuerier(store Store) VisibilityQuerier { return &visibilityService{store: store} }
 
-func (s *visibilityService) Create(ctx context.Context, brandID uuid.UUID) (*VisibilityRun, error) {
-	var run *VisibilityRun
-
-	err := s.store.Atomic(ctx, func(tx Store) error {
-		brand, err := tx.BrandRepo().LockForUpdate(ctx, brandID)
-		if err != nil {
-			return err
-		}
-
-		repo := tx.VisibilityRepo()
-		run, err = repo.Active(ctx, brandID)
-		if err == nil {
-			return nil
-		}
-
-		if !errors.Is(err, ErrNotFound) {
-			return err
-		}
-
-		inputs, err := repo.Inputs(ctx, brandID)
-		if err != nil {
-			return err
-		}
-
-		var fields []FieldError
-		if len(inputs.Prompts) == 0 {
-			fields = append(fields, FieldError{Field: "prompts", Code: "empty"})
-		}
-
-		for _, prompt := range inputs.Prompts {
-			if !prompt.Confirmed {
-				fields = append(fields, FieldError{Field: "prompts", Code: "unconfirmed"})
-				break
-			}
-		}
-
-		if inputs.UnconfirmedCompetitors > 0 {
-			fields = append(fields, FieldError{Field: "competitors", Code: "unconfirmed"})
-		}
-
-		if len(fields) > 0 {
-			return &Error{Code: CodeRunNotReady, Message: "run not ready", Fields: fields}
-		}
-
-		run = &VisibilityRun{
-			BrandID: brandID,
-			BrandSnapshot: BrandSnapshot{
-				Name:        brand.Name,
-				Domain:      brand.Domain,
-				GitHubRepo:  brand.GitHubRepo,
-				Country:     brand.Country,
-				Description: brand.Description,
-			},
-			Engines:      VisibilityEngines(),
-			State:        VisibilityQueued,
-			TotalResults: int64(len(inputs.Prompts) * len(VisibilityEngines())),
-		}
-		if err := run.Validate(); err != nil {
-			return err
-		}
-
-		results := make([]VisibilityResult, 0, run.TotalResults)
-
-		for position, prompt := range inputs.Prompts {
-			for _, engine := range run.Engines {
-				results = append(results, VisibilityResult{
-					PromptID:       prompt.ID,
-					PromptText:     prompt.Text,
-					PromptPosition: position,
-					Engine:         engine,
-					Collector:      CollectorStub,
-					Sources:        []string{},
-				})
-			}
-		}
-
-		return repo.CreateAndEnqueue(ctx, run, results)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return run, nil
+func (s *visibilityService) Tracking(ctx context.Context, brandID uuid.UUID) (*TrackingStatus, error) {
+	return s.store.VisibilityRepo().Tracking(ctx, brandID)
 }
 
 func (s *visibilityService) Get(ctx context.Context, brandID, runID uuid.UUID) (*VisibilityRun, error) {

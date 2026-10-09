@@ -15,11 +15,12 @@ import (
 	"github.com/koihq/koi/pkg/web"
 )
 
-func NewServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool) http.Handler {
-	return buildHTTPServer(store, sess, searcher, aiDrafting)
+func NewServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool, collection ...bool) http.Handler {
+	return buildHTTPServer(store, sess, searcher, aiDrafting, collection...)
 }
 
-func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool) http.Handler {
+func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool, collection ...bool) http.Handler {
+	liveCollection := len(collection) > 0 && collection[0]
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middlewares.RequestLogger)
@@ -36,7 +37,7 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 	r.Get("/health", NewHealthHandler(store).Get)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(Authorizer(sess)).Get("/capabilities", func(w http.ResponseWriter, req *http.Request) {
-			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting})
+			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting, "liveCollection": liveCollection})
 		})
 		r.Route("/auth", NewAuthHandler(
 			koidomain.NewAuthQuerier(store),
@@ -59,14 +60,12 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 				koidomain.NewCompetitorCommander(store),
 				sess,
 			).Routes())
+			visibility := NewVisibilityHandler(koidomain.NewVisibilityQuerier(store), sess)
+			r.With(Authorizer(sess)).Get("/{brandID}/tracking", visibility.Tracking)
+			r.Route("/{brandID}/runs", visibility.Routes())
 			r.Route("/{brandID}/generations", NewGenerationHandler(
 				koidomain.NewGenerationQuerier(store),
 				koidomain.NewGenerationCommander(store, aiDrafting),
-				sess,
-			).Routes())
-			r.Route("/{brandID}/runs", NewVisibilityHandler(
-				koidomain.NewVisibilityQuerier(store),
-				koidomain.NewVisibilityCommander(store),
 				sess,
 			).Routes())
 		})

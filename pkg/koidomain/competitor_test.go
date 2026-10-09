@@ -125,15 +125,10 @@ func TestCompetitorConfirmationUsesUpdate(t *testing.T) {
 	brands := NewMockBrandRepository(t)
 	competitors := NewMockCompetitorRepository(t)
 	userID, brandID, competitorID := uuid.New(), uuid.New(), uuid.New()
-	store.EXPECT().BrandRepo().Return(brands).Twice()
-	store.EXPECT().CompetitorRepo().Return(competitors).Times(3)
-	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Twice()
-	competitor := &Competitor{
-		BaseEntity: BaseEntity{
-			ID: competitorID,
-		},
-		BrandID: brandID,
-	}
+	store.EXPECT().BrandRepo().Return(brands).Once()
+	store.EXPECT().CompetitorRepo().Return(competitors).Twice()
+	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Once()
+	competitor := &Competitor{BaseEntity: BaseEntity{ID: competitorID}, BrandID: brandID}
 	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
 	competitors.EXPECT().Get(mock.Anything, filter).Return(competitor, nil)
 	competitors.EXPECT().Update(mock.Anything, filter, mock.MatchedBy(func(update CompetitorUpdate) bool {
@@ -144,11 +139,10 @@ func TestCompetitorConfirmationUsesUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, confirmed.Confirmed)
 
-	competitors.EXPECT().Update(mock.Anything, mock.MatchedBy(func(filter CompetitorFilter) bool {
-		return filter.BrandID == brandID && filter.Confirmed != nil && !*filter.Confirmed
-	}), mock.MatchedBy(func(update CompetitorUpdate) bool {
-		return update.Confirmed != nil && *update.Confirmed
-	})).Return(nil)
+	visibility := NewMockVisibilityRepository(t)
+	store.EXPECT().VisibilityRepo().Return(visibility).Once()
+	visibility.EXPECT().FinishReview(mock.Anything, brandID, "competitors").Return(nil).Once()
+
 	require.NoError(t, NewCompetitorCommander(store).ConfirmAll(identityCtx(t, userID), brandID))
 }
 

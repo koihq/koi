@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useApi } from "@/api/apiProvider";
 import type { Generation, GenerationMode } from "@/api/generations.api";
-import { competitorKey, generationKey, promptKey } from "@/lib/query-keys";
+import { competitorKey, generationKey, promptKey, trackingKey } from "@/lib/query-keys";
 
 export function generationPollDelay(
   state: Generation["state"] | undefined,
@@ -65,6 +65,7 @@ export function useGeneration(brandID: string) {
 
     lastTerminal.current = run.id;
     void queryClient.invalidateQueries({ queryKey: generationKey(brandID), exact: true });
+    void queryClient.invalidateQueries({ queryKey: trackingKey(brandID) });
     if (run.state === "succeeded") {
       void queryClient.invalidateQueries({ queryKey: promptKey(brandID) });
       void queryClient.invalidateQueries({ queryKey: competitorKey(brandID) });

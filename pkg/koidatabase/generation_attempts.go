@@ -118,7 +118,16 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 
 			competitorCount = count
 		}
-
+		if promptCount > 0 {
+			if err := invalidateReview(tx, run.BrandID, "prompts"); err != nil {
+				return err
+			}
+		}
+		if competitorCount > 0 {
+			if err := invalidateReview(tx, run.BrandID, "competitors"); err != nil {
+				return err
+			}
+		}
 		return tx.Model(&run).Updates(map[string]any{
 			"state":            koidomain.GenerationSucceeded,
 			"prompt_count":     promptCount,

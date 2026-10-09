@@ -14,34 +14,26 @@ tags:
   - name: generations
   - name: visibility
 paths:
-  /api/v1/brands/{brandID}/runs:
+  /api/v1/brands/{brandID}/tracking:
     parameters:
       - $ref: "#/components/parameters/BrandID"
-    post:
+    get:
+      operationId: getVisibilityTracking
       tags: [visibility]
-      operationId: createVisibilityRun
-      description: Creates a stub run, full prompt × engine matrix, and River job atomically. Requires at least one prompt and no unconfirmed prompts or competitors. Returns the existing run while one is active. Does not contact providers or require credentials.
       security:
         - cookieAuth: []
       responses:
-        "202":
-          description: New or existing active visibility run
+        "200":
+          description: Review and daily collection schedule
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VisibilityRunStatus"
-        "401":
+                $ref: "#/components/schemas/TrackingStatus"
+        default:
           $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/Error"
-        "409":
-          description: run_not_ready with prompts/empty, prompts/unconfirmed, or competitors/unconfirmed fields
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Envelope"
-        "503":
-          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/runs:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
     get:
       tags: [visibility]
       operationId: listVisibilityRuns
@@ -865,7 +857,7 @@ components:
         collector:
           type: string
           enum: [stub, cloro]
-          description: stub is sample data; cloro identifies future live collection
+          description: stub is sample data; cloro identifies live collection
         fetched_at:
           type: string
           format: date-time
@@ -924,6 +916,26 @@ components:
           type: boolean
         hasPrev:
           type: boolean
+    TrackingStatus:
+      type: object
+      required: [prompts_reviewed, competitors_reviewed, started_at, next_run_at, blocked_reason]
+      properties:
+        prompts_reviewed:
+          type: boolean
+        competitors_reviewed:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        next_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        blocked_reason:
+          type: string
+          nullable: true
+          enum: [collection_unavailable, reviews_required, prompts_required, generation_active]
     BrandRequest:
       type: object
       description: At least one of domain or github_repo is required.
@@ -1110,8 +1122,10 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting]
+      required: [competitorSearch, aiDrafting, liveCollection]
       properties:
+        liveCollection:
+          type: boolean
         competitorSearch:
           type: boolean
         aiDrafting:

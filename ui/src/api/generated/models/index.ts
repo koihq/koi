@@ -26,6 +26,7 @@ export * from './PromptPatchRequest';
 export * from './PromptRequest';
 export * from './PromptRes';
 export * from './SearchCompetitors200ResponseInner';
+export * from './TrackingStatus';
 export * from './VisibilityEngine';
 export * from './VisibilityResult';
 export * from './VisibilityResultPage';

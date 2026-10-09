@@ -21,13 +21,15 @@ func (VisibilityJobArgs) Kind() string { return "koi_visibility" }
 
 type GormVisibilityRepository struct {
 	*Repository[koidomain.VisibilityRun]
-	client *river.Client[*sql.Tx]
+	client  *river.Client[*sql.Tx]
+	enabled bool
 }
 
-func NewGormVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx]) *GormVisibilityRepository {
+func NewGormVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx], enabled bool) *GormVisibilityRepository {
 	return &GormVisibilityRepository{
 		Repository: newScopedRepository[koidomain.VisibilityRun](db, childOwnerScope("visibility_runs")),
 		client:     client,
+		enabled:    enabled,
 	}
 }
 

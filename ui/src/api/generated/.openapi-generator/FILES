@@ -33,6 +33,7 @@ models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts
 models/SearchCompetitors200ResponseInner.ts
+models/TrackingStatus.ts
 models/VisibilityEngine.ts
 models/VisibilityResult.ts
 models/VisibilityResultPage.ts

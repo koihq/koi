@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/koihq/koi/pkg/koiauth"
@@ -15,6 +16,10 @@ import (
 )
 
 type Brand struct {
+	PromptsReviewedAt     *time.Time `json:"-"`
+	CompetitorsReviewedAt *time.Time `json:"-"`
+	VisibilityStartedAt   *time.Time `json:"-"`
+	NextVisibilityAt      *time.Time `json:"-"`
 	BaseEntity
 	UserID      uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
 	Name        string    `json:"name" gorm:"not null"`

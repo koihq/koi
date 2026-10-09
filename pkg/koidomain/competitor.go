@@ -184,16 +184,7 @@ func (s *competitorService) Confirm(ctx context.Context, brandID, competitorID u
 }
 
 func (s *competitorService) ConfirmAll(ctx context.Context, brandID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return err
-	}
-
-	unconfirmed, confirmed := false, true
-
-	return s.store.CompetitorRepo().Update(ctx,
-		CompetitorFilter{BrandID: brandID, Confirmed: &unconfirmed},
-		CompetitorUpdate{Confirmed: &confirmed},
-	)
+	return s.store.VisibilityRepo().FinishReview(ctx, brandID, "competitors")
 }
 
 func (s *competitorService) List(ctx context.Context, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Competitor], error) {
