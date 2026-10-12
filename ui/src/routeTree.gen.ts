@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/_app'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/_settings'
+import { Route as DevExplorationsRouteRouteImport } from './routes/dev/explorations/route'
 import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
@@ -19,6 +20,7 @@ import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppBriefRouteImport } from './routes/_authenticated/_app/brief'
 import { Route as AuthenticatedAppCitationsRouteImport } from './routes/_authenticated/_app/citations'
 import { Route as AuthenticatedSetupIndexRouteImport } from './routes/_authenticated/setup/index'
+import { Route as DevExplorationsIndexRouteImport } from './routes/dev/explorations/index'
 import { Route as DevUiIndexRouteImport } from './routes/dev/ui/index'
 import { Route as DevUiButtonRouteImport } from './routes/dev/ui/button'
 import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
@@ -29,6 +31,7 @@ import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAppMentionsIndexRouteImport } from './routes/_authenticated/_app/mentions/index'
 import { Route as AuthenticatedAppPromptsIndexRouteImport } from './routes/_authenticated/_app/prompts/index'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
+import { Route as DevExplorationsDirectionSectionRouteImport } from './routes/dev/explorations/$direction/$section'
 import { Route as AuthenticatedSettingsSettingsCompetitorsIndexRouteImport } from './routes/_authenticated/_settings/settings/competitors/index'
 import { Route as AuthenticatedSettingsSettingsPromptsIndexRouteImport } from './routes/_authenticated/_settings/settings/prompts/index'
 
@@ -43,6 +46,11 @@ const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/_settings',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const DevExplorationsRouteRoute = DevExplorationsRouteRouteImport.update({
+  id: '/dev/explorations',
+  path: '/dev/explorations',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DevUiRouteRoute = DevUiRouteRouteImport.update({
   id: '/dev/ui',
@@ -79,6 +87,11 @@ const AuthenticatedSetupIndexRoute = AuthenticatedSetupIndexRouteImport.update({
   id: '/setup/',
   path: '/setup/',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const DevExplorationsIndexRoute = DevExplorationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DevExplorationsRouteRoute,
 } as any)
 const DevUiIndexRoute = DevUiIndexRouteImport.update({
   id: '/',
@@ -134,6 +147,12 @@ const AuthenticatedSettingsSettingsBrandRoute =
     path: '/settings/brand',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const DevExplorationsDirectionSectionRoute =
+  DevExplorationsDirectionSectionRouteImport.update({
+    id: '/$direction/$section',
+    path: '/$direction/$section',
+    getParentRoute: () => DevExplorationsRouteRoute,
+  } as any)
 const AuthenticatedSettingsSettingsCompetitorsIndexRoute =
   AuthenticatedSettingsSettingsCompetitorsIndexRouteImport.update({
     id: '/settings/competitors/',
@@ -149,6 +168,7 @@ const AuthenticatedSettingsSettingsPromptsIndexRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedAppIndexRoute
+  '/dev/explorations': typeof DevExplorationsRouteRouteWithChildren
   '/dev/ui': typeof DevUiRouteRouteWithChildren
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
@@ -160,8 +180,10 @@ export interface FileRoutesByFullPath {
   '/dev/ui/separator': typeof DevUiSeparatorRoute
   '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/setup/': typeof AuthenticatedSetupIndexRoute
+  '/dev/explorations/': typeof DevExplorationsIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
   '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
   '/mentions/': typeof AuthenticatedAppMentionsIndexRoute
   '/prompts/': typeof AuthenticatedAppPromptsIndexRoute
@@ -180,8 +202,10 @@ export interface FileRoutesByTo {
   '/dev/ui/separator': typeof DevUiSeparatorRoute
   '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/setup': typeof AuthenticatedSetupIndexRoute
+  '/dev/explorations': typeof DevExplorationsIndexRoute
   '/dev/ui': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
   '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
   '/mentions': typeof AuthenticatedAppMentionsIndexRoute
   '/prompts': typeof AuthenticatedAppPromptsIndexRoute
@@ -191,6 +215,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/dev/explorations': typeof DevExplorationsRouteRouteWithChildren
   '/dev/ui': typeof DevUiRouteRouteWithChildren
   '/_authenticated/_app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/_settings': typeof AuthenticatedSettingsRouteWithChildren
@@ -205,8 +230,10 @@ export interface FileRoutesById {
   '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/setup/': typeof AuthenticatedSetupIndexRoute
+  '/dev/explorations/': typeof DevExplorationsIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
   '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
   '/_authenticated/_app/mentions/': typeof AuthenticatedAppMentionsIndexRoute
   '/_authenticated/_app/prompts/': typeof AuthenticatedAppPromptsIndexRoute
@@ -217,6 +244,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dev/explorations'
     | '/dev/ui'
     | '/sign-in/'
     | '/sign-up/'
@@ -228,8 +256,10 @@ export interface FileRouteTypes {
     | '/dev/ui/separator'
     | '/dev/ui/sidebar'
     | '/setup/'
+    | '/dev/explorations/'
     | '/dev/ui/'
     | '/settings/brand'
+    | '/dev/explorations/$direction/$section'
     | '/competitors/'
     | '/mentions/'
     | '/prompts/'
@@ -248,8 +278,10 @@ export interface FileRouteTypes {
     | '/dev/ui/separator'
     | '/dev/ui/sidebar'
     | '/setup'
+    | '/dev/explorations'
     | '/dev/ui'
     | '/settings/brand'
+    | '/dev/explorations/$direction/$section'
     | '/competitors'
     | '/mentions'
     | '/prompts'
@@ -258,6 +290,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/dev/explorations'
     | '/dev/ui'
     | '/_authenticated/_app'
     | '/_authenticated/_settings'
@@ -272,8 +305,10 @@ export interface FileRouteTypes {
     | '/dev/ui/sidebar'
     | '/_authenticated/_app/'
     | '/_authenticated/setup/'
+    | '/dev/explorations/'
     | '/dev/ui/'
     | '/_authenticated/_settings/settings/brand'
+    | '/dev/explorations/$direction/$section'
     | '/_authenticated/_app/competitors/'
     | '/_authenticated/_app/mentions/'
     | '/_authenticated/_app/prompts/'
@@ -283,6 +318,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  DevExplorationsRouteRoute: typeof DevExplorationsRouteRouteWithChildren
   DevUiRouteRoute: typeof DevUiRouteRouteWithChildren
   SignInIndexRoute: typeof SignInIndexRoute
   SignUpIndexRoute: typeof SignUpIndexRoute
@@ -310,6 +346,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/dev/explorations': {
+      id: '/dev/explorations'
+      path: '/dev/explorations'
+      fullPath: '/dev/explorations'
+      preLoaderRoute: typeof DevExplorationsRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dev/ui': {
       id: '/dev/ui'
@@ -359,6 +402,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/setup/'
       preLoaderRoute: typeof AuthenticatedSetupIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/dev/explorations/': {
+      id: '/dev/explorations/'
+      path: '/'
+      fullPath: '/dev/explorations/'
+      preLoaderRoute: typeof DevExplorationsIndexRouteImport
+      parentRoute: typeof DevExplorationsRouteRoute
     }
     '/dev/ui/': {
       id: '/dev/ui/'
@@ -429,6 +479,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/brand'
       preLoaderRoute: typeof AuthenticatedSettingsSettingsBrandRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/dev/explorations/$direction/$section': {
+      id: '/dev/explorations/$direction/$section'
+      path: '/$direction/$section'
+      fullPath: '/dev/explorations/$direction/$section'
+      preLoaderRoute: typeof DevExplorationsDirectionSectionRouteImport
+      parentRoute: typeof DevExplorationsRouteRoute
     }
     '/_authenticated/_settings/settings/competitors/': {
       id: '/_authenticated/_settings/settings/competitors/'
@@ -504,6 +561,19 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface DevExplorationsRouteRouteChildren {
+  DevExplorationsIndexRoute: typeof DevExplorationsIndexRoute
+  DevExplorationsDirectionSectionRoute: typeof DevExplorationsDirectionSectionRoute
+}
+
+const DevExplorationsRouteRouteChildren: DevExplorationsRouteRouteChildren = {
+  DevExplorationsIndexRoute: DevExplorationsIndexRoute,
+  DevExplorationsDirectionSectionRoute: DevExplorationsDirectionSectionRoute,
+}
+
+const DevExplorationsRouteRouteWithChildren =
+  DevExplorationsRouteRoute._addFileChildren(DevExplorationsRouteRouteChildren)
+
 interface DevUiRouteRouteChildren {
   DevUiButtonRoute: typeof DevUiButtonRoute
   DevUiFieldRoute: typeof DevUiFieldRoute
@@ -528,6 +598,7 @@ const DevUiRouteRouteWithChildren = DevUiRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  DevExplorationsRouteRoute: DevExplorationsRouteRouteWithChildren,
   DevUiRouteRoute: DevUiRouteRouteWithChildren,
   SignInIndexRoute: SignInIndexRoute,
   SignUpIndexRoute: SignUpIndexRoute,
