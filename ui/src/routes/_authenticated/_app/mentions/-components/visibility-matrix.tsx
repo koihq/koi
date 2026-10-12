@@ -62,9 +62,26 @@ export function VisibilityMatrix({
                 const result = row.results.get(engine);
 
                 return (
-                  <TableCell key={engine}>
+                  <TableCell key={engine} className="min-w-36 align-top">
                     {result?.outcome ? (
-                      <VisibilityAnswerDialog result={result} />
+                      <div className="space-y-2">
+                        <VisibilityAnswerDialog result={result} />
+                        {result.appearances.length ? (
+                          <ul className="max-w-56 space-y-1 whitespace-normal text-xs text-muted-foreground">
+                            {result.appearances.map((appearance) => (
+                              <li
+                                key={appearance.competitorId ?? appearance.name}
+                                className="break-words"
+                              >
+                                {appearance.name}
+                                {!appearance.confirmed
+                                  ? ` · ${t(appearance.competitorId ? "appearanceSuggestion" : "appearanceUnresolved")}`
+                                  : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
                     ) : (
                       <span className="text-muted-foreground">
                         {t(run.state === "failed" ? "notCollected" : "pending")}
@@ -115,6 +132,58 @@ function VisibilityAnswerDialog({ result }: { result: VisibilityResult }) {
         {result.errorCode ? (
           <p className="text-destructive">{t("error", { code: result.errorCode })}</p>
         ) : null}
+        <div className="space-y-3">
+          <h3 className="font-medium">{t("whoAppeared")}</h3>
+          {result.appearances.length ? (
+            <ul className="space-y-4">
+              {result.appearances.map((appearance) => (
+                <li key={appearance.competitorId ?? appearance.name} className="min-w-0 space-y-1">
+                  <p className="break-words font-medium">
+                    {appearance.name}
+                    <span className="ms-2 text-sm font-normal text-muted-foreground">
+                      {t(
+                        appearance.confirmed
+                          ? "appearanceConfirmed"
+                          : appearance.competitorId
+                            ? "appearanceSuggestion"
+                            : "appearanceUnresolved",
+                      )}
+                    </span>
+                  </p>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {appearance.evidence.map((evidence) => {
+                      const href =
+                        evidence.kind === "citation" || evidence.kind === "link"
+                          ? safeSourceURL(evidence.value)
+                          : undefined;
+
+                      return (
+                        <li key={`${evidence.kind}:${evidence.value}`} className="break-all">
+                          {t(`evidenceKinds.${evidence.kind}`)}
+                          {": "}
+                          {href ? (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline underline-offset-4"
+                            >
+                              {evidence.value}
+                            </a>
+                          ) : (
+                            evidence.value
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">{t("noAppearances")}</p>
+          )}
+        </div>
         <div className="space-y-2">
           <h3 className="font-medium">{t("answer")}</h3>
           <p className="whitespace-pre-wrap break-words">

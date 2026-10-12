@@ -17,13 +17,15 @@ const (
 
 type Competitor struct {
 	BaseEntity
-	BrandID    uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;uniqueIndex:idx_competitors_brand_domain,priority:1,where:domain <> '';uniqueIndex:idx_competitors_brand_github_repo,priority:1,where:github_repo <> ''"`
-	Name       string           `json:"name" gorm:"not null"`
-	Domain     string           `json:"domain" gorm:"not null;uniqueIndex:idx_competitors_brand_domain,priority:2"`
-	GitHubRepo string           `json:"github_repo" gorm:"column:github_repo;not null;default:'';uniqueIndex:idx_competitors_brand_github_repo,priority:2"`
-	Source     CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
-	Confirmed  bool             `json:"confirmed" gorm:"not null;default:false"`
-	Brand      *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	BrandID        uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;uniqueIndex:idx_competitors_brand_domain,priority:1,where:domain <> '';uniqueIndex:idx_competitors_brand_github_repo,priority:1,where:github_repo <> ''"`
+	Name           string           `json:"name" gorm:"not null"`
+	Domain         string           `json:"domain" gorm:"not null;uniqueIndex:idx_competitors_brand_domain,priority:2"`
+	GitHubRepo     string           `json:"github_repo" gorm:"column:github_repo;not null;default:'';uniqueIndex:idx_competitors_brand_github_repo,priority:2"`
+	Aliases        []string         `json:"aliases" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	AdditionalURLs []string         `json:"additional_urls" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	Source         CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
+	Confirmed      bool             `json:"confirmed" gorm:"not null;default:false"`
+	Brand          *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
 
 func (Competitor) TableName() string { return "competitors" }
@@ -32,6 +34,8 @@ func (c *Competitor) Normalize() {
 	c.Name = normalizeWhitespace(c.Name)
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
 	c.GitHubRepo = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(c.GitHubRepo)), "/")
+	c.Aliases = normalizeNames(c.Aliases)
+	c.AdditionalURLs = normalizeIdentityURLs(c.AdditionalURLs)
 }
 
 func (c Competitor) Validate() error {
@@ -44,7 +48,7 @@ func (c Competitor) Validate() error {
 		fields = append(fields, FieldError{Field: "name", Code: FieldInvalid})
 	}
 
-	if c.Domain == "" && c.GitHubRepo == "" {
+	if c.Domain == "" && c.GitHubRepo == "" && (c.Source != CompetitorSourceObserved || c.Confirmed) {
 		fields = append(fields, FieldError{Field: "domain", Code: FieldInvalid}, FieldError{Field: "github_repo", Code: FieldInvalid})
 	} else if c.Domain != "" && !validHostname(c.Domain) {
 		fields = append(fields, FieldError{Field: "domain", Code: FieldInvalid})
@@ -60,6 +64,27 @@ func (c Competitor) Validate() error {
 
 	if c.Source == CompetitorSourceManual && !c.Confirmed {
 		fields = append(fields, FieldError{Field: "confirmed", Code: FieldInvalid})
+	}
+	if len(c.Name) > 255 {
+		fields = append(fields, FieldError{Field: "name", Code: FieldInvalid})
+	}
+	if len(c.Aliases) > 20 {
+		fields = append(fields, FieldError{Field: "aliases", Code: FieldInvalid})
+	}
+	if len(c.AdditionalURLs) > 20 {
+		fields = append(fields, FieldError{Field: "additional_urls", Code: FieldInvalid})
+	}
+	for _, alias := range c.Aliases {
+		if len(alias) > 255 {
+			fields = append(fields, FieldError{Field: "aliases", Code: FieldInvalid})
+			break
+		}
+	}
+	for _, value := range c.AdditionalURLs {
+		if _, ok := NormalizeIdentityURL(value); !ok {
+			fields = append(fields, FieldError{Field: "additional_urls", Code: FieldInvalid})
+			break
+		}
 	}
 
 	if len(fields) > 0 {
@@ -86,13 +111,20 @@ type CompetitorFilter struct {
 }
 
 type CompetitorUpdate struct {
-	Confirmed *bool
+	Confirmed      *bool
+	Name           *string
+	Domain         *string
+	GitHubRepo     *string
+	Aliases        *[]string
+	AdditionalURLs *[]string
 }
 
 type CompetitorParams struct {
-	Name       string
-	Domain     string
-	GitHubRepo string
+	Name           string
+	Domain         string
+	GitHubRepo     string
+	Aliases        []string
+	AdditionalURLs []string
 }
 
 type CompanySearchResult struct {
@@ -106,6 +138,7 @@ type CompanySearcher interface {
 
 type CompetitorCommander interface {
 	Create(context.Context, uuid.UUID, CompetitorParams) (*Competitor, error)
+	Patch(context.Context, uuid.UUID, uuid.UUID, CompetitorUpdate) (*Competitor, error)
 	Delete(context.Context, uuid.UUID, uuid.UUID) error
 	Confirm(context.Context, uuid.UUID, uuid.UUID) (*Competitor, error)
 	ConfirmAll(context.Context, uuid.UUID) error
@@ -134,12 +167,14 @@ func (s *competitorService) Create(ctx context.Context, brandID uuid.UUID, param
 	}
 
 	competitor := &Competitor{
-		BrandID:    brandID,
-		Name:       params.Name,
-		Domain:     params.Domain,
-		GitHubRepo: params.GitHubRepo,
-		Source:     CompetitorSourceManual,
-		Confirmed:  true,
+		BrandID:        brandID,
+		Name:           params.Name,
+		Domain:         params.Domain,
+		GitHubRepo:     params.GitHubRepo,
+		Aliases:        params.Aliases,
+		AdditionalURLs: params.AdditionalURLs,
+		Source:         CompetitorSourceManual,
+		Confirmed:      true,
 	}
 
 	competitor.Normalize()
@@ -160,6 +195,20 @@ func (s *competitorService) Delete(ctx context.Context, brandID, competitorID uu
 	}
 
 	return s.store.CompetitorRepo().Delete(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
+}
+
+func (s *competitorService) Patch(ctx context.Context, brandID, competitorID uuid.UUID, update CompetitorUpdate) (*Competitor, error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
+		return nil, err
+	}
+
+	update.Confirmed = nil
+	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
+	if err := s.store.CompetitorRepo().Update(ctx, filter, update); err != nil {
+		return nil, err
+	}
+
+	return s.store.CompetitorRepo().Get(ctx, filter)
 }
 
 func (s *competitorService) Confirm(ctx context.Context, brandID, competitorID uuid.UUID) (*Competitor, error) {

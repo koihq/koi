@@ -50,6 +50,15 @@ A visibility job processes cells for approximately 40 seconds, persists Cloro ta
 answers, then snoozes for ten seconds if work remains. Actual resumption also depends on
 River's scheduler and available workers. This is a bounded loop inside a queued job.
 
+Visibility cells show matched competitor names and supporting evidence. Matching uses current
+names, aliases, official domains, and GitHub repositories, so edits also update historical links
+without changing saved answers or brand outcomes. Live Cloro entities and leading Markdown
+links to product homepages or repositories provide conservative discovery: two distinct cells
+create an unconfirmed observed suggestion; retries do not count twice. Names found only in
+ordinary prose may be missed. Name-only suggestions need a primary domain or repository before
+individual confirmation. Finish review excludes observed suggestions, and deleting one suppresses
+its rediscovery for that brand without interrupting tracking.
+
 Generation runs when a job is queued. `KOI_PROVIDER_TIMEOUT` defaults to three minutes per
 provider call. Generation makes two sequential calls, so its job timeout is twice that value
 plus 30 seconds (6m30s by default). Retry delays after failures are five and twenty seconds;

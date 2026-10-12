@@ -1,12 +1,15 @@
 // @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
+export * from './AppearanceEvidence';
 export * from './BrandPage';
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
 export * from './BrandRes';
 export * from './CapabilitiesResponse';
+export * from './CompetitorAppearance';
 export * from './CompetitorPage';
+export * from './CompetitorPatchRequest';
 export * from './CompetitorRequest';
 export * from './CompetitorRes';
 export * from './CountryOption';

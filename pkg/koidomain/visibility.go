@@ -81,17 +81,21 @@ type VisibilityResult struct {
 	BaseEntity
 	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:1;index:idx_visibility_results_order,priority:1"`
 	// PromptID is a snapshot identifier, deliberately independent of the live prompt row.
-	PromptID       uuid.UUID      `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2"`
-	PromptText     string         `json:"prompt_text" gorm:"not null"`
-	PromptPosition int            `json:"prompt_position" gorm:"not null;index:idx_visibility_results_order,priority:2"`
-	Engine         EngineID       `json:"engine" gorm:"type:varchar(32);not null;uniqueIndex:idx_visibility_results_cell,priority:3;index:idx_visibility_results_order,priority:3"`
-	Collector      CollectorID    `json:"collector" gorm:"type:varchar(16);not null"`
-	FetchedAt      *time.Time     `json:"fetched_at"`
-	Outcome        *Outcome       `json:"outcome" gorm:"type:varchar(16);check:chk_visibility_outcome,outcome IS NULL OR outcome IN ('cited','mentioned','miss','error')"`
-	RawAnswer      string         `json:"raw_answer" gorm:"not null;default:''"`
-	Sources        []string       `json:"sources" gorm:"type:jsonb;serializer:json;not null"`
-	ErrorCode      *string        `json:"error_code"`
-	Run            *VisibilityRun `json:"-" gorm:"foreignKey:RunID;constraint:OnDelete:CASCADE"`
+	PromptID       uuid.UUID               `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2"`
+	PromptText     string                  `json:"prompt_text" gorm:"not null"`
+	PromptPosition int                     `json:"prompt_position" gorm:"not null;index:idx_visibility_results_order,priority:2"`
+	Engine         EngineID                `json:"engine" gorm:"type:varchar(32);not null;uniqueIndex:idx_visibility_results_cell,priority:3;index:idx_visibility_results_order,priority:3"`
+	Collector      CollectorID             `json:"collector" gorm:"type:varchar(16);not null"`
+	FetchedAt      *time.Time              `json:"fetched_at"`
+	Outcome        *Outcome                `json:"outcome" gorm:"type:varchar(16);check:chk_visibility_outcome,outcome IS NULL OR outcome IN ('cited','mentioned','miss','error')"`
+	RawAnswer      string                  `json:"raw_answer" gorm:"not null;default:''"`
+	AnswerMarkdown string                  `json:"-" gorm:"not null;default:''"`
+	NamedEntities  []NamedEntity           `json:"-" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	Observations   []AppearanceObservation `json:"-" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	Appearances    []CompetitorAppearance  `json:"appearances" gorm:"-"`
+	Sources        []string                `json:"sources" gorm:"type:jsonb;serializer:json;not null"`
+	ErrorCode      *string                 `json:"error_code"`
+	Run            *VisibilityRun          `json:"-" gorm:"foreignKey:RunID;constraint:OnDelete:CASCADE"`
 }
 
 func (VisibilityResult) TableName() string { return "visibility_results" }

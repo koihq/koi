@@ -2,16 +2,21 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Competitor } from "@/api/competitors.api";
+import type { Competitor, UpdateCompetitor } from "@/api/competitors.api";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import { Button } from "@/components/ui/button";
+import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
 
 export function useCompetitorColumns({
+  brandID,
   pending,
+  onUpdate,
   onDelete,
   onConfirm,
 }: {
+  brandID: string;
   pending: boolean;
+  onUpdate: (id: string, request: UpdateCompetitor) => Promise<void>;
   onDelete: (competitor: Competitor) => void;
   onConfirm: (id: string) => void;
 }): ColumnDef<Competitor>[] {
@@ -28,7 +33,7 @@ export function useCompetitorColumns({
             <div>
               <p className="text-sm font-medium">{row.original.name}</p>
               <p className="text-muted-foreground">
-                {row.original.domain || row.original.githubRepo}
+                {row.original.domain || row.original.githubRepo || t("competitorIdentityNeeded")}
               </p>
             </div>
           </div>
@@ -54,8 +59,8 @@ export function useCompetitorColumns({
         id: "actions",
         header: t("actions"),
         cell: ({ row }) => (
-          <div className="flex justify-end gap-1">
-            {!row.original.confirmed ? (
+          <div className="flex flex-wrap justify-end gap-1">
+            {!row.original.confirmed && (row.original.domain || row.original.githubRepo) ? (
               <Button
                 type="button"
                 variant="outline"
@@ -66,6 +71,13 @@ export function useCompetitorColumns({
                 {t("confirm")}
               </Button>
             ) : null}
+            <CompetitorDialog
+              brandID={brandID}
+              competitor={row.original}
+              label={t(!row.original.domain && !row.original.githubRepo ? "addIdentity" : "edit")}
+              pending={pending}
+              onSave={(request) => onUpdate(row.original.id, request)}
+            />
             <Button
               type="button"
               variant="ghost"
@@ -73,12 +85,16 @@ export function useCompetitorColumns({
               disabled={pending}
               onClick={() => onDelete(row.original)}
             >
-              {t("delete")}
+              {t(
+                row.original.source === "observed" && !row.original.confirmed
+                  ? "dismiss"
+                  : "delete",
+              )}
             </Button>
           </div>
         ),
       },
     ],
-    [onConfirm, onDelete, pending, t],
+    [brandID, onConfirm, onDelete, onUpdate, pending, t],
   );
 }

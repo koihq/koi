@@ -25,6 +25,7 @@ func Migrate(db *gorm.DB) error {
 		&koidomain.Brand{},
 		&koidomain.Prompt{},
 		&koidomain.Competitor{},
+		&koidomain.CompetitorObservation{},
 		&koidomain.GenerationRun{},
 		&koidomain.VisibilityRun{},
 		&koidomain.VisibilityResult{},

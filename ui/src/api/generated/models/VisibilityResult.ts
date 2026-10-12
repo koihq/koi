@@ -14,6 +14,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CompetitorAppearance } from './CompetitorAppearance';
+import {
+    CompetitorAppearanceFromJSON,
+    CompetitorAppearanceFromJSONTyped,
+    CompetitorAppearanceToJSON,
+    CompetitorAppearanceToJSONTyped,
+} from './CompetitorAppearance';
 import type { VisibilityEngine } from './VisibilityEngine';
 import {
     VisibilityEngineFromJSON,
@@ -100,6 +107,12 @@ export interface VisibilityResult {
      * @memberof VisibilityResult
      */
     errorCode: string | null;
+    /**
+     * 
+     * @type {Array<CompetitorAppearance>}
+     * @memberof VisibilityResult
+     */
+    appearances: Array<CompetitorAppearance>;
 }
 
 
@@ -140,6 +153,7 @@ export function instanceOfVisibilityResult(value: object): value is VisibilityRe
     if (!('rawAnswer' in value) || value['rawAnswer'] === undefined) return false;
     if (!('sources' in value) || value['sources'] === undefined) return false;
     if (!('errorCode' in value) || value['errorCode'] === undefined) return false;
+    if (!('appearances' in value) || value['appearances'] === undefined) return false;
     return true;
 }
 
@@ -165,6 +179,7 @@ export function VisibilityResultFromJSONTyped(json: any, ignoreDiscriminator: bo
         'rawAnswer': json['raw_answer'],
         'sources': json['sources'],
         'errorCode': json['error_code'],
+        'appearances': ((json['appearances'] as Array<any>).map(CompetitorAppearanceFromJSON)),
     };
 }
 
@@ -191,6 +206,7 @@ export function VisibilityResultToJSONTyped(value?: VisibilityResult | null, ign
         'raw_answer': value['rawAnswer'],
         'sources': value['sources'],
         'error_code': value['errorCode'],
+        'appearances': ((value['appearances'] as Array<any>).map(CompetitorAppearanceToJSON)),
     };
 }
 

@@ -62,6 +62,18 @@ export interface CompetitorRes {
      * @memberof CompetitorRes
      */
     confirmed: boolean;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CompetitorRes
+     */
+    aliases: Array<string>;
+    /**
+     * Additional official website origins or GitHub repository roots
+     * @type {Array<string>}
+     * @memberof CompetitorRes
+     */
+    additionalUrls: Array<string>;
 }
 
 
@@ -87,6 +99,8 @@ export function instanceOfCompetitorRes(value: object): value is CompetitorRes {
     if (!('githubRepo' in value) || value['githubRepo'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
+    if (!('aliases' in value) || value['aliases'] === undefined) return false;
+    if (!('additionalUrls' in value) || value['additionalUrls'] === undefined) return false;
     return true;
 }
 
@@ -107,6 +121,8 @@ export function CompetitorResFromJSONTyped(json: any, ignoreDiscriminator: boole
         'githubRepo': json['github_repo'],
         'source': json['source'],
         'confirmed': json['confirmed'],
+        'aliases': json['aliases'],
+        'additionalUrls': json['additional_urls'],
     };
 }
 
@@ -128,6 +144,8 @@ export function CompetitorResToJSONTyped(value?: CompetitorRes | null, ignoreDis
         'github_repo': value['githubRepo'],
         'source': value['source'],
         'confirmed': value['confirmed'],
+        'aliases': value['aliases'],
+        'additional_urls': value['additionalUrls'],
     };
 }
 

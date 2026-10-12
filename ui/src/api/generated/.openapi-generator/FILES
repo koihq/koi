@@ -8,12 +8,15 @@ apis/PromptsApi.ts
 apis/VisibilityApi.ts
 apis/index.ts
 index.ts
+models/AppearanceEvidence.ts
 models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
 models/BrandRes.ts
 models/CapabilitiesResponse.ts
+models/CompetitorAppearance.ts
 models/CompetitorPage.ts
+models/CompetitorPatchRequest.ts
 models/CompetitorRequest.ts
 models/CompetitorRes.ts
 models/CountryOption.ts

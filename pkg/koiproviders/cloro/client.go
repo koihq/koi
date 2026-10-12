@@ -41,12 +41,14 @@ type taskResponse struct {
 }
 
 type Answer struct {
-	Text    string
-	Sources []string
+	Text     string
+	Markdown string
+	Entities []koidomain.NamedEntity
+	Sources  []string
 }
 
 func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
-	payload := map[string]any{"prompt": cell.PromptText, "country": country}
+	payload := map[string]any{"prompt": cell.PromptText, "country": country, "include": map[string]any{"markdown": true}}
 	var taskType string
 	switch cell.Engine {
 	case koidomain.EngineChatGPT:
@@ -63,7 +65,7 @@ func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, co
 			"country": country,
 			"pages":   1,
 			"include": map[string]any{
-				"aioverview": map[string]any{},
+				"aioverview": map[string]any{"markdown": true},
 			},
 		}
 	default:
@@ -143,8 +145,10 @@ func responseError(resp *resty.Response) error {
 }
 
 type providerAnswer struct {
-	Text    *string `json:"text"`
-	Sources []struct {
+	Text     *string         `json:"text"`
+	Markdown json.RawMessage `json:"markdown"`
+	Entities json.RawMessage `json:"entities"`
+	Sources  []struct {
 		URL string `json:"url"`
 	} `json:"sources"`
 }
@@ -173,6 +177,17 @@ func normalize(engine koidomain.EngineID, raw json.RawMessage) (*Answer, error) 
 		return nil, invalid
 	}
 	answer := &Answer{Text: *data.Text, Sources: []string{}}
+	_ = json.Unmarshal(data.Markdown, &answer.Markdown)
+	// Optional metadata must not invalidate a successful answer.
+	var entities []json.RawMessage
+	if json.Unmarshal(data.Entities, &entities) == nil {
+		for _, raw := range entities {
+			var entity koidomain.NamedEntity
+			if json.Unmarshal(raw, &entity) == nil && entity.Name != "" {
+				answer.Entities = append(answer.Entities, entity)
+			}
+		}
+	}
 	seen := map[string]bool{}
 	for _, source := range data.Sources {
 		if source.URL != "" && !seen[source.URL] {

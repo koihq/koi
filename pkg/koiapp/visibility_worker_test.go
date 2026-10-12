@@ -96,7 +96,11 @@ func (p visibilityTestProvider) Poll(ctx context.Context, id string, engine koid
 	if p.poll != nil {
 		return p.poll(ctx, id, engine)
 	}
-	return &cloro.Answer{Text: "Koi is recommended", Sources: []string{"https://koi.dev"}}, nil
+	return &cloro.Answer{
+		Text: "Koi is recommended", Sources: []string{"https://koi.dev"},
+		Markdown: "1. [Acme](https://acme.dev)",
+		Entities: []koidomain.NamedEntity{{Type: "software", Name: "Acme"}},
+	}, nil
 }
 
 func newVisibilityWorkerFixture() (*visibilityWorkerStore, *river.Job[koidatabase.VisibilityJobArgs]) {
@@ -169,6 +173,8 @@ func TestVisibilityWorkerSubmitsThenResumesPolling(t *testing.T) {
 	for _, result := range store.saved {
 		require.NoError(t, result.Validate())
 		require.Equal(t, koidomain.OutcomeCited, *result.Outcome)
+		require.Equal(t, "1. [Acme](https://acme.dev)", result.AnswerMarkdown)
+		require.Equal(t, []koidomain.NamedEntity{{Type: "software", Name: "Acme"}}, result.NamedEntities)
 	}
 }
 
