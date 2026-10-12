@@ -1,7 +1,5 @@
 import type { PromptPatchRequest, PromptRequest, PromptRes, PromptsApi } from "@/api/generated";
-import { PromptResFromJSON } from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
-import { mapPage } from "@/api/shared/mappers";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Prompt = PromptRes;
@@ -18,12 +16,12 @@ export interface PromptListParams extends BaseListParams {
 
 export function createPromptsApi(api: PromptsApi) {
   return {
-    list: async (
+    list: (
       brandID: string,
       params: PromptListParams = {},
       initOverrides?: RequestInit,
-    ): Promise<ApiListResponse<Prompt>> => {
-      const response = await callApi(() =>
+    ): Promise<ApiListResponse<Prompt>> =>
+      callApi(() =>
         api.listPrompts(
           brandID,
           params.page,
@@ -32,10 +30,7 @@ export function createPromptsApi(api: PromptsApi) {
           params.confirmed,
           initOverrides,
         ),
-      );
-
-      return mapPage(response, PromptResFromJSON);
-    },
+      ),
     getById: (brandID: string, id: string): Promise<Prompt> =>
       callApi(() => api.getPrompt(brandID, id)),
     create: (brandID: string, request: CreatePrompt): Promise<Prompt> =>

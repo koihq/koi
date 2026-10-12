@@ -69,14 +69,7 @@ func (r *GormVisibilityRepository) Inputs(ctx context.Context, brandID uuid.UUID
 		return inputs, mapDBError(err)
 	}
 
-	competitors, err := NewGormCompetitorRepository(r.db).query(ctx)
-	if err != nil {
-		return inputs, err
-	}
-
-	err = competitors.Model(&koidomain.Competitor{}).Where("brand_id = ? AND confirmed = false", brandID).Count(&inputs.UnconfirmedCompetitors).Error
-
-	return inputs, mapDBError(err)
+	return inputs, nil
 }
 
 func (r *GormVisibilityRepository) CreateAndEnqueue(ctx context.Context, run *koidomain.VisibilityRun, results []koidomain.VisibilityResult) error {

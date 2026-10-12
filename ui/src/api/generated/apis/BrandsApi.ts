@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type BrandPage,
+    BrandPageFromJSON,
+    BrandPageToJSON,
+} from '../models/BrandPage';
+import {
     type BrandPatchRequest,
     BrandPatchRequestFromJSON,
     BrandPatchRequestToJSON,
@@ -39,11 +44,6 @@ import {
     EnvelopeFromJSON,
     EnvelopeToJSON,
 } from '../models/Envelope';
-import {
-    type Page,
-    PageFromJSON,
-    PageToJSON,
-} from '../models/Page';
 
 export interface CreateBrandRequest {
     brandRequest: BrandRequest;
@@ -155,11 +155,11 @@ export interface BrandsApiInterface {
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
      */
-    listBrandsRaw(requestParameters: ListBrandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>>;
+    listBrandsRaw(requestParameters: ListBrandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandPage>>;
 
     /**
      */
-    listBrands(page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page>;
+    listBrands(page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage>;
 
     /**
      * Creates request options for updateBrand without sending the request
@@ -349,16 +349,16 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
     /**
      */
-    async listBrandsRaw(requestParameters: ListBrandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>> {
+    async listBrandsRaw(requestParameters: ListBrandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandPage>> {
         const requestOptions = await this.listBrandsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => PageFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => BrandPageFromJSON(jsonValue));
     }
 
     /**
      */
-    async listBrands(page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page> {
+    async listBrands(page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage> {
         const response = await this.listBrandsRaw({ page: page, pageSize: pageSize }, initOverrides);
         return await response.value();
     }

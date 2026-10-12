@@ -15,7 +15,7 @@ export function GenerationControls({
   setupStartFailed?: boolean;
 }) {
   const { t } = useTranslation("management");
-  const { capabilities, runs, status, run, create } = useGeneration(brandID);
+  const { capabilities, runs, run, create } = useGeneration(brandID);
   const enabled = capabilities.data?.aiDrafting === true;
   const busy = run?.state === "queued" || run?.state === "running" || create.isPending;
 
@@ -73,14 +73,6 @@ export function GenerationControls({
         <p role="alert" className="text-destructive">
           {t("draftHistoryError")}{" "}
           <Button type="button" variant="link" size="sm" onClick={() => void runs.refetch()}>
-            {t("retry")}
-          </Button>
-        </p>
-      ) : null}
-      {status.isError && busy ? (
-        <p role="alert" className="text-destructive">
-          {t("draftStatusError")}{" "}
-          <Button type="button" variant="link" size="sm" onClick={() => void status.refetch()}>
             {t("retry")}
           </Button>
         </p>

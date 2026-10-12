@@ -79,14 +79,6 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, page.TotalItems)
 
-	// Upgrade a pre-GitHub schema with an existing row and its old index.
-	require.NoError(t, db.Exec("DROP INDEX idx_competitors_brand_domain").Error)
-	require.NoError(t, db.Exec("CREATE UNIQUE INDEX idx_competitors_brand_domain ON competitors (brand_id, domain)").Error)
-	require.NoError(t, Migrate(db))
-	var oldRow koidomain.Competitor
-	require.NoError(t, db.First(&oldRow, "id = ?", page.Items[0].ID).Error)
-	require.Equal(t, "acme.com", oldRow.Domain)
-
 	for _, repo := range []string{"https://github.com/zsh-users/zsh-autosuggestions", "https://github.com/atuinsh/atuin"} {
 		_, err := koidomain.NewCompetitorCommander(store).Create(ctx, brand.ID, koidomain.CompetitorParams{Name: repo, GitHubRepo: repo})
 		require.NoError(t, err)

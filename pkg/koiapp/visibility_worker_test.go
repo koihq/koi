@@ -14,24 +14,38 @@ import (
 
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
-	"github.com/koihq/koi/pkg/koiproviders/stub"
+	"github.com/koihq/koi/pkg/koiproviders/cloro"
 )
 
 type visibilityWorkerStore struct {
-	run      *koidomain.VisibilityRun
-	pending  []koidomain.VisibilityResult
-	saved    []koidomain.VisibilityResult
-	saveErr  error
-	beginErr error
-	save     func(context.Context) error
-	failure  func(context.Context) error
-	finished bool
-	code     string
-	terminal bool
+	run                *koidomain.VisibilityRun
+	pending            []koidomain.VisibilityResult
+	saved              []koidomain.VisibilityResult
+	beginErr, saveErr  error
+	save, failure      func(context.Context) error
+	finished, terminal bool
+	code               string
 }
 
 func (s *visibilityWorkerStore) BeginVisibilityAttempt(context.Context, uuid.UUID, int64, int) (*koidomain.VisibilityRun, []koidomain.VisibilityResult, error) {
-	return s.run, s.pending, s.beginErr
+	return s.run, append([]koidomain.VisibilityResult(nil), s.pending...), s.beginErr
+}
+
+func (s *visibilityWorkerStore) ContactVisibilityTask(_ context.Context, _ uuid.UUID, _ int, cell *koidomain.VisibilityResult, now time.Time) error {
+	cell.CheckedAt = &now
+	if cell.SubmittedAt == nil {
+		cell.SubmittedAt = &now
+	}
+	return nil
+}
+
+func (s *visibilityWorkerStore) SaveVisibilityTask(_ context.Context, _ uuid.UUID, _ int, cellID uuid.UUID, id string) error {
+	for i := range s.pending {
+		if s.pending[i].ID == cellID {
+			s.pending[i].CloroTaskID = &id
+		}
+	}
+	return nil
 }
 
 func (s *visibilityWorkerStore) SaveVisibilityResult(ctx context.Context, _ uuid.UUID, _ int, result koidomain.VisibilityResult) error {
@@ -40,19 +54,21 @@ func (s *visibilityWorkerStore) SaveVisibilityResult(ctx context.Context, _ uuid
 			return err
 		}
 	}
-
 	if s.saveErr != nil {
 		return s.saveErr
 	}
-
 	s.saved = append(s.saved, result)
-
+	for i, cell := range s.pending {
+		if cell.ID == result.ID {
+			s.pending = append(append([]koidomain.VisibilityResult(nil), s.pending[:i]...), s.pending[i+1:]...)
+			break
+		}
+	}
 	return nil
 }
 
 func (s *visibilityWorkerStore) FinishVisibilityAttempt(context.Context, uuid.UUID, int) error {
 	s.finished = true
-
 	return nil
 }
 
@@ -61,37 +77,57 @@ func (s *visibilityWorkerStore) RecordVisibilityFailure(ctx context.Context, _ u
 	if s.failure != nil {
 		return s.failure(ctx)
 	}
-
 	return nil
+}
+
+type visibilityTestProvider struct {
+	submit func(context.Context, koidomain.VisibilityResult, string) (string, error)
+	poll   func(context.Context, string, koidomain.EngineID) (*cloro.Answer, error)
+}
+
+func (p visibilityTestProvider) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
+	if p.submit != nil {
+		return p.submit(ctx, cell, country)
+	}
+	return cell.ID.String(), nil
+}
+
+func (p visibilityTestProvider) Poll(ctx context.Context, id string, engine koidomain.EngineID) (*cloro.Answer, error) {
+	if p.poll != nil {
+		return p.poll(ctx, id, engine)
+	}
+	return &cloro.Answer{Text: "Koi is recommended", Sources: []string{"https://koi.dev"}}, nil
 }
 
 func newVisibilityWorkerFixture() (*visibilityWorkerStore, *river.Job[koidatabase.VisibilityJobArgs]) {
 	runID := uuid.New()
-
 	store := &visibilityWorkerStore{
 		run: &koidomain.VisibilityRun{
 			BaseEntity: koidomain.BaseEntity{
-				ID: runID,
+				ID:        runID,
+				CreatedAt: time.Now(),
 			},
 			TotalResults: 4,
 			BrandSnapshot: koidomain.BrandSnapshot{
-				Name:       "Koi",
-				GitHubRepo: "https://github.com/koihq/koi",
+				Name:    "Koi",
+				Domain:  "koi.dev",
+				Country: "IT",
 			},
 		},
 	}
-
 	for _, engine := range koidomain.VisibilityEngines() {
 		store.pending = append(store.pending, koidomain.VisibilityResult{
+			BaseEntity: koidomain.BaseEntity{
+				ID: uuid.New(),
+			},
 			RunID:      runID,
 			PromptID:   uuid.New(),
 			PromptText: "Best tools?",
 			Engine:     engine,
-			Collector:  koidomain.CollectorStub,
+			Collector:  koidomain.CollectorCloro,
 			Sources:    []string{},
 		})
 	}
-
 	job := &river.Job[koidatabase.VisibilityJobArgs]{
 		JobRow: &rivertype.JobRow{
 			ID:          1,
@@ -102,170 +138,134 @@ func newVisibilityWorkerFixture() (*visibilityWorkerStore, *river.Job[koidatabas
 			RunID: runID,
 		},
 	}
-
 	return store, job
 }
 
-func TestVisibilityWorkerCompletesEveryStubOutcome(t *testing.T) {
+func TestVisibilityWorkerSubmitsThenResumesPolling(t *testing.T) {
 	store, job := newVisibilityWorkerFixture()
-
-	worker := &visibilityWorker{
-		store:   store,
-		collect: stub.Collect,
-	}
-
-	require.NoError(t, worker.Work(t.Context(), job))
-	require.True(t, store.finished)
-	require.Len(t, store.saved, 4)
-	outcomes := map[koidomain.Outcome]bool{}
-
-	for _, result := range store.saved {
-		require.NoError(t, result.Validate())
-		outcomes[*result.Outcome] = true
-		if *result.Outcome == koidomain.OutcomeCited {
-			require.Equal(t, []string{store.run.BrandSnapshot.GitHubRepo}, result.Sources)
-		}
-	}
-
-	require.Len(t, outcomes, 4)
-}
-
-func TestVisibilityWorkerCollectorErrorsRemainPerCell(t *testing.T) {
-	store, job := newVisibilityWorkerFixture()
-
-	worker := &visibilityWorker{
-		store: store,
-		collect: func(context.Context, koidomain.BrandSnapshot, koidomain.VisibilityResult) (koidomain.VisibilityResult, error) {
-			return koidomain.VisibilityResult{}, errors.New("collector unavailable")
+	submissions := 0
+	provider := visibilityTestProvider{
+		submit: func(_ context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
+			require.NotNil(t, cell.SubmittedAt)
+			require.Equal(t, "IT", country)
+			submissions++
+			return cell.ID.String(), nil
 		},
 	}
+	worker := &visibilityWorker{store: store, provider: provider}
+	var snooze *river.JobSnoozeError
+	require.ErrorAs(t, worker.Work(t.Context(), job), &snooze)
+	require.Equal(t, 10*time.Second, snooze.Duration)
+	require.Equal(t, 1, job.Attempt)
+	require.Equal(t, 4, submissions)
+	require.False(t, store.finished)
 
+	// A new worker uses the persisted task IDs and never resubmits the cells.
+	worker = &visibilityWorker{store: store, provider: provider}
 	require.NoError(t, worker.Work(t.Context(), job))
+	require.Equal(t, 4, submissions)
 	require.True(t, store.finished)
 	require.Len(t, store.saved, 4)
-
 	for _, result := range store.saved {
-		require.Equal(t, koidomain.OutcomeError, *result.Outcome)
-		require.Equal(t, "collector_error", *result.ErrorCode)
-		require.NotNil(t, result.FetchedAt)
-		require.Empty(t, result.Sources)
+		require.NoError(t, result.Validate())
+		require.Equal(t, koidomain.OutcomeCited, *result.Outcome)
 	}
 }
 
-func TestVisibilityWorkerStorageFailureAndCancellation(t *testing.T) {
+func TestVisibilityWorkerProviderFailuresAndPending(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		err      error
+		terminal bool
+	}{
+		{"pending", nil, false},
+		{"retryable", &cloro.Error{Code: "cloro_unavailable", Retryable: true}, false},
+		{"terminal", &cloro.Error{Code: "cloro_task_failed"}, true},
+		{"account", &cloro.Error{Code: "cloro_credits", AccountWide: true}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store, job := newVisibilityWorkerFixture()
+			for i := range store.pending {
+				id := store.pending[i].ID.String()
+				store.pending[i].CloroTaskID = &id
+			}
+			worker := &visibilityWorker{
+				store: store,
+				provider: visibilityTestProvider{
+					poll: func(context.Context, string, koidomain.EngineID) (*cloro.Answer, error) { return nil, tc.err },
+				},
+			}
+			err := worker.Work(t.Context(), job)
+			if tc.terminal {
+				require.NoError(t, err)
+				require.True(t, store.finished)
+				require.Len(t, store.saved, 4)
+				for _, cell := range store.saved {
+					require.Equal(t, koidomain.OutcomeError, *cell.Outcome)
+					require.NoError(t, cell.Validate())
+				}
+			} else {
+				var snooze *river.JobSnoozeError
+				require.ErrorAs(t, err, &snooze)
+				require.Empty(t, store.saved)
+				require.False(t, store.finished)
+			}
+		})
+	}
+}
+
+func TestVisibilityWorkerStorageFailureAndTimeout(t *testing.T) {
 	for _, attempt := range []int{1, 3} {
-		store, job := newVisibilityWorkerFixture()
-		job.Attempt = attempt
-		store.saveErr = errors.New("database unavailable")
-
-		worker := &visibilityWorker{
-			store:   store,
-			collect: stub.Collect,
-		}
-
-		require.Error(t, worker.Work(t.Context(), job))
-		require.False(t, store.finished)
-		require.Equal(t, "storage_error", store.code)
-		require.Equal(t, attempt == 3, store.terminal)
-	}
-
-	store, job := newVisibilityWorkerFixture()
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-
-	worker := &visibilityWorker{
-		store:   store,
-		collect: stub.Collect,
-	}
-
-	require.ErrorIs(t, worker.Work(ctx, job), context.Canceled)
-	require.Empty(t, store.saved)
-	require.Empty(t, store.code)
-	store.run = nil
-	require.NoError(t, worker.Work(t.Context(), job))
-}
-
-func TestVisibilityWorkerTimeouts(t *testing.T) {
-	for _, stage := range []string{"begin", "before collection", "collection", "save"} {
-		for _, attempt := range []int{1, 3} {
-			t.Run(fmt.Sprintf("%s/attempt-%d", stage, attempt), func(t *testing.T) {
+		for _, stage := range []string{"storage", "begin", "submit", "poll", "save"} {
+			t.Run(fmt.Sprintf("%s/%d", stage, attempt), func(t *testing.T) {
 				store, job := newVisibilityWorkerFixture()
 				job.Attempt = attempt
-
-				worker := &visibilityWorker{
-					store:   store,
-					collect: stub.Collect,
-				}
-
+				provider := visibilityTestProvider{}
 				ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 				defer cancel()
-
-				switch stage {
-				case "begin":
+				if stage == "storage" {
+					store.beginErr = errors.New("database unavailable")
+				} else if stage == "begin" {
 					<-ctx.Done()
 					store.beginErr = ctx.Err()
-				case "before collection":
-					<-ctx.Done()
-				case "collection":
-					worker.collect = func(ctx context.Context, _ koidomain.BrandSnapshot, _ koidomain.VisibilityResult) (koidomain.VisibilityResult, error) {
+				} else if stage == "submit" {
+					provider.submit = func(ctx context.Context, _ koidomain.VisibilityResult, _ string) (string, error) {
 						<-ctx.Done()
-
-						return koidomain.VisibilityResult{}, ctx.Err()
+						return "", ctx.Err()
 					}
-				case "save":
-					store.save = func(ctx context.Context) error {
-						<-ctx.Done()
+				} else {
+					id := "task"
+					store.pending[0].CloroTaskID = &id
+					if stage == "poll" {
+						provider.poll = func(ctx context.Context, _ string, _ koidomain.EngineID) (*cloro.Answer, error) {
+							<-ctx.Done()
+							return nil, ctx.Err()
+						}
+					} else {
+						store.save = func(ctx context.Context) error {
+							<-ctx.Done()
 
-						return ctx.Err()
+							return ctx.Err()
+						}
 					}
 				}
-
+				worker := &visibilityWorker{store: store, provider: provider}
 				err := worker.Work(ctx, job)
-				require.ErrorIs(t, err, context.DeadlineExceeded)
+				require.Error(t, err)
 				require.False(t, store.finished)
-				require.Empty(t, store.saved)
-				if attempt == job.MaxAttempts {
-					require.Equal(t, "job_timeout", store.code)
-					require.True(t, store.terminal)
-					var cancelled *river.JobCancelError
-					require.ErrorAs(t, err, &cancelled)
+				if stage == "storage" {
+					require.Equal(t, "storage_error", store.code)
 				} else {
-					require.Empty(t, store.code)
-					require.False(t, store.terminal)
+					require.ErrorIs(t, err, context.DeadlineExceeded)
+					if attempt == job.MaxAttempts {
+						require.Equal(t, "job_timeout", store.code)
+					} else {
+						require.Empty(t, store.code)
+					}
 				}
 			})
 		}
 	}
-}
-
-func TestVisibilityWorkerTerminalTimeoutCleanup(t *testing.T) {
-	store, job := newVisibilityWorkerFixture()
-	job.Attempt = job.MaxAttempts
-	cleanupErr := errors.New("cleanup unavailable")
-	ctx := context.WithValue(t.Context(), struct{}{}, "job context")
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(-time.Second))
-	defer cancel()
-
-	store.failure = func(cleanupCtx context.Context) error {
-		require.NoError(t, cleanupCtx.Err())
-		require.Equal(t, "job context", cleanupCtx.Value(struct{}{}))
-		deadline, ok := cleanupCtx.Deadline()
-		require.True(t, ok)
-		require.WithinDuration(t, time.Now().Add(5*time.Second), deadline, time.Second)
-
-		return cleanupErr
-	}
-
-	worker := &visibilityWorker{
-		store:   store,
-		collect: stub.Collect,
-	}
-
-	err := worker.Work(ctx, job)
-	require.ErrorIs(t, err, context.DeadlineExceeded)
-	require.ErrorIs(t, err, cleanupErr)
-	require.True(t, store.terminal)
-	require.Equal(t, "job_timeout", store.code)
 }
 
 func TestVisibilityWorkerShutdownDoesNotFinalizeLastAttempt(t *testing.T) {
@@ -273,12 +273,9 @@ func TestVisibilityWorkerShutdownDoesNotFinalizeLastAttempt(t *testing.T) {
 	job.Attempt = job.MaxAttempts
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-
 	worker := &visibilityWorker{
-		store:   store,
-		collect: stub.Collect,
-	}
-
+		store:    store,
+		provider: visibilityTestProvider{}}
 	require.ErrorIs(t, worker.Work(ctx, job), context.Canceled)
 	require.Empty(t, store.code)
 	require.False(t, store.finished)

@@ -5,10 +5,10 @@ import { useTranslation } from "react-i18next";
 
 import type { Prompt } from "@/api/prompts.api";
 import { DataTable } from "@/components/blocks/data-table";
+import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import { tableSearchParams } from "@/hooks/use-table-state";
-import { DeletePromptDialog } from "@/routes/_authenticated/_app/prompts/-components/delete-prompt-dialog";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
 import { usePromptColumns } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-columns";
 import { usePromptList } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-list";
@@ -90,14 +90,9 @@ function PromptPage() {
         </div>
         <TrackingReview brandID={brand.id} kind="prompts" disabled={pending} />
       </div>
-      {mutations.confirm.isError || mutations.confirmAll.isError ? (
+      {mutations.confirm.isError ? (
         <p role="alert" className="mb-4 text-sm text-destructive">
           {t("mutationError")}
-        </p>
-      ) : null}
-      {list.unconfirmed.isError ? (
-        <p role="alert" className="mb-4 text-sm text-destructive">
-          {t("unconfirmedError")}
         </p>
       ) : null}
       <GenerationControls
@@ -137,8 +132,11 @@ function PromptPage() {
           </div>
         }
       />
-      <DeletePromptDialog
-        item={deleting}
+      <DeleteItemDialog
+        itemID={deleting?.id}
+        title={t("deletePromptTitle")}
+        description={t("promptDeleteDescription")}
+        actionLabel={t("deletePrompt")}
         onClose={() => setDeleting(undefined)}
         pending={mutations.remove.isPending}
         failed={mutations.remove.isError}

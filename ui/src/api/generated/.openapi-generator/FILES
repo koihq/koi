@@ -8,10 +8,12 @@ apis/PromptsApi.ts
 apis/VisibilityApi.ts
 apis/index.ts
 index.ts
+models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
 models/BrandRes.ts
 models/CapabilitiesResponse.ts
+models/CompetitorPage.ts
 models/CompetitorRequest.ts
 models/CompetitorRes.ts
 models/CountryOption.ts
@@ -28,7 +30,7 @@ models/GenerationStatus.ts
 models/HealthResponse.ts
 models/MeRes.ts
 models/OrgRes.ts
-models/Page.ts
+models/PromptPage.ts
 models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts

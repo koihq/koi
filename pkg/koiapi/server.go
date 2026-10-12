@@ -2,6 +2,8 @@ package koiapi
 
 import (
 	"net/http"
+	"path"
+	"strings"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -70,13 +72,29 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 			).Routes())
 		})
 	})
-	r.Handle("/*", spaHandler(http.FileServer(web.FileSystem())))
+	r.Handle("/*", spaHandler(web.FileSystem()))
 
 	return r
 }
 
-func spaHandler(fileServer http.Handler) http.Handler {
+func spaHandler(files http.FileSystem) http.Handler {
+	fileServer := http.FileServer(files)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead ||
+			r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") ||
+			r.URL.Path == "/health" || strings.HasPrefix(r.URL.Path, "/health/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		file, err := files.Open(path.Clean("/" + r.URL.Path))
+		if err == nil {
+			_ = file.Close()
+		} else if path.Ext(r.URL.Path) == "" && !strings.HasPrefix(r.URL.Path, "/assets/") {
+			r = r.Clone(r.Context())
+			r.URL.Path = "/"
+		}
+
 		fileServer.ServeHTTP(w, r)
 	})
 }

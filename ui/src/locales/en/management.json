@@ -90,13 +90,11 @@
   "draftListDone": "Added {count} {subject}. Review suggestions before confirming them.",
   "draftEmpty": "No new suggestions were added. You can add entries manually or try another draft.",
   "draftHistoryError": "Couldn’t load drafting history.",
-  "draftStatusError": "Couldn’t refresh drafting status.",
   "draftCapabilityError": "Couldn’t check whether drafting is available.",
   "draftStartError": "The brand was saved, but drafting didn’t start. Try again below.",
   "draftRequestRecovery": "Try again or add entries manually.",
   "mutationError": "Unable to save this change. Try again.",
   "deleteError": "Unable to delete this item. Try again.",
   "unconfirmedCount": "{count} need confirmation",
-  "unconfirmedError": "Unable to load the confirmation count.",
   "tableLabel": "Tracking list"
 }

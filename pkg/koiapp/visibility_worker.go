@@ -33,6 +33,10 @@ type visibilityWorker struct {
 	provider visibilityProvider
 }
 
+func (w *visibilityWorker) Timeout(*river.Job[koidatabase.VisibilityJobArgs]) time.Duration {
+	return time.Minute
+}
+
 func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs]) error {
 	run, cells, err := w.store.BeginVisibilityAttempt(ctx, job.Args.RunID, job.ID, job.Attempt)
 	if err != nil {
@@ -50,7 +54,7 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	}
 	for _, cell := range cells {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return w.fail(ctx, job, ctx.Err())
 		}
 		if time.Since(passStarted) >= 40*time.Second {
 			break
@@ -60,8 +64,6 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 		code := ""
 		var answer *cloro.Answer
 		switch {
-		case cell.Collector != koidomain.CollectorCloro:
-			code = "sample_run_retired"
 		case now.Sub(run.CreatedAt) >= 23*time.Hour:
 			code = "cloro_deadline"
 		case cell.CloroTaskID == nil && accountError != "":
@@ -80,6 +82,9 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 					continue
 				}
 
+				if ctx.Err() != nil {
+					return w.fail(ctx, job, ctx.Err())
+				}
 				failure := cloro.Failure(err)
 				if failure.Retryable {
 					continue
@@ -95,6 +100,9 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 				var err error
 				answer, err = w.provider.Poll(ctx, *cell.CloroTaskID, cell.Engine)
 				if err != nil {
+					if ctx.Err() != nil {
+						return w.fail(ctx, job, ctx.Err())
+					}
 					failure := cloro.Failure(err)
 					if failure.Retryable {
 						continue
@@ -143,27 +151,27 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 }
 
 func (w *visibilityWorker) fail(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs], cause error) error {
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return ctx.Err()
+	}
+
+	code := "storage_error"
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		if job.Attempt < job.MaxAttempts {
+			return errors.Join(cause, ctx.Err())
+		}
+
+		cause = errors.Join(cause, ctx.Err())
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		ctx = cleanupCtx
+		code = "job_timeout"
+	}
+
 	terminal := job.Attempt >= job.MaxAttempts
-	if err := w.store.RecordVisibilityFailure(ctx, job.Args.RunID, job.ID, job.Attempt, "storage_error", terminal); err != nil {
+	if err := w.store.RecordVisibilityFailure(ctx, job.Args.RunID, job.ID, job.Attempt, code, terminal); err != nil {
 		return errors.Join(cause, err)
 	}
 
 	return cause
-}
-
-type visibilityDispatchArgs struct{}
-
-func (visibilityDispatchArgs) Kind() string { return "koi_visibility_dispatch" }
-
-type visibilityDispatchWorker struct {
-	river.WorkerDefaults[visibilityDispatchArgs]
-	store *koidatabase.Store
-}
-
-func (w *visibilityDispatchWorker) Work(ctx context.Context, _ *river.Job[visibilityDispatchArgs]) error {
-	if err := w.store.ReconcileVisibilityRuns(ctx); err != nil {
-		return err
-	}
-
-	return w.store.DispatchVisibility(ctx, time.Now().UTC())
 }

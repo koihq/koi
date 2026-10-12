@@ -15,7 +15,7 @@ import (
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
-func newVisibilityTestServer(t *testing.T, q koidomain.VisibilityQuerier, c koidomain.VisibilityCommander) *httptest.Server {
+func newVisibilityTestServer(t *testing.T, q koidomain.VisibilityQuerier) *httptest.Server {
 	t.Helper()
 	sess := scs.New()
 	sess.Cookie.Name = "koi_session"
@@ -25,7 +25,7 @@ func newVisibilityTestServer(t *testing.T, q koidomain.VisibilityQuerier, c koid
 		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.Route("/api/v1/brands/{brandID}/runs", NewVisibilityHandler(q, c, sess).Routes())
+	r.Route("/api/v1/brands/{brandID}/runs", NewVisibilityHandler(q, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 
@@ -34,8 +34,8 @@ func newVisibilityTestServer(t *testing.T, q koidomain.VisibilityQuerier, c koid
 
 func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {
 	brandID, runID, userID := uuid.New(), uuid.New(), uuid.New()
-	q, c := NewMockVisibilityQuerier(t), NewMockVisibilityCommander(t)
-	ts := newVisibilityTestServer(t, q, c)
+	q := NewMockVisibilityQuerier(t)
+	ts := newVisibilityTestServer(t, q)
 	client := newCookieClient(t)
 	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/runs"
 
@@ -46,24 +46,7 @@ func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	}
 
-	resp := doJSON(t, client, http.MethodPost, base, "")
-	var body api.Envelope
-	readJSON(t, resp, &body)
-	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	brandSession(t, client, ts.URL, userID)
-	fields := []koidomain.FieldError{
-		{
-			Field: "prompts",
-			Code:  "unconfirmed",
-		},
-	}
-	c.EXPECT().Create(identityIs(userID), brandID).Return(nil, &koidomain.Error{Code: koidomain.CodeRunNotReady, Fields: fields}).Once()
-	resp = doJSON(t, client, http.MethodPost, base, "")
-	readJSON(t, resp, &body)
-	require.Equal(t, http.StatusConflict, resp.StatusCode)
-	require.Equal(t, koidomain.CodeRunNotReady, body.Error.Code)
-	require.Equal(t, fields, body.Error.Fields)
-
 	run := &koidomain.VisibilityRun{
 		BaseEntity: koidomain.BaseEntity{
 			ID:        runID,
@@ -78,36 +61,27 @@ func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {
 		},
 	}
 
-	c.EXPECT().Create(identityIs(userID), brandID).Return(run, nil).Once()
-	resp = doJSON(t, client, http.MethodPost, base, "")
-	var status map[string]any
-	readJSON(t, resp, &status)
-	require.Equal(t, http.StatusAccepted, resp.StatusCode)
-	require.Equal(t, runID.String(), status["id"])
-	require.Equal(t, brandID.String(), status["brand_id"])
-	require.Equal(t, base[len(ts.URL):]+"/"+runID.String(), status["status_url"])
-	require.Equal(t, float64(8), status["total_results"])
-	require.Nil(t, status["started_at"])
-	require.Nil(t, status["finished_at"])
-	require.Nil(t, status["error_code"])
-	require.NotContains(t, status, "brand_snapshot")
-	require.NotContains(t, status, "river_job_id")
-	require.NotContains(t, status, "attempt")
 	q.EXPECT().Get(identityIs(userID), brandID, runID).Return(run, nil).Once()
-	resp = doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "")
+	resp := doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "")
 	var saved map[string]any
 	readJSON(t, resp, &saved)
-	require.Equal(t, status, saved)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, runID.String(), saved["id"])
+	require.Equal(t, float64(8), saved["total_results"])
+	require.NotContains(t, saved, "brand_snapshot")
+	require.NotContains(t, saved, "river_job_id")
+	require.NotContains(t, saved, "attempt")
 	q.EXPECT().Get(identityIs(userID), brandID, runID).Return(nil, koidomain.ErrNotFound)
 	resp = doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "")
+	var body api.Envelope
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func TestVisibilityHandlerPagesAndPendingResults(t *testing.T) {
 	brandID, runID, userID := uuid.New(), uuid.New(), uuid.New()
-	q, c := NewMockVisibilityQuerier(t), NewMockVisibilityCommander(t)
-	ts := newVisibilityTestServer(t, q, c)
+	q := NewMockVisibilityQuerier(t)
+	ts := newVisibilityTestServer(t, q)
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/runs"
@@ -135,7 +109,7 @@ func TestVisibilityHandlerPagesAndPendingResults(t *testing.T) {
 					PromptID:   uuid.New(),
 					PromptText: "Best analytics?",
 					Engine:     koidomain.EngineChatGPT,
-					Collector:  koidomain.CollectorStub,
+					Collector:  koidomain.CollectorCloro,
 					Sources:    []string{},
 				},
 			},

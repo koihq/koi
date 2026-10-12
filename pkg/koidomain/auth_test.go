@@ -54,7 +54,6 @@ func assignOrgID(_ context.Context, o *Organization) error {
 func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	d := newAuthDeps(t)
 	d.mockAtomic()
-	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(nil, ErrNotFound)
 	d.users.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignUserID)
 	d.orgs.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignOrgID)
 	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
@@ -75,7 +74,7 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 func TestSignup_DuplicateEmail(t *testing.T) {
 	d := newAuthDeps(t)
 	d.mockAtomic()
-	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(&User{Email: "you@example.com"}, nil)
+	d.users.EXPECT().Create(mock.Anything, mock.Anything).Return(ErrEmailTaken)
 
 	_, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
 		Email:    "you@example.com",
@@ -167,7 +166,6 @@ func TestLogin_Me(t *testing.T) {
 
 	d := newAuthDeps(t)
 	d.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(user, nil)
-	d.users.EXPECT().Get(mock.Anything, userID).Return(user, nil)
 	d.members.EXPECT().GetByUserID(mock.Anything, userID).Return(member, nil)
 	d.orgs.EXPECT().Get(mock.Anything, orgID).Return(org, nil)
 

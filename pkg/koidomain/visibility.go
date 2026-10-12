@@ -47,9 +47,10 @@ const (
 )
 
 type VisibilityRun struct {
-	ScheduledFor *time.Time `json:"-"`
+	ScheduledFor *time.Time `json:"-" gorm:"uniqueIndex:idx_visibility_runs_slot,priority:2"`
 	BaseEntity
-	BrandID          uuid.UUID       `json:"-" gorm:"type:uuid;not null"`
+	// Recent indexes use expressions for the inherited BaseEntity timestamps and ID.
+	BrandID          uuid.UUID       `json:"-" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_runs_active,where:state = 'queued' OR state = 'running';index:idx_visibility_runs_recent,priority:1;index:idx_visibility_runs_recent,priority:2,expression:created_at,sort:desc;index:idx_visibility_runs_recent,priority:3,expression:id,sort:desc;uniqueIndex:idx_visibility_runs_slot,priority:1,where:scheduled_for IS NOT NULL"`
 	BrandSnapshot    BrandSnapshot   `json:"-" gorm:"type:jsonb;serializer:json;not null"`
 	Engines          []EngineID      `json:"-" gorm:"type:jsonb;serializer:json;not null"`
 	State            VisibilityState `json:"-" gorm:"type:varchar(16);not null;check:chk_visibility_state,state IN ('queued','running','succeeded','failed')"`
@@ -78,12 +79,12 @@ type VisibilityResult struct {
 	CloroTaskID *string    `json:"-"`
 	SubmittedAt *time.Time `json:"-"`
 	BaseEntity
-	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null"`
+	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:1;index:idx_visibility_results_order,priority:1"`
 	// PromptID is a snapshot identifier, deliberately independent of the live prompt row.
-	PromptID       uuid.UUID      `json:"prompt_id" gorm:"type:uuid;not null"`
+	PromptID       uuid.UUID      `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2"`
 	PromptText     string         `json:"prompt_text" gorm:"not null"`
-	PromptPosition int            `json:"prompt_position" gorm:"not null"`
-	Engine         EngineID       `json:"engine" gorm:"type:varchar(32);not null"`
+	PromptPosition int            `json:"prompt_position" gorm:"not null;index:idx_visibility_results_order,priority:2"`
+	Engine         EngineID       `json:"engine" gorm:"type:varchar(32);not null;uniqueIndex:idx_visibility_results_cell,priority:3;index:idx_visibility_results_order,priority:3"`
 	Collector      CollectorID    `json:"collector" gorm:"type:varchar(16);not null"`
 	FetchedAt      *time.Time     `json:"fetched_at"`
 	Outcome        *Outcome       `json:"outcome" gorm:"type:varchar(16);check:chk_visibility_outcome,outcome IS NULL OR outcome IN ('cited','mentioned','miss','error')"`
@@ -133,8 +134,7 @@ func (r VisibilityResult) Validate() error {
 }
 
 type VisibilityInputs struct {
-	Prompts                []Prompt
-	UnconfirmedCompetitors int64
+	Prompts []Prompt
 }
 
 type VisibilityRepository interface {

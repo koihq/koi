@@ -31,6 +31,16 @@ type Brand struct {
 
 func (Brand) TableName() string { return "brands" }
 
+func (b Brand) Snapshot() BrandSnapshot {
+	return BrandSnapshot{
+		Name:        b.Name,
+		Domain:      b.Domain,
+		GitHubRepo:  b.GitHubRepo,
+		Country:     b.Country,
+		Description: b.Description,
+	}
+}
+
 func (b *Brand) Normalize() {
 	b.Name = strings.TrimSpace(b.Name)
 	b.Domain = strings.TrimSpace(b.Domain)

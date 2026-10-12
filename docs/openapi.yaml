@@ -195,7 +195,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Page"
+                $ref: "#/components/schemas/BrandPage"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -315,7 +315,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Page"
+                $ref: "#/components/schemas/PromptPage"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -456,7 +456,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Page"
+                $ref: "#/components/schemas/CompetitorPage"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -991,13 +991,54 @@ components:
           type: string
         description:
           type: string
-    Page:
+    BrandPage:
       type: object
       required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
       properties:
         items:
           type: array
-          items: {}
+          items:
+            $ref: "#/components/schemas/BrandRes"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    PromptPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptRes"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    CompetitorPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorRes"
         totalItems:
           type: integer
           format: int64

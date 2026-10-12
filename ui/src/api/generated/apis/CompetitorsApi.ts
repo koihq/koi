@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type CompetitorPage,
+    CompetitorPageFromJSON,
+    CompetitorPageToJSON,
+} from '../models/CompetitorPage';
+import {
     type CompetitorRequest,
     CompetitorRequestFromJSON,
     CompetitorRequestToJSON,
@@ -29,11 +34,6 @@ import {
     EnvelopeFromJSON,
     EnvelopeToJSON,
 } from '../models/Envelope';
-import {
-    type Page,
-    PageFromJSON,
-    PageToJSON,
-} from '../models/Page';
 import {
     type SearchCompetitors200ResponseInner,
     SearchCompetitors200ResponseInnerFromJSON,
@@ -220,11 +220,11 @@ export interface CompetitorsApiInterface {
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
      */
-    listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>>;
+    listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompetitorPage>>;
 
     /**
      */
-    listCompetitors(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page>;
+    listCompetitors(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorPage>;
 
     /**
      * Creates request options for searchCompetitors without sending the request
@@ -548,16 +548,16 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>> {
+    async listCompetitorsRaw(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CompetitorPage>> {
         const requestOptions = await this.listCompetitorsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => PageFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => CompetitorPageFromJSON(jsonValue));
     }
 
     /**
      */
-    async listCompetitors(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page> {
+    async listCompetitors(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorPage> {
         const response = await this.listCompetitorsRaw({ brandID: brandID, page: page, pageSize: pageSize, q: q, confirmed: confirmed }, initOverrides);
         return await response.value();
     }

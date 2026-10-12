@@ -30,26 +30,26 @@ type generationWorker struct {
 	river.WorkerDefaults[koidatabase.GenerationJobArgs]
 	store    generationStore
 	provider generationProvider
+	timeout  time.Duration
 }
 
 func retryTime(job *river.Job[koidatabase.GenerationJobArgs]) time.Time {
-	base := time.Now().UTC()
-	if job.AttemptedAt != nil {
-		base = *job.AttemptedAt
-	}
-
-	return base.Add(time.Duration(job.Attempt*job.Attempt*5) * time.Second)
+	return time.Now().UTC().Add(time.Duration(job.Attempt*job.Attempt*5) * time.Second)
 }
 
 func (w *generationWorker) NextRetry(job *river.Job[koidatabase.GenerationJobArgs]) time.Time {
 	return retryTime(job)
 }
 
+func (w *generationWorker) Timeout(*river.Job[koidatabase.GenerationJobArgs]) time.Duration {
+	return w.timeout
+}
+
 func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.GenerationJobArgs]) error {
 	started := time.Now()
 	run, input, err := w.store.BeginGenerationAttempt(ctx, job.Args.RunID, job.ID, job.Attempt)
 	if err != nil {
-		return fmt.Errorf("begin generation: %w", err)
+		return w.fail(ctx, job, "storage_error", true, fmt.Errorf("begin generation: %w", err))
 	}
 
 	if run == nil {
@@ -65,7 +65,7 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	result, err := w.provider.Generate(ctx, run.ModelSlug, input)
 	if err != nil {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return w.fail(ctx, job, "job_timeout", true, ctx.Err())
 		}
 
 		var providerErr *openrouter.Error
@@ -90,7 +90,18 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 
 func (w *generationWorker) fail(ctx context.Context, job *river.Job[koidatabase.GenerationJobArgs], code string, retryable bool, cause error) error {
 	var next *time.Time
-	if retryable && job.Attempt < 3 {
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return ctx.Err()
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		cause = errors.Join(cause, ctx.Err())
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		defer cancel()
+		ctx = cleanupCtx
+		code = "job_timeout"
+	}
+
+	if retryable && job.Attempt < job.MaxAttempts {
 		at := retryTime(job)
 		next = &at
 	}

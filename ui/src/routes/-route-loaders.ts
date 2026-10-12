@@ -1,12 +1,16 @@
 import { redirect } from "@tanstack/react-router";
-
 import type { Api } from "@/api/apiProvider";
+import { ApiError } from "@/api/errors";
 
 export async function requireAccount(api: Api) {
   try {
     return await api.auth.me();
-  } catch {
-    throw redirect({ to: "/sign-in" });
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "unauthorized") {
+      throw redirect({ to: "/sign-in" });
+    }
+
+    throw error;
   }
 }
 

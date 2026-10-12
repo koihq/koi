@@ -1,7 +1,5 @@
 import type { CompetitorRequest, CompetitorRes, CompetitorsApi } from "@/api/generated";
-import { CompetitorResFromJSON } from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
-import { mapPage } from "@/api/shared/mappers";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Competitor = CompetitorRes;
@@ -21,12 +19,12 @@ export interface CompetitorListParams extends BaseListParams {
 
 export function createCompetitorsApi(api: CompetitorsApi) {
   return {
-    list: async (
+    list: (
       brandID: string,
       params: CompetitorListParams = {},
       initOverrides?: RequestInit,
-    ): Promise<ApiListResponse<Competitor>> => {
-      const response = await callApi(() =>
+    ): Promise<ApiListResponse<Competitor>> =>
+      callApi(() =>
         api.listCompetitors(
           brandID,
           params.page,
@@ -35,10 +33,7 @@ export function createCompetitorsApi(api: CompetitorsApi) {
           params.confirmed,
           initOverrides,
         ),
-      );
-
-      return mapPage(response, CompetitorResFromJSON);
-    },
+      ),
     getById: (brandID: string, id: string): Promise<Competitor> =>
       callApi(() => api.getCompetitor(brandID, id)),
     search: (

@@ -92,27 +92,29 @@ func (r *GormVisibilityRepository) Tracking(ctx context.Context, brandID uuid.UU
 }
 
 func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *koidomain.Brand) (string, error) {
-	if !r.enabled || r.client == nil {
-		return "collection_unavailable", nil
+	readiness := koidomain.TrackingReadiness{
+		CollectionEnabled:   r.enabled && r.client != nil,
+		PromptsReviewed:     brand.PromptsReviewedAt != nil,
+		CompetitorsReviewed: brand.CompetitorsReviewedAt != nil,
 	}
-	if brand.PromptsReviewedAt == nil || brand.CompetitorsReviewedAt == nil {
-		return "reviews_required", nil
-	}
-
-	inputs, err := r.Inputs(ctx, brand.ID)
-	if err != nil {
-		return "", err
-	}
-	if len(inputs.Prompts) == 0 {
-		return "prompts_required", nil
-	}
-	if _, err := NewGormGenerationRepository(r.db, r.client).Active(ctx, brand.ID); err == nil {
-		return "generation_active", nil
-	} else if !errors.Is(err, koidomain.ErrNotFound) {
-		return "", err
+	if !readiness.CollectionEnabled || !readiness.PromptsReviewed || !readiness.CompetitorsReviewed {
+		return koidomain.TrackingBlockedReason(readiness), nil
 	}
 
-	return "", nil
+	if err := r.db.WithContext(ctx).Raw("SELECT EXISTS (SELECT 1 FROM prompts WHERE brand_id = ?)", brand.ID).Scan(&readiness.HasPrompts).Error; err != nil {
+		return "", err
+	}
+	if !readiness.HasPrompts {
+		return koidomain.TrackingBlockedReason(readiness), nil
+	}
+
+	_, err := NewGormGenerationRepository(r.db, r.client).Active(ctx, brand.ID)
+	if err != nil && !errors.Is(err, koidomain.ErrNotFound) {
+		return "", err
+	}
+	readiness.GenerationActive = err == nil
+
+	return koidomain.TrackingBlockedReason(readiness), nil
 }
 
 // DispatchVisibility uses persisted UTC slots; a restart does not reset the cadence.
@@ -151,11 +153,12 @@ func (r *GormVisibilityRepository) schedule(ctx context.Context, brand *koidomai
 		return nil
 	}
 
-	slot := now.UTC()
-	var next time.Time
+	anchor := now
 	if brand.VisibilityStartedAt != nil {
-		slot = brand.VisibilityStartedAt.Add(now.Sub(*brand.VisibilityStartedAt) / (24 * time.Hour) * (24 * time.Hour))
-		next = slot.Add(24 * time.Hour)
+		anchor = *brand.VisibilityStartedAt
+	}
+	slot, next := koidomain.NextVisibilitySchedule(anchor, now)
+	if brand.VisibilityStartedAt != nil {
 		if err := r.db.WithContext(ctx).Model(brand).Update("next_visibility_at", next).Error; err != nil {
 			return err
 		}
@@ -176,18 +179,12 @@ func (r *GormVisibilityRepository) schedule(ctx context.Context, brand *koidomai
 		return err
 	}
 	run := &koidomain.VisibilityRun{
-		BrandID:      brand.ID,
-		ScheduledFor: &slot,
-		BrandSnapshot: koidomain.BrandSnapshot{
-			Name:        brand.Name,
-			Domain:      brand.Domain,
-			GitHubRepo:  brand.GitHubRepo,
-			Country:     brand.Country,
-			Description: brand.Description,
-		},
-		Engines:      koidomain.VisibilityEngines(),
-		State:        koidomain.VisibilityQueued,
-		TotalResults: int64(len(inputs.Prompts) * len(koidomain.VisibilityEngines())),
+		BrandID:       brand.ID,
+		ScheduledFor:  &slot,
+		BrandSnapshot: brand.Snapshot(),
+		Engines:       koidomain.VisibilityEngines(),
+		State:         koidomain.VisibilityQueued,
+		TotalResults:  int64(len(inputs.Prompts) * len(koidomain.VisibilityEngines())),
 	}
 	results := make([]koidomain.VisibilityResult, 0, run.TotalResults)
 	for position, prompt := range inputs.Prompts {
@@ -207,7 +204,6 @@ func (r *GormVisibilityRepository) schedule(ctx context.Context, brand *koidomai
 	}
 
 	if brand.VisibilityStartedAt == nil {
-		next = slot.Add(24 * time.Hour)
 		return r.db.WithContext(ctx).Model(brand).Updates(map[string]any{
 			"visibility_started_at": slot,
 			"next_visibility_at":    next,

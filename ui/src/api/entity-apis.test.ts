@@ -5,18 +5,18 @@ import { createBrandsApi } from "@/api/brands.api";
 import { createCompetitorsApi } from "@/api/competitors.api";
 import type {
   AuthApi,
+  BrandPage,
   BrandsApi,
   CompetitorsApi,
   GenerationsApi,
   HealthApi,
-  Page,
   PromptsApi,
 } from "@/api/generated";
 import { createGenerationsApi } from "@/api/generations.api";
 import { createHealthApi } from "@/api/health.api";
 import { createPromptsApi } from "@/api/prompts.api";
 
-const page: Page = {
+const page: BrandPage = {
   items: [],
   totalItems: 0,
   totalPages: 0,
@@ -115,7 +115,7 @@ describe("entity API wrappers", () => {
       items: [
         {
           id: "prompt-id",
-          brand_id: "brand",
+          brandId: "brand",
           text: "What is Koi?",
           source: "drafted",
           confirmed: false,

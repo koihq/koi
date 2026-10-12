@@ -40,7 +40,12 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, s.LookUpField("aliases"))
 	require.NotNil(t, s.LookUpField("github_repo"))
-	require.Empty(t, s.ParseIndexes()) // Partial uniqueness is installed explicitly by Migrate.
+	require.Len(t, s.ParseIndexes(), 2)
+	for _, index := range s.ParseIndexes() {
+		require.Equal(t, "UNIQUE", index.Class)
+		require.NotEmpty(t, index.Where)
+		require.Len(t, index.Fields, 2)
+	}
 }
 
 func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {

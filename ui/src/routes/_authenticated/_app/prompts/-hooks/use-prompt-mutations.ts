@@ -33,10 +33,5 @@ export function usePromptMutations(brandID: string) {
     onSuccess: invalidate,
   });
 
-  const confirmAll = useMutation({
-    mutationFn: () => api.prompts.confirmAll(brandID),
-    onSuccess: invalidate,
-  });
-
-  return { create, update, remove, confirm, confirmAll };
+  return { create, update, remove, confirm };
 }

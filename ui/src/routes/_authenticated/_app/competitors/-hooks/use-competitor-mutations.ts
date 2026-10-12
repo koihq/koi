@@ -27,10 +27,5 @@ export function useCompetitorMutations(brandID: string) {
     onSuccess: invalidate,
   });
 
-  const confirmAll = useMutation({
-    mutationFn: () => api.competitors.confirmAll(brandID),
-    onSuccess: invalidate,
-  });
-
-  return { create, remove, confirm, confirmAll };
+  return { create, remove, confirm };
 }

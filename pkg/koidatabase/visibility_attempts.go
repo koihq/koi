@@ -167,14 +167,6 @@ func (s *Store) RecordVisibilityFailure(ctx context.Context, runID uuid.UUID, jo
 }
 
 func (s *Store) ReconcileVisibilityRuns(ctx context.Context) error {
-	// Historical stub cells stay readable, but queued sample jobs must never become paid tasks.
-	if err := s.db.WithContext(ctx).Exec(`UPDATE visibility_runs AS v SET state = 'failed', error_code = 'sample_run_retired', finished_at = now()
-		WHERE v.state IN ('queued', 'running') AND EXISTS (
-			SELECT 1 FROM visibility_results AS r WHERE r.run_id = v.id AND r.collector = 'stub'
-		)`).Error; err != nil {
-		return err
-	}
-
 	return s.db.WithContext(ctx).Exec(`UPDATE visibility_runs AS v SET state = 'failed', error_code = 'job_lost', finished_at = now()
 		WHERE v.state IN ('queued', 'running') AND NOT EXISTS (
 			SELECT 1 FROM river_job AS j WHERE j.id = v.river_job_id AND j.state NOT IN ('cancelled', 'discarded', 'completed')

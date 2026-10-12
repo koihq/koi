@@ -215,7 +215,6 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		searcher = logodev.NewSearcher(key)
 	}
 	var riverClient *river.Client[*sql.Tx]
-	var dispatcher *visibilityDispatchWorker
 	workers := a.workers
 	if sqlDB != nil && (a.cfg.OpenRouterAPIKey != "" || a.cfg.CloroAPIKey != "") {
 		queues := map[string]river.QueueConfig{}
@@ -225,38 +224,46 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 				if a.provider == nil {
 					a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
 				}
-				river.AddWorker(workers, &generationWorker{store: koidatabase.NewStore(db), provider: a.provider})
+				river.AddWorker(workers, &generationWorker{
+					store:    koidatabase.NewStore(db),
+					provider: a.provider,
+					timeout:  2*a.cfg.ProviderTimeout + 30*time.Second,
+				})
 			}
 			if a.cfg.CloroAPIKey != "" {
 				if a.cloroProvider == nil {
 					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey)
 				}
-				river.AddWorker(workers, &visibilityWorker{store: koidatabase.NewStore(db), provider: a.cloroProvider})
-				dispatcher = &visibilityDispatchWorker{}
-				river.AddWorker(workers, dispatcher)
+				river.AddWorker(workers, &visibilityWorker{
+					store:    koidatabase.NewStore(db),
+					provider: a.cloroProvider,
+				})
 			}
 		}
+		maintenance := &maintenanceWorker{}
+		river.AddWorker(workers, maintenance)
+		queues["maintenance"] = river.QueueConfig{MaxWorkers: 1}
 		if a.cfg.OpenRouterAPIKey != "" {
 			queues["generation"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
 		}
 		if a.cfg.CloroAPIKey != "" {
 			queues["visibility"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
 		}
-		config := &river.Config{Queues: queues, Workers: workers, SoftStopTimeout: 60 * time.Second}
-		if dispatcher != nil {
-			config.PeriodicJobs = []*river.PeriodicJob{
+		config := &river.Config{
+			Queues:          queues,
+			Workers:         workers,
+			SoftStopTimeout: 60 * time.Second,
+			PeriodicJobs: []*river.PeriodicJob{
 				river.NewPeriodicJob(river.PeriodicInterval(time.Minute), func() (river.JobArgs, *river.InsertOpts) {
-					return visibilityDispatchArgs{}, &river.InsertOpts{Queue: "visibility", MaxAttempts: 3}
+					return maintenanceArgs{}, &river.InsertOpts{Queue: "maintenance", MaxAttempts: 3}
 				}, &river.PeriodicJobOpts{RunOnStart: true}),
-			}
+			},
 		}
 		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
-		if dispatcher != nil {
-			dispatcher.store = koidatabase.NewStore(db, riverClient).WithLiveCollection(true)
-		}
+		maintenance.store = koidatabase.NewStore(db, riverClient).WithLiveCollection(a.cfg.CloroAPIKey != "")
 		if err := riverClient.Start(context.Background()); err != nil {
 			return fmt.Errorf("start river client: %w", err)
 		}
@@ -286,7 +293,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 
 	cancelHTTP()
 	if riverClient != nil {
-		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 60*time.Second)
+		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 65*time.Second)
 		if err := riverClient.Stop(riverCtx); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("stop river: %w", err))
 		}
