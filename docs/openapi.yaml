@@ -549,6 +549,30 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+    patch:
+      tags: [competitors]
+      operationId: patchCompetitor
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitorPatchRequest"
+      responses:
+        "200":
+          description: Updated identity, preserving source and confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
     delete:
       tags: [competitors]
       operationId: deleteCompetitor
@@ -568,6 +592,7 @@ paths:
     post:
       tags: [competitors]
       operationId: confirmCompetitor
+      description: Requires a primary domain or GitHub repository; name-only observed suggestions return validation errors.
       security:
         - cookieAuth: []
       responses:
@@ -577,6 +602,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CompetitorRes"
+        "400":
+          $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -587,11 +614,12 @@ paths:
     post:
       tags: [competitors]
       operationId: confirmAllCompetitors
+      description: Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
       security:
         - cookieAuth: []
       responses:
         "204":
-          description: All competitors confirmed
+          description: Review finished; observed suggestions remain unchanged
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -835,7 +863,7 @@ components:
       enum: [chatgpt, perplexity, gemini, google_ai_overviews]
     VisibilityResult:
       type: object
-      required: [id, run_id, prompt_id, prompt_text, prompt_position, engine, collector, fetched_at, outcome, raw_answer, sources, error_code]
+      required: [id, run_id, prompt_id, prompt_text, prompt_position, engine, collector, fetched_at, outcome, raw_answer, sources, error_code, appearances]
       properties:
         id:
           type: string
@@ -876,6 +904,35 @@ components:
         error_code:
           type: string
           nullable: true
+        appearances:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorAppearance"
+    AppearanceEvidence:
+      type: object
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [mention, citation, entity, link]
+        value:
+          type: string
+    CompetitorAppearance:
+      type: object
+      required: [competitor_id, name, confirmed, evidence]
+      properties:
+        competitor_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        confirmed:
+          type: boolean
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppearanceEvidence"
     VisibilityRunPage:
       type: object
       required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
@@ -1103,9 +1160,47 @@ components:
         github_repo:
           type: string
           format: uri
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 255
+        additional_urls:
+          type: array
+          maxItems: 20
+          description: Additional official website origins or GitHub repository roots
+          items:
+            type: string
+            format: uri
+    CompetitorPatchRequest:
+      type: object
+      additionalProperties: false
+      description: Omitted fields stay unchanged; empty arrays clear aliases or URLs. Editing never confirms.
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        github_repo:
+          type: string
+          format: uri
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 255
+        additional_urls:
+          type: array
+          maxItems: 20
+          description: Additional official website origins or GitHub repository roots
+          items:
+            type: string
+            format: uri
     CompetitorRes:
       type: object
-      required: [id, brand_id, name, domain, github_repo, source, confirmed]
+      required: [id, brand_id, name, domain, github_repo, source, confirmed, aliases, additional_urls]
       properties:
         id:
           type: string
@@ -1125,6 +1220,19 @@ components:
           enum: [manual, drafted, observed]
         confirmed:
           type: boolean
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 255
+        additional_urls:
+          type: array
+          maxItems: 20
+          description: Additional official website origins or GitHub repository roots
+          items:
+            type: string
+            format: uri
     CredentialsReq:
       type: object
       required: [email, password]

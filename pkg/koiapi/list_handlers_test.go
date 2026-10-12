@@ -55,6 +55,7 @@ func TestListHandlersRequireSession(t *testing.T) {
 		{http.MethodDelete, "/prompts/" + childID.String(), ""},
 		{http.MethodPost, "/prompts/" + childID.String() + "/confirm", ""},
 		{http.MethodGet, "/competitors", ""},
+		{http.MethodPatch, "/competitors/" + childID.String(), `{}`},
 		{http.MethodGet, "/competitors/search?q=acme", ""},
 	}
 
@@ -65,6 +66,35 @@ func TestListHandlersRequireSession(t *testing.T) {
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
 	}
+}
+
+func TestCompetitorPatchCannotConfirmOrChangeSource(t *testing.T) {
+	userID, brandID, competitorID := uuid.New(), uuid.New(), uuid.New()
+	commander := NewMockCompetitorCommander(t)
+	name := "Acme Analytics"
+	aliases := []string{"Acme"}
+	urls := []string{"https://acme.tools"}
+	commander.EXPECT().Patch(mock.Anything, brandID, competitorID, koidomain.CompetitorUpdate{
+		Name: &name, Aliases: &aliases, AdditionalURLs: &urls,
+	}).Return(&koidomain.Competitor{
+		BaseEntity: koidomain.BaseEntity{
+			ID: competitorID,
+		},
+		BrandID: brandID, Name: name, Source: koidomain.CompetitorSourceObserved,
+		Aliases: aliases, AdditionalURLs: urls,
+	}, nil)
+	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), NewMockCompetitorQuerier(t), commander)
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	resp := doJSON(t, client, http.MethodPatch, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors/"+competitorID.String(),
+		`{"name":"Acme Analytics","aliases":["Acme"],"additional_urls":["https://acme.tools"],"source":"manual","confirmed":true}`)
+	var body koidomain.Competitor
+	readJSON(t, resp, &body)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, koidomain.CompetitorSourceObserved, body.Source)
+	require.False(t, body.Confirmed)
+	require.Equal(t, aliases, body.Aliases)
 }
 
 func TestPromptHandlerCreateMalformedAndUnowned(t *testing.T) {

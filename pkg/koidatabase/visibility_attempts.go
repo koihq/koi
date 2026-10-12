@@ -108,13 +108,34 @@ func (s *Store) SaveVisibilityResult(ctx context.Context, runID uuid.UUID, attem
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var run koidomain.VisibilityRun
+		if err := tx.First(&run, "id = ?", runID).Error; err != nil {
+			return mapDBError(err)
+		}
+		var brand koidomain.Brand
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&brand, "id = ?", run.BrandID).Error; err != nil {
+			return mapDBError(err)
+		}
 		if err := lockVisibilityAttempt(tx, runID, attempt); err != nil {
 			return err
 		}
 
-		// A replay never overwrites an answer or its original fetched_at timestamp.
-		return tx.Model(&koidomain.VisibilityResult{}).Where("id = ? AND run_id = ? AND outcome IS NULL", result.ID, runID).
-			Select("outcome", "fetched_at", "raw_answer", "sources", "error_code").Updates(&result).Error
+		result.Observations = []koidomain.AppearanceObservation{}
+		if result.Outcome != nil && *result.Outcome != koidomain.OutcomeError {
+			result.Observations = koidomain.ExtractObservations(result)
+		}
+		if result.NamedEntities == nil {
+			result.NamedEntities = []koidomain.NamedEntity{}
+		}
+
+		// A replay never overwrites an answer or advances discovery counts.
+		saved := tx.Model(&koidomain.VisibilityResult{}).Where("id = ? AND run_id = ? AND outcome IS NULL", result.ID, runID).
+			Select("outcome", "fetched_at", "raw_answer", "answer_markdown", "named_entities", "observations", "sources", "error_code").Updates(&result)
+		if saved.Error != nil || saved.RowsAffected == 0 {
+			return saved.Error
+		}
+
+		return observeCompetitors(tx, run, brand, result)
 	})
 }
 

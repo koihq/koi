@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
-import type { CreateCompetitor } from "@/api/competitors.api";
+import type { CreateCompetitor, UpdateCompetitor } from "@/api/competitors.api";
 import { competitorKey, runKey, trackingKey } from "@/lib/query-keys";
 
 export function useCompetitorMutations(brandID: string) {
@@ -17,6 +17,12 @@ export function useCompetitorMutations(brandID: string) {
     onSuccess: invalidate,
   });
 
+  const update = useMutation({
+    mutationFn: ({ id, request }: { id: string; request: UpdateCompetitor }) =>
+      api.competitors.update(brandID, id, request),
+    onSuccess: invalidate,
+  });
+
   const remove = useMutation({
     mutationFn: (id: string) => api.competitors.delete(brandID, id),
     onSuccess: invalidate,
@@ -27,5 +33,5 @@ export function useCompetitorMutations(brandID: string) {
     onSuccess: invalidate,
   });
 
-  return { create, remove, confirm };
+  return { create, update, remove, confirm };
 }

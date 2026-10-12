@@ -38,6 +38,18 @@ export interface CompetitorRequest {
      * @memberof CompetitorRequest
      */
     githubRepo?: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof CompetitorRequest
+     */
+    aliases?: Array<string>;
+    /**
+     * Additional official website origins or GitHub repository roots
+     * @type {Array<string>}
+     * @memberof CompetitorRequest
+     */
+    additionalUrls?: Array<string>;
 }
 
 /**
@@ -61,6 +73,8 @@ export function CompetitorRequestFromJSONTyped(json: any, ignoreDiscriminator: b
         'name': json['name'],
         'domain': json['domain'] == null ? undefined : json['domain'],
         'githubRepo': json['github_repo'] == null ? undefined : json['github_repo'],
+        'aliases': json['aliases'] == null ? undefined : json['aliases'],
+        'additionalUrls': json['additional_urls'] == null ? undefined : json['additional_urls'],
     };
 }
 
@@ -78,6 +92,8 @@ export function CompetitorRequestToJSONTyped(value?: CompetitorRequest | null, i
         'name': value['name'],
         'domain': value['domain'],
         'github_repo': value['githubRepo'],
+        'aliases': value['aliases'],
+        'additional_urls': value['additionalUrls'],
     };
 }
 

@@ -12,9 +12,19 @@ import (
 )
 
 type CompetitorRequest struct {
-	Name       string `json:"name"`
-	Domain     string `json:"domain"`
-	GitHubRepo string `json:"github_repo"`
+	Name           string   `json:"name"`
+	Domain         string   `json:"domain"`
+	GitHubRepo     string   `json:"github_repo"`
+	Aliases        []string `json:"aliases"`
+	AdditionalURLs []string `json:"additional_urls"`
+}
+
+type CompetitorPatchRequest struct {
+	Name           *string   `json:"name"`
+	Domain         *string   `json:"domain"`
+	GitHubRepo     *string   `json:"github_repo"`
+	Aliases        *[]string `json:"aliases"`
+	AdditionalURLs *[]string `json:"additional_urls"`
 }
 
 type CompetitorHandler struct {
@@ -36,6 +46,7 @@ func (h *CompetitorHandler) Routes() func(chi.Router) {
 		r.Post("/confirm", h.ConfirmAll)
 		r.Get("/{competitorID}", h.Get)
 		r.Delete("/{competitorID}", h.Delete)
+		r.With(middlewares.DecodeBody[CompetitorPatchRequest]()).Patch("/{competitorID}", h.Patch)
 		r.Post("/{competitorID}/confirm", h.Confirm)
 	}
 }
@@ -116,9 +127,11 @@ func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	req := middlewares.Body[CompetitorRequest](r)
 
 	competitor, err := h.commander.Create(r.Context(), brandID, koidomain.CompetitorParams{
-		Name:       req.Name,
-		Domain:     req.Domain,
-		GitHubRepo: req.GitHubRepo,
+		Name:           req.Name,
+		Domain:         req.Domain,
+		GitHubRepo:     req.GitHubRepo,
+		Aliases:        req.Aliases,
+		AdditionalURLs: req.AdditionalURLs,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)
@@ -127,6 +140,32 @@ func (h *CompetitorHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.JSON(w, r, http.StatusCreated, competitor)
+}
+
+func (h *CompetitorHandler) Patch(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+	competitorID, ok := pathID(w, r, "competitorID")
+	if !ok {
+		return
+	}
+
+	req := middlewares.Body[CompetitorPatchRequest](r)
+	competitor, err := h.commander.Patch(r.Context(), brandID, competitorID, koidomain.CompetitorUpdate{
+		Name:           req.Name,
+		Domain:         req.Domain,
+		GitHubRepo:     req.GitHubRepo,
+		Aliases:        req.Aliases,
+		AdditionalURLs: req.AdditionalURLs,
+	})
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	api.JSON(w, r, http.StatusOK, competitor)
 }
 
 func (h *CompetitorHandler) Delete(w http.ResponseWriter, r *http.Request) {

@@ -19,6 +19,7 @@ describe("visibility matrix", () => {
       outcome: null,
       fetchedAt: null,
       rawAnswer: "",
+      appearances: [],
       sources: [],
       errorCode: null,
     } satisfies Omit<VisibilityResult, "id">;

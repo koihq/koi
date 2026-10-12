@@ -1,10 +1,17 @@
-import type { CompetitorRequest, CompetitorRes, CompetitorsApi } from "@/api/generated";
+import type {
+  CompetitorPatchRequest,
+  CompetitorRequest,
+  CompetitorRes,
+  CompetitorsApi,
+} from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Competitor = CompetitorRes;
 
 export type CreateCompetitor = CompetitorRequest;
+
+export type UpdateCompetitor = CompetitorPatchRequest;
 
 export interface CompetitorSearchResult {
   name: string;
@@ -44,6 +51,8 @@ export function createCompetitorsApi(api: CompetitorsApi) {
       callApi(() => api.searchCompetitors(brandID, query, initOverrides)),
     create: (brandID: string, request: CreateCompetitor): Promise<Competitor> =>
       callApi(() => api.createCompetitor(brandID, request)),
+    update: (brandID: string, id: string, request: UpdateCompetitor): Promise<Competitor> =>
+      callApi(() => api.patchCompetitor(brandID, id, request)),
     delete: (brandID: string, id: string): Promise<void> =>
       callApi(() => api.deleteCompetitor(brandID, id)),
     confirm: (brandID: string, id: string): Promise<Competitor> =>

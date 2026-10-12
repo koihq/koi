@@ -44,7 +44,7 @@ func TestAsyncContracts(t *testing.T) {
 						require.Equal(t, "GOOGLE", request.TaskType)
 						require.Equal(t, cell.PromptText, request.Payload["query"])
 						require.Equal(t, float64(1), request.Payload["pages"])
-						require.Equal(t, map[string]any{"aioverview": map[string]any{}}, request.Payload["include"])
+						require.Equal(t, map[string]any{"aioverview": map[string]any{"markdown": true}}, request.Payload["include"])
 						require.Len(t, request.Payload, 4)
 					} else {
 						wantType := map[koidomain.EngineID]string{
@@ -54,10 +54,11 @@ func TestAsyncContracts(t *testing.T) {
 						}[engine]
 						require.Equal(t, wantType, request.TaskType)
 						require.Equal(t, cell.PromptText, request.Payload["prompt"])
+						require.Equal(t, map[string]any{"markdown": true}, request.Payload["include"])
 						if engine == koidomain.EngineChatGPT {
 							require.Equal(t, false, request.Payload["disableWebSearch"])
 						} else {
-							require.Len(t, request.Payload, 2)
+							require.Len(t, request.Payload, 3)
 						}
 					}
 					fmt.Fprintf(w, `{"success":true,"task":{"id":%q,"status":"QUEUED"}}`, taskID)
@@ -65,7 +66,7 @@ func TestAsyncContracts(t *testing.T) {
 				}
 
 				require.Equal(t, "/v1/async/task/"+taskID, r.URL.Path)
-				response := `{"text":"Koi is an option.","sources":[{"url":"https://koi.dev"},{"url":"https://koi.dev"}]}`
+				response := `{"text":"Koi is an option.","markdown":"1. [Acme](https://acme.dev)","entities":[{"type":"software","name":"Acme"}],"sources":[{"url":"https://koi.dev"},{"url":"https://koi.dev"}]}`
 				if engine == koidomain.EngineGoogleAIOverviews {
 					response = `{"aioverview":` + response + `,"organic":[{"url":"https://ignore.test"}]}`
 				}
@@ -84,6 +85,8 @@ func TestAsyncContracts(t *testing.T) {
 			answer, err := client.Poll(t.Context(), taskID, engine)
 			require.NoError(t, err)
 			require.Equal(t, "Koi is an option.", answer.Text)
+			require.Equal(t, "1. [Acme](https://acme.dev)", answer.Markdown)
+			require.Equal(t, []koidomain.NamedEntity{{Type: "software", Name: "Acme"}}, answer.Entities)
 			require.Equal(t, []string{"https://koi.dev"}, answer.Sources)
 		})
 	}
@@ -142,5 +145,20 @@ func TestTaskResponsesAndErrors(t *testing.T) {
 				require.Equal(t, []string{}, answer.Sources)
 			}
 		})
+	}
+}
+
+func TestMalformedOptionalMetadataKeepsAnswer(t *testing.T) {
+	for _, metadata := range []string{
+		`"markdown":{},"entities":"wrong"`,
+		`"markdown":null,"entities":[{"type":42,"name":"Bad"},{"type":"software","name":"Good"}]`,
+	} {
+		answer, err := normalize(koidomain.EngineChatGPT, json.RawMessage(`{"text":"Valid answer","sources":[],`+metadata+`}`))
+		require.NoError(t, err)
+		require.Equal(t, "Valid answer", answer.Text)
+		require.Empty(t, answer.Markdown)
+		for _, entity := range answer.Entities {
+			require.Equal(t, "Good", entity.Name)
+		}
 	}
 }

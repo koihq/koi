@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Competitor } from "@/api/competitors.api";
+import type { Competitor, UpdateCompetitor } from "@/api/competitors.api";
 import { DataTable } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
@@ -24,8 +24,10 @@ function CompetitorPage() {
   const list = useCompetitorList(brand.id);
   const mutations = useCompetitorMutations(brand.id);
   const [deleting, setDeleting] = useState<Competitor>();
+  const dismissing = deleting?.source === "observed" && !deleting.confirmed;
   const deleteTrigger = useRef<HTMLElement | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const { mutateAsync: updateMutation } = mutations.update;
   const { mutate: confirmMutation } = mutations.confirm;
   const { reset: resetDelete } = mutations.remove;
 
@@ -39,12 +41,23 @@ function CompetitorPage() {
   );
 
   const pending =
-    mutations.create.isPending || mutations.remove.isPending || mutations.confirm.isPending;
+    mutations.create.isPending ||
+    mutations.update.isPending ||
+    mutations.remove.isPending ||
+    mutations.confirm.isPending;
 
   const confirm = useCallback((id: string) => confirmMutation(id), [confirmMutation]);
 
+  const update = useCallback(
+    (id: string, request: UpdateCompetitor) =>
+      updateMutation({ id, request }).then(() => undefined),
+    [updateMutation],
+  );
+
   const columns = useCompetitorColumns({
+    brandID: brand.id,
     pending,
+    onUpdate: update,
     onDelete: chooseDelete,
     onConfirm: confirm,
   });
@@ -113,9 +126,9 @@ function CompetitorPage() {
       />
       <DeleteItemDialog
         itemID={deleting?.id}
-        title={t("deleteCompetitorTitle")}
-        description={t("competitorDeleteDescription")}
-        actionLabel={t("deleteCompetitor")}
+        title={t(dismissing ? "dismissSuggestionTitle" : "deleteCompetitorTitle")}
+        description={t(dismissing ? "dismissSuggestionDescription" : "competitorDeleteDescription")}
+        actionLabel={t(dismissing ? "dismiss" : "deleteCompetitor")}
         onClose={() => setDeleting(undefined)}
         pending={mutations.remove.isPending}
         failed={mutations.remove.isError}

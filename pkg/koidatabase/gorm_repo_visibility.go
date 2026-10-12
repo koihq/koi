@@ -126,7 +126,43 @@ func (r *GormVisibilityRepository) ListResults(ctx context.Context, brandID, run
 			WHERE visibility_runs.id = visibility_results.run_id AND visibility_runs.brand_id = ? AND brands.user_id = ?)`, brandID, identity.UserID)
 	})
 
-	return results.listBy(ctx, func(db *gorm.DB) *gorm.DB { return db.Where("run_id = ?", runID) }, page, "prompt_position ASC, engine ASC")
+	response, err := results.listBy(ctx, func(db *gorm.DB) *gorm.DB { return db.Where("run_id = ?", runID) }, page, "prompt_position ASC, engine ASC")
+	if err != nil {
+		return nil, err
+	}
+	if len(response.Items) == 0 {
+		return response, nil
+	}
+
+	brand, err := NewGormBrandRepository(r.db).Get(ctx, brandID)
+	if err != nil {
+		return nil, err
+	}
+	var run koidomain.VisibilityRun
+	if err := r.db.WithContext(ctx).Where("id = ? AND brand_id = ?", runID, brandID).First(&run).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+	query, err := NewGormCompetitorRepository(r.db).query(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var competitors []koidomain.Competitor
+	if err := query.Where("brand_id = ?", brandID).Order("created_at, id").Find(&competitors).Error; err != nil {
+		return nil, mapDBError(err)
+	}
+
+	for i := range response.Items {
+		cell := &response.Items[i]
+		observations := cell.Observations[:0]
+		for _, observation := range cell.Observations {
+			if !koidomain.ObservationIsBrand(observation, brand.Snapshot()) {
+				observations = append(observations, observation)
+			}
+		}
+		cell.Observations = observations
+		cell.Appearances = koidomain.MatchAppearances(*cell, competitors, run.BrandSnapshot)
+	}
+	return response, nil
 }
 
 var _ koidomain.VisibilityRepository = (*GormVisibilityRepository)(nil)

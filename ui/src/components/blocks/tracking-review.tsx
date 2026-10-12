@@ -49,6 +49,9 @@ export function TrackingReview({
         {t(reviewed ? "reviewFinished" : finish.isPending ? "finishingReview" : "finishReview")}
       </Button>
       <p className="text-xs text-muted-foreground">{t("reviewNotice")}</p>
+      {kind === "competitors" ? (
+        <p className="text-xs text-muted-foreground">{t("observedReviewNotice")}</p>
+      ) : null}
       {finish.isError ? (
         <p role="alert" className="text-destructive">
           {messageFromUnknown(finish.error)}

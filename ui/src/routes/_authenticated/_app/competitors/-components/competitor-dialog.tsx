@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
-import type { CompetitorSearchResult, CreateCompetitor } from "@/api/competitors.api";
+import type { Competitor, CompetitorSearchResult, CreateCompetitor } from "@/api/competitors.api";
 import { ApiError } from "@/api/errors";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import { Button } from "@/components/ui/button";
@@ -23,30 +23,36 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 export function CompetitorDialog({
   brandID,
+  competitor,
   label,
   pending,
   onSave,
 }: {
   brandID: string;
+  competitor?: Competitor;
   label: string;
   pending: boolean;
   onSave: (request: CreateCompetitor) => Promise<void>;
 }) {
   const { t } = useTranslation("management");
   const api = useApi();
+  const fieldID = useId();
+  const allowNameOnly = competitor?.source === "observed" && !competitor.confirmed;
   const [open, setOpen] = useState(false);
   const [manual, setManual] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
-  const [domain, setDomain] = useState("");
-  const [githubRepo, setGithubRepo] = useState("");
+  const [name, setName] = useState(competitor?.name ?? "");
+  const [domain, setDomain] = useState(competitor?.domain ?? "");
+  const [githubRepo, setGithubRepo] = useState(competitor?.githubRepo ?? "");
+  const [aliases, setAliases] = useState(competitor?.aliases.join(", ") ?? "");
+  const [additionalURLs, setAdditionalURLs] = useState(competitor?.additionalUrls.join(", ") ?? "");
   const [invalid, setInvalid] = useState(false);
   const [saveError, setSaveError] = useState<"duplicate" | "invalidDomain" | "other">();
   const saving = useRef(false);
@@ -55,7 +61,7 @@ export function CompetitorDialog({
   const capabilities = useQuery({
     queryKey: ["capabilities"],
     queryFn: api.capabilities.get,
-    enabled: open,
+    enabled: open && !competitor,
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
@@ -63,7 +69,10 @@ export function CompetitorDialog({
   const searchEnabled = capabilities.data?.competitorSearch === true;
 
   const showManual =
-    manual || capabilities.isError || capabilities.data?.competitorSearch === false;
+    Boolean(competitor) ||
+    manual ||
+    capabilities.isError ||
+    capabilities.data?.competitorSearch === false;
 
   const search = useQuery({
     queryKey: ["competitor-search", brandID, debouncedQuery],
@@ -80,9 +89,11 @@ export function CompetitorDialog({
     setManual(false);
     setInputValue("");
     setQuery("");
-    setName("");
-    setDomain("");
-    setGithubRepo("");
+    setName(competitor?.name ?? "");
+    setDomain(competitor?.domain ?? "");
+    setGithubRepo(competitor?.githubRepo ?? "");
+    setAliases(competitor?.aliases.join(", ") ?? "");
+    setAdditionalURLs(competitor?.additionalUrls.join(", ") ?? "");
     setInvalid(false);
     setSaveError(undefined);
   }
@@ -100,7 +111,9 @@ export function CompetitorDialog({
     } catch (error) {
       const domainField =
         error instanceof ApiError
-          ? error.fields?.find((field) => field.field === "domain" || field.field === "github_repo")
+          ? error.fields?.find((field) =>
+              ["domain", "github_repo", "additional_urls", "aliases"].includes(field.field),
+            )
           : undefined;
 
       setSaveError(
@@ -117,14 +130,26 @@ export function CompetitorDialog({
 
   async function submitManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!name.trim() || (!domain.trim() && !githubRepo.trim())) {
+    if (!name.trim() || (!allowNameOnly && !domain.trim() && !githubRepo.trim())) {
       setInvalid(true);
 
       return;
     }
 
     setInvalid(false);
-    await save({ name: name.trim(), domain: domain.trim(), githubRepo: githubRepo.trim() });
+    await save({
+      name: name.trim(),
+      domain: domain.trim(),
+      githubRepo: githubRepo.trim(),
+      aliases: aliases
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+      additionalUrls: additionalURLs
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    });
   }
 
   const emptyMessage =
@@ -148,21 +173,32 @@ export function CompetitorDialog({
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen);
-        if (!nextOpen) reset();
+        reset();
       }}
     >
-      <DialogTrigger render={<Button type="button" size="sm" />}>{label}</DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button
+            type="button"
+            size={competitor ? "xs" : "sm"}
+            variant={competitor ? "ghost" : "default"}
+            disabled={pending}
+          />
+        }
+      >
+        {label}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t("addCompetitor")}</DialogTitle>
+          <DialogTitle>{t(competitor ? "editCompetitor" : "addCompetitor")}</DialogTitle>
           <DialogDescription>{t("competitorDescription")}</DialogDescription>
         </DialogHeader>
         {showManual ? (
           <form onSubmit={(event) => void submitManual(event)} className="space-y-4">
             <Field data-invalid={invalid && !name.trim() ? true : undefined}>
-              <FieldLabel htmlFor="competitor-name">{t("name")}</FieldLabel>
+              <FieldLabel htmlFor={`${fieldID}-name`}>{t("name")}</FieldLabel>
               <Input
-                id="competitor-name"
+                id={`${fieldID}-name`}
                 autoFocus
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -171,31 +207,68 @@ export function CompetitorDialog({
               />
             </Field>
             <Field
-              data-invalid={invalid && !domain.trim() && !githubRepo.trim() ? true : undefined}
+              data-invalid={
+                invalid && !allowNameOnly && !domain.trim() && !githubRepo.trim() ? true : undefined
+              }
             >
-              <FieldLabel htmlFor="competitor-domain">{t("domain")}</FieldLabel>
+              <FieldLabel htmlFor={`${fieldID}-domain`}>{t("domain")}</FieldLabel>
               <Input
-                id="competitor-domain"
+                id={`${fieldID}-domain`}
                 value={domain}
                 onChange={(event) => setDomain(event.target.value)}
-                aria-invalid={invalid && !domain.trim() && !githubRepo.trim() ? true : undefined}
+                aria-invalid={
+                  invalid && !allowNameOnly && !domain.trim() && !githubRepo.trim()
+                    ? true
+                    : undefined
+                }
                 placeholder={t("competitorDomainPlaceholder")}
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="competitor-github">{t("competitorGithubLabel")}</FieldLabel>
+              <FieldLabel htmlFor={`${fieldID}-github`}>{t("competitorGithubLabel")}</FieldLabel>
               <Input
-                id="competitor-github"
+                id={`${fieldID}-github`}
                 type="url"
                 value={githubRepo}
                 onChange={(event) => setGithubRepo(event.target.value)}
                 placeholder="https://github.com/owner/repo"
               />
             </Field>
-            {invalid ? <FieldError>{t("competitorInvalid")}</FieldError> : null}
+            <Field>
+              <FieldLabel htmlFor={`${fieldID}-aliases`}>{t("competitorAliases")}</FieldLabel>
+              <Input
+                id={`${fieldID}-aliases`}
+                value={aliases}
+                onChange={(event) => setAliases(event.target.value)}
+                aria-describedby={`${fieldID}-aliases-hint`}
+              />
+              <FieldDescription id={`${fieldID}-aliases-hint`}>
+                {t("competitorAliasesHint")}
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor={`${fieldID}-urls`}>{t("competitorAdditionalURLs")}</FieldLabel>
+              <Input
+                id={`${fieldID}-urls`}
+                value={additionalURLs}
+                onChange={(event) => setAdditionalURLs(event.target.value)}
+                aria-describedby={`${fieldID}-urls-hint`}
+              />
+              <FieldDescription id={`${fieldID}-urls-hint`}>
+                {t("competitorAdditionalURLsHint")}
+              </FieldDescription>
+            </Field>
+            {competitor?.source === "observed" && !competitor.confirmed ? (
+              <p className="text-sm text-muted-foreground">{t("observedEditNotice")}</p>
+            ) : null}
+            {invalid ? (
+              <FieldError>
+                {t(allowNameOnly ? "competitorNameInvalid" : "competitorInvalid")}
+              </FieldError>
+            ) : null}
             {saveError ? <FieldError>{saveErrorMessage}</FieldError> : null}
             <div className="flex items-center justify-between gap-2">
-              {searchEnabled ? (
+              {searchEnabled && !competitor ? (
                 <Button type="button" variant="link" size="sm" onClick={() => setManual(false)}>
                   {t("backToSearch")}
                 </Button>
@@ -210,7 +283,7 @@ export function CompetitorDialog({
         ) : searchEnabled ? (
           <>
             <Field>
-              <FieldLabel htmlFor="competitor-search">{t("competitorSearchLabel")}</FieldLabel>
+              <FieldLabel htmlFor={`${fieldID}-search`}>{t("competitorSearchLabel")}</FieldLabel>
               <Combobox<CompetitorSearchResult>
                 items={results}
                 filter={null}
@@ -231,7 +304,7 @@ export function CompetitorDialog({
                 }}
               >
                 <ComboboxInput
-                  id="competitor-search"
+                  id={`${fieldID}-search`}
                   className="w-full"
                   placeholder={t("competitorSearchPlaceholder")}
                   autoFocus

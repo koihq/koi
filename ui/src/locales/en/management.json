@@ -61,7 +61,7 @@
   "competitorNamePlaceholder": "Company name",
   "competitorDomainPlaceholder": "example.com",
   "competitorInvalid": "Enter a name and either a domain or GitHub repository.",
-  "competitorDomainInvalid": "Enter a domain such as example.com or an official GitHub repository URL.",
+  "competitorDomainInvalid": "Check the domain, official URLs, and aliases. Use a domain such as example.com or a GitHub repository URL.",
   "competitorGithubLabel": "GitHub repository (optional)",
   "statusLabel": "Filter by status",
   "pageSizeLabel": "Rows per page",
@@ -96,5 +96,17 @@
   "mutationError": "Unable to save this change. Try again.",
   "deleteError": "Unable to delete this item. Try again.",
   "unconfirmedCount": "{count} need confirmation",
-  "tableLabel": "Tracking list"
+  "tableLabel": "Tracking list",
+  "editCompetitor": "Edit competitor",
+  "competitorAliases": "Name aliases (optional)",
+  "competitorAliasesHint": "Separate up to 20 aliases with commas. Koi matches these names in answers.",
+  "competitorAdditionalURLs": "Other official websites or repositories (optional)",
+  "competitorAdditionalURLsHint": "Separate up to 20 full URLs with commas. Use official websites or GitHub repository roots.",
+  "competitorIdentityNeeded": "Add a domain or repository before confirming.",
+  "addIdentity": "Add official URL",
+  "observedEditNotice": "Saving keeps this suggestion unconfirmed. Add a domain or repository, then confirm it from the list.",
+  "competitorNameInvalid": "Enter a name.",
+  "dismiss": "Dismiss",
+  "dismissSuggestionTitle": "Dismiss suggestion?",
+  "dismissSuggestionDescription": "This removes the suggestion and prevents Koi from suggesting this competitor again. Recorded answers stay available."
 }

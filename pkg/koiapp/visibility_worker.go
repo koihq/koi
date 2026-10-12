@@ -127,6 +127,8 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 			cell.ErrorCode = &code
 		} else {
 			cell.RawAnswer = answer.Text
+			cell.AnswerMarkdown = answer.Markdown
+			cell.NamedEntities = answer.Entities
 			if answer.Sources != nil {
 				cell.Sources = answer.Sources
 			}

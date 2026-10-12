@@ -45,7 +45,7 @@ func (r *GormVisibilityRepository) FinishReview(ctx context.Context, brandID uui
 			}
 			brand.PromptsReviewedAt = &now
 		} else {
-			if err := tx.Model(&koidomain.Competitor{}).Where("brand_id = ?", brandID).Update("confirmed", true).Error; err != nil {
+			if err := tx.Model(&koidomain.Competitor{}).Where("brand_id = ? AND source <> ?", brandID, koidomain.CompetitorSourceObserved).Update("confirmed", true).Error; err != nil {
 				return err
 			}
 			brand.CompetitorsReviewedAt = &now

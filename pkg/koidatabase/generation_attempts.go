@@ -229,6 +229,13 @@ func insertGeneratedCompetitors(tx *gorm.DB, run koidomain.GenerationRun, sugges
 			continue
 		}
 
+		if err := checkCompetitorURLs(tx, company); err != nil {
+			if errors.Is(err, koidomain.ErrValidation) {
+				continue
+			}
+			return 0, err
+		}
+
 		if company.Domain != "" {
 			domainSeen[company.Domain] = true
 		}

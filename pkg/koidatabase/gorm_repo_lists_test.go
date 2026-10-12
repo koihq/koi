@@ -38,7 +38,8 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 
 	s, err := schema.Parse(&koidomain.Competitor{}, &sync.Map{}, schema.NamingStrategy{})
 	require.NoError(t, err)
-	require.Nil(t, s.LookUpField("aliases"))
+	require.Equal(t, schema.DataType("jsonb"), s.LookUpField("aliases").DataType)
+	require.Equal(t, schema.DataType("jsonb"), s.LookUpField("additional_urls").DataType)
 	require.NotNil(t, s.LookUpField("github_repo"))
 	require.Len(t, s.ParseIndexes(), 2)
 	for _, index := range s.ParseIndexes() {

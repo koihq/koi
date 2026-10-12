@@ -897,6 +897,86 @@ func (_c *MockCompetitorCommander_Delete_Call) RunAndReturn(run func(context1 co
 	return _c
 }
 
+// Patch provides a mock function for the type MockCompetitorCommander
+func (_mock *MockCompetitorCommander) Patch(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, competitorUpdate koidomain.CompetitorUpdate) (*koidomain.Competitor, error) {
+	ret := _mock.Called(context1, uUID, uUID1, competitorUpdate)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Patch")
+	}
+
+	var r0 *koidomain.Competitor
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.CompetitorUpdate) (*koidomain.Competitor, error)); ok {
+		return returnFunc(context1, uUID, uUID1, competitorUpdate)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.CompetitorUpdate) *koidomain.Competitor); ok {
+		r0 = returnFunc(context1, uUID, uUID1, competitorUpdate)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*koidomain.Competitor)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, koidomain.CompetitorUpdate) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1, competitorUpdate)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockCompetitorCommander_Patch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Patch'
+type MockCompetitorCommander_Patch_Call struct {
+	*mock.Call
+}
+
+// Patch is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+//   - uUID1 uuid.UUID
+//   - competitorUpdate koidomain.CompetitorUpdate
+func (_e *MockCompetitorCommander_Expecter) Patch(context1 interface{}, uUID interface{}, uUID1 interface{}, competitorUpdate interface{}) *MockCompetitorCommander_Patch_Call {
+	return &MockCompetitorCommander_Patch_Call{Call: _e.mock.On("Patch", context1, uUID, uUID1, competitorUpdate)}
+}
+
+func (_c *MockCompetitorCommander_Patch_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, competitorUpdate koidomain.CompetitorUpdate)) *MockCompetitorCommander_Patch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		var arg3 koidomain.CompetitorUpdate
+		if args[3] != nil {
+			arg3 = args[3].(koidomain.CompetitorUpdate)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockCompetitorCommander_Patch_Call) Return(competitor *koidomain.Competitor, err error) *MockCompetitorCommander_Patch_Call {
+	_c.Call.Return(competitor, err)
+	return _c
+}
+
+func (_c *MockCompetitorCommander_Patch_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, competitorUpdate koidomain.CompetitorUpdate) (*koidomain.Competitor, error)) *MockCompetitorCommander_Patch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockCompetitorQuerier creates a new instance of MockCompetitorQuerier. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockCompetitorQuerier(t interface {
