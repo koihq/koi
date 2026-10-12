@@ -29,8 +29,10 @@ func (r *GormPromptRepository) Create(ctx context.Context, prompt *koidomain.Pro
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, prompt.BrandID); err != nil {
 			return err
 		}
-
-		return NewGormPromptRepository(tx).Repository.Create(ctx, prompt)
+		if err := NewGormPromptRepository(tx).Repository.Create(ctx, prompt); err != nil {
+			return err
+		}
+		return invalidateReview(tx, prompt.BrandID, "prompts")
 	})
 }
 
@@ -58,6 +60,10 @@ func (r *GormPromptRepository) List(ctx context.Context, filter koidomain.Prompt
 }
 
 func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.PromptFilter, update koidomain.PromptUpdate) error {
+	if _, err := r.Repository.query(ctx); err != nil {
+		return err
+	}
+
 	values := &koidomain.Prompt{}
 	columns := make([]string, 0, 2)
 	if update.Text != nil {
@@ -69,10 +75,32 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
-
-	return r.updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, values, columns, filter.ID != uuid.Nil)
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
+			return err
+		}
+		if err := NewGormPromptRepository(tx).updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, values, columns, filter.ID != uuid.Nil); err != nil {
+			return err
+		}
+		if update.Text != nil || update.Confirmed != nil && !*update.Confirmed {
+			return invalidateReview(tx, filter.BrandID, "prompts")
+		}
+		return nil
+	})
 }
 
 func (r *GormPromptRepository) Delete(ctx context.Context, filter koidomain.PromptFilter) error {
-	return r.deleteBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, filter.ID != uuid.Nil)
+	if _, err := r.Repository.query(ctx); err != nil {
+		return err
+	}
+
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
+			return err
+		}
+		if err := NewGormPromptRepository(tx).deleteBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, filter.ID != uuid.Nil); err != nil {
+			return err
+		}
+		return invalidateReview(tx, filter.BrandID, "prompts")
+	})
 }

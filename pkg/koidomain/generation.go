@@ -55,11 +55,12 @@ type GenerationResult struct {
 
 type GenerationRun struct {
 	BaseEntity
-	BrandID         uuid.UUID       `json:"-" gorm:"type:uuid;not null"`
+	// Recent indexes use expressions for the inherited BaseEntity timestamps and ID.
+	BrandID         uuid.UUID       `json:"-" gorm:"type:uuid;not null;uniqueIndex:idx_generation_runs_active,where:state = 'queued' OR state = 'running';index:idx_generation_runs_recent,priority:1;index:idx_generation_runs_recent,priority:2,expression:created_at,sort:desc;index:idx_generation_runs_recent,priority:3,expression:id,sort:desc;uniqueIndex:idx_generation_runs_key,priority:1,where:idempotency_key IS NOT NULL"`
 	Mode            GenerationMode  `json:"-" gorm:"type:varchar(16);not null"`
 	State           GenerationState `json:"-" gorm:"type:varchar(16);not null"`
 	RiverJobID      *int64          `json:"-"`
-	IdempotencyKey  *string         `json:"-" gorm:"type:varchar(255)"`
+	IdempotencyKey  *string         `json:"-" gorm:"type:varchar(255);uniqueIndex:idx_generation_runs_key,priority:2"`
 	Attempt         int             `json:"-" gorm:"not null;default:0"`
 	PromptCount     int             `json:"-" gorm:"not null;default:0"`
 	CompetitorCount int             `json:"-" gorm:"not null;default:0"`
@@ -177,13 +178,7 @@ func (s *generationService) Create(ctx context.Context, brandID uuid.UUID, mode 
 			State:          GenerationQueued,
 			IdempotencyKey: key,
 			ModelSlug:      GenerationModelSlug,
-			BrandSnapshot: BrandSnapshot{
-				Name:        brand.Name,
-				Domain:      brand.Domain,
-				GitHubRepo:  brand.GitHubRepo,
-				Country:     brand.Country,
-				Description: brand.Description,
-			},
+			BrandSnapshot:  brand.Snapshot(),
 		}
 
 		return repo.CreateAndEnqueue(ctx, run)

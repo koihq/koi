@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/koihq/koi/pkg/koiauth"
@@ -15,6 +16,10 @@ import (
 )
 
 type Brand struct {
+	PromptsReviewedAt     *time.Time `json:"-"`
+	CompetitorsReviewedAt *time.Time `json:"-"`
+	VisibilityStartedAt   *time.Time `json:"-"`
+	NextVisibilityAt      *time.Time `json:"-"`
 	BaseEntity
 	UserID      uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
 	Name        string    `json:"name" gorm:"not null"`
@@ -25,6 +30,16 @@ type Brand struct {
 }
 
 func (Brand) TableName() string { return "brands" }
+
+func (b Brand) Snapshot() BrandSnapshot {
+	return BrandSnapshot{
+		Name:        b.Name,
+		Domain:      b.Domain,
+		GitHubRepo:  b.GitHubRepo,
+		Country:     b.Country,
+		Description: b.Description,
+	}
+}
 
 func (b *Brand) Normalize() {
 	b.Name = strings.TrimSpace(b.Name)

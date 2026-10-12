@@ -4,11 +4,11 @@ import { useTranslation } from "react-i18next";
 
 import type { Competitor } from "@/api/competitors.api";
 import { DataTable } from "@/components/blocks/data-table";
+import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
-import { Button } from "@/components/ui/button";
+import { TrackingReview } from "@/components/blocks/tracking-review";
 import { validateTableSearch } from "@/hooks/use-table-state";
 import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
-import { DeleteCompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/delete-competitor-dialog";
 import { useCompetitorColumns } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-columns";
 import { useCompetitorList } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-list";
 import { useCompetitorMutations } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-mutations";
@@ -63,26 +63,11 @@ function CompetitorPage() {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("competitorDescription")}</p>
         </div>
-        {(list.unconfirmed.data?.totalItems ?? 0) > 0 ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={mutations.confirmAll.isPending}
-            onClick={() => mutations.confirmAll.mutate()}
-          >
-            {t("confirmAllCount", { count: list.unconfirmed.data?.totalItems ?? 0 })}
-          </Button>
-        ) : null}
+        <TrackingReview brandID={brand.id} kind="competitors" disabled={pending} />
       </div>
-      {mutations.confirm.isError || mutations.confirmAll.isError ? (
+      {mutations.confirm.isError ? (
         <p role="alert" className="mb-4 text-sm text-destructive">
           {t("mutationError")}
-        </p>
-      ) : null}
-      {list.unconfirmed.isError ? (
-        <p role="alert" className="mb-4 text-sm text-destructive">
-          {t("unconfirmedError")}
         </p>
       ) : null}
       <GenerationControls brandID={brand.id} mode="competitors" />
@@ -126,8 +111,11 @@ function CompetitorPage() {
           </div>
         }
       />
-      <DeleteCompetitorDialog
-        item={deleting}
+      <DeleteItemDialog
+        itemID={deleting?.id}
+        title={t("deleteCompetitorTitle")}
+        description={t("competitorDeleteDescription")}
+        actionLabel={t("deleteCompetitor")}
         onClose={() => setDeleting(undefined)}
         pending={mutations.remove.isPending}
         failed={mutations.remove.isError}

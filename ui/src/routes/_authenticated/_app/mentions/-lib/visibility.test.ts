@@ -5,19 +5,7 @@ import {
   groupVisibilityResults,
   safeSourceURL,
   visibilityPollDelay,
-  visibilityReadiness,
 } from "@/routes/_authenticated/_app/mentions/-lib/visibility";
-
-describe("visibility readiness", () => {
-  it("allows empty competitors but requires prompts and confirms both lists", () => {
-    expect(visibilityReadiness(1, 0, 0).ready).toBe(true);
-    expect(visibilityReadiness(0, 0, 0).needsPrompts).toBe(true);
-    expect(visibilityReadiness(0, 0, 0).ready).toBe(false);
-    expect(visibilityReadiness(101, 1, 0).ready).toBe(false);
-    expect(visibilityReadiness(1, 0, 1).needsCompetitorReview).toBe(true);
-    expect(visibilityReadiness(1, 0, 1).ready).toBe(false);
-  });
-});
 
 describe("visibility matrix", () => {
   it("groups by historical identity, orders prompts and keeps pending/error cells", () => {

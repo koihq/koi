@@ -34,7 +34,14 @@ Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/a
 
 ## Self-hosting rule
 
-Self-hosted Koi must work without requiring users to create accounts with, obtain API keys from, or pay for third-party services. Apply this to every new feature and roadmap integration, including logos and auth. Provide a usable built-in path for self-hosted users; vendor integrations may be optional, but must not be required for the core experience. Do not rely on Koi Cloud to supply credentials or services to a self-hosted instance.
+Self-hosted live visibility collection requires the instance owner's Cloro account and API key.
+OpenRouter drafting and Logo.dev search/logos are optional. Keep built-in manual prompt and
+competitor management, initial-letter icons, and cookie authentication usable without those
+optional services. Do not rely on Koi Cloud to supply credentials or services to a self-hosted
+instance. New integrations beyond Cloro must remain optional for the core experience.
+
+The project is not deployed yet. Initialize the current schema on a fresh database; do not add
+compatibility migrations for earlier development schemas or historical job kinds.
 
 ## Agent rules
 

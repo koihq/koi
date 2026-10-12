@@ -1,5 +1,4 @@
 import { useTranslation } from "react-i18next";
-import type { Prompt } from "@/api/prompts.api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,15 +10,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export function DeletePromptDialog({
-  item,
+export function DeleteItemDialog({
+  itemID,
+  title,
+  description,
+  actionLabel,
   onClose,
   pending,
   failed,
   onDelete,
   finalFocus,
 }: {
-  item?: Prompt;
+  itemID?: string;
+  title: string;
+  description: string;
+  actionLabel: string;
   onClose: () => void;
   pending: boolean;
   failed: boolean;
@@ -30,15 +35,15 @@ export function DeletePromptDialog({
 
   return (
     <AlertDialog
-      open={Boolean(item)}
+      open={Boolean(itemID)}
       onOpenChange={(open) => {
         if (!open && !pending) onClose();
       }}
     >
       <AlertDialogContent finalFocus={finalFocus}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{t("deletePromptTitle")}</AlertDialogTitle>
-          <AlertDialogDescription>{t("promptDeleteDescription")}</AlertDialogDescription>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         {failed ? (
           <p role="alert" className="text-sm text-destructive">
@@ -51,17 +56,17 @@ export function DeletePromptDialog({
             variant="destructive"
             disabled={pending}
             onClick={async () => {
-              if (!item) return;
+              if (!itemID) return;
 
               try {
-                await onDelete(item.id);
+                await onDelete(itemID);
                 onClose();
               } catch {
                 // The mutation error remains visible for retry.
               }
             }}
           >
-            {t("deletePrompt")}
+            {actionLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -94,9 +94,9 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	brands := NewMockBrandRepository(t)
 	prompts := NewMockPromptRepository(t)
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
-	store.EXPECT().BrandRepo().Return(brands).Times(3)
-	store.EXPECT().PromptRepo().Return(prompts).Times(3)
-	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Twice()
+	store.EXPECT().BrandRepo().Return(brands).Times(2)
+	store.EXPECT().PromptRepo().Return(prompts).Twice()
+	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Once()
 	brands.EXPECT().Get(mock.Anything, brandID).Return(nil, ErrNotFound).Once()
 	confirmed := &Prompt{
 		BaseEntity: BaseEntity{
@@ -114,11 +114,10 @@ func TestPromptConfirmationAndOwnership(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, got.Confirmed)
 
-	prompts.EXPECT().Update(mock.Anything, mock.MatchedBy(func(filter PromptFilter) bool {
-		return filter.BrandID == brandID && filter.ID == uuid.Nil && filter.Confirmed != nil && !*filter.Confirmed
-	}), mock.MatchedBy(func(update PromptUpdate) bool {
-		return update.Confirmed != nil && *update.Confirmed
-	})).Return(nil)
+	visibility := NewMockVisibilityRepository(t)
+	store.EXPECT().VisibilityRepo().Return(visibility).Once()
+	visibility.EXPECT().FinishReview(mock.Anything, brandID, "prompts").Return(nil).Once()
+
 	require.NoError(t, NewPromptCommander(store).ConfirmAll(identityCtx(t, userID), brandID))
 
 	err = NewPromptCommander(store).Delete(identityCtx(t, userID), brandID, promptID)

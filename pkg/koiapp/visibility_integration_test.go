@@ -33,7 +33,7 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 
 	client, err := river.NewClient(riverdatabasesql.New(sqlDB), &river.Config{})
 	require.NoError(t, err)
-	store := koidatabase.NewStore(db, client)
+	store := koidatabase.NewStore(db, client).WithLiveCollection(true)
 
 	user := &koidomain.User{
 		Email:        uuid.NewString() + "@example.com",
@@ -53,8 +53,9 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	_, err = koidomain.NewPromptCommander(store).Create(ctx, brand.ID, koidomain.PromptParams{Text: "Best tools?"})
 	require.NoError(t, err)
 
-	commander := koidomain.NewVisibilityCommander(store)
-	run, err := commander.Create(ctx, brand.ID)
+	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"))
+	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors"))
+	run, err := store.VisibilityRepo().Active(ctx, brand.ID)
 	require.NoError(t, err)
 
 	job := &river.Job[koidatabase.VisibilityJobArgs]{
@@ -70,10 +71,12 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 
 	worker := &visibilityWorker{
 		store: store,
-		collect: func(ctx context.Context, _ koidomain.BrandSnapshot, _ koidomain.VisibilityResult) (koidomain.VisibilityResult, error) {
-			<-ctx.Done()
+		provider: visibilityTestProvider{
+			submit: func(ctx context.Context, _ koidomain.VisibilityResult, _ string) (string, error) {
+				<-ctx.Done()
 
-			return koidomain.VisibilityResult{}, ctx.Err()
+				return "", ctx.Err()
+			},
 		},
 	}
 
@@ -87,7 +90,10 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	require.NotNil(t, failed.ErrorCode)
 	require.Equal(t, "job_timeout", *failed.ErrorCode)
 	require.NotNil(t, failed.FinishedAt)
-	newRun, err := commander.Create(ctx, brand.ID)
+	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	require.NoError(t, store.DispatchVisibility(ctx, *status.NextRunAt))
+	newRun, err := store.VisibilityRepo().Active(ctx, brand.ID)
 	require.NoError(t, err)
 	require.NotEqual(t, run.ID, newRun.ID)
 }
@@ -144,72 +150,30 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	visibilityHTTP(t, client, http.MethodPost, base+"/brands",
 		`{"name":"Koi","domain":"koi.dev","country":"IT"}`, 201, &brand)
 	brandURL := base + "/brands/" + brand.ID.String()
-	visibilityHTTP(t, client, http.MethodPost, brandURL+"/runs", "", 409, nil)
-
 	for _, text := range []string{"Best analytics for startups?", "Alternatives to Example Analytics?"} {
 		body, err := json.Marshal(map[string]string{"text": text})
 		require.NoError(t, err)
 		visibilityHTTP(t, client, http.MethodPost, brandURL+"/prompts", string(body), 201, nil)
 	}
+	visibilityHTTP(t, client, http.MethodPost, brandURL+"/prompts/confirm", "", 204, nil)
+	visibilityHTTP(t, client, http.MethodPost, brandURL+"/competitors/confirm", "", 204, nil)
+	var status koidomain.TrackingStatus
+	visibilityHTTP(t, client, http.MethodGet, brandURL+"/tracking", "", 200, &status)
+	require.True(t, status.PromptsReviewed && status.CompetitorsReviewed)
+	require.Equal(t, "collection_unavailable", *status.BlockedReason)
+	require.Nil(t, status.StartedAt)
+	var runs koidomain.Page[koidomain.VisibilityRun]
+	visibilityHTTP(t, client, http.MethodGet, brandURL+"/runs", "", 200, &runs)
+	require.Empty(t, runs.Items)
+	require.False(t, capabilities["liveCollection"])
 
-	var accepted struct {
-		ID        uuid.UUID `json:"id"`
-		StatusURL string    `json:"status_url"`
-	}
-	visibilityHTTP(t, client, http.MethodPost, brandURL+"/runs", "", 202, &accepted)
-	var status struct {
-		State     koidomain.VisibilityState `json:"state"`
-		Completed int                       `json:"completed_results"`
-		Total     int                       `json:"total_results"`
-	}
-	require.Eventually(t, func() bool {
-		visibilityHTTP(t, client, http.MethodGet, "http://"+address+accepted.StatusURL, "", 200, &status)
-
-		return status.State == koidomain.VisibilitySucceeded
-	}, 10*time.Second, 50*time.Millisecond)
-	require.Equal(t, 8, status.Completed)
-	require.Equal(t, 8, status.Total)
-	var results koidomain.Page[koidomain.VisibilityResult]
-	resultsPath := accepted.StatusURL + "/results?page=1&pageSize=40"
-	visibilityHTTP(t, client, http.MethodGet, "http://"+address+resultsPath, "", 200, &results)
-	require.Len(t, results.Items, 8)
-
-	for _, result := range results.Items {
-		require.NoError(t, result.Validate())
-		require.Equal(t, koidomain.CollectorStub, result.Collector)
-	}
-
-	otherJar, err := cookiejar.New(nil)
-	require.NoError(t, err)
-
-	other := &http.Client{
-		Jar:     otherJar,
-		Timeout: 2 * time.Second,
-		Transport: &http.Transport{
-			DisableKeepAlives: true,
-		},
-	}
-
-	t.Cleanup(other.CloseIdleConnections)
-	visibilityHTTP(t, other, http.MethodPost, base+"/auth/signup",
-		`{"email":"visibility-`+uuid.NewString()+`@example.com","password":"password123"}`, 201, nil)
-
-	for _, path := range []string{brandURL + "/runs", "http://" + address + accepted.StatusURL, "http://" + address + resultsPath} {
-		visibilityHTTP(t, other, http.MethodGet, path, "", 404, nil)
-	}
-
-	visibilityHTTP(t, other, http.MethodPost, brandURL+"/runs", "", 404, nil)
-	visibilityHTTP(t, http.DefaultClient, http.MethodGet, "http://"+address+accepted.StatusURL, "", 401, nil)
 	cancel()
 	require.NoError(t, waitApp(t, done))
-	// A new app instance reads the same run and results with the persisted cookie session.
 	cancel, done, address = startTestApp(t, &App{cfg: cfg}, client)
 	t.Cleanup(cancel)
-	var reloaded koidomain.Page[koidomain.VisibilityResult]
-	visibilityHTTP(t, client, http.MethodGet, "http://"+address+resultsPath, "", 200, &reloaded)
-	require.Equal(t, results, reloaded)
-	visibilityHTTP(t, client, http.MethodGet, "http://"+address+accepted.StatusURL, "", 200, &status)
-	require.Equal(t, koidomain.VisibilitySucceeded, status.State)
+	var reloaded koidomain.TrackingStatus
+	visibilityHTTP(t, client, http.MethodGet, "http://"+address+"/api/v1/brands/"+brand.ID.String()+"/tracking", "", 200, &reloaded)
+	require.Equal(t, status, reloaded)
 	cancel()
 	require.NoError(t, waitApp(t, done))
 }

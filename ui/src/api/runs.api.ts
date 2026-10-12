@@ -13,8 +13,8 @@ export type { VisibilityResult };
 
 export function createRunsApi(api: VisibilityApi) {
   return {
-    create: (brandID: string): Promise<VisibilityRun> =>
-      callApi(() => api.createVisibilityRun(brandID)),
+    tracking: (brandID: string, initOverrides?: RequestInit) =>
+      callApi(() => api.getVisibilityTracking(brandID, initOverrides)),
     list: (
       brandID: string,
       page = 1,

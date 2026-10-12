@@ -21,13 +21,15 @@ func (VisibilityJobArgs) Kind() string { return "koi_visibility" }
 
 type GormVisibilityRepository struct {
 	*Repository[koidomain.VisibilityRun]
-	client *river.Client[*sql.Tx]
+	client  *river.Client[*sql.Tx]
+	enabled bool
 }
 
-func NewGormVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx]) *GormVisibilityRepository {
+func NewGormVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx], enabled bool) *GormVisibilityRepository {
 	return &GormVisibilityRepository{
 		Repository: newScopedRepository[koidomain.VisibilityRun](db, childOwnerScope("visibility_runs")),
 		client:     client,
+		enabled:    enabled,
 	}
 }
 
@@ -67,14 +69,7 @@ func (r *GormVisibilityRepository) Inputs(ctx context.Context, brandID uuid.UUID
 		return inputs, mapDBError(err)
 	}
 
-	competitors, err := NewGormCompetitorRepository(r.db).query(ctx)
-	if err != nil {
-		return inputs, err
-	}
-
-	err = competitors.Model(&koidomain.Competitor{}).Where("brand_id = ? AND confirmed = false", brandID).Count(&inputs.UnconfirmedCompetitors).Error
-
-	return inputs, mapDBError(err)
+	return inputs, nil
 }
 
 func (r *GormVisibilityRepository) CreateAndEnqueue(ctx context.Context, run *koidomain.VisibilityRun, results []koidomain.VisibilityResult) error {

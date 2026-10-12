@@ -16,8 +16,8 @@ const (
 
 type Prompt struct {
 	BaseEntity
-	BrandID   uuid.UUID    `json:"brand_id" gorm:"type:uuid;not null;index"`
-	Text      string       `json:"text" gorm:"not null"`
+	BrandID   uuid.UUID    `json:"brand_id" gorm:"type:uuid;not null;index;uniqueIndex:idx_prompts_brand_text,priority:1"`
+	Text      string       `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:lower(text)"`
 	Source    PromptSource `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed bool         `json:"confirmed" gorm:"not null;default:false"`
 	Brand     *Brand       `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
@@ -182,16 +182,7 @@ func (s *promptService) Confirm(ctx context.Context, brandID, promptID uuid.UUID
 }
 
 func (s *promptService) ConfirmAll(ctx context.Context, brandID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return err
-	}
-
-	unconfirmed, confirmed := false, true
-
-	return s.store.PromptRepo().Update(ctx,
-		PromptFilter{BrandID: brandID, Confirmed: &unconfirmed},
-		PromptUpdate{Confirmed: &confirmed},
-	)
+	return s.store.VisibilityRepo().FinishReview(ctx, brandID, "prompts")
 }
 
 func (s *promptService) List(ctx context.Context, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Prompt], error) {

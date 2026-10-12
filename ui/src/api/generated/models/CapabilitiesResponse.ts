@@ -25,9 +25,15 @@ export interface CapabilitiesResponse {
      * @type {boolean}
      * @memberof CapabilitiesResponse
      */
+    liveCollection: boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CapabilitiesResponse
+     */
     competitorSearch: boolean;
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof CapabilitiesResponse
      */
@@ -38,6 +44,7 @@ export interface CapabilitiesResponse {
  * Check if a given object implements the CapabilitiesResponse interface.
  */
 export function instanceOfCapabilitiesResponse(value: object): value is CapabilitiesResponse {
+    if (!('liveCollection' in value) || value['liveCollection'] === undefined) return false;
     if (!('competitorSearch' in value) || value['competitorSearch'] === undefined) return false;
     if (!('aiDrafting' in value) || value['aiDrafting'] === undefined) return false;
     return true;
@@ -53,6 +60,7 @@ export function CapabilitiesResponseFromJSONTyped(json: any, ignoreDiscriminator
     }
     return {
         
+        'liveCollection': json['liveCollection'],
         'competitorSearch': json['competitorSearch'],
         'aiDrafting': json['aiDrafting'],
     };
@@ -69,7 +77,9 @@ export function CapabilitiesResponseToJSONTyped(value?: CapabilitiesResponse | n
 
     return {
         
+        'liveCollection': value['liveCollection'],
         'competitorSearch': value['competitorSearch'],
         'aiDrafting': value['aiDrafting'],
     };
 }
+

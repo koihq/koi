@@ -1,10 +1,12 @@
 // @ts-nocheck
 /* tslint:disable */
 /* eslint-disable */
+export * from './BrandPage';
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
 export * from './BrandRes';
 export * from './CapabilitiesResponse';
+export * from './CompetitorPage';
 export * from './CompetitorRequest';
 export * from './CompetitorRes';
 export * from './CountryOption';
@@ -21,11 +23,12 @@ export * from './GenerationStatus';
 export * from './HealthResponse';
 export * from './MeRes';
 export * from './OrgRes';
-export * from './Page';
+export * from './PromptPage';
 export * from './PromptPatchRequest';
 export * from './PromptRequest';
 export * from './PromptRes';
 export * from './SearchCompetitors200ResponseInner';
+export * from './TrackingStatus';
 export * from './VisibilityEngine';
 export * from './VisibilityResult';
 export * from './VisibilityResultPage';

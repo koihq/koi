@@ -14,8 +14,9 @@ import (
 var errNoDatabase = errors.New("database not connected")
 
 type Store struct {
-	db            *gorm.DB
-	enqueueClient *river.Client[*sql.Tx]
+	liveCollection bool
+	db             *gorm.DB
+	enqueueClient  *river.Client[*sql.Tx]
 }
 
 func NewStore(db *gorm.DB, enqueueClient ...*river.Client[*sql.Tx]) *Store {
@@ -46,7 +47,7 @@ func (s *Store) Atomic(ctx context.Context, fn func(koidomain.Store) error) erro
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return fn(&Store{db: tx, enqueueClient: s.enqueueClient})
+		return fn(&Store{db: tx, enqueueClient: s.enqueueClient, liveCollection: s.liveCollection})
 	})
 }
 
@@ -78,6 +79,12 @@ func (s *Store) GenerationRepo() koidomain.GenerationRepository {
 	return NewGormGenerationRepository(s.db, s.enqueueClient)
 }
 
+// WithLiveCollection enables paid collection only when the operator configured Cloro.
+func (s *Store) WithLiveCollection(enabled bool) *Store {
+	s.liveCollection = enabled
+	return s
+}
+
 func (s *Store) VisibilityRepo() koidomain.VisibilityRepository {
-	return NewGormVisibilityRepository(s.db, s.enqueueClient)
+	return NewGormVisibilityRepository(s.db, s.enqueueClient, s.liveCollection)
 }

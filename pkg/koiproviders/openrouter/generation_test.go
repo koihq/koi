@@ -169,8 +169,62 @@ func TestGenerateFetchFallback(t *testing.T) {
 	_, err = testClient(server.URL).Generate(t.Context(), "test", input)
 	var providerErr *Error
 	require.ErrorAs(t, err, &providerErr)
-	require.Equal(t, "insufficient_context", providerErr.Code)
+	require.Equal(t, "provider_unavailable", providerErr.Code)
+	require.Equal(t, 503, providerErr.Status)
+	require.True(t, providerErr.Retryable)
 	require.Equal(t, 3, calls)
+}
+
+func TestResearchPreservesProviderFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		code   string
+		retry  bool
+	}{
+		{"expired key", 401, "provider_auth", false},
+		{"forbidden", 403, "provider_auth", false},
+		{"payment", 402, "provider_rejected", false},
+		{"invalid request", 400, "provider_rejected", false},
+		{"rate limited", 429, "provider_rate_limited", true},
+		{"unavailable", 503, "provider_unavailable", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls++
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.status)
+				_, _ = fmt.Fprint(w, `{"error":{"message":"API key expired."}}`)
+			}))
+			defer server.Close()
+
+			input := koidomain.GenerationInput{
+				Brand: koidomain.BrandSnapshot{
+					Name:       "Deja",
+					GitHubRepo: "https://github.com/Giammarco-Ferranti/deja",
+				},
+				Mode: koidomain.GenerationInitial,
+			}
+			_, err := testClient(server.URL).Generate(t.Context(), "test", input)
+			var providerErr *Error
+			require.ErrorAs(t, err, &providerErr)
+			require.Equal(t, tc.code, providerErr.Code)
+			require.Equal(t, tc.status, providerErr.Status)
+			require.Equal(t, tc.retry, providerErr.Retryable)
+			require.Equal(t, 1, calls)
+
+			if !tc.retry {
+				input.Brand.Description = "Deja suggests previous shell commands while typing in the zsh terminal."
+				_, err = testClient(server.URL).Generate(t.Context(), "test", input)
+				require.ErrorAs(t, err, &providerErr)
+				require.Equal(t, tc.code, providerErr.Code)
+				require.Equal(t, tc.status, providerErr.Status)
+				require.False(t, providerErr.Retryable)
+				require.Equal(t, 2, calls, "terminal errors must stop before drafting even with fallback context")
+			}
+		})
+	}
 }
 
 func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {

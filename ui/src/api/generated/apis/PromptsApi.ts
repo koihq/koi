@@ -20,10 +20,10 @@ import {
     EnvelopeToJSON,
 } from '../models/Envelope';
 import {
-    type Page,
-    PageFromJSON,
-    PageToJSON,
-} from '../models/Page';
+    type PromptPage,
+    PromptPageFromJSON,
+    PromptPageToJSON,
+} from '../models/PromptPage';
 import {
     type PromptPatchRequest,
     PromptPatchRequestFromJSON,
@@ -221,11 +221,11 @@ export interface PromptsApiInterface {
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
      */
-    listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>>;
+    listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PromptPage>>;
 
     /**
      */
-    listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page>;
+    listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage>;
 
     /**
      * Creates request options for updatePrompt without sending the request
@@ -551,16 +551,16 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Page>> {
+    async listPromptsRaw(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PromptPage>> {
         const requestOptions = await this.listPromptsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => PageFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => PromptPageFromJSON(jsonValue));
     }
 
     /**
      */
-    async listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Page> {
+    async listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage> {
         const response = await this.listPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize, q: q, confirmed: confirmed }, initOverrides);
         return await response.value();
     }

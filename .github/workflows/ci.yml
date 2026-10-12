@@ -40,7 +40,7 @@ jobs:
       - name: Stub embedded UI
         run: |
           mkdir -p pkg/web/dist
-          echo '<!doctype html>' > pkg/web/dist/index.html
+          echo '<!doctype html><html><head><title>Koi</title></head><body></body></html>' > pkg/web/dist/index.html
 
       - name: Vet
         run: go vet ./...

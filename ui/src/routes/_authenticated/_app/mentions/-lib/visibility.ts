@@ -8,19 +8,6 @@ export function visibilityPollDelay(state: VisibilityRun["state"] | undefined, f
   return isVisibilityActive(state) ? Math.min(30_000, 1000 * 2 ** Math.min(failures, 5)) : false;
 }
 
-export function visibilityReadiness(
-  promptCount: number,
-  unconfirmedPrompts: number,
-  unconfirmedCompetitors: number,
-) {
-  return {
-    needsPrompts: promptCount === 0,
-    needsPromptReview: unconfirmedPrompts > 0,
-    needsCompetitorReview: unconfirmedCompetitors > 0,
-    ready: promptCount > 0 && unconfirmedPrompts === 0 && unconfirmedCompetitors === 0,
-  };
-}
-
 export function groupVisibilityResults(results: VisibilityResult[]) {
   const rows = new Map<
     string,

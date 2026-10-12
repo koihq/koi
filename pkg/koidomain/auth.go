@@ -5,7 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/koihq/koi/pkg/koiauth"
 )
 
@@ -73,15 +72,6 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 	var me *Me
 
 	err = c.store.Atomic(ctx, func(s Store) error {
-		_, err := s.UserRepo().GetByEmail(ctx, p.Email)
-		if err == nil {
-			return ErrEmailTaken
-		}
-
-		if !errors.Is(err, ErrNotFound) {
-			return err
-		}
-
 		local, _, _ := strings.Cut(p.Email, "@")
 		user := &User{Email: p.Email, PasswordHash: hash}
 		if err := user.Validate(); err != nil {
@@ -137,7 +127,7 @@ func (c *authCommander) Login(ctx context.Context, email, password string) (*Me,
 		return nil, ErrInvalidCredentials
 	}
 
-	return loadMe(ctx, c.store, user.ID)
+	return loadMe(ctx, c.store, user)
 }
 
 func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
@@ -146,16 +136,16 @@ func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
 		return nil, ErrUnauthorized
 	}
 
-	return loadMe(ctx, q.store, identity.UserID)
-}
-
-func loadMe(ctx context.Context, store Store, userID uuid.UUID) (*Me, error) {
-	user, err := store.UserRepo().Get(ctx, userID)
+	user, err := q.store.UserRepo().Get(ctx, identity.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	m, err := store.MembershipRepo().GetByUserID(ctx, userID)
+	return loadMe(ctx, q.store, user)
+}
+
+func loadMe(ctx context.Context, store Store, user *User) (*Me, error) {
+	m, err := store.MembershipRepo().GetByUserID(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}

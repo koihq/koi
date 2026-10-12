@@ -1,7 +1,6 @@
 package koidatabase
 
 import (
-	"strings"
 	"sync"
 	"testing"
 
@@ -41,7 +40,12 @@ func TestPromptAndCompetitorSchema(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, s.LookUpField("aliases"))
 	require.NotNil(t, s.LookUpField("github_repo"))
-	require.Empty(t, s.ParseIndexes()) // Partial uniqueness is installed explicitly by Migrate.
+	require.Len(t, s.ParseIndexes(), 2)
+	for _, index := range s.ParseIndexes() {
+		require.Equal(t, "UNIQUE", index.Class)
+		require.NotEmpty(t, index.Where)
+		require.Len(t, index.Fields, 2)
+	}
 }
 
 func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
@@ -81,15 +85,6 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	require.NoError(t, err)
 	_, err = prompts.Get(ctx, koidomain.PromptFilter{ID: childID, BrandID: brandID})
 	require.NoError(t, err)
-	text, confirmed := "Updated", true
-	filter := koidomain.PromptFilter{ID: childID, BrandID: brandID}
-	require.ErrorIs(t, prompts.Update(ctx, filter, koidomain.PromptUpdate{Text: &text}), koidomain.ErrNotFound)
-	require.ErrorIs(t, prompts.Delete(ctx, filter), koidomain.ErrNotFound)
-	require.ErrorIs(t, prompts.Update(ctx, filter, koidomain.PromptUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
-	require.NoError(t, prompts.Update(ctx, koidomain.PromptFilter{
-		BrandID:   brandID,
-		Confirmed: &unconfirmed,
-	}, koidomain.PromptUpdate{Confirmed: &confirmed}))
 
 	competitors := NewGormCompetitorRepository(db)
 
@@ -105,33 +100,18 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	require.NoError(t, err)
 	_, err = competitors.Get(ctx, koidomain.CompetitorFilter{ID: childID, BrandID: brandID})
 	require.NoError(t, err)
-	competitorConfirmed := true
-	require.ErrorIs(t, competitors.Update(ctx, koidomain.CompetitorFilter{
-		ID:      childID,
-		BrandID: brandID,
-	}, koidomain.CompetitorUpdate{Confirmed: &competitorConfirmed}), koidomain.ErrNotFound)
-
-	require.Len(t, queries, 9)
-
+	require.Len(t, queries, 4)
 	for _, query := range queries {
 		require.Contains(t, query, "brand_id =")
 		require.Contains(t, query, "brands.user_id =")
 	}
-
 	require.Contains(t, queries[0], "confirmed =")
 	require.Contains(t, queries[0], "text ILIKE")
 	require.NotContains(t, queries[0], "100%_Koi")
 	require.Equal(t, `%100!%!_Koi%`, likePattern("100%_Koi"))
-	require.Contains(t, queries[6], "name ILIKE")
-	require.Contains(t, queries[6], "domain ILIKE")
-	require.NotContains(t, queries[6], "aliases")
-	update := strings.ToLower(queries[2])
-	require.Contains(t, update, "text")
-	require.NotContains(t, update, "source")
-	require.NotContains(t, update, "confirmed")
-	competitorUpdate := strings.ToLower(queries[8])
-	require.Contains(t, competitorUpdate, "confirmed")
-	require.NotContains(t, competitorUpdate, "source")
+	require.Contains(t, queries[2], "name ILIKE")
+	require.Contains(t, queries[2], "domain ILIKE")
+	require.NotContains(t, queries[2], "aliases")
 
 	listSQL := db.ToSQL(func(tx *gorm.DB) *gorm.DB {
 		var items []koidomain.Prompt

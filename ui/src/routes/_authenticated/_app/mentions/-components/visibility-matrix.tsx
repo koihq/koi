@@ -117,7 +117,14 @@ function VisibilityAnswerDialog({ result }: { result: VisibilityResult }) {
         ) : null}
         <div className="space-y-2">
           <h3 className="font-medium">{t("answer")}</h3>
-          <p className="whitespace-pre-wrap break-words">{result.rawAnswer || t("noAnswer")}</p>
+          <p className="whitespace-pre-wrap break-words">
+            {result.rawAnswer ||
+              t(
+                result.engine === "google_ai_overviews" && result.outcome === "miss"
+                  ? "noOverview"
+                  : "noAnswer",
+              )}
+          </p>
         </div>
         <div className="space-y-2">
           <h3 className="font-medium">{t("sources")}</h3>

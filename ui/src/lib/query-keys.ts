@@ -5,3 +5,4 @@ export const runKey = (brandID: string) => ["brands", brandID, "runs"] as const;
 
 export const runResultsKey = (brandID: string, runID: string | undefined) =>
   [...runKey(brandID), runID, "results"] as const;
+export const trackingKey = (brandID: string) => ["brands", brandID, "tracking"] as const;

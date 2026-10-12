@@ -17,10 +17,10 @@ const (
 
 type Competitor struct {
 	BaseEntity
-	BrandID    uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null"`
+	BrandID    uuid.UUID        `json:"brand_id" gorm:"type:uuid;not null;uniqueIndex:idx_competitors_brand_domain,priority:1,where:domain <> '';uniqueIndex:idx_competitors_brand_github_repo,priority:1,where:github_repo <> ''"`
 	Name       string           `json:"name" gorm:"not null"`
-	Domain     string           `json:"domain" gorm:"not null"`
-	GitHubRepo string           `json:"github_repo" gorm:"column:github_repo;not null;default:''"`
+	Domain     string           `json:"domain" gorm:"not null;uniqueIndex:idx_competitors_brand_domain,priority:2"`
+	GitHubRepo string           `json:"github_repo" gorm:"column:github_repo;not null;default:'';uniqueIndex:idx_competitors_brand_github_repo,priority:2"`
 	Source     CompetitorSource `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed  bool             `json:"confirmed" gorm:"not null;default:false"`
 	Brand      *Brand           `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
@@ -184,16 +184,7 @@ func (s *competitorService) Confirm(ctx context.Context, brandID, competitorID u
 }
 
 func (s *competitorService) ConfirmAll(ctx context.Context, brandID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return err
-	}
-
-	unconfirmed, confirmed := false, true
-
-	return s.store.CompetitorRepo().Update(ctx,
-		CompetitorFilter{BrandID: brandID, Confirmed: &unconfirmed},
-		CompetitorUpdate{Confirmed: &confirmed},
-	)
+	return s.store.VisibilityRepo().FinishReview(ctx, brandID, "competitors")
 }
 
 func (s *competitorService) List(ctx context.Context, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Competitor], error) {

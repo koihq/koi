@@ -25,9 +25,9 @@ import (
 	"github.com/koihq/koi/pkg/koiapi"
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
+	"github.com/koihq/koi/pkg/koiproviders/cloro"
 	"github.com/koihq/koi/pkg/koiproviders/logodev"
 	"github.com/koihq/koi/pkg/koiproviders/openrouter"
-	"github.com/koihq/koi/pkg/koiproviders/stub"
 )
 
 type Config struct {
@@ -35,6 +35,7 @@ type Config struct {
 	DatabaseURL       string
 	SessionSecret     string
 	OpenRouterAPIKey  string
+	CloroAPIKey       string
 	WorkerConcurrency int
 	ProviderTimeout   time.Duration
 	DBMaxOpenConns    int
@@ -84,6 +85,7 @@ func LoadConfig() (Config, error) {
 		DatabaseURL:       databaseURL,
 		SessionSecret:     sessionSecret,
 		OpenRouterAPIKey:  strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
+		CloroAPIKey:       strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY")),
 		WorkerConcurrency: workerConcurrency,
 		ProviderTimeout:   providerTimeout,
 		DBMaxOpenConns:    dbMaxOpenConns,
@@ -114,9 +116,10 @@ func requireEnv(key string) (string, error) {
 }
 
 type App struct {
-	cfg      Config
-	workers  *river.Workers
-	provider *openrouter.Client
+	cfg           Config
+	workers       *river.Workers
+	provider      *openrouter.Client
+	cloroProvider *cloro.Client
 }
 
 func NewKoiApp() (*App, error) {
@@ -211,62 +214,63 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	if key := strings.TrimSpace(os.Getenv("LOGODEV_SECRET_KEY")); key != "" {
 		searcher = logodev.NewSearcher(key)
 	}
-
 	var riverClient *river.Client[*sql.Tx]
 	workers := a.workers
-	if sqlDB != nil {
+	if sqlDB != nil && (a.cfg.OpenRouterAPIKey != "" || a.cfg.CloroAPIKey != "") {
+		queues := map[string]river.QueueConfig{}
 		if workers == nil {
 			workers = river.NewWorkers()
-
-			visibility := &visibilityWorker{
-				store:   koidatabase.NewStore(db),
-				collect: stub.Collect,
-			}
-
-			river.AddWorker(workers, visibility)
 			if a.cfg.OpenRouterAPIKey != "" {
 				if a.provider == nil {
 					a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
 				}
-
-				generation := &generationWorker{
+				river.AddWorker(workers, &generationWorker{
 					store:    koidatabase.NewStore(db),
 					provider: a.provider,
+					timeout:  2*a.cfg.ProviderTimeout + 30*time.Second,
+				})
+			}
+			if a.cfg.CloroAPIKey != "" {
+				if a.cloroProvider == nil {
+					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey)
 				}
-
-				river.AddWorker(workers, generation)
+				river.AddWorker(workers, &visibilityWorker{
+					store:    koidatabase.NewStore(db),
+					provider: a.cloroProvider,
+				})
 			}
 		}
-
-		queues := map[string]river.QueueConfig{
-			"visibility": {
-				MaxWorkers: a.cfg.WorkerConcurrency,
-			},
-		}
+		maintenance := &maintenanceWorker{}
+		river.AddWorker(workers, maintenance)
+		queues["maintenance"] = river.QueueConfig{MaxWorkers: 1}
 		if a.cfg.OpenRouterAPIKey != "" {
 			queues["generation"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
 		}
-
+		if a.cfg.CloroAPIKey != "" {
+			queues["visibility"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
+		}
 		config := &river.Config{
 			Queues:          queues,
 			Workers:         workers,
 			SoftStopTimeout: 60 * time.Second,
+			PeriodicJobs: []*river.PeriodicJob{
+				river.NewPeriodicJob(river.PeriodicInterval(time.Minute), func() (river.JobArgs, *river.InsertOpts) {
+					return maintenanceArgs{}, &river.InsertOpts{Queue: "maintenance", MaxAttempts: 3}
+				}, &river.PeriodicJobOpts{RunOnStart: true}),
+			},
 		}
-
 		riverClient, err = river.NewClient(riverdatabasesql.New(sqlDB), config)
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
-
+		maintenance.store = koidatabase.NewStore(db, riverClient).WithLiveCollection(a.cfg.CloroAPIKey != "")
 		if err := riverClient.Start(context.Background()); err != nil {
 			return fmt.Errorf("start river client: %w", err)
 		}
 	}
-
-	store := koidatabase.NewStore(db, riverClient)
-	server := &http.Server{
-		Handler: koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil),
-	}
+	liveCollection := a.cfg.CloroAPIKey != "" && riverClient != nil
+	store := koidatabase.NewStore(db, riverClient).WithLiveCollection(liveCollection)
+	server := &http.Server{Handler: koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil, liveCollection)}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- server.Serve(listener) }()
 
@@ -289,7 +293,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 
 	cancelHTTP()
 	if riverClient != nil {
-		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 60*time.Second)
+		riverCtx, cancelRiver := context.WithTimeout(context.Background(), 65*time.Second)
 		if err := riverClient.Stop(riverCtx); err != nil {
 			runErr = errors.Join(runErr, fmt.Errorf("stop river: %w", err))
 		}
