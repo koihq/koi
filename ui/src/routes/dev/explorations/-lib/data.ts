@@ -1,6 +1,6 @@
 import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
 
-export const DIRECTIONS = ["visitors", "cloudflare", "fey", "trade-republic"] as const;
+export const DIRECTIONS = ["visitors", "cloudflare", "fey", "trade-republic", "focus"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 export const SECTIONS = [
   "overview",

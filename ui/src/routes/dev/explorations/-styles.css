@@ -31,7 +31,8 @@ html[data-exploration-theme="cloudflare"] {
   --ring: #0866e8;
 }
 
-html[data-exploration-theme="fey"] {
+html[data-exploration-theme="fey"],
+html[data-exploration-theme="focus"] {
   --background: #141418;
   --foreground: #f4f4f5;
   --exp-surface: #0d0d11;
@@ -1921,7 +1922,7 @@ html[data-exploration-theme="trade-republic"] {
   min-height: 680px;
 }
 
-/* Exploration entry, deliberately outside all four product shells. */
+/* Exploration entry, deliberately outside all product shells. */
 .exp-gallery {
   max-width: 1150px;
   padding: 60px 30px;
@@ -1952,6 +1953,14 @@ html[data-exploration-theme="trade-republic"] {
   grid-template-columns: 1fr 1fr;
   gap: 50px 35px;
   margin-top: 60px;
+}
+.exp-home-study-link {
+  display: inline-block;
+  margin-top: 24px;
+  padding-block: 8px;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 .exp-gallery-label {
   display: flex;
@@ -2930,4 +2939,18 @@ html[data-tr-workspace] .exp-preview {
 }
 .tr-workspace .tr-visibility-brands {
   gap: 8px 12px;
+}
+
+.focus .exp-gallery-preview {
+  background: #141418;
+  color: #f4f4f5;
+}
+.focus .exp-preview-content > div {
+  margin-left: 65%;
+  height: 110px;
+  display: block;
+  background: #0d0d11;
+}
+.focus .exp-preview-content svg {
+  width: 64%;
 }

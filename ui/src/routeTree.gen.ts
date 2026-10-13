@@ -21,6 +21,7 @@ import { Route as AuthenticatedAppBriefRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppCitationsRouteImport } from './routes/_authenticated/_app/citations'
 import { Route as AuthenticatedSetupIndexRouteImport } from './routes/_authenticated/setup/index'
 import { Route as DevExplorationsIndexRouteImport } from './routes/dev/explorations/index'
+import { Route as DevExplorationsHomeContextRouteImport } from './routes/dev/explorations/home-context'
 import { Route as DevUiIndexRouteImport } from './routes/dev/ui/index'
 import { Route as DevUiButtonRouteImport } from './routes/dev/ui/button'
 import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
@@ -94,6 +95,12 @@ const DevExplorationsIndexRoute = DevExplorationsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DevExplorationsRouteRoute,
 } as any)
+const DevExplorationsHomeContextRoute =
+  DevExplorationsHomeContextRouteImport.update({
+    id: '/home-context',
+    path: '/home-context',
+    getParentRoute: () => DevExplorationsRouteRoute,
+  } as any)
 const DevUiIndexRoute = DevUiIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/sign-up/': typeof SignUpIndexRoute
   '/brief': typeof AuthenticatedAppBriefRoute
   '/citations': typeof AuthenticatedAppCitationsRoute
+  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRoute
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
@@ -204,6 +212,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpIndexRoute
   '/brief': typeof AuthenticatedAppBriefRoute
   '/citations': typeof AuthenticatedAppCitationsRoute
+  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRoute
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
@@ -232,6 +241,7 @@ export interface FileRoutesById {
   '/sign-up/': typeof SignUpIndexRoute
   '/_authenticated/_app/brief': typeof AuthenticatedAppBriefRoute
   '/_authenticated/_app/citations': typeof AuthenticatedAppCitationsRoute
+  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRoute
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/sign-up/'
     | '/brief'
     | '/citations'
+    | '/dev/explorations/home-context'
     | '/dev/ui/button'
     | '/dev/ui/field'
     | '/dev/ui/mark'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/brief'
     | '/citations'
+    | '/dev/explorations/home-context'
     | '/dev/ui/button'
     | '/dev/ui/field'
     | '/dev/ui/mark'
@@ -310,6 +322,7 @@ export interface FileRouteTypes {
     | '/sign-up/'
     | '/_authenticated/_app/brief'
     | '/_authenticated/_app/citations'
+    | '/dev/explorations/home-context'
     | '/dev/ui/button'
     | '/dev/ui/field'
     | '/dev/ui/mark'
@@ -421,6 +434,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/dev/explorations/'
       preLoaderRoute: typeof DevExplorationsIndexRouteImport
+      parentRoute: typeof DevExplorationsRouteRoute
+    }
+    '/dev/explorations/home-context': {
+      id: '/dev/explorations/home-context'
+      path: '/home-context'
+      fullPath: '/dev/explorations/home-context'
+      preLoaderRoute: typeof DevExplorationsHomeContextRouteImport
       parentRoute: typeof DevExplorationsRouteRoute
     }
     '/dev/ui/': {
@@ -582,12 +602,14 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 )
 
 interface DevExplorationsRouteRouteChildren {
+  DevExplorationsHomeContextRoute: typeof DevExplorationsHomeContextRoute
   DevExplorationsIndexRoute: typeof DevExplorationsIndexRoute
   DevExplorationsDirectionSectionRoute: typeof DevExplorationsDirectionSectionRoute
   DevExplorationsTradeRepublicPanelsRoute: typeof DevExplorationsTradeRepublicPanelsRoute
 }
 
 const DevExplorationsRouteRouteChildren: DevExplorationsRouteRouteChildren = {
+  DevExplorationsHomeContextRoute: DevExplorationsHomeContextRoute,
   DevExplorationsIndexRoute: DevExplorationsIndexRoute,
   DevExplorationsDirectionSectionRoute: DevExplorationsDirectionSectionRoute,
   DevExplorationsTradeRepublicPanelsRoute:

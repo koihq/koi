@@ -10,6 +10,7 @@ const Visitors = lazy(() => import("../-directions/visitors"));
 const Cloudflare = lazy(() => import("../-directions/cloudflare"));
 const Fey = lazy(() => import("../-directions/fey"));
 const TradeRepublic = lazy(() => import("../-directions/trade-republic"));
+const Focus = lazy(() => import("../-directions/focus"));
 
 export const Route = createFileRoute("/dev/explorations/$direction/$section")({
   validateSearch: (search: Record<string, unknown>): { state: DemoState; workspace?: string } => ({
@@ -45,9 +46,9 @@ function Exploration() {
     const scheme = root.style.colorScheme;
     const title = document.title;
     root.setAttribute("data-exploration-theme", direction);
-    root.classList.toggle("dark", direction === "fey" || direction === "trade-republic");
-    root.style.colorScheme =
-      direction === "fey" || direction === "trade-republic" ? "dark" : "light";
+    const isDark = direction === "fey" || direction === "trade-republic" || direction === "focus";
+    root.classList.toggle("dark", isDark);
+    root.style.colorScheme = isDark ? "dark" : "light";
     document.title = `${C[direction]} · Koi design exploration`;
 
     return () => {
@@ -74,6 +75,8 @@ function Exploration() {
               <Cloudflare section={section} />
             ) : direction === "fey" ? (
               <Fey section={section} />
+            ) : direction === "focus" ? (
+              <Focus section={section} />
             ) : (
               <TradeRepublic section={section} workspaceId={workspace} />
             )}

@@ -12,6 +12,8 @@ const DESCRIPTIONS = {
   fey: "An editorial perspective. A dark canvas, competitive landscape, and an evidence-led feed.",
   "trade-republic":
     "Your own research workspace. Linked panels, dense evidence, and layouts you can rearrange.",
+  focus:
+    "A focused perspective. Fey’s quiet canvas, linked evidence, and context that follows your question.",
 };
 
 function Gallery() {
@@ -23,6 +25,9 @@ function Gallery() {
       </header>
       <h1>{C.galleryTitle}</h1>
       <p>{C.galleryLead}</p>
+      <Link to="/dev/explorations/home-context" className="exp-home-study-link">
+        {C.homeContextStudy}
+      </Link>
       <div className="exp-gallery-grid">
         {DIRECTIONS.map((direction, index) => (
           <Link
