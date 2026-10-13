@@ -1631,10 +1631,6 @@ html[data-exploration-theme="trade-republic"] {
   background: var(--exp-positive);
   border-radius: 50%;
 }
-.tr-panel-title {
-  color: var(--muted-foreground);
-  margin-left: 6px;
-}
 .tr-panel-body {
   padding: 12px 15px 20px;
   overflow: auto;
@@ -2397,9 +2393,6 @@ html[data-exploration-theme="trade-republic"] {
   .tr-toolbar .exp-filters {
     gap: 8px;
   }
-  .tr-panel-title {
-    margin-left: auto;
-  }
   .tr-panel-body {
     padding: 14px 17px 24px;
   }
@@ -2446,4 +2439,495 @@ html[data-exploration-theme="trade-republic"] {
     animation: none;
     transition: none;
   }
+}
+
+/* Trade Republic type roles. Scoped to this exploration, including its portals. */
+html[data-exploration-theme="trade-republic"] {
+  --tr-type-headline: 1.5rem;
+  --tr-type-title: 1rem;
+  --tr-type-body: 0.875rem;
+  --tr-type-ui: 0.8125rem;
+  --tr-type-caption: 0.75rem;
+}
+
+.exp-tr {
+  font-family: var(--font-sans);
+  font-size: var(--tr-type-body);
+  font-weight: 400;
+  line-height: 1.57143;
+  letter-spacing: normal;
+}
+
+.exp-tr :where(h1, h2, h3, h4) {
+  text-wrap: balance;
+}
+
+.exp-tr h1,
+.exp-tr .exp-brief-header h2,
+.exp-tr .exp-empty-content h1 {
+  font-size: var(--tr-type-headline);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.exp-tr h2 {
+  font-size: var(--tr-type-title);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.exp-tr h3,
+.exp-tr h4 {
+  font-size: var(--tr-type-body);
+  font-weight: 500;
+  line-height: 1.42857;
+  letter-spacing: normal;
+}
+
+.exp-tr strong,
+.exp-tr b {
+  font-weight: 500;
+}
+
+.exp-tr .tr-panel-body > h2 {
+  font-size: var(--tr-type-title);
+}
+
+.exp-tr .tr-tabs > button:not([data-slot]) {
+  font-size: var(--tr-type-ui);
+  font-weight: 500;
+  line-height: 1.38462;
+}
+
+.exp-tr .tr-drag-handle,
+.exp-tr .tr-account small,
+.exp-tr .tr-footer,
+.exp-tr .exp-screener-head,
+.exp-tr .exp-ranking-row small,
+.exp-tr .exp-rank,
+.exp-tr .exp-letter,
+.exp-tr .exp-chart-dates,
+.exp-tr .exp-chart-legend,
+.exp-tr .exp-status,
+.exp-tr .exp-outcome,
+.exp-tr .exp-pagination,
+.exp-tr .exp-management-hint,
+.exp-tr .exp-sample-note,
+.exp-tr .exp-overline,
+.exp-tr .exp-inspector > span:last-child,
+.exp-tr [data-slot="table-head"] {
+  font-size: var(--tr-type-caption);
+  font-weight: 400;
+  line-height: 1.33333;
+  letter-spacing: normal;
+}
+
+.exp-tr .exp-letter,
+.exp-tr [data-slot="table-head"] {
+  font-weight: 500;
+}
+
+.exp-tr .tr-account > span,
+.exp-tr .exp-screener-row,
+.exp-tr .exp-ranking-row > span:nth-child(3),
+.exp-tr .exp-ranking-row strong,
+.exp-tr .exp-engine-row,
+.exp-tr .exp-engine-row strong,
+.exp-tr .exp-chart-label,
+.exp-tr .exp-chart-tooltip,
+.exp-tr .exp-inspector ul,
+.exp-tr .exp-prompt-cell button,
+.exp-tr [data-slot="table-cell"] {
+  font-size: var(--tr-type-ui);
+  font-weight: 400;
+  line-height: 1.38462;
+}
+
+.exp-tr .exp-screener-row > span:first-child,
+.exp-tr .exp-ranking-row > span:nth-child(3),
+.exp-tr .exp-ranking-row strong,
+.exp-tr .exp-engine-row strong,
+.exp-tr .tr-account > span,
+.exp-tr .exp-chart-label span:last-child {
+  font-weight: 500;
+}
+
+.exp-tr .exp-heatmap > button span {
+  font-size: var(--tr-type-caption);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.exp-tr .exp-heatmap > button strong {
+  font-size: var(--tr-type-title);
+  font-weight: 500;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.exp-tr .exp-inspector p,
+.exp-tr .exp-brief-header p,
+.exp-tr .exp-brief-tasks p,
+.exp-tr .exp-brief-acceptance p,
+.exp-tr .exp-empty-content p,
+.exp-tr .tr-empty-workspace p,
+.exp-tr .exp-markdown pre {
+  font-size: var(--tr-type-body);
+  font-weight: 400;
+  line-height: 1.57143;
+  max-width: 70ch;
+}
+
+.exp-tr .exp-markdown {
+  font-size: var(--tr-type-caption);
+}
+
+html[data-exploration-theme="trade-republic"]
+  :is(
+    [data-slot="button"],
+    [data-slot="input"],
+    [data-slot="select-trigger"],
+    [data-slot="select-item"],
+    [data-slot="dropdown-menu-item"],
+    [data-slot="field-label"],
+    [data-slot="dialog-description"]
+  ) {
+  font-size: var(--tr-type-ui);
+  line-height: 1.38462;
+}
+
+html[data-exploration-theme="trade-republic"] :is([data-slot="button"], [data-slot="field-label"]) {
+  font-weight: 500;
+}
+
+html[data-exploration-theme="trade-republic"]
+  :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
+  font-size: var(--tr-type-title);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+html[data-exploration-theme="trade-republic"] .exp-evidence-dialog h3 {
+  font-size: var(--tr-type-body);
+  font-weight: 500;
+  line-height: 1.42857;
+  letter-spacing: normal;
+}
+
+html[data-exploration-theme="trade-republic"] .exp-answer-text {
+  font-size: var(--tr-type-body);
+  line-height: 1.57143;
+}
+
+html[data-exploration-theme="trade-republic"]
+  :is(.exp-evidence-meta, .exp-notice > span, [data-slot="tooltip-content"], .tr-templates p) {
+  font-size: var(--tr-type-caption);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+html[data-exploration-theme="trade-republic"] .tr-templates strong {
+  font-size: var(--tr-type-ui);
+  font-weight: 500;
+  line-height: 1.38462;
+}
+
+@media (max-width: 767px) {
+  html[data-exploration-theme="trade-republic"] [data-slot="input"] {
+    font-size: var(--tr-type-title);
+  }
+}
+
+/* Panel catalog: actual workspace panels, arranged for individual review. */
+.tr-catalog {
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 24px 32px 80px;
+}
+.tr-catalog-header,
+.tr-catalog-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.tr-catalog-intro {
+  margin-block: 40px 24px;
+}
+.tr-catalog-intro p {
+  max-width: 70ch;
+  margin-top: 12px;
+  color: var(--muted-foreground);
+}
+.tr-catalog-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-block: 24px 32px;
+}
+.tr-catalog-index a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 8px;
+  font-size: var(--tr-type-ui);
+  font-weight: 500;
+}
+.tr-catalog-index span,
+.tr-catalog-panel-heading > span {
+  font-size: var(--tr-type-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+}
+.tr-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.tr-catalog-panel {
+  min-width: 0;
+  scroll-margin-top: 24px;
+}
+.tr-catalog-panel.is-wide {
+  grid-column: 1 / -1;
+}
+.tr-catalog-panel-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 24px 24px 12px;
+}
+.tr-catalog-panel-heading > div {
+  min-width: 0;
+  flex: 1;
+}
+.tr-catalog-panel-heading p {
+  margin-top: 8px;
+  font-size: var(--tr-type-ui);
+  color: var(--muted-foreground);
+}
+.tr-catalog-panel-heading > a {
+  font-size: var(--tr-type-caption);
+  color: var(--muted-foreground);
+}
+.tr-catalog .tr-panel-body {
+  padding: 16px 24px 24px;
+  max-height: 680px;
+}
+.tr-catalog-index a:hover,
+.tr-catalog-panel-heading > a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@media (max-width: 767px) {
+  .tr-catalog {
+    padding: 20px 12px 48px;
+  }
+  .tr-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .tr-catalog-panel-heading {
+    padding: 20px 16px 8px;
+  }
+  .tr-catalog-panel-heading > a {
+    display: none;
+  }
+  .tr-catalog .tr-panel-body {
+    padding: 16px;
+  }
+}
+
+/* Visibility compares the same successful-answer denominator for every brand. */
+.tr-visibility {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.tr-visibility > [data-slot="select-trigger"] {
+  max-width: 100%;
+}
+.tr-visibility-plot {
+  position: relative;
+  padding-left: 40px;
+  margin-top: 12px;
+}
+.tr-visibility-plot svg {
+  display: block;
+  width: 100%;
+  height: 240px;
+}
+.tr-visibility-axis {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: var(--tr-type-caption);
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.tr-visibility-line {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.tr-visibility .exp-chart-dates {
+  padding: 0 0 0 40px;
+}
+.tr-visibility-slider {
+  width: calc(100% - 40px);
+  margin-left: 40px;
+  height: 14px;
+  accent-color: var(--exp-signal);
+}
+.tr-visibility-date,
+.tr-visibility figcaption {
+  font-size: var(--tr-type-caption);
+  color: var(--muted-foreground);
+}
+.tr-visibility-brands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tr-visibility-brands li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--tr-type-ui);
+}
+.tr-visibility-brands i {
+  height: 12px;
+  width: 3px;
+  border-radius: 2px;
+}
+.tr-visibility-brands strong {
+  font-variant-numeric: tabular-nums;
+}
+.exp-tr .exp-management [data-selected="true"] {
+  background: var(--muted);
+  box-shadow: inset 2px 0 var(--exp-signal);
+}
+@media (max-width: 767px) {
+  .tr-visibility-plot svg {
+    height: 200px;
+  }
+}
+
+/* Logo.dev's default marks need a light field to remain legible on this canvas. */
+.exp-tr img[src*="img.logo.dev"] {
+  background: #fff;
+  padding: 3px;
+}
+.tr-visibility-slider {
+  opacity: 0;
+}
+.tr-visibility-slider:focus-visible {
+  opacity: 1;
+}
+
+/* Saved views occupy one finite canvas; evidence scrolls within its own panel. */
+html[data-tr-workspace],
+html[data-tr-workspace] body {
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html[data-tr-workspace] .exploration {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+html[data-tr-workspace] .exp-preview {
+  display: none;
+}
+.tr-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding-top: 0;
+}
+.tr-workspace .tr-header {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  padding: 16px 20px 8px;
+}
+.tr-workspace .tr-tabs {
+  order: 0;
+  flex-basis: auto;
+}
+.tr-workspace .tr-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 12px;
+}
+.tr-workspace .tr-toolbar {
+  flex-shrink: 0;
+  padding: 8px 0 12px;
+}
+.tr-capacity-hint {
+  flex-shrink: 0;
+  font-size: var(--tr-type-caption);
+  line-height: 1.33333;
+  color: var(--muted-foreground);
+  margin-bottom: 8px;
+}
+.tr-workspace .tr-grid-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.tr-workspace .tr-grid-container > .tr-panel {
+  height: 100%;
+}
+.tr-workspace .tr-empty-workspace,
+.tr-workspace .exp-empty {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+.tr-workspace .exp-loading {
+  height: 100%;
+  overflow: auto;
+}
+.tr-workspace .tr-templates {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 767px) {
+  .tr-workspace .tr-header {
+    padding: 12px 12px 4px;
+    gap: 12px;
+  }
+  .tr-workspace .tr-account > span {
+    display: none;
+  }
+  .tr-workspace .tr-templates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tr-workspace .tr-panel-body {
+  container-type: size;
+}
+.tr-workspace .tr-visibility {
+  gap: 8px;
+}
+.tr-workspace .tr-visibility-plot svg {
+  height: clamp(70px, calc(100cqh - 228px), 240px);
+}
+.tr-workspace .tr-visibility-brands {
+  gap: 8px 12px;
 }

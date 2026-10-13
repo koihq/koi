@@ -18,6 +18,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
+import { BrandIcon } from "@/components/blocks/brand-icon";
 import { KoiMark } from "@/components/blocks/koi-mark";
 import { Button } from "@/components/ui/button";
 import {
@@ -252,9 +253,17 @@ export function PreviewControls() {
   );
 }
 
-export function Directory({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Directory({
+  open,
+  onClose,
+  sections = SECTIONS,
+}: {
+  open: boolean;
+  onClose: () => void;
+  sections?: readonly Section[];
+}) {
   const [query, setQuery] = useState("");
-  const matches = SECTIONS.filter((section) =>
+  const matches = sections.filter((section) =>
     C[section].toLowerCase().includes(query.toLowerCase()),
   );
   return (
@@ -548,7 +557,13 @@ export function TrendChart({
   );
 }
 
-export function EngineList() {
+export function EngineList({ logos = false }: { logos?: boolean }) {
+  const domains = {
+    chatgpt: "chatgpt.com",
+    perplexity: "perplexity.ai",
+    gemini: "gemini.google.com",
+    google_ai_overviews: "google.com",
+  };
   const { results } = useMock();
   return (
     <div className="exp-engine-list">
@@ -556,7 +571,11 @@ export function EngineList() {
         const selected = results.filter((item) => item.engine === engine.id);
         return (
           <div key={engine.id} className="exp-engine-row">
-            <span className="exp-letter">{engine.short}</span>
+            {logos ? (
+              <BrandIcon name={engine.name} domain={domains[engine.id]} />
+            ) : (
+              <span className="exp-letter">{engine.short}</span>
+            )}
             <span>{engine.name}</span>
             <div className="exp-bar">
               <span style={{ width: `${metrics(selected).presence}%` }} />

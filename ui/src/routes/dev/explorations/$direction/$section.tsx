@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect } from "@tanstack/react-router";
 import { lazy, Suspense, useLayoutEffect } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { C, EvidenceDialog, Notice, PreviewControls } from "../-components/common";
@@ -17,6 +17,12 @@ export const Route = createFileRoute("/dev/explorations/$direction/$section")({
     workspace: typeof search.workspace === "string" ? search.workspace : undefined,
   }),
   beforeLoad: ({ params }) => {
+    if (params.direction === "trade-republic" && params.section !== "overview")
+      throw redirect({
+        to: "/dev/explorations/$direction/$section",
+        params: { direction: "trade-republic", section: "overview" },
+        search: { state: "populated" },
+      });
     if (
       !DIRECTIONS.includes(params.direction as Direction) ||
       !SECTIONS.includes(params.section as Section)

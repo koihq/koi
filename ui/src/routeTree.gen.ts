@@ -32,6 +32,7 @@ import { Route as AuthenticatedAppMentionsIndexRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppPromptsIndexRouteImport } from './routes/_authenticated/_app/prompts/index'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
 import { Route as DevExplorationsDirectionSectionRouteImport } from './routes/dev/explorations/$direction/$section'
+import { Route as DevExplorationsTradeRepublicPanelsRouteImport } from './routes/dev/explorations/trade-republic/panels'
 import { Route as AuthenticatedSettingsSettingsCompetitorsIndexRouteImport } from './routes/_authenticated/_settings/settings/competitors/index'
 import { Route as AuthenticatedSettingsSettingsPromptsIndexRouteImport } from './routes/_authenticated/_settings/settings/prompts/index'
 
@@ -153,6 +154,12 @@ const DevExplorationsDirectionSectionRoute =
     path: '/$direction/$section',
     getParentRoute: () => DevExplorationsRouteRoute,
   } as any)
+const DevExplorationsTradeRepublicPanelsRoute =
+  DevExplorationsTradeRepublicPanelsRouteImport.update({
+    id: '/trade-republic/panels',
+    path: '/trade-republic/panels',
+    getParentRoute: () => DevExplorationsRouteRoute,
+  } as any)
 const AuthenticatedSettingsSettingsCompetitorsIndexRoute =
   AuthenticatedSettingsSettingsCompetitorsIndexRouteImport.update({
     id: '/settings/competitors/',
@@ -184,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/dev/ui/': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
+  '/dev/explorations/trade-republic/panels': typeof DevExplorationsTradeRepublicPanelsRoute
   '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
   '/mentions/': typeof AuthenticatedAppMentionsIndexRoute
   '/prompts/': typeof AuthenticatedAppPromptsIndexRoute
@@ -206,6 +214,7 @@ export interface FileRoutesByTo {
   '/dev/ui': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
+  '/dev/explorations/trade-republic/panels': typeof DevExplorationsTradeRepublicPanelsRoute
   '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
   '/mentions': typeof AuthenticatedAppMentionsIndexRoute
   '/prompts': typeof AuthenticatedAppPromptsIndexRoute
@@ -234,6 +243,7 @@ export interface FileRoutesById {
   '/dev/ui/': typeof DevUiIndexRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
+  '/dev/explorations/trade-republic/panels': typeof DevExplorationsTradeRepublicPanelsRoute
   '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
   '/_authenticated/_app/mentions/': typeof AuthenticatedAppMentionsIndexRoute
   '/_authenticated/_app/prompts/': typeof AuthenticatedAppPromptsIndexRoute
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/dev/ui/'
     | '/settings/brand'
     | '/dev/explorations/$direction/$section'
+    | '/dev/explorations/trade-republic/panels'
     | '/competitors/'
     | '/mentions/'
     | '/prompts/'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/dev/ui'
     | '/settings/brand'
     | '/dev/explorations/$direction/$section'
+    | '/dev/explorations/trade-republic/panels'
     | '/competitors'
     | '/mentions'
     | '/prompts'
@@ -309,6 +321,7 @@ export interface FileRouteTypes {
     | '/dev/ui/'
     | '/_authenticated/_settings/settings/brand'
     | '/dev/explorations/$direction/$section'
+    | '/dev/explorations/trade-republic/panels'
     | '/_authenticated/_app/competitors/'
     | '/_authenticated/_app/mentions/'
     | '/_authenticated/_app/prompts/'
@@ -487,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevExplorationsDirectionSectionRouteImport
       parentRoute: typeof DevExplorationsRouteRoute
     }
+    '/dev/explorations/trade-republic/panels': {
+      id: '/dev/explorations/trade-republic/panels'
+      path: '/trade-republic/panels'
+      fullPath: '/dev/explorations/trade-republic/panels'
+      preLoaderRoute: typeof DevExplorationsTradeRepublicPanelsRouteImport
+      parentRoute: typeof DevExplorationsRouteRoute
+    }
     '/_authenticated/_settings/settings/competitors/': {
       id: '/_authenticated/_settings/settings/competitors/'
       path: '/settings/competitors'
@@ -564,11 +584,14 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 interface DevExplorationsRouteRouteChildren {
   DevExplorationsIndexRoute: typeof DevExplorationsIndexRoute
   DevExplorationsDirectionSectionRoute: typeof DevExplorationsDirectionSectionRoute
+  DevExplorationsTradeRepublicPanelsRoute: typeof DevExplorationsTradeRepublicPanelsRoute
 }
 
 const DevExplorationsRouteRouteChildren: DevExplorationsRouteRouteChildren = {
   DevExplorationsIndexRoute: DevExplorationsIndexRoute,
   DevExplorationsDirectionSectionRoute: DevExplorationsDirectionSectionRoute,
+  DevExplorationsTradeRepublicPanelsRoute:
+    DevExplorationsTradeRepublicPanelsRoute,
 }
 
 const DevExplorationsRouteRouteWithChildren =

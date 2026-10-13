@@ -1,180 +1,148 @@
-import type { LayoutItem } from "react-grid-layout";
-import { SECTIONS, type Section } from "../-lib/data";
+import type { Layout, LayoutItem } from "react-grid-layout";
 import C from "../-locales/en.json";
 
+export const GRID_COLS = 12;
+export const GRID_ROWS = 12;
+export const MIN_PANEL = 2;
 export const PANELS = {
-  heatmap: C.heatmap,
-  screener: C.screener,
-  inspector: C.context,
-  trend: C.panelTrend,
-  watchlist: C.watchlist,
-  engines: C.enginePerformance,
-  brief: C.brief,
-  mentions: C.mentions,
+  trend: C.visibility,
   prompts: C.prompts,
   competitors: C.competitors,
-  citations: C.citations,
+  engines: C.enginePerformance,
+  mentions: C.mentions,
+  inspector: C.context,
 };
 export type Panel = keyof typeof PANELS;
+export type Template = "research" | "compare" | "empty";
 export type Workspace = {
   id: string;
   name: string;
-  section: Section;
+  template: Template;
+  selectedPrompt: string | null;
   panels: Panel[];
-  desktop: LayoutItem[];
-  tablet: LayoutItem[];
-  mobileSizes: Partial<Record<Panel, number>>;
+  layout: LayoutItem[];
 };
-export const STORAGE_KEY = "koi-exploration:trade-republic:workspaces:v1";
+export const STORAGE_KEY = "koi-exploration:trade-republic:views:v3";
 
-function grid(panels: Panel[], cols: number): LayoutItem[] {
-  const overview = panels.join() === "heatmap,screener,inspector,trend,watchlist";
-  if (overview && cols === 12)
-    return [
-      { i: "heatmap", x: 0, y: 0, w: 4, h: 8, minW: 3, minH: 5 },
-      { i: "screener", x: 4, y: 0, w: 5, h: 8, minW: 3, minH: 5 },
-      { i: "inspector", x: 9, y: 0, w: 3, h: 16, minW: 2, minH: 5 },
-      { i: "trend", x: 0, y: 8, w: 4, h: 8, minW: 3, minH: 5 },
-      { i: "watchlist", x: 4, y: 8, w: 5, h: 8, minW: 3, minH: 5 },
-    ];
-  return panels.map((panel, index) => {
-    const broad = ["mentions", "prompts", "competitors", "citations", "brief", "screener"].includes(
-      panel,
-    );
-    const w = cols === 12 ? (broad ? 8 : 4) : broad ? 6 : 3;
-    return {
-      i: panel,
-      x: cols === 12 && index === 1 ? 8 : 0,
-      y: cols === 12 && index < 2 ? 0 : index * 8,
-      w,
-      h: broad ? 14 : 8,
-      minW: broad ? Math.min(cols, 4) : 2,
-      minH: 5,
-    };
-  });
+function overlaps(a: LayoutItem, b: LayoutItem) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+export function layoutFits(layout: Layout): boolean {
+  return layout.every(
+    (item, index) =>
+      item != null &&
+      [item.x, item.y, item.w, item.h].every(Number.isInteger) &&
+      item.x >= 0 &&
+      item.y >= 0 &&
+      item.w >= MIN_PANEL &&
+      item.h >= MIN_PANEL &&
+      item.x + item.w <= GRID_COLS &&
+      item.y + item.h <= GRID_ROWS &&
+      !layout.slice(index + 1).some((other) => other != null && overlaps(item, other)),
+  );
+}
+
+export function availableSlot(layout: Layout, w = MIN_PANEL, h = MIN_PANEL) {
+  for (let y = 0; y <= GRID_ROWS - h; y++) {
+    for (let x = 0; x <= GRID_COLS - w; x++) {
+      const candidate = { i: "candidate", x, y, w, h };
+      if (!layout.some((item) => overlaps(candidate, item))) return { x, y, w, h };
+    }
+  }
+  return null;
 }
 
 export function makeWorkspace(
   id: string,
   name: string,
-  section: Section,
-  template: "overview" | "research" | "improve" | "empty" = "overview",
+  template: Template = "research",
 ): Workspace {
   const panels: Panel[] =
-    id === "overview" || !SECTIONS.includes(id as Section)
-      ? template === "empty"
-        ? []
-        : template === "research"
-          ? ["screener", "inspector", "heatmap", "engines"]
-          : template === "improve"
-            ? ["brief", "inspector", "watchlist"]
-            : ["heatmap", "screener", "inspector", "trend", "watchlist"]
-      : section === "mentions"
-        ? ["mentions", "inspector"]
-        : section === "brief"
-          ? ["brief", "inspector"]
-          : section === "citations"
-            ? ["citations", "inspector"]
-            : section === "prompts" || section === "competitors"
-              ? [section, "inspector", "trend"]
-              : ["heatmap", "screener", "inspector", "trend", "watchlist"];
-  return {
-    id,
-    name,
-    section,
-    panels,
-    desktop: grid(panels, 12),
-    tablet: grid(panels, 6),
-    mobileSizes: {},
-  };
+    template === "empty"
+      ? []
+      : template === "research"
+        ? ["trend", "prompts", "inspector"]
+        : ["trend", "competitors", "engines"];
+  const layout =
+    template === "empty"
+      ? []
+      : [
+          { i: panels[0], x: 0, y: 0, w: 8, h: 7, minW: 2, minH: 2 },
+          { i: panels[1], x: 0, y: 7, w: 8, h: 5, minW: 2, minH: 2 },
+          { i: panels[2], x: 8, y: 0, w: 4, h: 12, minW: 2, minH: 2 },
+        ];
+  return { id, name, template, selectedPrompt: null, panels, layout };
 }
 
 export function defaultWorkspaces() {
-  return SECTIONS.map((section) => makeWorkspace(section, C[section], section));
+  return [
+    makeWorkspace("research", C.templateResearch),
+    makeWorkspace("compare", C.templateCompare, "compare"),
+  ];
 }
 
 export function validWorkspaces(value: unknown): value is Workspace[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > 30) return false;
   const ids = new Set<string>();
-  return value.every((workspace) => {
+  return value.every((view) => {
     if (
-      !workspace ||
-      typeof workspace.id !== "string" ||
-      ids.has(workspace.id) ||
-      typeof workspace.name !== "string" ||
-      !workspace.name.trim() ||
-      workspace.name.length > 60 ||
-      !SECTIONS.includes(workspace.section) ||
-      !Array.isArray(workspace.panels) ||
-      workspace.panels.some((panel: string) => !Object.hasOwn(PANELS, panel)) ||
-      new Set(workspace.panels).size !== workspace.panels.length ||
-      (workspace.mobileSizes != null &&
-        (typeof workspace.mobileSizes !== "object" ||
-          Object.entries(workspace.mobileSizes).some(
-            ([panel, height]) =>
-              !Object.hasOwn(PANELS, panel) ||
-              !Number.isInteger(height) ||
-              Number(height) < 220 ||
-              Number(height) > 1400,
-          )))
+      !view ||
+      typeof view.id !== "string" ||
+      ids.has(view.id) ||
+      typeof view.name !== "string" ||
+      !view.name.trim() ||
+      view.name.length > 60 ||
+      !["research", "compare", "empty"].includes(view.template) ||
+      (view.selectedPrompt !== null && typeof view.selectedPrompt !== "string") ||
+      !Array.isArray(view.panels) ||
+      view.panels.some((panel: string) => !Object.hasOwn(PANELS, panel)) ||
+      new Set(view.panels).size !== view.panels.length ||
+      !Array.isArray(view.layout) ||
+      view.layout.length !== view.panels.length ||
+      new Set(view.layout.map((item: LayoutItem) => item?.i)).size !== view.panels.length ||
+      !view.layout.every((item: LayoutItem) => item != null && view.panels.includes(item.i)) ||
+      !layoutFits(view.layout)
     )
       return false;
-    ids.add(workspace.id);
-    return (["desktop", "tablet"] as const).every(
-      (size) =>
-        Array.isArray(workspace[size]) &&
-        workspace[size].length === workspace.panels.length &&
-        new Set(workspace[size].map((item: LayoutItem) => item?.i)).size ===
-          workspace.panels.length &&
-        workspace[size].every(
-          (item: LayoutItem) =>
-            item != null &&
-            typeof item.i === "string" &&
-            workspace.panels.includes(item.i) &&
-            [item.x, item.y, item.w, item.h].every(Number.isInteger) &&
-            item.x >= 0 &&
-            item.y >= 0 &&
-            item.w >= 2 &&
-            item.h >= 5 &&
-            item.h <= 30 &&
-            item.x + item.w <= (size === "desktop" ? 12 : 6),
-        ),
-    );
+    ids.add(view.id);
+    return true;
   });
 }
 
 export function readWorkspaces(): Workspace[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (validWorkspaces(value))
-      return value.map((workspace) => ({ ...workspace, mobileSizes: workspace.mobileSizes ?? {} }));
+    if (validWorkspaces(value)) return value;
   } catch {
-    /* Unavailable or outdated storage uses the preset workspace. */
+    /* Unavailable storage uses the preset views. */
   }
   return defaultWorkspaces();
 }
 
 export function addPanel(workspace: Workspace, panel: Panel): Workspace {
   if (workspace.panels.includes(panel)) return workspace;
-  const panels = [...workspace.panels, panel];
-  const append = (layout: LayoutItem[], cols: number) => [
-    ...layout,
-    {
-      i: panel,
-      x: 0,
-      y: Math.max(0, ...layout.map((item) => item.y + item.h)),
-      w: Math.min(cols, 4),
-      h: 8,
-      minW: 2,
-      minH: 5,
-    },
-  ];
+  const slot = availableSlot(workspace.layout);
+  if (!slot) return workspace;
   return {
     ...workspace,
-    panels,
-    desktop: append(workspace.desktop, 12),
-    tablet: append(workspace.tablet, 6),
+    panels: [...workspace.panels, panel],
+    layout: [...workspace.layout, { i: panel, ...slot, minW: MIN_PANEL, minH: MIN_PANEL }],
   };
+}
+
+export function resizePanel(
+  workspace: Workspace,
+  panel: Panel,
+  dimension: "w" | "h",
+  delta: number,
+) {
+  const layout = workspace.layout.map((item) =>
+    item.i === panel
+      ? { ...item, [dimension]: Math.max(MIN_PANEL, item[dimension] + delta) }
+      : item,
+  );
+  return layoutFits(layout) ? { ...workspace, layout } : workspace;
 }
 
 export function reorderPanel(workspace: Workspace, panel: Panel, delta: number): Workspace {
@@ -182,14 +150,6 @@ export function reorderPanel(workspace: Workspace, panel: Panel, delta: number):
   const index = panels.indexOf(panel);
   const target = Math.max(0, Math.min(panels.length - 1, index + delta));
   [panels[index], panels[target]] = [panels[target], panels[index]];
-  const reorder = (layout: LayoutItem[]) => {
-    const slots = [...layout].sort((a, b) => a.y - b.y || a.x - b.x);
-    return panels.map((id, i) => ({ ...slots[i], i: id }));
-  };
-  return {
-    ...workspace,
-    panels,
-    desktop: reorder(workspace.desktop),
-    tablet: reorder(workspace.tablet),
-  };
+  const slots = workspace.layout;
+  return { ...workspace, panels, layout: panels.map((id, index) => ({ ...slots[index], i: id })) };
 }

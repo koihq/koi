@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrandIcon } from "@/components/blocks/brand-icon";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -251,7 +252,17 @@ export function MentionsScreen({
   );
 }
 
-export function ManagementScreen({ kind }: { kind: "prompts" | "competitors" }) {
+export function ManagementScreen({
+  kind,
+  workspace = false,
+  selectedPrompt,
+  onSelectPrompt,
+}: {
+  kind: "prompts" | "competitors";
+  workspace?: boolean;
+  selectedPrompt?: string | null;
+  onSelectPrompt?: (id: string) => void;
+}) {
   const state = useMock();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -270,15 +281,15 @@ export function ManagementScreen({ kind }: { kind: "prompts" | "competitors" }) 
         (status === "all" || (status === "confirmed") === item.confirmed) &&
         (category === "all" || !("category" in item) || item.category === category),
     )
-    .map((item) => ({
-      item,
-      rate: metrics(
+    .map((item) => {
+      const summary = metrics(
         kind === "prompts"
           ? state.results.filter((answer) => answer.promptId === item.id)
           : state.results,
         kind === "prompts" ? "tally" : item.id,
-      ).presence,
-    }))
+      );
+      return { item, rate: summary.presence, cited: summary.cited, completed: summary.completed };
+    })
     .sort((a, b) =>
       sort === "name"
         ? ("text" in a.item ? a.item.text : a.item.name).localeCompare(
@@ -365,7 +376,11 @@ export function ManagementScreen({ kind }: { kind: "prompts" | "competitors" }) 
       </div>
       {kind === "competitors" ? (
         <div className="exp-compare-note">
-          <span className="exp-letter">{C.tally[0]}</span>
+          {workspace ? (
+            <BrandIcon name={C.tally} domain="tally.so" />
+          ) : (
+            <span className="exp-letter">{C.tally[0]}</span>
+          )}
           <strong>{C.tally}</strong>
           <span>{C.presence}</span>
           <strong>{percent(state.summary.presence)}</strong>
@@ -378,77 +393,104 @@ export function ManagementScreen({ kind }: { kind: "prompts" | "competitors" }) 
               <TableHead>{kind === "prompts" ? C.promptText : C.name}</TableHead>
               <TableHead>{kind === "prompts" ? C.category : C.domain}</TableHead>
               <TableHead>{C.status}</TableHead>
-              <TableHead>{C.presence}</TableHead>
+              <TableHead>{workspace ? C.visibility : C.presence}</TableHead>
+              {workspace && kind === "prompts" ? <TableHead>{C.citationRate}</TableHead> : null}
               <TableHead className="exp-actions-cell">{C.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.slice((currentPage - 1) * 12, currentPage * 12).map(({ item, rate }) => (
-              <TableRow key={item.id}>
-                <TableHead scope="row" className="exp-prompt-cell">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const answer = [...state.results]
-                        .reverse()
-                        .find((value) =>
-                          kind === "prompts"
-                            ? value.promptId === item.id
-                            : value.brands.includes(item.id),
-                        );
-                      if (answer) state.setSelected(answer);
-                      else setEdit(item);
-                    }}
-                  >
-                    {"text" in item ? (
-                      item.text
-                    ) : (
-                      <span className="exp-name-with-letter">
-                        <span className="exp-letter">{item.name[0]}</span>
-                        {item.name}
-                      </span>
-                    )}
-                  </button>
-                </TableHead>
-                <TableCell>{"category" in item ? item.category : item.domain}</TableCell>
-                <TableCell>
-                  <span className={`exp-status ${item.confirmed ? "confirmed" : "draft"}`}>
-                    <i />
-                    {item.confirmed ? C.confirmed : C.draft}
-                  </span>
-                </TableCell>
-                <TableCell className="tabular-nums">
-                  {state.results.some((value) =>
-                    kind === "prompts"
-                      ? value.promptId === item.id
-                      : value.brands.includes(item.id),
-                  )
-                    ? percent(rate)
-                    : C.notCollected}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={<Button variant="ghost" size="icon-lg" />}
-                      aria-label={`${C.actions}: ${"text" in item ? item.text : item.name}`}
+            {rows
+              .slice((currentPage - 1) * 12, currentPage * 12)
+              .map(({ item, rate, cited, completed }) => (
+                <TableRow
+                  key={item.id}
+                  data-selected={
+                    kind === "prompts" && selectedPrompt === item.id ? "true" : undefined
+                  }
+                >
+                  <TableHead scope="row" className="exp-prompt-cell">
+                    <button
+                      type="button"
+                      aria-pressed={
+                        workspace && kind === "prompts" ? selectedPrompt === item.id : undefined
+                      }
+                      onClick={() => {
+                        if (kind === "prompts" && onSelectPrompt) {
+                          onSelectPrompt(item.id);
+                          return;
+                        }
+                        const answer = [...state.results]
+                          .reverse()
+                          .find((value) =>
+                            kind === "prompts"
+                              ? value.promptId === item.id
+                              : value.brands.includes(item.id),
+                          );
+                        if (answer) state.setSelected(answer);
+                        else setEdit(item);
+                      }}
                     >
-                      <Icon name="more" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEdit(item)}>{C.edit}</DropdownMenuItem>
-                      {!item.confirmed ? (
-                        <DropdownMenuItem onClick={() => confirm(item)}>
-                          {C.confirm}
+                      {"text" in item ? (
+                        item.text
+                      ) : (
+                        <span className="exp-name-with-letter">
+                          {workspace ? (
+                            <BrandIcon
+                              name={item.name}
+                              domain={new URL(`https://${item.domain}`).hostname}
+                            />
+                          ) : (
+                            <span className="exp-letter">{item.name[0]}</span>
+                          )}
+                          {item.name}
+                        </span>
+                      )}
+                    </button>
+                  </TableHead>
+                  <TableCell>{"category" in item ? item.category : item.domain}</TableCell>
+                  <TableCell>
+                    <span className={`exp-status ${item.confirmed ? "confirmed" : "draft"}`}>
+                      <i />
+                      {item.confirmed ? C.confirmed : C.draft}
+                    </span>
+                  </TableCell>
+                  <TableCell className="tabular-nums">
+                    {state.results.some((value) =>
+                      kind === "prompts"
+                        ? value.promptId === item.id
+                        : value.brands.includes(item.id),
+                    )
+                      ? percent(rate)
+                      : C.notCollected}
+                  </TableCell>
+                  {workspace && kind === "prompts" ? (
+                    <TableCell className="tabular-nums">
+                      {completed ? percent(cited) : C.notCollected}
+                    </TableCell>
+                  ) : null}
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={<Button variant="ghost" size="icon-lg" />}
+                        aria-label={`${C.actions}: ${"text" in item ? item.text : item.name}`}
+                      >
+                        <Icon name="more" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEdit(item)}>{C.edit}</DropdownMenuItem>
+                        {!item.confirmed ? (
+                          <DropdownMenuItem onClick={() => confirm(item)}>
+                            {C.confirm}
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuItem variant="destructive" onClick={() => setRemove(item)}>
+                          {C.delete}
                         </DropdownMenuItem>
-                      ) : null}
-                      <DropdownMenuItem variant="destructive" onClick={() => setRemove(item)}>
-                        {C.delete}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </div>

@@ -1,6 +1,7 @@
-import { useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import GridLayout, { type Layout, useContainerWidth, verticalCompactor } from "react-grid-layout";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import GridLayout, { type Layout, noCompactor, useContainerWidth } from "react-grid-layout";
+import { gridBounds, type LayoutConstraint, minMaxSize } from "react-grid-layout/core";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,66 +18,68 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Account,
-  BrandHeader,
-  C,
-  CompetitorList,
-  Directory,
-  EngineList,
-  Filters,
-  Icon,
-  StateGate,
-  TrendChart,
-} from "../-components/common";
-import {
-  AnswerInspector,
-  BriefScreen,
-  CitationsScreen,
-  Heatmap,
-  ManagementScreen,
-  MentionsScreen,
-  PromptScreener,
-} from "../-components/screens";
+import { Account, C, Choice, Filters, Icon, StateGate } from "../-components/common";
 import type { Section } from "../-lib/data";
 import { useMock } from "../-lib/state";
+import { TradeRepublicPanel } from "./-panel";
 import {
   addPanel,
+  availableSlot,
   defaultWorkspaces,
+  GRID_COLS,
+  GRID_ROWS,
+  layoutFits,
   makeWorkspace,
   PANELS,
   type Panel,
   readWorkspaces,
   reorderPanel,
+  resizePanel,
   STORAGE_KEY,
+  type Template,
   type Workspace,
 } from "./-workspace";
 
-export default function TradeRepublic({
-  section,
-  workspaceId,
-}: {
-  section: Section;
-  workspaceId?: string;
-}) {
-  const { setNotice, filters, summary } = useMock();
+const BOUNDED_COMPACTOR = { ...noCompactor, preventCollision: true };
+const CANVAS_SIZE: LayoutConstraint = {
+  name: "finite-canvas",
+  constrainSize: (item, w, h) => ({
+    w: Math.min(w, GRID_COLS - item.x),
+    h: Math.min(h, GRID_ROWS - item.y),
+  }),
+};
+const CONSTRAINTS = [gridBounds, minMaxSize, CANVAS_SIZE];
+
+export default function TradeRepublic({ workspaceId }: { section: Section; workspaceId?: string }) {
+  const { setNotice, summary } = useMock();
   const navigate = useNavigate({ from: "/dev/explorations/$direction/$section" });
   const [workspaces, setWorkspaces] = useState(readWorkspaces);
   const [creator, setCreator] = useState(false);
   const [rename, setRename] = useState(false);
   const [name, setName] = useState("");
-  const [directory, setDirectory] = useState(false);
-  const [selectedPrompt, setSelectedPrompt] = useState<string | null>("prompt-9");
+  const [focusedPanel, setFocusedPanel] = useState<Panel | null>(null);
+  const [height, setHeight] = useState(0);
   const [revision, setRevision] = useState(0);
   const sequence = useRef(0);
-  const active =
-    workspaces.find((workspace) => workspace.id === (workspaceId ?? section)) ??
-    workspaces.find((workspace) => workspace.section === section) ??
-    makeWorkspace(section, C[section], section);
+  const active = workspaces.find((view) => view.id === workspaceId) ?? workspaces[0];
   const { width, containerRef, mounted } = useContainerWidth();
   const mobile = width < 768;
-  const size = width < 1200 ? "tablet" : "desktop";
-  const cols = size === "desktop" ? 12 : 6;
+  const focused =
+    focusedPanel && active.panels.includes(focusedPanel) ? focusedPanel : active.panels[0];
+  const slot = availableSlot(active.layout);
+  const selectedPrompt = active.selectedPrompt;
+  const setSelectedPrompt = (id: string | null) => update({ ...active, selectedPrompt: id });
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-tr-workspace", "");
+    const node = containerRef.current;
+    const observer = new ResizeObserver(([entry]) => setHeight(entry.contentRect.height));
+    if (node) observer.observe(node);
+    return () => {
+      observer.disconnect();
+      document.documentElement.removeAttribute("data-tr-workspace");
+    };
+  }, [containerRef]);
 
   useEffect(() => {
     try {
@@ -99,24 +102,22 @@ export default function TradeRepublic({
   function select(workspace: Workspace) {
     void navigate({
       to: "/dev/explorations/$direction/$section",
-      params: { direction: "trade-republic", section: workspace.section },
+      params: { direction: "trade-republic", section: "overview" },
       search: (previous) => ({ ...previous, workspace: workspace.id }),
     });
   }
 
-  function create(template: "overview" | "research" | "improve" | "empty") {
+  function create(template: Template) {
     let id = `workspace-${++sequence.current}`;
     while (workspaces.some((workspace) => workspace.id === id))
       id = `workspace-${++sequence.current}`;
     const title =
-      template === "overview"
-        ? C.templateOverview
-        : template === "research"
-          ? C.templateResearch
-          : template === "improve"
-            ? C.templateImprove
-            : C.templateEmpty;
-    const next = makeWorkspace(id, title, template === "improve" ? "brief" : "overview", template);
+      template === "research"
+        ? C.templateResearch
+        : template === "compare"
+          ? C.templateCompare
+          : C.emptyView;
+    const next = makeWorkspace(id, title, template);
     setWorkspaces((current) => [...current, next]);
     setCreator(false);
     select(next);
@@ -124,7 +125,11 @@ export default function TradeRepublic({
   }
 
   function changeLayout(layout: Layout) {
-    update({ ...active, [size]: layout.map((item) => ({ ...item })) });
+    if (!layoutFits(layout)) {
+      setRevision((value) => value + 1);
+      return;
+    }
+    update({ ...active, layout: layout.map((item) => ({ ...item })) });
   }
 
   function move(panel: Panel, delta: number) {
@@ -134,69 +139,19 @@ export default function TradeRepublic({
   }
 
   function resize(panel: Panel, dimension: "w" | "h", delta: number) {
-    if (mobile) {
-      update({
-        ...active,
-        mobileSizes: {
-          ...active.mobileSizes,
-          [panel]: Math.max(260, Math.min(900, (active.mobileSizes[panel] ?? 420) + delta * 60)),
-        },
-      });
-    } else {
-      update({
-        ...active,
-        [size]: active[size].map((item) =>
-          item.i === panel
-            ? {
-                ...item,
-                [dimension]: Math.max(
-                  dimension === "w" ? (item.minW ?? 2) : (item.minH ?? 5),
-                  Math.min(dimension === "w" ? cols - item.x : 30, item[dimension] + delta),
-                ),
-              }
-            : item,
-        ),
-      });
-    }
+    const next = resizePanel(active, panel, dimension, delta);
+    update(next);
     setRevision((value) => value + 1);
-    setNotice(C.panelResized);
-  }
-
-  function panelContent(panel: Panel): ReactNode {
-    if (panel === "heatmap") return <Heatmap onSelect={setSelectedPrompt} />;
-    if (panel === "screener")
-      return <PromptScreener selected={selectedPrompt} onSelect={setSelectedPrompt} />;
-    if (panel === "inspector") return <AnswerInspector promptId={selectedPrompt} />;
-    if (panel === "trend") return <TrendChart />;
-    if (panel === "watchlist") return <CompetitorList />;
-    if (panel === "engines") return <EngineList />;
-    if (panel === "brief") return <BriefScreen compact />;
-    if (panel === "mentions") return <MentionsScreen onSelectPrompt={setSelectedPrompt} />;
-    if (panel === "prompts" || panel === "competitors") return <ManagementScreen kind={panel} />;
-    return <CitationsScreen />;
+    setNotice(next === active ? C.panelDoesNotFit : C.panelResized);
   }
 
   function panelNode(panel: Panel) {
     return (
-      <section
-        key={panel}
-        className="tr-panel"
-        data-panel={panel}
-        style={
-          mobile
-            ? {
-                height:
-                  active.mobileSizes[panel] ??
-                  (panel === "brief" || panel === "prompts" || panel === "mentions" ? 680 : 420),
-              }
-            : undefined
-        }
-      >
+      <section key={panel} className="tr-panel" data-panel={panel}>
         <header className="tr-panel-header">
           <span className="tr-drag-handle" title={C.dragPanel}>
             <i />
             {C.tally}
-            <span className="tr-panel-title">{PANELS[panel]}</span>
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -218,16 +173,10 @@ export default function TradeRepublic({
               >
                 {C.moveDown}
               </DropdownMenuItem>
-              {!mobile ? (
-                <>
-                  <DropdownMenuItem onClick={() => resize(panel, "w", 1)}>
-                    {C.wider}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => resize(panel, "w", -1)}>
-                    {C.narrower}
-                  </DropdownMenuItem>
-                </>
-              ) : null}
+              <DropdownMenuItem onClick={() => resize(panel, "w", 1)}>{C.wider}</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => resize(panel, "w", -1)}>
+                {C.narrower}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => resize(panel, "h", 1)}>{C.taller}</DropdownMenuItem>
               <DropdownMenuItem onClick={() => resize(panel, "h", -1)}>
                 {C.shorter}
@@ -238,8 +187,7 @@ export default function TradeRepublic({
                   update({
                     ...active,
                     panels: active.panels.filter((item) => item !== panel),
-                    desktop: active.desktop.filter((item) => item.i !== panel),
-                    tablet: active.tablet.filter((item) => item.i !== panel),
+                    layout: active.layout.filter((item) => item.i !== panel),
                   });
                   setNotice(C.panelRemoved);
                 }}
@@ -251,19 +199,20 @@ export default function TradeRepublic({
         </header>
         <div className="tr-panel-body">
           <h2>{PANELS[panel]}</h2>
-          {panelContent(panel)}
+          <TradeRepublicPanel
+            panel={panel}
+            selectedPrompt={selectedPrompt}
+            onSelectPrompt={setSelectedPrompt}
+          />
         </div>
       </section>
     );
   }
 
   return (
-    <div className="exp-tr">
+    <div className="exp-tr tr-workspace">
       <header className="tr-header">
-        <div className="tr-logo">
-          <BrandHeader />
-        </div>
-        <nav className="tr-tabs" aria-label={C.navigation}>
+        <nav className="tr-tabs" aria-label={C.views}>
           {workspaces.map((workspace) => (
             <button
               key={workspace.id}
@@ -277,7 +226,7 @@ export default function TradeRepublic({
           <Button
             variant="ghost"
             size="icon-lg"
-            aria-label={C.newWorkspace}
+            aria-label={C.newView}
             onClick={() => setCreator(true)}
           >
             <Icon name="add" size={16} />
@@ -296,16 +245,13 @@ export default function TradeRepublic({
         <div className="tr-toolbar">
           <Filters scan />
           <div>
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              aria-label={C.searchNavigation}
-              onClick={() => setDirectory(true)}
-            >
-              <Icon name="search" size={16} />
-            </Button>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />} aria-label={C.addPanel}>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" />}
+                aria-label={C.addPanel}
+                disabled={!slot}
+                title={!slot ? C.noPanelSpace : undefined}
+              >
                 <Icon name="add" size={14} />
                 {C.addPanel}
               </DropdownMenuTrigger>
@@ -314,7 +260,10 @@ export default function TradeRepublic({
                   <DropdownMenuItem
                     key={panel}
                     disabled={active.panels.includes(panel)}
-                    onClick={() => update(addPanel(active, panel))}
+                    onClick={() => {
+                      update(addPanel(active, panel));
+                      setFocusedPanel(panel);
+                    }}
                   >
                     {PANELS[panel]}
                   </DropdownMenuItem>
@@ -324,22 +273,32 @@ export default function TradeRepublic({
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={<Button variant="ghost" size="icon-lg" />}
-                aria-label={C.workspaceMenu}
+                aria-label={C.viewActions}
               >
                 <Icon name="more" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  render={
+                    <Link
+                      to="/dev/explorations/trade-republic/panels"
+                      search={{ state: "populated" }}
+                    />
+                  }
+                >
+                  {C.panelCatalog}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     setName(active.name);
                     setRename(true);
                   }}
                 >
-                  {C.renameWorkspace}
+                  {C.renameView}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
-                    update(makeWorkspace(active.id, active.name, active.section));
+                    update(makeWorkspace(active.id, active.name, active.template));
                     setRevision((value) => value + 1);
                     setNotice(C.layoutReset);
                   }}
@@ -356,65 +315,76 @@ export default function TradeRepublic({
                     setNotice(C.workspaceClosed);
                   }}
                 >
-                  {C.closeWorkspace}
+                  {C.closeView}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-        <StateGate>
-          <div ref={containerRef} className="tr-grid-container">
+        {!slot ? <p className="tr-capacity-hint">{C.noPanelSpace}</p> : null}
+        {mobile && active.panels.length ? (
+          <Choice
+            label={C.activePanel}
+            value={focused}
+            options={active.panels.map((panel) => ({ value: panel, label: PANELS[panel] }))}
+            onChange={(panel) => setFocusedPanel(panel as Panel)}
+          />
+        ) : null}
+        <div ref={containerRef} className="tr-grid-container">
+          <StateGate>
             {!active.panels.length ? (
               <div className="tr-empty-workspace">
                 <Icon name="add" size={32} />
-                <h1>{C.workspaceEmpty}</h1>
-                <p>{C.workspaceEmptyLead}</p>
+                <h2>{C.workspaceEmpty}</h2>
+                <p>{C.viewEmptyLead}</p>
               </div>
-            ) : mounted ? (
-              mobile ? (
-                <div className="tr-mobile-panels">{active.panels.map(panelNode)}</div>
-              ) : (
-                <GridLayout
-                  key={`${active.id}:${size}:${revision}`}
-                  width={width}
-                  layout={active[size]}
-                  gridConfig={{ cols, rowHeight: 38, margin: [8, 8], containerPadding: [0, 0] }}
-                  dragConfig={{
-                    enabled: true,
-                    handle: ".tr-drag-handle",
-                    cancel: "button,a,input,[role=button]",
-                  }}
-                  resizeConfig={{ enabled: true, handles: ["se"] }}
-                  compactor={verticalCompactor}
-                  onLayoutChange={changeLayout}
-                  onDragStop={() => setNotice(C.layoutSaved)}
-                  onResizeStop={() => setNotice(C.layoutSaved)}
-                >
-                  {active.panels.map(panelNode)}
-                </GridLayout>
-              )
+            ) : mobile ? (
+              panelNode(focused)
+            ) : mounted && height > 0 ? (
+              <GridLayout
+                key={`${active.id}:${revision}`}
+                width={width}
+                layout={active.layout}
+                autoSize={false}
+                style={{ height }}
+                gridConfig={{
+                  cols: GRID_COLS,
+                  maxRows: GRID_ROWS,
+                  rowHeight: Math.max(1, (height - 8 * (GRID_ROWS - 1)) / GRID_ROWS),
+                  margin: [8, 8],
+                  containerPadding: [0, 0],
+                }}
+                dragConfig={{
+                  enabled: true,
+                  bounded: true,
+                  handle: ".tr-drag-handle",
+                  cancel: "button,a,input,[role=button]",
+                }}
+                resizeConfig={{ enabled: true, handles: ["se"] }}
+                compactor={BOUNDED_COMPACTOR}
+                constraints={CONSTRAINTS}
+                onLayoutChange={changeLayout}
+                onDragStop={() => setNotice(C.layoutSaved)}
+                onResizeStop={() => setNotice(C.layoutSaved)}
+              >
+                {active.panels.map(panelNode)}
+              </GridLayout>
             ) : null}
-          </div>
-        </StateGate>
-        <footer className="tr-footer">
-          <span>{C.lastUpdated}</span>
-          <span>{`${C.sample} · ${filters.days} days`}</span>
-        </footer>
+          </StateGate>
+        </div>
       </main>
-      <Directory open={directory} onClose={() => setDirectory(false)} />
       <Dialog open={creator} onOpenChange={setCreator}>
         <DialogContent className="tr-workspace-dialog">
           <DialogHeader>
-            <DialogTitle>{C.workspaceTemplates}</DialogTitle>
-            <DialogDescription>{C.workspaceEmptyLead}</DialogDescription>
+            <DialogTitle>{C.chooseView}</DialogTitle>
+            <DialogDescription>{C.viewLead}</DialogDescription>
           </DialogHeader>
           <div className="tr-templates">
             {(
               [
-                { id: "overview", title: C.templateOverview, lead: C.templateOverviewLead },
+                { id: "compare", title: C.templateCompare, lead: C.templateCompareLead },
                 { id: "research", title: C.templateResearch, lead: C.templateResearchLead },
-                { id: "improve", title: C.templateImprove, lead: C.templateImproveLead },
-                { id: "empty", title: C.templateEmpty, lead: C.templateEmptyLead },
+                { id: "empty", title: C.emptyView, lead: C.templateEmptyLead },
               ] as const
             ).map((template) => (
               <button key={template.id} type="button" onClick={() => create(template.id)}>
@@ -437,8 +407,8 @@ export default function TradeRepublic({
       <Dialog open={rename} onOpenChange={setRename}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{C.renameWorkspace}</DialogTitle>
-            <DialogDescription>{C.workspaceName}</DialogDescription>
+            <DialogTitle>{C.renameView}</DialogTitle>
+            <DialogDescription>{C.viewName}</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={(event) => {
@@ -450,7 +420,7 @@ export default function TradeRepublic({
             }}
           >
             <Field>
-              <FieldLabel htmlFor="tr-workspace-name">{C.workspaceName}</FieldLabel>
+              <FieldLabel htmlFor="tr-workspace-name">{C.viewName}</FieldLabel>
               <Input
                 id="tr-workspace-name"
                 value={name}
