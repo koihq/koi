@@ -4,7 +4,7 @@ import { BrandSwitcher } from "./-components/brand-switcher";
 import { Icon } from "./-components/common";
 import { HomeSignal } from "./-components/home-signal";
 import { ENGINES } from "./-lib/data";
-import { HOME_BRANDS, type HomeBrand } from "./-lib/home-evidence";
+import { HOME_BRANDS, HOME_LOGOS, type HomeBrand } from "./-lib/home-evidence";
 import C from "./-locales/home-context.en.json";
 import "./-styles.css";
 import "./-home-context.css";
@@ -15,6 +15,7 @@ const MAX_VISIBLE_BRANDS = 3;
 const HOME_BRAND_OPTIONS = (Object.keys(HOME_BRANDS) as HomeBrand[]).map((id) => ({
   id,
   name: C[id].name,
+  ...HOME_LOGOS[HOME_BRANDS[id].name],
 }));
 
 function HomeContext() {

@@ -558,12 +558,6 @@ export function TrendChart({
 }
 
 export function EngineList({ logos = false }: { logos?: boolean }) {
-  const domains = {
-    chatgpt: "chatgpt.com",
-    perplexity: "perplexity.ai",
-    gemini: "gemini.google.com",
-    google_ai_overviews: "google.com",
-  };
   const { results } = useMock();
   return (
     <div className="exp-engine-list">
@@ -572,7 +566,7 @@ export function EngineList({ logos = false }: { logos?: boolean }) {
         return (
           <div key={engine.id} className="exp-engine-row">
             {logos ? (
-              <BrandIcon name={engine.name} domain={domains[engine.id]} />
+              <BrandIcon name={engine.name} domain={engine.domain} />
             ) : (
               <span className="exp-letter">{engine.short}</span>
             )}

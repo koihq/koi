@@ -10,6 +10,10 @@ describe("brand icon", () => {
     );
   });
 
+  it("skips brands without a domain", () => {
+    expect(logoDevURL("", "public-key")).toBeNull();
+  });
+
   it("provides a local lettermark fallback", () => {
     expect(brandInitial(" Acme ", "acme.com")).toBe("A");
     expect(brandInitial("", "beta.test")).toBe("B");

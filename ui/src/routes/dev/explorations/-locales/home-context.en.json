@@ -32,20 +32,20 @@
   "engineCount": "{count} engines",
   "engineMinimum": "Keep at least one engine selected.",
   "local": "Design study · Changes stay in this session",
-  "orbit": {
-    "name": "Orbit",
+  "mintlify": {
+    "name": "Mintlify",
     "goal": "Get recommended to small teams looking for developer documentation tools."
   },
-  "sprout": {
-    "name": "Sprout",
+  "beehiiv": {
+    "name": "beehiiv",
     "goal": "Get recommended to independent creators starting a newsletter."
   },
-  "forma": {
-    "name": "Forma",
+  "tally": {
+    "name": "Tally",
     "goal": "Get recommended to small businesses collecting customer feedback."
   },
-  "northstar": {
-    "name": "Northstar",
+  "posthog": {
+    "name": "PostHog",
     "goal": "Get recommended to SaaS founders looking to understand activation and retention."
   },
   "deja": {

@@ -1,4 +1,26 @@
+import koiMark from "@/assets/koi-mark.png";
 import { ENGINES, hash } from "./data";
+
+// No domain is invented for Deja or zsh-autosuggestions: both are repository-only here.
+export const HOME_LOGOS: Record<string, { domain?: string; src?: string }> = {
+  Deja: {},
+  "zsh-autosuggestions": {},
+  Koi: { src: koiMark },
+  "Peec AI": { domain: "peec.ai" },
+  Profound: { domain: "tryprofound.com" },
+  Mintlify: { domain: "mintlify.com" },
+  GitBook: { domain: "gitbook.com" },
+  ReadMe: { domain: "readme.com" },
+  beehiiv: { domain: "beehiiv.com" },
+  Substack: { domain: "substack.com" },
+  Kit: { domain: "kit.com" },
+  Tally: { domain: "tally.so" },
+  Typeform: { domain: "typeform.com" },
+  Fillout: { domain: "fillout.com" },
+  PostHog: { domain: "posthog.com" },
+  Mixpanel: { domain: "mixpanel.com" },
+  Amplitude: { domain: "amplitude.com" },
+};
 
 export const HOME_BRANDS = {
   deja: {
@@ -37,10 +59,10 @@ export const HOME_BRANDS = {
       ],
     },
   },
-  // Additional fictional workspace brands for exercising selection and overflow.
-  orbit: {
-    name: "Orbit",
-    rivals: ["DocNest", "PageKit"],
+  // Real demo brands; all visibility evidence remains synthetic.
+  mintlify: {
+    name: "Mintlify",
+    rivals: ["GitBook", "ReadMe"],
     topics: {
       discovery: [
         "Which tools help small teams publish developer documentation?",
@@ -48,9 +70,9 @@ export const HOME_BRANDS = {
       ],
     },
   },
-  sprout: {
-    name: "Sprout",
-    rivals: ["Letterbox", "MailGarden"],
+  beehiiv: {
+    name: "beehiiv",
+    rivals: ["Substack", "Kit"],
     topics: {
       discovery: [
         "Which newsletter tools work best for independent creators?",
@@ -58,9 +80,9 @@ export const HOME_BRANDS = {
       ],
     },
   },
-  forma: {
-    name: "Forma",
-    rivals: ["Formleaf", "Inputly"],
+  tally: {
+    name: "Tally",
+    rivals: ["Typeform", "Fillout"],
     topics: {
       discovery: [
         "Which form builders are good for collecting customer feedback?",
@@ -68,9 +90,9 @@ export const HOME_BRANDS = {
       ],
     },
   },
-  northstar: {
-    name: "Northstar",
-    rivals: ["MetricNest", "SignalDesk"],
+  posthog: {
+    name: "PostHog",
+    rivals: ["Mixpanel", "Amplitude"],
     topics: {
       discovery: [
         "Which analytics tools help founders understand product activation?",

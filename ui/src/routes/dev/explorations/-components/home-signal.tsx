@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrandPill } from "@/components/blocks/brand-pill";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ENGINES } from "../-lib/data";
 import {
   HOME_BRANDS,
+  HOME_LOGOS,
   type HomeAnswer,
   type HomeBrand,
   homeEvidence,
@@ -18,6 +20,7 @@ import {
 } from "../-lib/home-evidence";
 import C from "../-locales/home-signal.en.json";
 import { Icon } from "./common";
+import { HomeBrandText } from "./home-brand-text";
 
 export function HomeSignal({
   brand,
@@ -109,7 +112,9 @@ export function HomeSignal({
           <div className="hc-section-heading">
             <span>{C.sampleDate}</span>
           </div>
-          <h2 id="hc-visibility-title">{`${definition.name} in AI answers`}</h2>
+          <h2 id="hc-visibility-title">
+            <HomeBrandText text={`${definition.name} in AI answers`} />
+          </h2>
           <div className="hc-rate">
             {rate.toFixed(1)}
             <span>{C.percent}</span>
@@ -135,8 +140,11 @@ export function HomeSignal({
           </div>
           <div className="hc-chart-toolbar">
             <div className="hc-chart-legend">
-              <span>{definition.name}</span>
-              <span>{definition.rivals[0]}</span>
+              {[definition.name, definition.rivals[0]].map((name) => (
+                <span key={name}>
+                  <BrandPill name={name} {...HOME_LOGOS[name]} />
+                </span>
+              ))}
             </div>
             <fieldset className="hc-periods" aria-label={C.period}>
               {["7", "30", "90"].map((value) => (
@@ -158,8 +166,8 @@ export function HomeSignal({
           {ranking.map((item, index) => (
             <div className="hc-ranking-row" key={item.name}>
               <span className="hc-rank">{index + 1}</span>
-              <span>
-                {item.name}
+              <span className="hc-ranking-brand">
+                <BrandPill name={item.name} {...HOME_LOGOS[item.name]} />
                 {item.name === definition.name && <small>{C.yourBrand}</small>}
               </span>
               <span className="hc-ranking-track">
@@ -181,10 +189,7 @@ export function HomeSignal({
             );
             return (
               <div className="hc-engine-row" key={engine.id}>
-                <span className={`hc-engine-badge hc-engine-${engine.id}`} aria-hidden="true">
-                  {engine.short}
-                </span>
-                <span>{engine.name}</span>
+                <BrandPill name={engine.name} domain={engine.domain} />
                 <span className="hc-ranking-track">
                   <span style={{ width: `${engineRate}%` }} />
                 </span>
@@ -206,9 +211,15 @@ export function HomeSignal({
           </div>
           <p>
             <strong>
-              {leader.name === definition.name ? C.leading : `${leader.name} appears more often.`}
+              <HomeBrandText
+                text={
+                  leader.name === definition.name ? C.leading : `${leader.name} appears more often.`
+                }
+              />
             </strong>
-            {` ${definition.name} is absent from ${missing.length} of ${current.length} answers. Start with the questions where alternatives appear.`}
+            <HomeBrandText
+              text={` ${definition.name} is absent from ${missing.length} of ${current.length} answers. Start with the questions where alternatives appear.`}
+            />
           </p>
         </section>
         <section className="hc-answer-feed" aria-labelledby="hc-answers-title">
@@ -223,13 +234,15 @@ export function HomeSignal({
               onClick={() => setSelected(answer)}
             >
               <span className="hc-answer-meta">
-                <span className={`hc-engine-badge hc-engine-${answer.engine}`} aria-hidden="true">
-                  {engineName(answer.engine)[0]}
-                </span>
-                <span>{engineName(answer.engine)}</span>
+                <BrandPill
+                  name={engineName(answer.engine)}
+                  domain={ENGINES.find((engine) => engine.id === answer.engine)?.domain}
+                />
                 <small>{answer.date}</small>
               </span>
-              <span className="hc-answer-text">{answer.prompt}</span>
+              <span className="hc-answer-text">
+                <HomeBrandText text={answer.prompt} />
+              </span>
               <span className="hc-answer-outcome">
                 <span
                   className={
@@ -238,7 +251,16 @@ export function HomeSignal({
                 >
                   {answer.mentions.includes(definition.name) ? C.mentioned : C.absent}
                 </span>
-                {` · ${answer.mentions.length ? answer.mentions.join(", ") : C.noBrands}`}
+                <span aria-hidden="true">{C.separator}</span>
+                {answer.mentions.length ? (
+                  <span className="hc-mentioned-brands">
+                    {answer.mentions.map((name) => (
+                      <BrandPill key={name} name={name} {...HOME_LOGOS[name]} iconOnly />
+                    ))}
+                  </span>
+                ) : (
+                  C.noBrands
+                )}
               </span>
             </button>
           ))}
@@ -279,10 +301,14 @@ export function HomeSignal({
                     setSelected(answer);
                   }}
                 >
-                  <Icon name="quote" size={16} />
-                  <span>
-                    {answer.prompt}
-                    <small>{engineName(answer.engine)}</small>
+                  <span className="hc-search-result-text">
+                    <HomeBrandText text={answer.prompt} />
+                    <span className="hc-search-result-brand">
+                      <BrandPill
+                        name={engineName(answer.engine)}
+                        domain={ENGINES.find((engine) => engine.id === answer.engine)?.domain}
+                      />
+                    </span>
                   </span>
                   <Icon name="next" size={14} />
                 </button>
@@ -301,15 +327,27 @@ export function HomeSignal({
       >
         <DialogContent className="hc-answer-panel">
           <DialogHeader>
-            <DialogTitle>{selected?.prompt}</DialogTitle>
+            <DialogTitle>{selected && <HomeBrandText text={selected.prompt} />}</DialogTitle>
             <DialogDescription>
-              {selected && `${engineName(selected.engine)} · ${selected.date} · Synthetic answer`}
+              {selected && (
+                <span className="hc-answer-meta">
+                  <BrandPill
+                    name={engineName(selected.engine)}
+                    domain={ENGINES.find((engine) => engine.id === selected.engine)?.domain}
+                  />
+                  <span>{`${selected.date} · Synthetic answer`}</span>
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
           <p className="hc-answer-detail">
-            {selected?.mentions.length
-              ? `This simulated answer recommends investigating ${selected.mentions.join(" and ")}.`
-              : "This simulated answer does not mention any tracked brand."}
+            <HomeBrandText
+              text={
+                selected?.mentions.length
+                  ? `This simulated answer recommends investigating ${selected.mentions.join(" and ")}.`
+                  : "This simulated answer does not mention any tracked brand."
+              }
+            />
           </p>
           <p className="hc-caption">{C.detailNote}</p>
         </DialogContent>

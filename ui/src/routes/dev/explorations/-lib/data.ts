@@ -13,11 +13,11 @@ export const SECTIONS = [
 export type Section = (typeof SECTIONS)[number];
 export type DemoState = "populated" | "loading" | "empty";
 export type Filters = { days: 7 | 30 | 90; engine: VisibilityEngine | "all" };
-export const ENGINES: { id: VisibilityEngine; name: string; short: string }[] = [
-  { id: "chatgpt", name: "ChatGPT", short: "C" },
-  { id: "perplexity", name: "Perplexity", short: "P" },
-  { id: "gemini", name: "Gemini", short: "G" },
-  { id: "google_ai_overviews", name: "Google AI Overviews", short: "A" },
+export const ENGINES: { id: VisibilityEngine; name: string; short: string; domain: string }[] = [
+  { id: "chatgpt", name: "ChatGPT", short: "C", domain: "chatgpt.com" },
+  { id: "perplexity", name: "Perplexity", short: "P", domain: "perplexity.ai" },
+  { id: "gemini", name: "Gemini", short: "G", domain: "gemini.google.com" },
+  { id: "google_ai_overviews", name: "Google AI Overviews", short: "A", domain: "google.com" },
 ];
 export const ANCHOR = Date.UTC(2026, 9, 12, 10);
 export const DAY = 86_400_000;

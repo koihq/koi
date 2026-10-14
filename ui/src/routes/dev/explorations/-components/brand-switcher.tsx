@@ -1,4 +1,5 @@
 import { type CSSProperties, useState } from "react";
+import { BrandPill } from "@/components/blocks/brand-pill";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,15 +10,13 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import C from "../-locales/home-context.en.json";
 
-const BRAND_COLORS = ["#8064ac", "#4f8a7b", "#b27b51", "#557ea8", "#a66080", "#909452"];
-
 export function BrandSwitcher<T extends string>({
   brands,
   value,
   onChange,
   maxVisible = 3,
 }: {
-  brands: { id: T; name: string }[];
+  brands: { id: T; name: string; domain?: string; src?: string }[];
   value: T;
   onChange: (brand: T) => void;
   maxVisible?: number;
@@ -37,8 +36,6 @@ export function BrandSwitcher<T extends string>({
   }
 
   const overflow = brands.filter((brand) => !visible.some((item) => item.id === brand.id));
-  const colorFor = (id: T) =>
-    BRAND_COLORS[brands.findIndex((brand) => brand.id === id) % BRAND_COLORS.length];
 
   return (
     <fieldset
@@ -79,12 +76,14 @@ export function BrandSwitcher<T extends string>({
               }
               onClick={() => onChange(brand.id)}
             >
-              <span
-                className="hc-brand-disc"
-                style={{ backgroundColor: colorFor(brand.id) }}
-                aria-hidden="true"
-              >
-                {brand.name[0]}
+              <span className="hc-brand-disc" aria-hidden="true">
+                <BrandPill
+                  name={brand.name}
+                  domain={brand.domain}
+                  src={brand.src}
+                  className="hc-brand-logo"
+                  iconOnly
+                />
               </span>
             </TooltipTrigger>
             <TooltipContent
@@ -93,7 +92,7 @@ export function BrandSwitcher<T extends string>({
               className="hc-brand-tooltip"
               data-input={input}
             >
-              {brand.name}
+              <BrandPill name={brand.name} domain={brand.domain} src={brand.src} />
             </TooltipContent>
           </Tooltip>
         ))}
@@ -127,14 +126,7 @@ export function BrandSwitcher<T extends string>({
             >
               {overflow.map((brand) => (
                 <DropdownMenuRadioItem key={brand.id} value={brand.id}>
-                  <span
-                    className="hc-brand-menu-initial"
-                    style={{ backgroundColor: colorFor(brand.id) }}
-                    aria-hidden="true"
-                  >
-                    {brand.name[0]}
-                  </span>
-                  {brand.name}
+                  <BrandPill name={brand.name} domain={brand.domain} src={brand.src} />
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
