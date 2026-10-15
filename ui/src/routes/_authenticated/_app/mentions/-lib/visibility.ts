@@ -37,12 +37,4 @@ export function groupVisibilityResults(results: VisibilityResult[]) {
   return [...rows.values()].sort((a, b) => a.promptPosition - b.promptPosition);
 }
 
-export function safeSourceURL(value: string) {
-  try {
-    const url = new URL(value);
-
-    return url.protocol === "https:" || url.protocol === "http:" ? url.href : undefined;
-  } catch {
-    return undefined;
-  }
-}
+export { safeSourceURL } from "@/lib/source-url";

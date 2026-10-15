@@ -1,24 +1,16 @@
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { BrandPill } from "@/components/blocks/brand-pill";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { ENGINES } from "../-lib/data";
 import {
   HOME_BRANDS,
   HOME_LOGOS,
-  type HomeAnswer,
   type HomeBrand,
   homeEvidence,
   mentionRate,
 } from "../-lib/home-evidence";
 import C from "../-locales/home-signal.en.json";
+import M from "../-locales/mvp.en.json";
+import { AnswerFeed } from "./answer-feed";
 import { Icon } from "./common";
 import { HomeBrandText } from "./home-brand-text";
 
@@ -27,22 +19,14 @@ export function HomeSignal({
   topic,
   engines,
   days,
-  goal,
   onDaysChange,
-  searchOpen,
-  onSearchOpenChange,
 }: {
   brand: HomeBrand;
   topic: string;
   engines: string[];
   days: string;
-  goal: string;
   onDaysChange: (days: string) => void;
-  searchOpen: boolean;
-  onSearchOpenChange: (open: boolean) => void;
 }) {
-  const [selected, setSelected] = useState<HomeAnswer | null>(null);
-  const [search, setSearch] = useState("");
   const definition = HOME_BRANDS[brand];
   const period = Number(days);
   const scoped = homeEvidence(brand).filter(
@@ -78,32 +62,6 @@ export function HomeSignal({
     return `${index === 0 ? "M" : "L"} ${(index / (bucketCount - 1)) * 600} ${180 - value * 1.6}`;
   }).join(" ");
   const latest = [...current].reverse().slice(0, 4);
-  const recentMisses = [...missing].reverse().slice(0, 3);
-  const engineName = (id: string) => ENGINES.find((engine) => engine.id === id)?.name ?? id;
-  const searchResults = [...homeEvidence(brand)]
-    .reverse()
-    .filter(
-      (answer, index, answers) =>
-        answers.findIndex(
-          (item) => item.prompt === answer.prompt && item.engine === answer.engine,
-        ) === index,
-    )
-    .filter((answer) =>
-      `${answer.prompt} ${engineName(answer.engine)}`
-        .toLowerCase()
-        .includes(search.toLowerCase().trim()),
-    )
-    .slice(0, 6);
-
-  function downloadBrief() {
-    const text = `# ${definition.name}: visibility brief\n\nDesign study — synthetic evidence, not live research.\n\nGoal: ${goal}\nScope: ${topic}, ${days} days; ${engines.map(engineName).join(", ")}\n\nMentioned in ${rate.toFixed(1)}% of ${current.length} sample answers.\n\n## Comparison\n${ranking.map((item) => `- ${item.name}: ${item.rate.toFixed(1)}%`).join("\n")}\n\n## Questions to investigate\n${recentMisses.map((answer) => `- ${answer.prompt} (${engineName(answer.engine)}, ${answer.date})`).join("\n")}\n\nCheck real answers and sources before proposing changes.\n`;
-    const url = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${brand}-demo-visibility-brief.md`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
 
   return (
     <div className="hc-evidence">
@@ -222,136 +180,16 @@ export function HomeSignal({
             />
           </p>
         </section>
-        <section className="hc-answer-feed" aria-labelledby="hc-answers-title">
-          <h2 id="hc-answers-title" className="sr-only">
-            {C.latest}
-          </h2>
-          {latest.map((answer) => (
-            <button
-              type="button"
-              className="hc-answer-row"
-              key={answer.id}
-              onClick={() => setSelected(answer)}
-            >
-              <span className="hc-answer-meta">
-                <BrandPill
-                  name={engineName(answer.engine)}
-                  domain={ENGINES.find((engine) => engine.id === answer.engine)?.domain}
-                />
-                <small>{answer.date}</small>
-              </span>
-              <span className="hc-answer-text">
-                <HomeBrandText text={answer.prompt} />
-              </span>
-              <span className="hc-answer-outcome">
-                <span
-                  className={
-                    answer.mentions.includes(definition.name) ? "hc-mentioned" : "hc-absent"
-                  }
-                >
-                  {answer.mentions.includes(definition.name) ? C.mentioned : C.absent}
-                </span>
-                <span aria-hidden="true">{C.separator}</span>
-                {answer.mentions.length ? (
-                  <span className="hc-mentioned-brands">
-                    {answer.mentions.map((name) => (
-                      <BrandPill key={name} name={name} {...HOME_LOGOS[name]} iconOnly />
-                    ))}
-                  </span>
-                ) : (
-                  C.noBrands
-                )}
-              </span>
-            </button>
-          ))}
-        </section>
-        <section className="hc-agent-brief" aria-labelledby="hc-agent-title">
-          <div className="hc-section-heading">
-            <h2 id="hc-agent-title">
-              <Icon name="brief" size={13} />
-              {C.agent}
-            </h2>
-          </div>
-          <p>{C.agentLead}</p>
-          <Button variant="ghost" onClick={downloadBrief}>
-            {C.download}
-          </Button>
-        </section>
+        <AnswerFeed answers={latest} brand={brand} />
+        <Link
+          from="/dev/explorations/home-context"
+          to="/dev/explorations/home-context"
+          search={(previous) => ({ ...previous, view: "mentions", brand })}
+          className="hc-text-link"
+        >
+          {M.viewMentions}
+        </Link>
       </aside>
-      <Dialog open={searchOpen} onOpenChange={onSearchOpenChange}>
-        <DialogContent className="hc-command-search">
-          <DialogHeader>
-            <DialogTitle>{C.searchTitle}</DialogTitle>
-            <DialogDescription>{C.searchDescription}</DialogDescription>
-          </DialogHeader>
-          <Input
-            aria-label={C.searchTitle}
-            placeholder={C.searchPlaceholder}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <div className="hc-search-results">
-            {searchResults.length ? (
-              searchResults.map((answer) => (
-                <button
-                  key={answer.id}
-                  type="button"
-                  onClick={() => {
-                    onSearchOpenChange(false);
-                    setSelected(answer);
-                  }}
-                >
-                  <span className="hc-search-result-text">
-                    <HomeBrandText text={answer.prompt} />
-                    <span className="hc-search-result-brand">
-                      <BrandPill
-                        name={engineName(answer.engine)}
-                        domain={ENGINES.find((engine) => engine.id === answer.engine)?.domain}
-                      />
-                    </span>
-                  </span>
-                  <Icon name="next" size={14} />
-                </button>
-              ))
-            ) : (
-              <p>{C.noResults}</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={selected !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelected(null);
-        }}
-      >
-        <DialogContent className="hc-answer-panel">
-          <DialogHeader>
-            <DialogTitle>{selected && <HomeBrandText text={selected.prompt} />}</DialogTitle>
-            <DialogDescription>
-              {selected && (
-                <span className="hc-answer-meta">
-                  <BrandPill
-                    name={engineName(selected.engine)}
-                    domain={ENGINES.find((engine) => engine.id === selected.engine)?.domain}
-                  />
-                  <span>{`${selected.date} · Synthetic answer`}</span>
-                </span>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="hc-answer-detail">
-            <HomeBrandText
-              text={
-                selected?.mentions.length
-                  ? `This simulated answer recommends investigating ${selected.mentions.join(" and ")}.`
-                  : "This simulated answer does not mention any tracked brand."
-              }
-            />
-          </p>
-          <p className="hc-caption">{C.detailNote}</p>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

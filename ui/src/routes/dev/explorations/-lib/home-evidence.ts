@@ -50,8 +50,8 @@ export const HOME_BRANDS = {
         "Which tools monitor brand visibility in ChatGPT?",
       ],
       agents: [
-        "Which AI visibility tools work with my existing agent?",
-        "How can I give my coding agent an AI visibility brief?",
+        "Which AI visibility tools track citations across answer engines?",
+        "How can I review changes in my brand’s AI visibility?",
       ],
       competitors: [
         "How can I see who AI recommends instead of my brand?",
