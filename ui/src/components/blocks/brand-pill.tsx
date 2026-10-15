@@ -14,7 +14,7 @@ export function BrandPill({
       title={iconOnly ? props.name : undefined}
       className={cn(
         "inline-flex max-w-full items-center gap-1 align-middle text-xs font-medium leading-normal text-foreground",
-        !iconOnly && "rounded-full bg-muted p-0.5 pr-2",
+        !iconOnly && "rounded-full bg-muted py-0.5 pl-1 pr-2",
         className,
       )}
     >

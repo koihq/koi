@@ -103,10 +103,7 @@ html[data-exploration-theme="home-context"] {
   color: #fff;
   font-size: 11px;
   font-weight: 500;
-  opacity: 0.55;
-  transition:
-    opacity 160ms var(--ease-out),
-    transform 160ms var(--ease-out);
+  transition: transform 160ms var(--ease-out);
 }
 .hc-brand-avatar {
   box-shadow: 0 0 0 1px var(--background);
@@ -124,7 +121,6 @@ html[data-exploration-theme="home-context"] {
   pointer-events: none;
   transition: opacity 160ms var(--ease-out);
 }
-.hc-brand-avatar[aria-pressed="true"] .hc-brand-disc,
 .hc-brand-avatar[aria-pressed="true"]::after {
   opacity: 1;
 }
@@ -203,9 +199,6 @@ html[data-exploration-theme="home-context"]
   transition-duration: 0ms;
 }
 @media (hover: hover) and (pointer: fine) {
-  .hc-brand-avatar[aria-pressed="false"]:hover .hc-brand-disc {
-    opacity: 0.85;
-  }
   .hc-brand-overflow:hover {
     color: var(--hc-text);
     background: #ffffff0e;
