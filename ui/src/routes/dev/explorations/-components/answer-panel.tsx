@@ -14,6 +14,71 @@ import C from "../-locales/home-signal.en.json";
 import M from "../-locales/mvp.en.json";
 import { HomeBrandText } from "./home-brand-text";
 
+export function AnswerContent({
+  result,
+  brandName,
+  stopped,
+}: {
+  result: VisibilityResult;
+  brandName: string;
+  stopped: boolean;
+}) {
+  return (
+    <div className="hc-answer-content">
+      <div className="hc-answer-outcome">
+        <BrandPill name={brandName} {...HOME_LOGOS[brandName]} />
+        <span>{result.outcome ? M[result.outcome] : stopped ? M.notCollected : M.pending}</span>
+      </div>
+      <blockquote className="hc-original-question">
+        <HomeBrandText text={result.promptText} />
+      </blockquote>
+      <p className="hc-answer-detail">
+        {result.rawAnswer ? (
+          <HomeBrandText text={result.rawAnswer} />
+        ) : result.outcome === "error" ? (
+          M.answerFailed
+        ) : result.outcome === null && !stopped ? (
+          M.answerPending
+        ) : (
+          M.noAnswer
+        )}
+      </p>
+      {result.appearances.length > 0 && (
+        <section className="hc-detail-section" aria-label={M.appearances}>
+          <h3>{M.appearances}</h3>
+          {result.appearances.map((appearance) => (
+            <div key={appearance.competitorId ?? appearance.name}>
+              <BrandPill name={appearance.name} {...HOME_LOGOS[appearance.name]} />
+              {appearance.evidence.map((evidence) => (
+                <p key={`${evidence.kind}:${evidence.value}`}>{evidence.value}</p>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
+      <section className="hc-detail-section" aria-label={M.sources}>
+        <h3>{M.sources}</h3>
+        {result.sources.length ? (
+          result.sources.map((source) => {
+            const url = safeSourceURL(source);
+
+            return url ? (
+              <a key={source} href={url} target="_blank" rel="noopener noreferrer">
+                {source}
+              </a>
+            ) : (
+              <p key={source}>{source}</p>
+            );
+          })
+        ) : (
+          <p>{M.noSources}</p>
+        )}
+      </section>
+      <p className="hc-caption">{C.detailNote}</p>
+    </div>
+  );
+}
+
 export function AnswerPanel({
   answer,
   result,
@@ -52,58 +117,7 @@ export function AnswerPanel({
             </span>
           </DialogDescription>
         </DialogHeader>
-        {result && (
-          <>
-            <div className="hc-answer-outcome">
-              <BrandPill name={brandName} {...HOME_LOGOS[brandName]} />
-              <span>
-                {result.outcome ? M[result.outcome] : stopped ? M.notCollected : M.pending}
-              </span>
-            </div>
-            <p className="hc-answer-detail">
-              {result.rawAnswer ? (
-                <HomeBrandText text={result.rawAnswer} />
-              ) : result.outcome === "error" ? (
-                M.answerFailed
-              ) : result.outcome === null && !stopped ? (
-                M.answerPending
-              ) : (
-                M.noAnswer
-              )}
-            </p>
-            {result.appearances.length > 0 && (
-              <section className="hc-detail-section" aria-label={M.appearances}>
-                <h3>{M.appearances}</h3>
-                {result.appearances.map((appearance) => (
-                  <div key={appearance.competitorId ?? appearance.name}>
-                    <BrandPill name={appearance.name} {...HOME_LOGOS[appearance.name]} />
-                    {appearance.evidence.map((evidence) => (
-                      <p key={`${evidence.kind}:${evidence.value}`}>{evidence.value}</p>
-                    ))}
-                  </div>
-                ))}
-              </section>
-            )}
-            <section className="hc-detail-section" aria-label={M.sources}>
-              <h3>{M.sources}</h3>
-              {result.sources.length ? (
-                result.sources.map((source) => {
-                  const url = safeSourceURL(source);
-                  return url ? (
-                    <a key={source} href={url} target="_blank" rel="noopener noreferrer">
-                      {source}
-                    </a>
-                  ) : (
-                    <p key={source}>{source}</p>
-                  );
-                })
-              ) : (
-                <p>{M.noSources}</p>
-              )}
-            </section>
-            <p className="hc-caption">{C.detailNote}</p>
-          </>
-        )}
+        {result && <AnswerContent result={result} brandName={brandName} stopped={stopped} />}
       </DialogContent>
     </Dialog>
   );

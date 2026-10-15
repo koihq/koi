@@ -116,8 +116,10 @@ export type HomeAnswer = {
 // Fixed, synthetic evidence for the design study. Never presented as live collection.
 export function homeEvidence(brand: HomeBrand): HomeAnswer[] {
   const definition = HOME_BRANDS[brand];
-  return Array.from({ length: 90 }, (_, day) =>
-    Object.entries(definition.topics).flatMap(([topic, prompts], topicIndex) =>
+  return Array.from({ length: 180 }, (_, index) => {
+    const day = index - 90;
+
+    return Object.entries(definition.topics).flatMap(([topic, prompts], topicIndex) =>
       prompts.flatMap((prompt, promptIndex) =>
         ENGINES.map((engine, engineIndex) => {
           const id = `${brand}:${day}:${topic}:${promptIndex}:${engine.id}`;
@@ -138,8 +140,8 @@ export function homeEvidence(brand: HomeBrand): HomeAnswer[] {
           };
         }),
       ),
-    ),
-  ).flat();
+    );
+  }).flat();
 }
 
 export function mentionRate(answers: HomeAnswer[], name: string) {

@@ -1,42 +1,39 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { AccountMenu } from "./-components/account-menu";
-import { AnswerFeed } from "./-components/answer-feed";
 import { BrandSwitcher } from "./-components/brand-switcher";
 import { Icon } from "./-components/common";
 import { CompetitorEditor } from "./-components/competitor-editor";
 import { CompetitorList } from "./-components/competitor-list";
 import { HomeSignal } from "./-components/home-signal";
 import { copy, ListPagination, LocalChoice } from "./-components/list-controls";
+import { PromptDetail } from "./-components/prompt-detail";
 import { PromptEditor } from "./-components/prompt-editor";
 import { PromptList } from "./-components/prompt-list";
 import { SettingsForm } from "./-components/settings-form";
 import { useExplorationState } from "./-hooks/use-exploration-state";
-import { ENGINES } from "./-lib/data";
 import {
-  collectionAnswers,
+  type ExplorationSearch,
   type ExplorationState,
   type ExplorationView,
   type PreviewBrand,
   pageOf,
   parseExplorationSearch,
-  resultForState,
 } from "./-lib/exploration-fixtures";
 import { HOME_BRANDS, HOME_LOGOS, type HomeBrand } from "./-lib/home-evidence";
+import {
+  buildEvidence,
+  filterPromptRows,
+  type PromptRow,
+  promptRows,
+} from "./-lib/prompt-visibility";
 import C from "./-locales/mvp.en.json";
+import V from "./-locales/prompt-visibility.en.json";
 import "./-styles.css";
 import "./-home-context.css";
 
@@ -45,16 +42,9 @@ export const Route = createFileRoute("/dev/explorations/home-context")({
   component: HomeContext,
 });
 
-const DESTINATIONS = [
-  { view: "visibility", icon: "overview" },
-  { view: "mentions", icon: "quote" },
-  { view: "prompts", icon: "prompts" },
-  { view: "competitors", icon: "competitors" },
-] as const;
-const MAX_VISIBLE_BRANDS = 3;
-
 function HomeContext() {
   const { state } = Route.useSearch();
+
   return <Workspace key={state ?? "populated"} />;
 }
 
@@ -62,18 +52,71 @@ function Workspace() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const brand = search.brand ?? "deja";
-  const view = search.view ?? "visibility";
+  const view =
+    search.view === "settings" || search.view === "competitors" ? search.view : "visibility";
   const state = useExplorationState(search.state);
-  const [periods, setPeriods] = useState<Partial<Record<HomeBrand, string>>>({});
   const [signedOut, setSignedOut] = useState(false);
   const [recovered, setRecovered] = useState(false);
+  const preferences = useRef<
+    Partial<Record<HomeBrand, Pick<ExplorationSearch, "days" | "engine">>>
+  >({});
+  const listEntry = useRef<{ search: ExplorationSearch; id: string; scroll: number } | null>(null);
+  const previousPage = useRef({ brand, view, promptId: search.promptId, signedOut });
   const data = state.brands[brand];
-  const previousPage = useRef(`${brand}:${view}:false`);
+  const days = search.days ?? 30;
+  const records = useMemo(() => buildEvidence(brand, search.state), [brand, search.state]);
+  const rows = useMemo(
+    () => promptRows(records, brand, data, days, search.engine),
+    [records, brand, data, days, search.engine],
+  );
+  const selected = search.promptId
+    ? rows.find((row) => row.prompt.id === search.promptId)
+    : undefined;
   const options = (Object.keys(HOME_BRANDS) as HomeBrand[]).map((id) => ({
     id,
     name: state.brands[id].settings.name,
     ...HOME_LOGOS[HOME_BRANDS[id].name],
   }));
+
+  function update(patch: Partial<ExplorationSearch>) {
+    void navigate({
+      search: (previous) => ({ ...previous, ...patch }),
+      replace: true,
+      resetScroll: false,
+    });
+  }
+
+  const listSearch = {
+    ...(listEntry.current?.search ?? search),
+    view: "visibility" as const,
+    brand,
+    promptId: undefined,
+    answerId: undefined,
+    responseEngine: undefined,
+  };
+  const back = (
+    <Link
+      from="/dev/explorations/home-context"
+      to="/dev/explorations/home-context"
+      search={listSearch}
+      className="hc-text-link"
+      onClick={(event) => {
+        if (
+          listEntry.current &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey &&
+          event.button === 0
+        ) {
+          event.preventDefault();
+          window.history.back();
+        }
+      }}
+    >
+      {V.allPrompts}
+    </Link>
+  );
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -96,14 +139,55 @@ function Workspace() {
   }, []);
 
   useLayoutEffect(() => {
-    document.title = `${C[view]} · Koi`;
-    const page = `${brand}:${view}:${signedOut}`;
-    if (previousPage.current !== page) {
-      document.getElementById("hc-page-heading")?.focus({ preventScroll: true });
-      window.scrollTo({ top: 0, behavior: "instant" });
-      previousPage.current = page;
+    document.title = `${view === "visibility" && selected ? selected.prompt.text : C[view]} · Koi`;
+    const previous = previousPage.current;
+    if (
+      previous.brand !== brand ||
+      previous.view !== view ||
+      previous.promptId !== search.promptId ||
+      previous.signedOut !== signedOut
+    ) {
+      const returning =
+        previous.brand === brand && previous.promptId && !search.promptId && view === "visibility";
+      const link = returning
+        ? [...document.querySelectorAll<HTMLElement>("[data-prompt-id]")].find(
+            (element) =>
+              element.dataset.promptId === previous.promptId && element.offsetParent !== null,
+          )
+        : undefined;
+      (link ?? document.getElementById("hc-page-heading"))?.focus({ preventScroll: true });
+      if (returning && listEntry.current)
+        window.scrollTo({ top: listEntry.current.scroll, behavior: "instant" });
+      previousPage.current = { brand, view, promptId: search.promptId, signedOut };
     }
-  }, [brand, view, signedOut]);
+  }, [brand, view, search.promptId, signedOut, selected]);
+
+  const signal = (
+    <HomeSignal
+      key={`${brand}:${selected?.prompt.id ?? "all"}`}
+      brand={brand}
+      data={data}
+      records={records}
+      scope={{
+        days,
+        engine: search.engine,
+        promptIds: selected
+          ? [selected.prompt.id]
+          : data.prompts.filter((item) => item.confirmed).map((item) => item.id),
+      }}
+      compareId={search.compareId}
+      onCompare={(compareId) => update({ compareId })}
+      onDaysChange={(next) => update({ days: next, answerId: undefined })}
+      onEngineChange={(engine) =>
+        update({ engine, responseEngine: undefined, answerId: undefined })
+      }
+      onManage={() =>
+        void navigate({
+          search: { ...search, view: "competitors", promptId: undefined, answerId: undefined },
+        })
+      }
+    />
+  );
 
   if (signedOut)
     return (
@@ -128,8 +212,14 @@ function Workspace() {
         <BrandSwitcher
           brands={options}
           value={brand}
-          onChange={(next) => void navigate({ search: { ...search, brand: next } })}
-          maxVisible={MAX_VISIBLE_BRANDS}
+          maxVisible={3}
+          onChange={(next) => {
+            preferences.current[brand] = { days: search.days, engine: search.engine };
+            listEntry.current = null;
+            void navigate({
+              search: { brand: next, state: search.state, ...preferences.current[next] },
+            });
+          }}
         />
         <AccountMenu brand={brand} onLogout={() => setSignedOut(true)} />
       </header>
@@ -146,78 +236,117 @@ function Workspace() {
               </Button>
             )}
           </section>
-        ) : view === "visibility" ? (
-          <>
-            <h1 id="hc-page-heading" tabIndex={-1} className="sr-only">
-              {C.visibility}
-            </h1>
-            {search.state === "empty" || search.state === "review" ? (
-              <div className="hc-evidence">
-                <section className="hc-evidence-main hc-management">
-                  <p>{C.emptyMentions}</p>
-                  <TrackingStatus data={data} brand={brand} />
-                </section>
-              </div>
-            ) : (
-              <HomeSignal
-                key={brand}
-                brand={brand}
-                topic={brand === "deja" ? "alternatives" : "discovery"}
-                engines={ENGINES.map((engine) => engine.id)}
-                days={periods[brand] ?? "30"}
-                onDaysChange={(days) => setPeriods((current) => ({ ...current, [brand]: days }))}
-              />
-            )}
-          </>
-        ) : view === "mentions" ? (
-          <Mentions key={`${brand}:${view}`} brand={brand} data={data} scenario={search.state} />
         ) : view === "settings" ? (
           <section className="hc-settings">
-            <Heading view={view} />
+            <Link
+              from="/dev/explorations/home-context"
+              to="/dev/explorations/home-context"
+              search={{ ...search, view: "visibility", promptId: undefined }}
+              className="hc-text-link"
+            >
+              {V.back}
+            </Link>
+            <Heading view="settings" />
             <SettingsForm
               key={brand}
               brand={data.settings}
               onSave={(request) => state.saveBrand(brand, request)}
             />
           </section>
-        ) : (
-          <Management
-            key={`${brand}:${view}`}
-            kind={view}
-            brand={brand}
-            state={state}
-            scenario={search.state}
-          />
-        )}
-      </main>
-      <div className="hc-dock-group">
-        <nav className="hc-dock" aria-label={C.navigation}>
-          {DESTINATIONS.map((destination) => (
+        ) : view === "competitors" ? (
+          <>
             <Link
-              key={destination.view}
               from="/dev/explorations/home-context"
               to="/dev/explorations/home-context"
-              search={{ ...search, view: destination.view, brand }}
-              aria-current={view === destination.view ? "page" : undefined}
-              aria-label={C[destination.view]}
-              title={C[destination.view]}
+              search={{ ...search, view: "visibility", promptId: undefined }}
+              className="hc-text-link"
             >
-              <Icon name={destination.icon} />
-              <span className="hc-dock-label">{C[destination.view]}</span>
+              {V.back}
             </Link>
-          ))}
-        </nav>
-      </div>
+            <Management
+              key={`${brand}:competitors`}
+              kind="competitors"
+              brand={brand}
+              state={state}
+              scenario={search.state}
+              rows={rows}
+              search={search}
+              onSearch={update}
+              onOpen={() => {}}
+            />
+          </>
+        ) : search.promptId ? (
+          selected ? (
+            <PromptDetail
+              key={`${brand}:${selected.prompt.id}`}
+              row={selected}
+              records={records}
+              brand={brand}
+              brandName={data.settings.name}
+              search={search}
+              onSearch={update}
+              onSave={(text, id) => state.savePrompt(brand, text, id)}
+              back={back}
+            >
+              {signal}
+            </PromptDetail>
+          ) : (
+            <section className="hc-empty">
+              <h1 id="hc-page-heading" tabIndex={-1}>
+                {V.promptMissing}
+              </h1>
+              {back}
+            </section>
+          )
+        ) : (
+          <div className="hc-visibility-page">
+            <h1 id="hc-page-heading" tabIndex={-1} className="sr-only">
+              {C.visibility}
+            </h1>
+            <p className="hc-scope-note">{copy(V.scopeLabel, { brand: data.settings.name })}</p>
+            {signal}
+            {(search.state === "empty" || search.state === "review") && (
+              <TrackingStatus data={data} brand={brand} />
+            )}
+            <Management
+              key={`${brand}:prompts`}
+              kind="prompts"
+              brand={brand}
+              state={state}
+              scenario={search.state}
+              rows={rows}
+              search={search}
+              onSearch={update}
+              onOpen={(id) => {
+                listEntry.current = { search, id, scroll: window.scrollY };
+              }}
+            />
+          </div>
+        )}
+        <p className="hc-preview-note">{V.previewLabel}</p>
+      </main>
     </div>
   );
 }
 
-function Heading({ view, children }: { view: ExplorationView; children?: ReactNode }) {
+function Heading({
+  view,
+  children,
+  secondary = false,
+}: {
+  view: ExplorationView;
+  children?: ReactNode;
+  secondary?: boolean;
+}) {
   return (
     <div className="hc-section-heading hc-view-heading">
-      <h1 id="hc-page-heading" tabIndex={-1}>
-        {C[view]}
-      </h1>
+      {secondary ? (
+        <h2>{C[view]}</h2>
+      ) : (
+        <h1 id="hc-page-heading" tabIndex={-1}>
+          {C[view]}
+        </h1>
+      )}
       <div className="hc-actions">{children}</div>
     </div>
   );
@@ -235,14 +364,9 @@ function TrackingStatus({ data, brand }: { data: PreviewBrand; brand: HomeBrand 
       </p>
       <div className="hc-actions">
         {!data.reviewed.prompts && (
-          <Link
-            from="/dev/explorations/home-context"
-            to="/dev/explorations/home-context"
-            search={(previous) => ({ ...previous, view: "prompts", brand })}
-            className="hc-text-link"
-          >
+          <a href="#hc-prompts" className="hc-text-link">
             {C.reviewPromptsLink}
-          </Link>
+          </a>
         )}
         {!data.reviewed.competitors && (
           <Link
@@ -259,148 +383,46 @@ function TrackingStatus({ data, brand }: { data: PreviewBrand; brand: HomeBrand 
   );
 }
 
-function Mentions({
-  brand,
-  data,
-  scenario,
-}: {
-  brand: HomeBrand;
-  data: PreviewBrand;
-  scenario?: ExplorationState;
-}) {
-  const [day, setDay] = useState(89);
-  const [engine, setEngine] = useState("all");
-  const [outcome, setOutcome] = useState("all");
-  const [page, setPage] = useState(1);
-  const answers = collectionAnswers(brand, day, scenario);
-  const collectionState = day === 89 ? scenario : undefined;
-  const pairs = answers.map((answer, index) => ({
-    answer,
-    result: resultForState(answer, brand, index, collectionState),
-  }));
-  const filtered = pairs.filter(
-    ({ result }) =>
-      (engine === "all" || result.engine === engine) &&
-      (outcome === "all" || (result.outcome ?? "pending") === outcome),
-  );
-  const response = pageOf(filtered, page, 40);
-  const collections = Array.from({ length: 90 }, (_, index) => ({
-    value: String(89 - index),
-    label: new Date(Date.UTC(2026, 6, 16 + 89 - index)).toISOString().slice(0, 10),
-  }));
-
-  function clearFilters() {
-    setEngine("all");
-    setOutcome("all");
-    setPage(1);
-  }
-
-  return (
-    <section className="hc-mentions">
-      <Heading view="mentions">
-        {answers.length > 0 && (
-          <LocalChoice
-            label={C.collection}
-            value={String(day)}
-            options={collections}
-            onChange={(value) => {
-              setDay(Number(value));
-              setPage(1);
-            }}
-          />
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
-            {C.filters}
-            {engine !== "all" || outcome !== "all"
-              ? ` (${Number(engine !== "all") + Number(outcome !== "all")})`
-              : ""}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="hc-brand-menu">
-            <DropdownMenuLabel>{C.engine}</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={engine}
-              onValueChange={(value) => {
-                setEngine(value);
-                setPage(1);
-              }}
-            >
-              <DropdownMenuRadioItem value="all">{C.all}</DropdownMenuRadioItem>
-              {ENGINES.map((item) => (
-                <DropdownMenuRadioItem key={item.id} value={item.id}>
-                  {item.name}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-            <DropdownMenuLabel>{C.outcome}</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={outcome}
-              onValueChange={(value) => {
-                setOutcome(value);
-                setPage(1);
-              }}
-            >
-              <DropdownMenuRadioItem value="all">{C.all}</DropdownMenuRadioItem>
-              {(["mentioned", "cited", "miss", "error", "pending"] as const).map((value) => (
-                <DropdownMenuRadioItem key={value} value={value}>
-                  {C[value]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </Heading>
-      {collectionState === "running" || collectionState === "partial" ? (
-        <output className="hc-collection-status">
-          {copy(C.runProgress, {
-            completed: pairs.filter(({ result }) => result.outcome !== null).length,
-            total: pairs.length,
-          })}
-          {collectionState === "partial" && <span>{C.runFailed}</span>}
-        </output>
-      ) : null}
-      {answers.length === 0 ? (
-        <div className="hc-evidence-main hc-management">
-          <p>{C.emptyMentions}</p>
-          <TrackingStatus data={data} brand={brand} />
-        </div>
-      ) : response.items.length ? (
-        <AnswerFeed
-          key={`${day}:${engine}:${outcome}:${response.currentPage}`}
-          brand={brand}
-          answers={response.items.map((item) => item.answer)}
-          results={response.items.map((item) => item.result)}
-          stopped={collectionState === "partial"}
-        />
-      ) : (
-        <div className="hc-empty">
-          <p>{C.noMatches}</p>
-          <Button variant="ghost" onClick={clearFilters}>
-            {C.clearFilters}
-          </Button>
-        </div>
-      )}
-      <ListPagination page={response} pageSize={40} onPage={setPage} />
-    </section>
-  );
-}
-
 function Management({
   kind,
   brand,
   state,
   scenario,
+  rows,
+  search,
+  onSearch,
+  onOpen,
 }: {
   kind: "prompts" | "competitors";
   brand: HomeBrand;
   state: ReturnType<typeof useExplorationState>;
   scenario?: ExplorationState;
+  rows: PromptRow[];
+  search: ExplorationSearch;
+  onSearch: (patch: Partial<ExplorationSearch>) => void;
+  onOpen: (id: string) => void;
 }) {
   const data = state.brands[brand];
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [localQuery, setLocalQuery] = useState("");
+  const [localStatus, setLocalStatus] = useState("all");
+  const [localPage, setLocalPage] = useState(1);
+  const [localPageSize, setLocalPageSize] = useState(20);
+  const query = kind === "prompts" ? (search.q ?? "") : localQuery;
+  const status = kind === "prompts" ? (search.status ?? "all") : localStatus;
+  const page = kind === "prompts" ? (search.page ?? 1) : localPage;
+  const pageSize = kind === "prompts" ? (search.pageSize ?? 20) : localPageSize;
+  const setQuery = (q: string) =>
+    kind === "prompts" ? onSearch({ q, page: 1 }) : setLocalQuery(q);
+  const setStatus = (value: string) =>
+    kind === "prompts"
+      ? onSearch({ status: value as ExplorationSearch["status"], page: 1 })
+      : setLocalStatus(value);
+  const setPage = (value: number) =>
+    kind === "prompts" ? onSearch({ page: value }) : setLocalPage(value);
+  const setPageSize = (value: number) =>
+    kind === "prompts"
+      ? onSearch({ pageSize: value as 10 | 20 | 50, page: 1 })
+      : setLocalPageSize(value);
   const [editor, setEditor] = useState<{ item?: Prompt | Competitor }>();
   const [deleting, setDeleting] = useState<Prompt | Competitor>();
   const [deleteFailed, setDeleteFailed] = useState(false);
@@ -413,10 +435,10 @@ function Management({
     ("text" in item ? item.text : `${item.name} ${item.domain} ${item.githubRepo}`)
       .toLowerCase()
       .includes(text);
-  const promptPage = pageOf(data.prompts.filter(match), page, pageSize);
+  const promptPage = pageOf(filterPromptRows(rows, search), page, pageSize);
   const competitorPage = pageOf(data.competitors.filter(match), page, pageSize);
   const response = kind === "prompts" ? promptPage : competitorPage;
-  const hasItems = data[kind].length > 0;
+  const hasItems = kind === "prompts" ? rows.length > 0 : data.competitors.length > 0;
   const addLabel = kind === "prompts" ? C.addPrompt : C.addCompetitor;
   const initial = !data.reviewed.prompts && !data.reviewed.competitors;
   const draftBusy = scenario === "draft-queued" || scenario === "draft-running";
@@ -450,8 +472,11 @@ function Management({
   }
 
   return (
-    <section className="hc-evidence-main hc-management">
-      <Heading view={kind}>
+    <section
+      className="hc-evidence-main hc-management"
+      id={kind === "prompts" ? "hc-prompts" : undefined}
+    >
+      <Heading view={kind} secondary={kind === "prompts"}>
         <Button size="sm" variant="ghost" onClick={() => edit()}>
           <Icon name="add" size={16} />
           {addLabel}
@@ -480,21 +505,48 @@ function Management({
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
-            setPage(1);
+            if (kind === "competitors") setPage(1);
           }}
         />
         <LocalChoice
           label={C.status}
           value={status}
-          options={["all", "confirmed", "unconfirmed"].map((value) => ({
-            value,
-            label: C[value as "all" | "confirmed" | "unconfirmed"],
-          }))}
+          options={[
+            ...["all", "confirmed", "unconfirmed"].map((value) => ({
+              value,
+              label: C[value as "all" | "confirmed" | "unconfirmed"],
+            })),
+            ...(kind === "prompts" ? [{ value: "past", label: V.pastPrompts }] : []),
+          ]}
           onChange={(value) => {
             setStatus(value);
-            setPage(1);
+            if (kind === "competitors") setPage(1);
           }}
         />
+        {kind === "prompts" && (
+          <>
+            <LocalChoice
+              label={V.sort}
+              value={search.sort ?? "original"}
+              options={[
+                { value: "original", label: V.original },
+                { value: "prompt", label: V.sortPrompt },
+                { value: "rate", label: V.sortRate },
+                { value: "change", label: V.sortChange },
+              ]}
+              onChange={(value) => onSearch({ sort: value as ExplorationSearch["sort"], page: 1 })}
+            />
+            {search.sort && search.sort !== "original" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onSearch({ descending: !search.descending, page: 1 })}
+              >
+                {search.descending ? V.descending : V.ascending}
+              </Button>
+            )}
+          </>
+        )}
         {scenario !== "optional-off" && (
           <Button size="sm" variant="ghost" disabled={draftBusy} onClick={draft}>
             {draftFailed
@@ -521,7 +573,9 @@ function Management({
       {response.items.length ? (
         kind === "prompts" ? (
           <PromptList
-            items={promptPage.items}
+            rows={promptPage.items}
+            search={search}
+            onOpen={onOpen}
             onEdit={edit}
             onConfirm={(id) => state.confirm(brand, kind, id)}
             onDelete={remove}
@@ -541,9 +595,12 @@ function Management({
             <Button
               variant="ghost"
               onClick={() => {
-                setQuery("");
-                setStatus("all");
-                setPage(1);
+                if (kind === "prompts") onSearch({ q: undefined, status: undefined, page: 1 });
+                else {
+                  setQuery("");
+                  setStatus("all");
+                  setPage(1);
+                }
               }}
             >
               {C.clearFilters}
@@ -562,7 +619,7 @@ function Management({
           onPage={setPage}
           onPageSize={(value) => {
             setPageSize(value);
-            setPage(1);
+            if (kind === "competitors") setPage(1);
           }}
         />
       )}

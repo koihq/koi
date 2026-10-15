@@ -1,0 +1,245 @@
+import type { Prompt } from "@/api/prompts.api";
+import type { VisibilityResult } from "@/api/runs.api";
+import { ENGINES } from "./data";
+import {
+  type ExplorationSearch,
+  type ExplorationState,
+  type PreviewBrand,
+  resultForState,
+} from "./exploration-fixtures";
+import {
+  HOME_BRANDS,
+  HOME_LOGOS,
+  type HomeAnswer,
+  type HomeBrand,
+  homeEvidence,
+} from "./home-evidence";
+
+export type EvidenceRecord = { answer: HomeAnswer; result: VisibilityResult; stopped: boolean };
+export type MentionStats = {
+  mentioned: number;
+  completed: number;
+  rate: number | null;
+  previousRate: number | null;
+  changePoints: number | null;
+};
+export type ComparedBrand = {
+  id: string;
+  name: string;
+  domain?: string;
+  src?: string;
+  measured: boolean;
+};
+export type PromptRow = {
+  prompt: Prompt;
+  past: boolean;
+  stats: MentionStats;
+  engines: { id: string; rate: number | null }[];
+  leaders: ComparedBrand[];
+  leaderRate: number | null;
+};
+export type VisibilityScope = { days: number; engine?: string; promptIds: string[] };
+export const LAST_DAY = 89;
+
+export function buildEvidence(brand: HomeBrand, scenario?: ExplorationState): EvidenceRecord[] {
+  if (scenario === "empty" || scenario === "review") return [];
+
+  const days = new Map<number, HomeAnswer[]>();
+  for (const answer of homeEvidence(brand)) {
+    const entries = days.get(answer.day) ?? [];
+    entries.push(answer);
+    days.set(answer.day, entries);
+  }
+
+  return [...days.values()].flatMap((answers) =>
+    answers.reverse().map((answer, index) => ({
+      answer,
+      result: resultForState(answer, brand, index, answer.day === LAST_DAY ? scenario : undefined),
+      stopped: answer.day === LAST_DAY && scenario === "partial",
+    })),
+  );
+}
+
+export function comparedBrands(brand: HomeBrand, data: PreviewBrand): ComparedBrand[] {
+  return [
+    { id: brand, name: data.settings.name, ...HOME_LOGOS[HOME_BRANDS[brand].name], measured: true },
+    ...data.competitors
+      .filter((item) => item.confirmed)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        domain: item.domain || undefined,
+        measured: HOME_BRANDS[brand].rivals.some(
+          (_, index) => item.id === `${brand}:competitor:${index}`,
+        ),
+      })),
+  ];
+}
+
+export function completed(record: EvidenceRecord) {
+  return (
+    record.result.outcome === "mentioned" ||
+    record.result.outcome === "cited" ||
+    record.result.outcome === "miss"
+  );
+}
+
+export function included(record: EvidenceRecord, brand: HomeBrand, target: string) {
+  return target === brand
+    ? record.result.outcome === "mentioned" || record.result.outcome === "cited"
+    : record.result.appearances.some((item) => item.competitorId === target);
+}
+
+export function inScope(records: EvidenceRecord[], scope: VisibilityScope, previous = false) {
+  const end = LAST_DAY + 1 - (previous ? scope.days : 0);
+  const ids = new Set(scope.promptIds);
+
+  return records.filter(
+    ({ answer, result }) =>
+      ids.has(result.promptId) &&
+      (!scope.engine || result.engine === scope.engine) &&
+      answer.day >= end - scope.days &&
+      answer.day < end,
+  );
+}
+
+export function rateFor(records: EvidenceRecord[], brand: HomeBrand, target = brand as string) {
+  const answers = records.filter(completed);
+  const mentioned = answers.filter((record) => included(record, brand, target)).length;
+
+  return {
+    mentioned,
+    completed: answers.length,
+    rate: answers.length ? (mentioned / answers.length) * 100 : null,
+  };
+}
+
+export function summarize(
+  records: EvidenceRecord[],
+  brand: HomeBrand,
+  scope: VisibilityScope,
+  target: ComparedBrand,
+): MentionStats {
+  const current = rateFor(target.measured ? inScope(records, scope) : [], brand, target.id);
+  const previous = rateFor(target.measured ? inScope(records, scope, true) : [], brand, target.id);
+
+  return {
+    ...current,
+    previousRate: previous.rate,
+    changePoints:
+      current.rate !== null && previous.rate !== null ? current.rate - previous.rate : null,
+  };
+}
+
+export function gapChange(you: MentionStats, other: MentionStats) {
+  return you.changePoints === null || other.changePoints === null
+    ? null
+    : you.changePoints - other.changePoints;
+}
+
+export function dailySeries(
+  records: EvidenceRecord[],
+  brand: HomeBrand,
+  scope: VisibilityScope,
+  target: ComparedBrand,
+) {
+  const selected = inScope(records, scope);
+  const byDay = new Map<number, EvidenceRecord[]>();
+  for (const record of selected) {
+    const entries = byDay.get(record.answer.day) ?? [];
+    entries.push(record);
+    byDay.set(record.answer.day, entries);
+  }
+
+  return Array.from({ length: scope.days }, (_, index) => {
+    const day = LAST_DAY + 1 - scope.days + index;
+    return {
+      day,
+      date: collectionDate(day),
+      ...rateFor(target.measured ? (byDay.get(day) ?? []) : [], brand, target.id),
+    };
+  });
+}
+
+export function collectionDate(day: number) {
+  return new Date(Date.UTC(2026, 6, 16 + day)).toISOString().slice(0, 10);
+}
+
+export function promptRows(
+  records: EvidenceRecord[],
+  brand: HomeBrand,
+  data: PreviewBrand,
+  days: number,
+  engine?: string,
+): PromptRow[] {
+  const prompts = new Map(data.prompts.map((prompt) => [prompt.id, { prompt, past: false }]));
+  for (const { result } of records) {
+    if (!prompts.has(result.promptId))
+      prompts.set(result.promptId, {
+        prompt: {
+          id: result.promptId,
+          brandId: brand,
+          text: result.promptText,
+          source: "manual",
+          confirmed: true,
+        },
+        past: true,
+      });
+  }
+  const brands = comparedBrands(brand, data);
+
+  return [...prompts.values()].map(({ prompt, past }) => {
+    const scope = { days, engine, promptIds: [prompt.id] };
+    const scores = brands.map((item) => ({
+      item,
+      rate: summarize(records, brand, scope, item).rate,
+    }));
+    const leaderRate = Math.max(0, ...scores.map((item) => item.rate ?? 0));
+
+    return {
+      prompt,
+      past,
+      stats: summarize(records, brand, scope, brands[0]),
+      engines: ENGINES.filter((item) => !engine || item.id === engine).map((item) => ({
+        id: item.id,
+        rate: summarize(records, brand, { ...scope, engine: item.id }, brands[0]).rate,
+      })),
+      leaders:
+        leaderRate > 0
+          ? scores.filter((item) => item.rate === leaderRate).map((item) => item.item)
+          : [],
+      leaderRate: leaderRate || null,
+    };
+  });
+}
+
+export function filterPromptRows(rows: PromptRow[], search: ExplorationSearch) {
+  const query = (search.q ?? "").trim().toLowerCase();
+  const status = search.status ?? "all";
+  const filtered = rows.filter(
+    ({ prompt, past }) =>
+      prompt.text.toLowerCase().includes(query) &&
+      (status === "past"
+        ? past
+        : !past && (status === "all" || prompt.confirmed === (status === "confirmed"))),
+  );
+  if (!search.sort || search.sort === "original") return filtered;
+
+  return filtered.sort((a, b) => {
+    if (search.sort === "prompt")
+      return a.prompt.text.localeCompare(b.prompt.text) * (search.descending ? -1 : 1);
+    const left = search.sort === "rate" ? a.stats.rate : a.stats.changePoints;
+    const right = search.sort === "rate" ? b.stats.rate : b.stats.changePoints;
+    if (left === null) return right === null ? 0 : 1;
+    if (right === null) return -1;
+    return (left - right) * (search.descending ? -1 : 1);
+  });
+}
+
+export function percent(value: number | null) {
+  return value === null ? "—" : `${Number(value.toFixed(1))}%`;
+}
+
+export function points(value: number) {
+  return Number(Math.abs(value).toFixed(1)).toString();
+}

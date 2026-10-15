@@ -30,15 +30,52 @@ export const STATES = [
 ] as const;
 export type ExplorationState = (typeof STATES)[number];
 
-export function parseExplorationSearch(search: Record<string, unknown>): {
+export type ExplorationSearch = {
   view?: ExplorationView;
   brand?: HomeBrand;
   state?: ExplorationState;
-} {
+  days?: 7 | 30 | 90;
+  engine?: string;
+  promptId?: string;
+  compareId?: string;
+  q?: string;
+  status?: "all" | "confirmed" | "unconfirmed" | "past";
+  sort?: "original" | "prompt" | "rate" | "change";
+  descending?: boolean;
+  page?: number;
+  pageSize?: 10 | 20 | 50;
+  responseEngine?: string;
+  answerId?: string;
+};
+
+export function parseExplorationSearch(search: Record<string, unknown>): ExplorationSearch {
+  const engine = (value: unknown) => ENGINES.find((item) => item.id === value)?.id;
+  const id = (value: unknown) =>
+    typeof value === "string" && value.length <= 200 ? value : undefined;
+  const days = Number(search.days);
+  const pageSize = Number(search.pageSize);
+  const page = Number(search.page);
+
   return {
     view: VIEWS.find((value) => value === search.view),
     brand: (Object.keys(HOME_BRANDS) as HomeBrand[]).find((value) => value === search.brand),
     state: STATES.find((value) => value === search.state),
+    days: days === 7 || days === 30 || days === 90 ? days : undefined,
+    engine: engine(search.engine),
+    promptId: id(search.promptId),
+    compareId: id(search.compareId),
+    q: typeof search.q === "string" ? search.q.slice(0, 500) : undefined,
+    status: (["all", "confirmed", "unconfirmed", "past"] as const).find(
+      (value) => value === search.status,
+    ),
+    sort: (["original", "prompt", "rate", "change"] as const).find(
+      (value) => value === search.sort,
+    ),
+    descending: search.descending === true || search.descending === "true" ? true : undefined,
+    page: Number.isSafeInteger(page) && page > 0 ? page : undefined,
+    pageSize: pageSize === 10 || pageSize === 20 || pageSize === 50 ? pageSize : undefined,
+    responseEngine: engine(search.responseEngine),
+    answerId: id(search.answerId),
   };
 }
 

@@ -1,195 +1,401 @@
-import { Link } from "@tanstack/react-router";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { BrandPill } from "@/components/blocks/brand-pill";
+import { Button } from "@/components/ui/button";
 import { ENGINES } from "../-lib/data";
+import type { PreviewBrand } from "../-lib/exploration-fixtures";
+import type { HomeBrand } from "../-lib/home-evidence";
 import {
-  HOME_BRANDS,
-  HOME_LOGOS,
-  type HomeBrand,
-  homeEvidence,
-  mentionRate,
-} from "../-lib/home-evidence";
-import C from "../-locales/home-signal.en.json";
-import M from "../-locales/mvp.en.json";
-import { AnswerFeed } from "./answer-feed";
-import { Icon } from "./common";
-import { HomeBrandText } from "./home-brand-text";
+  comparedBrands,
+  completed,
+  dailySeries,
+  type EvidenceRecord,
+  gapChange,
+  inScope,
+  percent,
+  points,
+  summarize,
+  type VisibilityScope,
+} from "../-lib/prompt-visibility";
+import C from "../-locales/prompt-visibility.en.json";
+import { copy, LocalChoice } from "./list-controls";
 
 export function HomeSignal({
   brand,
-  topic,
-  engines,
-  days,
+  data,
+  records,
+  scope,
+  compareId,
+  onCompare,
   onDaysChange,
+  onEngineChange,
+  onManage,
 }: {
   brand: HomeBrand;
-  topic: string;
-  engines: string[];
-  days: string;
-  onDaysChange: (days: string) => void;
+  data: PreviewBrand;
+  records: EvidenceRecord[];
+  scope: VisibilityScope;
+  compareId?: string;
+  onCompare: (id?: string) => void;
+  onDaysChange: (days: 7 | 30 | 90) => void;
+  onEngineChange: (engine?: string) => void;
+  onManage: () => void;
 }) {
-  const definition = HOME_BRANDS[brand];
-  const period = Number(days);
-  const scoped = homeEvidence(brand).filter(
-    (answer) => answer.topic === topic && engines.includes(answer.engine),
-  );
-  const current = scoped.filter((answer) => answer.day >= 90 - period);
-  const rate = mentionRate(current, definition.name);
-  const missing = current.filter((answer) => !answer.mentions.includes(definition.name));
-  const ranking = [definition.name, ...definition.rivals]
-    .map((name) => ({ name, rate: mentionRate(current, name) }))
-    .sort((a, b) => b.rate - a.rate);
-  const leader = ranking[0];
-  const bucketCount = period;
-  const points = Array.from({ length: bucketCount }, (_, index) => {
-    const start = 90 - period + Math.floor((index * period) / bucketCount);
-    const end = 90 - period + Math.floor(((index + 1) * period) / bucketCount);
-    return mentionRate(
-      current.filter((answer) => answer.day >= start && answer.day < end),
-      definition.name,
-    );
+  const titleId = useId();
+  const [active, setActive] = useState<number | null>(null);
+  const plot = useRef<SVGSVGElement | null>(null);
+  const [plotSize, setPlotSize] = useState({ width: 1000, height: 240 });
+
+  useLayoutEffect(() => {
+    const element = plot.current;
+    if (!element) return;
+
+    const resize = () =>
+      setPlotSize({
+        width: Math.max(240, element.getBoundingClientRect().width),
+        height: document.documentElement.clientWidth <= 640 ? 180 : 240,
+      });
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [records, scope.promptIds.length]);
+  const brands = comparedBrands(brand, data);
+  const you = brands[0];
+  const stats = summarize(records, brand, scope, you);
+  const rivals = brands
+    .slice(1)
+    .map((item) => ({ ...item, stats: summarize(records, brand, scope, item) }))
+    .sort((a, b) => (b.stats.rate ?? -1) - (a.stats.rate ?? -1) || a.name.localeCompare(b.name));
+  const selected = rivals.find((item) => item.id === compareId && item.stats.rate !== null);
+  const benchmark = selected ?? rivals.find((item) => item.stats.rate !== null);
+  const series = dailySeries(records, brand, scope, you);
+  const comparison = selected ? dailySeries(records, brand, scope, selected) : undefined;
+  const index = Math.min(active ?? series.length - 1, series.length - 1);
+  const current = series[index];
+  const excluded = inScope(records, scope).filter((record) => !completed(record)).length;
+  const gap =
+    stats.rate !== null && benchmark?.stats.rate != null ? benchmark.stats.rate - stats.rate : null;
+  const movement = benchmark ? gapChange(stats, benchmark.stats) : null;
+  const previousGap =
+    stats.previousRate !== null && benchmark?.stats.previousRate != null
+      ? benchmark.stats.previousRate - stats.previousRate
+      : null;
+  const formatDate = (value: string) =>
+    new Date(`${value}T12:00:00Z`).toLocaleDateString("en", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  const labelWidth = plotSize.width < 500 ? 64 : 144;
+  const plotWidth = plotSize.width - 36 - labelWidth;
+  const x = (i: number) => 36 + (i / Math.max(1, series.length - 1)) * plotWidth;
+  const y = (value: number) => 16 + ((100 - value) / 100) * (plotSize.height - 32);
+  const path = (values: typeof series) => {
+    let connected = false;
+
+    return values
+      .map((point, i) => {
+        if (point.rate === null) {
+          connected = false;
+          return "";
+        }
+        const segment = `${(connected ? "L" : "M") + x(i)},${y(point.rate)}`;
+        connected = true;
+        return segment;
+      })
+      .join(" ");
+  };
+  const last = series.reduce((found, point, i) => (point.rate !== null ? i : found), -1);
+  const otherLast =
+    comparison?.reduce((found, point, i) => (point.rate !== null ? i : found), -1) ?? -1;
+  const readout = copy(C.point, {
+    date: current.date,
+    brand: you.name,
+    rate: current.rate === null ? C.noData : percent(current.rate),
+    count: current.completed,
   });
-  const path = points
-    .map(
-      (value, index) =>
-        `${index === 0 ? "M" : "L"} ${(index / (points.length - 1)) * 600} ${180 - value * 1.6}`,
-    )
-    .join(" ");
-  const alternativePath = Array.from({ length: bucketCount }, (_, index) => {
-    const value = mentionRate(
-      current.filter((answer) => answer.day === 90 - period + index),
-      definition.rivals[0],
-    );
-    return `${index === 0 ? "M" : "L"} ${(index / (bucketCount - 1)) * 600} ${180 - value * 1.6}`;
-  }).join(" ");
-  const latest = [...current].reverse().slice(0, 4);
+  const otherReadout =
+    selected && comparison
+      ? copy(C.point, {
+          date: current.date,
+          brand: selected.name,
+          rate: comparison[index].rate === null ? C.noData : percent(comparison[index].rate),
+          count: comparison[index].completed,
+        })
+      : "";
+  const changeText =
+    stats.changePoints === null
+      ? C.noComparison
+      : Math.abs(stats.changePoints) < 0.05
+        ? C.unchanged
+        : copy(stats.changePoints > 0 ? C.up : C.down, { points: points(stats.changePoints) });
 
   return (
-    <div className="hc-evidence">
-      <div className="hc-evidence-main">
-        <section className="hc-visibility" aria-labelledby="hc-visibility-title">
-          <div className="hc-section-heading">
-            <span>{C.sampleDate}</span>
-          </div>
-          <h2 id="hc-visibility-title">
-            <HomeBrandText text={`${definition.name} in AI answers`} />
-          </h2>
-          <div className="hc-rate">
-            {rate.toFixed(1)}
-            <span>{C.percent}</span>
-          </div>
-          <p>
-            {`Mentioned in ${current.filter((answer) => answer.mentions.includes(definition.name)).length} of ${current.length} sample answers`}
-          </p>
+    <section className="hc-signal" aria-labelledby={titleId}>
+      <div className="hc-section-heading">
+        <h2 id={titleId}>{C.heading}</h2>
+        <LocalChoice
+          label={C.byEngine}
+          value={scope.engine ?? "all"}
+          options={[
+            { value: "all", label: C.allEngines },
+            ...ENGINES.map((item) => ({ value: item.id, label: item.name })),
+          ]}
+          onChange={(value) => onEngineChange(value === "all" ? undefined : value)}
+        />
+      </div>
+      <div className="hc-signal-metrics">
+        <div>
+          <div className="hc-rate">{percent(stats.rate)}</div>
+          <p>{copy(C.period, { days: scope.days })}</p>
+        </div>
+        <div className="hc-signal-change">
+          <strong>{changeText}</strong>
+          <p>{copy(C.previousPeriod, { days: scope.days })}</p>
+        </div>
+      </div>
+      <p className="hc-signal-count">
+        {stats.completed
+          ? copy(C.sampleCount, { mentioned: stats.mentioned, completed: stats.completed })
+          : C.noAnswers}
+      </p>
+      {stats.rate === null ? (
+        <p className="hc-empty">{C.noTrackedAnswers}</p>
+      ) : (
+        <figure className="hc-trend">
           <svg
-            className="hc-chart"
-            viewBox="0 0 600 200"
+            ref={plot}
+            viewBox={`0 0 ${plotSize.width} ${plotSize.height}`}
+            preserveAspectRatio="none"
             role="img"
-            aria-label={`${definition.name} mention rate over ${days} days, from ${points[0].toFixed(1)}% to ${points.at(-1)?.toFixed(1)}%. Each point groups answers within the selected period.`}
+            aria-label={C.chartDescription}
+            onPointerMove={(event) => {
+              const bounds = event.currentTarget.getBoundingClientRect();
+              setActive(
+                Math.max(
+                  0,
+                  Math.min(
+                    series.length - 1,
+                    Math.round(
+                      ((event.clientX - bounds.left - 36) / plotWidth) * (series.length - 1),
+                    ),
+                  ),
+                ),
+              );
+            }}
+            onPointerLeave={() => setActive(null)}
           >
-            {[20, 100, 180].map((y) => (
-              <path key={y} d={`M 0 ${y} H 600`} className="hc-chart-grid" />
+            {[0, 50, 100].map((value) => (
+              <text key={value} x="0" y={y(value) + 4} className="hc-trend-axis">
+                {percent(value)}
+              </text>
             ))}
-            <path d={path} className="hc-chart-line" />
-            <path d={alternativePath} className="hc-chart-alternative" />
+            <path d={path(series)} className="hc-trend-line" />
+            {comparison && (
+              <path d={path(comparison)} className="hc-trend-line hc-trend-comparison" />
+            )}
+            {series.map((point, i) =>
+              point.rate !== null &&
+              (i === 0 || series[i - 1].rate === null) &&
+              (i === series.length - 1 || series[i + 1].rate === null) ? (
+                <circle
+                  key={point.day}
+                  cx={x(i)}
+                  cy={y(point.rate)}
+                  r="3"
+                  className="hc-trend-dot"
+                />
+              ) : null,
+            )}
+            {last >= 0 && (
+              <circle cx={x(last)} cy={y(series[last].rate ?? 0)} r="4" className="hc-trend-dot" />
+            )}
+            {comparison && otherLast >= 0 && (
+              <circle
+                cx={x(otherLast)}
+                cy={y(comparison[otherLast].rate ?? 0)}
+                r="3"
+                className="hc-trend-other-dot"
+              />
+            )}
+            {active !== null && (
+              <line
+                x1={x(index)}
+                x2={x(index)}
+                y1="16"
+                y2={plotSize.height - 16}
+                className="hc-trend-crosshair"
+              />
+            )}
+            {last >= 0 && (
+              <text
+                x={plotSize.width - labelWidth + 12}
+                y={y(series[last].rate ?? 0) + 4}
+                className="hc-trend-end"
+              >
+                {plotSize.width >= 500 && (
+                  <tspan x={plotSize.width - labelWidth + 12} dy="-8">
+                    {you.name}
+                  </tspan>
+                )}
+                <tspan x={plotSize.width - labelWidth + 12} dy={plotSize.width >= 500 ? "16" : "0"}>
+                  {percent(series[last].rate)}
+                </tspan>
+              </text>
+            )}
+            {comparison && otherLast >= 0 && (
+              <text
+                x={plotSize.width - labelWidth + 12}
+                y={Math.max(
+                  12,
+                  Math.min(
+                    232,
+                    y(comparison[otherLast].rate ?? 0) +
+                      (Math.abs(y(comparison[otherLast].rate ?? 0) - y(series[last]?.rate ?? 0)) <
+                      18
+                        ? -18
+                        : 4),
+                  ),
+                )}
+                className="hc-trend-end hc-trend-other-label"
+              >
+                {plotSize.width >= 500 && (
+                  <tspan x={plotSize.width - labelWidth + 12} dy="-8">
+                    {selected?.name}
+                  </tspan>
+                )}
+                <tspan x={plotSize.width - labelWidth + 12} dy={plotSize.width >= 500 ? "16" : "0"}>
+                  {percent(comparison[otherLast].rate)}
+                </tspan>
+              </text>
+            )}
           </svg>
+          <div className="hc-trend-labels">
+            <span>
+              <i />
+              {you.name}
+            </span>
+            {selected && (
+              <span>
+                <i className="hc-trend-key-other" />
+                {selected.name}
+              </span>
+            )}
+          </div>
           <div className="hc-chart-dates">
-            <span>{current[0]?.date}</span>
-            <span>{current.at(-1)?.date}</span>
+            <span>{formatDate(series[0].date)}</span>
+            <span>{formatDate(series.at(-1)?.date ?? "")}</span>
           </div>
-          <div className="hc-chart-toolbar">
-            <div className="hc-chart-legend">
-              {[definition.name, definition.rivals[0]].map((name) => (
-                <span key={name}>
-                  <BrandPill name={name} {...HOME_LOGOS[name]} />
-                </span>
-              ))}
+          <label className="hc-inspect">
+            <span className="sr-only">{C.inspectDate}</span>
+            <input
+              type="range"
+              min="0"
+              max={series.length - 1}
+              value={index}
+              aria-valuetext={readout + (otherReadout ? `. ${otherReadout}` : "")}
+              onChange={(event) => setActive(Number(event.target.value))}
+              onBlur={() => setActive(null)}
+            />
+          </label>
+          <figcaption className="hc-trend-readout" aria-live="off">
+            {active === null ? C.inspectHint : readout + (otherReadout ? ` · ${otherReadout}` : "")}
+          </figcaption>
+        </figure>
+      )}
+      <fieldset className="hc-periods hc-signal-periods" aria-label={C.chartRange}>
+        {([7, 30, 90] as const).map((days) => (
+          <button
+            type="button"
+            key={days}
+            aria-pressed={scope.days === days}
+            onClick={() => {
+              setActive(null);
+              onDaysChange(days);
+            }}
+          >
+            {copy(C.periodLabel, { days })}
+          </button>
+        ))}
+      </fieldset>
+      {excluded > 0 && <p className="hc-caption">{copy(C.collectionNote, { count: excluded })}</p>}
+      <div className="hc-signal-context">
+        <div>
+          {benchmark && gap !== null && (
+            <div className="hc-gap-summary">
+              <p>
+                {copy(Math.abs(gap) < 0.05 ? C.youLevel : gap > 0 ? C.youBehind : C.youAhead, {
+                  points: points(gap),
+                  name: benchmark.name,
+                })}
+              </p>
+              {movement !== null && (
+                <p>
+                  {Math.abs(movement) < 0.05
+                    ? C.gapUnchanged
+                    : copy(
+                        previousGap !== null && previousGap >= 0 && gap >= 0
+                          ? movement > 0
+                            ? C.gapNarrowed
+                            : C.gapWidened
+                          : movement > 0
+                            ? C.gaining
+                            : C.losing,
+                        { points: points(movement), name: benchmark.name },
+                      )}
+                </p>
+              )}
             </div>
-            <fieldset className="hc-periods" aria-label={C.period}>
-              {["7", "30", "90"].map((value) => (
-                <button
-                  type="button"
-                  key={value}
-                  aria-pressed={days === value}
-                  onClick={() => onDaysChange(value)}
-                >{`${value}D`}</button>
-              ))}
-            </fieldset>
-          </div>
-        </section>
-        <section className="hc-comparison" aria-labelledby="hc-comparison-title">
-          <div className="hc-section-heading">
-            <h2 id="hc-comparison-title">{C.comparison}</h2>
-            <span>{C.rate}</span>
-          </div>
-          {ranking.map((item, index) => (
-            <div className="hc-ranking-row" key={item.name}>
-              <span className="hc-rank">{index + 1}</span>
-              <span className="hc-ranking-brand">
-                <BrandPill name={item.name} {...HOME_LOGOS[item.name]} />
-                {item.name === definition.name && <small>{C.yourBrand}</small>}
-              </span>
-              <span className="hc-ranking-track">
-                <span style={{ width: `${item.rate}%` }} />
-              </span>
-              <strong>{`${item.rate.toFixed(1)}%`}</strong>
-            </div>
-          ))}
+          )}
           <p className="hc-caption">{C.multiple}</p>
-        </section>
-        <section className="hc-engine-comparison" aria-labelledby="hc-engine-title">
-          <div className="hc-section-heading">
-            <h2 id="hc-engine-title">{C.engineComparison}</h2>
+        </div>
+        <div>
+          <div className="hc-compare-heading">
+            <h3>{C.comparedBrands}</h3>
+            <span>{C.mentionRate}</span>
+            <span>{C.gapToYou}</span>
           </div>
-          {ENGINES.filter((engine) => engines.includes(engine.id)).map((engine) => {
-            const engineRate = mentionRate(
-              current.filter((answer) => answer.engine === engine.id),
-              definition.name,
-            );
+          {rivals.map((item) => {
+            const difference =
+              item.stats.rate !== null && stats.rate !== null ? item.stats.rate - stats.rate : null;
+
             return (
-              <div className="hc-engine-row" key={engine.id}>
-                <BrandPill name={engine.name} domain={engine.domain} />
-                <span className="hc-ranking-track">
-                  <span style={{ width: `${engineRate}%` }} />
+              <button
+                type="button"
+                key={item.id}
+                className="hc-compare-row"
+                disabled={item.stats.rate === null}
+                aria-label={copy(C.compare, { name: item.name })}
+                aria-pressed={selected?.id === item.id}
+                onClick={() => onCompare(selected?.id === item.id ? undefined : item.id)}
+              >
+                <BrandPill name={item.name} domain={item.domain} />
+                <span>
+                  {item.stats.rate === null ? C.noObservations : percent(item.stats.rate)}
                 </span>
-                <strong>{`${engineRate.toFixed(1)}%`}</strong>
-              </div>
+                <span>
+                  {difference === null
+                    ? "—"
+                    : Math.abs(difference) < 0.05
+                      ? C.level
+                      : copy(difference > 0 ? C.ahead : C.behind, { points: points(difference) })}
+                </span>
+              </button>
             );
           })}
-          <p className="hc-caption">{C.sampleCoverage}</p>
-        </section>
-      </div>
-      <aside className="hc-feed" aria-label={C.recapLabel}>
-        <section className="hc-recap">
-          <div className="hc-section-heading">
-            <h2>
-              <Icon name="quote" size={13} />
-              {C.recap}
-            </h2>
-            <span>{C.collection}</span>
+          {!rivals.length && <p className="hc-caption">{C.noCompetitors}</p>}
+          <div className="hc-compare-footer">
+            {selected && (
+              <Button variant="ghost" size="sm" onClick={() => onCompare(undefined)}>
+                {C.removeComparison}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onManage}>
+              {C.manageCompetitors}
+            </Button>
           </div>
-          <p>
-            <strong>
-              <HomeBrandText
-                text={
-                  leader.name === definition.name ? C.leading : `${leader.name} appears more often.`
-                }
-              />
-            </strong>
-            <HomeBrandText
-              text={` ${definition.name} is absent from ${missing.length} of ${current.length} answers. Start with the questions where alternatives appear.`}
-            />
-          </p>
-        </section>
-        <AnswerFeed answers={latest} brand={brand} />
-        <Link
-          from="/dev/explorations/home-context"
-          to="/dev/explorations/home-context"
-          search={(previous) => ({ ...previous, view: "mentions", brand })}
-          className="hc-text-link"
-        >
-          {M.viewMentions}
-        </Link>
-      </aside>
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }
