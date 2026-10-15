@@ -45,6 +45,7 @@ compatibility migrations for earlier development schemas or historical job kinds
 
 ## Agent rules
 
+- For every UI change plan (page, view, flow, or component), use `.agents/skills/ui-plan`: research Mobbin, report the exploration, define the design principles, check applicable skills, then write a specific implementation handoff.
 - Before Go API, domain, or GORM work, read `.agents/skills/codebase-patterns` (`backend.md`).
 - Before visual or UI work, read `.agents/skills/product-design`, then `.agents/skills/codebase-patterns` (`frontend.md`).
 - Before React routes, API wrappers, or UI features, read `.agents/skills/codebase-patterns` (`frontend.md`).
