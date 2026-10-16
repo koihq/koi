@@ -42,13 +42,40 @@ export const Route = createFileRoute("/dev/explorations/home-context")({
   component: HomeContext,
 });
 
+type Theme = "light" | "dark";
+
+const THEME_STORAGE_KEY = "koi:home-context:theme:v1";
+
 function HomeContext() {
   const { state } = Route.useSearch();
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      return localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
+  });
 
-  return <Workspace key={state ?? "populated"} />;
+  function changeTheme(next: Theme) {
+    setTheme(next);
+
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, next);
+    } catch {
+      // The preference still works for this visit when browser storage is unavailable.
+    }
+  }
+
+  return <Workspace key={state ?? "populated"} theme={theme} onThemeChange={changeTheme} />;
 }
 
-function Workspace() {
+function Workspace({
+  theme,
+  onThemeChange,
+}: {
+  theme: Theme;
+  onThemeChange: (theme: Theme) => void;
+}) {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const brand = search.brand ?? "deja";
@@ -126,8 +153,6 @@ function Workspace() {
     const title = document.title;
 
     root.setAttribute("data-exploration-theme", "home-context");
-    root.classList.add("dark");
-    root.style.colorScheme = "dark";
 
     return () => {
       if (previous) root.setAttribute("data-exploration-theme", previous);
@@ -137,6 +162,24 @@ function Workspace() {
       document.title = title;
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+
+    root.setAttribute("data-home-context-theme-switching", "");
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+    root.getBoundingClientRect();
+
+    const frame = requestAnimationFrame(() => {
+      root.removeAttribute("data-home-context-theme-switching");
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      root.removeAttribute("data-home-context-theme-switching");
+    };
+  }, [theme]);
 
   useLayoutEffect(() => {
     document.title = `${view === "visibility" && selected ? selected.prompt.text : C[view]} · Koi`;
@@ -221,7 +264,12 @@ function Workspace() {
             });
           }}
         />
-        <AccountMenu brand={brand} onLogout={() => setSignedOut(true)} />
+        <AccountMenu
+          brand={brand}
+          darkMode={theme === "dark"}
+          onDarkModeChange={(checked) => onThemeChange(checked ? "dark" : "light")}
+          onLogout={() => setSignedOut(true)}
+        />
       </header>
       <main id="home-context-main" className="hc-main">
         {!recovered && (search.state === "loading" || search.state === "error") ? (

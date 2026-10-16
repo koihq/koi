@@ -5,6 +5,8 @@
   "competitors": "Competitors",
   "settings": "Settings",
   "account": "Account menu",
+  "darkMode": "Dark mode",
+  "lightMode": "Light mode",
   "logout": "Log out",
   "signedOut": "Signed out of this preview",
   "return": "Return to preview",

@@ -10,13 +10,21 @@ import {
 import type { HomeBrand } from "../-lib/home-evidence";
 import C from "../-locales/mvp.en.json";
 
-export function AccountMenu({ brand, onLogout }: { brand: HomeBrand; onLogout: () => void }) {
+export function AccountMenu({
+  brand,
+  darkMode,
+  onDarkModeChange,
+  onLogout,
+}: {
+  brand: HomeBrand;
+  darkMode: boolean;
+  onDarkModeChange: (checked: boolean) => void;
+  onLogout: () => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="hc-account-trigger" aria-label={C.account}>
-        <span className="hc-account-pill">
-          <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={1.6} aria-hidden="true" />
-        </span>
+        <HugeiconsIcon icon={UserIcon} size={16} strokeWidth={1.6} aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="hc-brand-menu">
         <DropdownMenuItem
@@ -29,6 +37,9 @@ export function AccountMenu({ brand, onLogout }: { brand: HomeBrand; onLogout: (
           }
         >
           {C.settings}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onDarkModeChange(!darkMode)} closeOnClick={false}>
+          {darkMode ? C.lightMode : C.darkMode}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onLogout}>{C.logout}</DropdownMenuItem>
       </DropdownMenuContent>
