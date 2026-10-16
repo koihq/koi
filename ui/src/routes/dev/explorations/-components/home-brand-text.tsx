@@ -34,7 +34,7 @@ export function splitHomeBrandText(text: string) {
 export function HomeBrandText({ text }: { text: string }) {
   return splitHomeBrandText(text).map((part) =>
     part.brand ? (
-      <BrandPill key={part.offset} {...part.brand} name={part.text} />
+      <BrandPill key={part.offset} {...part.brand} name={part.text} className="hc-inline-brand" />
     ) : (
       <Fragment key={part.offset}>{part.text}</Fragment>
     ),

@@ -55,7 +55,7 @@ font selection remains unverified. Do not label this implementation an exact Fey
 | Canvas | `#121316` | Workspace |
 | Content | `#0c0c10` with a very faint diagonal highlight | Chart and answer tiles |
 | Recap | `#08090b` with a low-opacity warm highlight | Narrative recap |
-| Glass | `#252529c9` plus a translucent white highlight | Dock, search, answer panel, brand menu |
+| Glass | `#252529c9` plus a translucent white highlight | Dock, answer panel, account and brand menus |
 | Primary text | `#e4e4e8` | Readable content |
 | Secondary text | `#a4a4ad` | Metadata |
 | Comparison | Desaturated lavender | Alternative chart line |
@@ -66,6 +66,9 @@ floating surfaces. Content uses deeper surfaces with faint edge illumination. Th
 are reproduction choices from the screenshots, not recovered Fey CSS values.
 
 ## Typography and spacing
+
+This section records the earlier overview treatment. The current single-view role mapping
+is in [Unified visibility typography](#unified-visibility-typography-october-16).
 
 Rechecked the [Fey overview](https://mobbin.com/screens/dc5328bd-98d9-46b1-9b18-7ee5805fb878)
 at full image resolution on October 13, 2026, alongside
@@ -84,18 +87,18 @@ pixel equivalents below assume a 16px root. Line heights are unitless.
 | --- | --- | --- | --- | --- |
 | Metadata | 12px | 400 | 1.5 (18px) | Dates, outcomes, captions, chart legend, tooltips |
 | Local label | 12px | 500; 700 for headings | 1.5 (18px) | Section headings, engine labels, period controls |
-| Compact UI | 13px | 500; 400 for supporting copy | 1.5 (19.5px) | Ranking/engine rows, supporting copy, brief action |
-| Body | 14px | 500 | 1.5 (21px) | Answer feed/detail, brief copy, search results, brand menu |
-| Lead | 16px | 700 | 1.375 (22px) | Chart verdict and search title |
+| Compact UI | 13px | 500; 400 for supporting copy | 1.5 (19.5px) | Ranking/engine rows, supporting copy, local actions |
+| Body | 14px | 500 | 1.5 (21px) | Answer feed/detail, management rows, brand menu |
+| Lead | 16px | 700 | 1.375 (22px) | Chart verdict and view titles |
 | Recap | 16px | 700 | 1.5 (24px) | Entire recap paragraph, including its semantic strong text |
 | Panel title | 20px | 700 | 1.4 (28px) | Wrapping answer question |
 | Metric | 36px | 500 | 1.1 (39.6px) | Visibility rate; percent sign at two-thirds size |
 
 The 11px avatar initials and overflow count remain an exception for the existing 24–26px
-circles. Search input text stays 16px to avoid iOS focus zoom. Body tracking is neutral;
+circles. Form input text stays 16px at narrow widths to avoid iOS focus zoom. Body tracking is neutral;
 only the short lead, panel title, and metric have restrained negative tracking. Changing
 metrics retain tabular figures. Headings balance their wrapping; recap and feed copy use
-pretty wrapping. Search and answer portals share the same body baseline as Home.
+pretty wrapping. Form and answer portals share the same body baseline as Home.
 
 This corrects the previous flat 15px section-heading/answer hierarchy, the mostly regular
 recap, and the oversized 42px medium metric. Section labels now sit below the content
@@ -114,8 +117,9 @@ is a capsule. At narrow widths the columns stack. No new motion is introduced.
 - [Context panel](https://mobbin.com/screens/8487cb92-3969-4f21-a847-26177466cf9a):
   a right-hand inspection surface keeps the overview in context.
 
-Koi adapts these to brand comparison, engine coverage, answer search, answer inspection,
-and an agent brief. The search button is a separate glass circle beside the dock.
+Koi adapts these to brand comparison, engine coverage, and answer inspection. The search
+overlay reference is retained as research history; the global search control and agent brief
+were removed for the MVP on October 15.
 
 ## Home revision: Fey overview composition
 
@@ -124,18 +128,18 @@ large goal editor, tracking-scope form, exploration bar, and session footer were
 at the user's request. This replaces the earlier header-first study.
 
 The direct composition reference is [Fey's overview](https://mobbin.com/screens/dc5328bd-98d9-46b1-9b18-7ee5805fb878):
-- A compact brand-avatar switcher and a quiet demo-data indicator.
+- The existing compact brand-avatar switcher and an account pill with Settings and Log out.
 - A narrower left surface holding the chart, inline period controls, and compact ranking.
 - A wider right column of separate dark recap and answer tiles.
-- A small floating dock. Its controls jump to Home, comparison, answers, and brief;
-  the final control returns to the exploration gallery. This is a navigation experiment,
-  not a decision on the production shell.
+- The same floating glass dock now navigates to Visibility, Mentions, Prompts, and
+  Competitors. Settings is reached from the account menu. No gallery, search, or brief
+  destination is included in this MVP navigation.
 
 Chart lines compare the selected brand and its first tracked alternative on the same
 0–100% scale. Ranking and recap use the same filtered synthetic answer records.
 Brand switching restores each brand's selected period. Buyer-question scope defaults
 to alternatives for Deja and discovery for Koi; all engines are included.
-Goals remain in the demo brief but are not shown or editable in this iteration.
+The overview is now named Visibility. The agent brief and its export have been removed.
 
 No real collection or agent connection is represented. Evidence and answer details are
 labeled as demo data; the fixture period ends October 13, 2026. The font stack and its
@@ -146,17 +150,17 @@ Manual checks for the user:
 1. Switch brands through the avatars. Check names, comparison, and answers change together.
 2. Select 7D, 30D, and 90D. Check the timeline, sample count, ranking, and recap update.
 3. Open an answer, then close with Escape. Check focus returns to the selected tile.
-4. Download a brief for each brand; verify the brand and selected period.
-5. Use the dock to reach each section and return to the gallery.
+4. Open the account pill, visit Settings, and return through the dock.
+5. Use the dock to visit all four views; check the selected destination and browser Back.
 6. Check 390px and 320px widths for overflow and dock overlap with the last action.
-7. Open search, filter by a question or engine, open a result, and close with Escape.
+7. Open Mentions, filter by engine or outcome, open an answer, and close with Escape.
 8. Compare the desktop layout against the linked Fey overview, particularly column
    proportions, compact type, chart line weight, tile spacing, and dark surface contrast.
 
 No browser testing is performed, per the user's instruction.
 
 Typography checks for the user: compare recap weight with the medium-weight answer feed; check
-the chart verdict against small section labels; open search, the brand overflow menu,
+the chart verdict against small section labels; open the account menu, brand overflow menu,
 and an answer to check their type consistency. At 390px, 320px, and 200% zoom, check long
 competitor names and wrapping answer titles for clipping. Rendered font selection and
 wrapping are not verified by source checks.
@@ -184,7 +188,7 @@ The demo includes Deja, Koi, Mintlify, beehiiv, Tally, and PostHog. The last fou
 the fictional workspace examples at the user's request and have separate question sets,
 real alternatives, and goals. Their presence is demonstration data, not a claim of ownership.
 Three avatars and a +3 menu are visible immediately. Select an overflow brand and
-check that its own chart, answers, search results, and exported brief are shown.
+check that its own chart, answers, prompts, and competitors are shown.
 Period selections remain independent for all six brands.
 
 ## Brand logos and pills
@@ -195,7 +199,7 @@ inform the rounded-logo treatment. The image itself is rounded without an extra 
 image frame. When a name is present, the logo and label share a subtle capsule; icon-only
 variants have no capsule. Koi uses the shared
 `BrandPill` block for every visible brand reference in this Home study: chart title and
-legend, brand/engine comparison, recap, feed metadata and question text, search results,
+legend, brand/engine comparison, recap, feed metadata and question text,
 answer detail, brand menu, and brand tooltips. The stacked selector uses the same
 block's icon-only variant to preserve its overlap and interaction geometry.
 
@@ -274,3 +278,78 @@ Stack correction: every slot, including +N, uses the same collapsed displacement
 Explicit descending layers place each circle above its right neighbor, independent
 of selected state. The active ring and opacity identify selection without changing
 the stack order. The overflow circle has an opaque surface and the same 1px rim.
+
+
+## MVP expansion, October 15
+
+The implementation extends the existing exploration's visual system. The overview's
+columns, chart, recap, answer rows, fonts, and 430px glass answer panel retain their
+baseline declarations. New management lists reuse the dark content surface, compact
+16px headings, existing pills, and 14px body role. Forms and menus use the same scoped
+material; production component defaults are unchanged.
+
+See the [implementation plan](../plans/ui/mvp-exploration-restart.md) and
+[manual walkthrough](../ui/src/routes/dev/explorations/-docs/mvp.md).
+The preview uses local session state and fixed historical samples. It makes no collection,
+drafting, or session/logout request. Brand settings use the existing validated form with
+local country options. Source links are supported, but baseline synthetic answers have no
+collected sources. A separate live integration is needed for period aggregation, complete
+server-side answer filtering, and production multi-brand selection.
+
+## Unified visibility typography, October 16
+
+The unified `/dev/explorations/home-context?sort=original&page=1` view keeps the existing
+Calibre-local/Helvetica Neue fallback stack. The reading order is mention rate, competitive
+insight, prompt evidence, then supporting metadata. Prompt detail, editors, confirmation
+dialogs, menus, competitor management, and Settings use the same roles.
+
+Mobbin research inspected [Fey portfolio](https://mobbin.com/screens/f4b1fb8e-1db1-407c-a1b1-41ec1eb312c7)
+for compact labels and aligned comparison rows, and
+[Fey home](https://mobbin.com/screens/64282196-4e6c-4590-a0d1-07bde4e4819b) for the stronger
+narrative insight. An analytics overview query for Visitors returned
+[Peec AI](https://mobbin.com/screens/0711fee8-0de2-4f0e-8b7c-16387d22f091) and
+[AirOps](https://mobbin.com/screens/27ca7fbd-d9e9-4c1e-9f3f-0ce500c1cef1), rather than Visitors.
+Peec AI's quiet column labels inform the evidence table; its dashboard composition is
+not adopted. These screenshots establish relationships, not measured CSS values.
+
+The existing `--hc-type-*` tokens now have these roles. Pixel equivalents assume a 16px
+root font; sizes remain in rem and line heights are unitless.
+
+| Role | Size | Weight | Line height | Use |
+| --- | --- | --- | --- | --- |
+| Primary metric | 36px | 500 | 1.1 | Mention rate |
+| Detail/dialog title | 20px | 700 | 1.4 | Prompt question, editors, confirmation dialogs |
+| Insight/view title | 16px | 700 | 1.4 | Competitive insight, Settings and Competitors titles |
+| Main content | 14px | 500 | 1.5 | Prompt sentences, competitor names, editable text, response dates, period-change value |
+| Section heading | 13px | 500 | 1.5 | Mentioned in answers, Prompts, Responses |
+| Compact data/control | 13px | 500 | 1.5 | Comparison rows, table values, buttons, periods, selects, menu options |
+| Supporting prose | 13px | 400 | 1.5 | Explanations, form help, validation and recovery messages |
+| Metadata | 12px | 400 | 1.5 | Counts, statuses, chart labels, column labels, provenance dates |
+| Local heading | 12px | 500 | 1.5 | Compared brands, appearances, sources |
+| Answer prose | 14px | 400 | 1.6 | Answer reader, capped at 75ch |
+
+The main metric and medium-weight content retain their emphasis. Section headings no
+longer compete with the 16px bold insight. The signal and management headings have 16px
+separation from their content, with no extra metric top margin inside the signal.
+Major regions retain their 24px gap. Small text uses neutral tracking; the insight/view
+title uses -0.01em, detail/dialog titles -0.015em, and the metric -0.025em.
+
+`HomeBrandText` applies `hc-inline-brand` to its pills so the font size, weight,
+line-height, and tracking inherit from the sentence or title. Structured comparison,
+leader, engine-selector, and menu pills use 13px; competitor-management names inherit
+their 14px content role. Metadata pills retain their compact 12px labels. Logo sizes,
+pill surfaces, wrapping, and icon-only names are unchanged.
+
+Scoped typography covers controls on the overview and prompt detail as well as editor,
+confirmation, select, and combobox portals. Input text remains 16px at widths up to
+640px. Existing control dimensions, heading semantics, focus styles, responsive layout,
+motion, copy, fixtures, and state behavior are retained. Production primitive defaults
+and the application's Inter font are unchanged.
+
+Verification commands: `make format`, `pnpm --dir ui check`, `pnpm --dir ui check-types`,
+and `pnpm --dir ui test`. Browser checks remain assigned to the user: compare hierarchy
+with Fey at the same viewport; open prompt detail, editors, filters, competitor management,
+and Settings; inspect long questions and brand names at desktop, 390px, 320px, and 200%
+zoom. Verify keyboard focus and return navigation, plus loading, empty, error, and
+missing-comparison states. Source checks do not establish rendered font selection,
+contrast, wrapping, or visual fidelity.

@@ -144,6 +144,16 @@ html[data-exploration-theme="home-context"] [data-slot="brand-pill"]:not([data-i
   background: var(--hc-pill);
   box-shadow: inset 0 0 0 1px #ffffff0a;
 }
+html[data-exploration-theme="home-context"]
+  :is(.hc-compare-row, .hc-prompt-leaders, .hc-response-engines, .hc-brand-menu)
+  [data-slot="brand-pill"]:not([data-icon-only]) {
+  font-size: var(--hc-type-ui);
+}
+html[data-exploration-theme="home-context"]
+  :is(.hc-inline-brand, .hc-row-content > [data-slot="brand-pill"]) {
+  font: inherit;
+  letter-spacing: inherit;
+}
 .hc-brand-logo {
   width: 100%;
   height: 100%;
@@ -252,7 +262,7 @@ html[data-exploration-theme="home-context"]
   font-size: var(--hc-type-meta);
   font-weight: 400;
   line-height: 1.5;
-  color: var(--muted-foreground);
+  color: var(--hc-secondary);
 }
 .hc-evidence h2 {
   font-size: var(--hc-type-meta);
@@ -354,8 +364,8 @@ html[data-exploration-theme="home-context"]
   min-height: 32px;
   padding: 6px;
   border-radius: 4px;
-  color: var(--muted-foreground);
-  font-size: var(--hc-type-meta);
+  color: var(--hc-secondary);
+  font-size: var(--hc-type-ui);
   font-weight: 500;
   line-height: 1.5;
   cursor: pointer;
@@ -466,8 +476,9 @@ html[data-exploration-theme="home-context"]
   align-items: center;
   gap: 7px;
   font-size: var(--hc-type-meta);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.5;
+  color: var(--hc-secondary);
 }
 .hc-answer-meta small {
   margin-left: auto;
@@ -489,7 +500,7 @@ html[data-exploration-theme="home-context"]
   align-items: center;
   gap: 4px;
   margin-top: 8px;
-  color: var(--muted-foreground);
+  color: var(--hc-secondary);
   font-size: var(--hc-type-meta);
   font-weight: 400;
   line-height: 1.5;
@@ -623,11 +634,6 @@ html[data-exploration-theme="home-context"] .hc-brand-menu {
   min-width: 200px;
   padding: 6px;
 }
-.hc-brand-menu [role="menuitemradio"] {
-  min-height: 36px;
-  font-size: var(--hc-type-body);
-  line-height: 1.5;
-}
 html[data-exploration-theme="home-context"] [data-slot="dialog-overlay"] {
   background: #05050945;
   backdrop-filter: blur(3px);
@@ -757,14 +763,15 @@ html[data-exploration-theme="home-context"] .hc-answer-panel {
   padding: 28px;
 }
 .hc-view-heading {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 .hc-view-heading h1,
 .hc-signed-out h1 {
   font-size: var(--hc-type-lead);
   font-weight: 700;
-  line-height: 1.375;
+  line-height: 1.4;
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 .hc-actions {
   display: flex;
@@ -895,12 +902,13 @@ html[data-exploration-theme="home-context"] .hc-answer-panel {
 }
 .hc-detail-section h3 {
   font-size: var(--hc-type-meta);
-  font-weight: 700;
+  font-weight: 500;
+  line-height: 1.5;
 }
 .hc-detail-section p {
   margin-top: 6px;
   color: var(--hc-secondary);
-  font-size: var(--hc-type-body);
+  font-size: var(--hc-type-ui);
   font-weight: 400;
 }
 .hc-detail-section a {
@@ -919,10 +927,12 @@ html[data-exploration-theme="home-context"] .hc-form-dialog {
   font-weight: 700;
   line-height: 1.4;
   letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 .hc-form-dialog [data-slot="dialog-description"] {
   font-size: var(--hc-type-ui);
   font-weight: 400;
+  line-height: 1.5;
 }
 .hc-form-actions {
   display: flex;
@@ -935,6 +945,7 @@ html[data-exploration-theme="home-context"] .hc-form-dialog {
   margin-top: 16px;
   color: var(--destructive);
   font-size: var(--hc-type-ui);
+  font-weight: 400;
 }
 .hc-form-dialog summary {
   cursor: pointer;
@@ -944,23 +955,48 @@ html[data-exploration-theme="home-context"] .hc-form-dialog {
 .hc-form-dialog details[open] > summary {
   margin-bottom: 20px;
 }
-html[data-exploration-theme="home-context"] .hc-brand-menu [role="menuitem"],
-html[data-exploration-theme="home-context"] .hc-brand-menu [role="option"] {
+html[data-exploration-theme="home-context"]
+  .hc-brand-menu
+  :is([role="menuitem"], [role="menuitemradio"], [role="option"]) {
   min-height: 36px;
-  font-size: var(--hc-type-body);
+}
+html[data-exploration-theme="home-context"]
+  .hc-brand-menu
+  :is([role="menuitem"], [role="menuitemradio"], [role="option"]),
+html[data-exploration-theme="home-context"] [data-slot="combobox-item"] {
+  font-size: var(--hc-type-ui);
+  font-weight: 500;
   line-height: 1.5;
 }
 html[data-exploration-theme="home-context"]
-  :is(.hc-form-dialog, .hc-settings, .hc-management, .hc-mentions)
-  :is([data-slot="button"], [data-slot="select-trigger"], [data-slot="field-label"]) {
-  font-family: var(--hc-font);
+  :is(.home-context-study, .hc-form-dialog)
+  :is([data-slot="field-description"], [data-slot="field-error"]),
+html[data-exploration-theme="home-context"] [data-slot="combobox-empty"] {
   font-size: var(--hc-type-ui);
+  font-weight: 400;
+  line-height: 1.5;
 }
 html[data-exploration-theme="home-context"]
-  :is(.hc-form-dialog, .hc-settings, .hc-management)
+  :is(.home-context-study, .hc-form-dialog, .hc-answer-panel, [data-slot="alert-dialog-content"])
+  :is(
+    [data-slot="button"],
+    [data-slot="select-trigger"],
+    [data-slot="field-label"],
+    [data-slot="alert-dialog-action"],
+    [data-slot="alert-dialog-cancel"]
+  ) {
+  font-family: var(--hc-font);
+  font-size: var(--hc-type-ui);
+  font-weight: 500;
+  line-height: 1.5;
+}
+html[data-exploration-theme="home-context"]
+  :is(.home-context-study, .hc-form-dialog)
   :is([data-slot="input"], [data-slot="input-group-control"]) {
   font-family: var(--hc-font);
   font-size: var(--hc-type-body);
+  font-weight: 500;
+  line-height: 1.5;
 }
 html[data-exploration-theme="home-context"] [data-slot="alert-dialog-content"] {
   font-family: var(--hc-font);
@@ -977,9 +1013,14 @@ html[data-exploration-theme="home-context"] [data-slot="alert-dialog-content"] {
 html[data-exploration-theme="home-context"] [data-slot="alert-dialog-title"] {
   font-size: var(--hc-type-title);
   font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
 }
 html[data-exploration-theme="home-context"] [data-slot="alert-dialog-description"] {
-  font-size: var(--hc-type-body);
+  font-size: var(--hc-type-ui);
+  font-weight: 400;
+  line-height: 1.5;
 }
 html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialog) {
   overscroll-behavior: contain;
@@ -1000,7 +1041,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
     margin-inline-start: auto;
   }
   html[data-exploration-theme="home-context"]
-    :is(.hc-form-dialog, .hc-settings, .hc-management)
+    :is(.home-context-study, .hc-form-dialog)
     :is([data-slot="input"], [data-slot="input-group-control"]) {
     font-size: var(--hc-type-lead);
   }
@@ -1049,8 +1090,17 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 .hc-signal h2,
 .hc-responses h2,
 .hc-view-heading h2 {
-  font-size: var(--hc-type-lead);
-  font-weight: 700;
+  font-size: var(--hc-type-ui);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+.hc-signal > .hc-section-heading {
+  margin-bottom: 16px;
+}
+.hc-signal .hc-rate {
+  margin-top: 0;
 }
 .hc-signal-metrics {
   display: flex;
@@ -1062,6 +1112,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 .hc-signal-metrics p,
 .hc-signal-change {
   font-size: var(--hc-type-ui);
+  font-weight: 400;
   color: var(--hc-secondary);
 }
 .hc-signal-metrics p {
@@ -1072,7 +1123,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 }
 .hc-signal-change strong {
   color: var(--hc-text);
-  font-size: var(--hc-type-lead);
+  font-size: var(--hc-type-body);
   font-weight: 500;
 }
 .hc-trend {
@@ -1108,7 +1159,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 .hc-trend-axis,
 .hc-trend-end {
   fill: var(--hc-secondary);
-  font-size: 12px;
+  font-size: var(--hc-type-meta);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
@@ -1129,7 +1180,9 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  font-size: var(--hc-type-ui);
+  font-size: var(--hc-type-meta);
+  font-weight: 400;
+  color: var(--hc-secondary);
   margin-bottom: 12px;
 }
 .hc-trend-labels > span {
@@ -1180,12 +1233,16 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 .hc-gap-summary p:first-child {
   font-size: var(--hc-type-lead);
   font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 .hc-gap-summary p + p {
   margin-top: 6px;
   color: var(--hc-secondary);
   font-size: var(--hc-type-ui);
   font-weight: 400;
+  text-wrap: pretty;
 }
 .hc-signal-context {
   display: grid;
@@ -1208,6 +1265,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
   font-weight: 400;
 }
 .hc-compare-heading h3 {
+  color: var(--hc-text);
   font-weight: 500;
 }
 .hc-compare-row {
@@ -1269,7 +1327,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
   padding-bottom: 8px;
   font-size: var(--hc-type-meta);
   color: var(--hc-secondary);
-  font-weight: 500;
+  font-weight: 400;
 }
 .hc-prompt-table tr {
   border: 0;
@@ -1337,6 +1395,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
   font-size: var(--hc-type-title);
   font-weight: 700;
   line-height: 1.4;
+  letter-spacing: -0.015em;
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -1387,7 +1446,8 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 }
 .hc-response-history li button span {
   color: var(--hc-secondary);
-  font-size: var(--hc-type-ui);
+  font-size: var(--hc-type-meta);
+  font-weight: 400;
 }
 .hc-response-history button[aria-pressed="true"] {
   background: var(--hc-pill);
@@ -1465,7 +1525,7 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
   }
   .hc-prompt-mobile dt {
     color: var(--hc-secondary);
-    font-size: var(--hc-type-ui);
+    font-size: var(--hc-type-meta);
     font-weight: 400;
   }
   .hc-prompt-mobile dd {
@@ -1517,9 +1577,6 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
   .hc-signal-change {
     padding-top: 16px;
     max-width: 50%;
-  }
-  .hc-signal-change strong {
-    font-size: var(--hc-type-ui);
   }
   .hc-prompt-mobile dl > div {
     grid-template-columns: 104px minmax(0, 1fr);
