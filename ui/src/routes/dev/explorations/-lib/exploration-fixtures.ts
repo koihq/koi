@@ -45,8 +45,8 @@ export type ExplorationSearch = {
   descending?: boolean;
   page?: number;
   pageSize?: 10 | 20 | 50;
-  responseEngine?: string;
-  answerId?: string;
+  responseEngine?: VisibilityEngine;
+  runId?: string;
 };
 
 export function parseExplorationSearch(search: Record<string, unknown>): ExplorationSearch {
@@ -79,7 +79,7 @@ export function parseExplorationSearch(search: Record<string, unknown>): Explora
     page: Number.isSafeInteger(page) && page > 0 ? page : undefined,
     pageSize: pageSize === 10 || pageSize === 20 || pageSize === 50 ? pageSize : undefined,
     responseEngine: engine(search.responseEngine),
-    answerId: id(search.answerId),
+    runId: id(search.runId),
   };
 }
 
@@ -217,12 +217,27 @@ export function confirmItem(
   };
 }
 
-// Adapt the existing evidence without changing its names, dates, rates, or ordering.
-// Sources are intentionally empty: this fixture has no collected evidence.
+// Adapt the existing evidence without changing its names, dates, or ordering.
+// The latest Deja example includes clearly labeled, illustrative sources for the reader study.
 export function answerResult(answer: HomeAnswer, brand: HomeBrand): VisibilityResult {
   const definition = HOME_BRANDS[brand];
   const prompts = Object.values(definition.topics).flat();
   const position = prompts.indexOf(answer.prompt);
+  const sourceExample = brand === "deja" && answer.day === 89 && position === 0;
+  const sources = sourceExample
+    ? answer.engine === "chatgpt"
+      ? [
+          "https://github.com/Giammarco-Ferranti/deja",
+          "https://github.com/zsh-users/zsh-autosuggestions",
+        ]
+      : answer.engine === "perplexity"
+        ? ["https://github.com/zsh-users/zsh-autosuggestions"]
+        : []
+    : [];
+  const demoAnswer =
+    sourceExample && answer.engine === "chatgpt"
+      ? "Deja is an option for zsh users who want suggestions drawn from command history. It ranks fuzzy matches using frequency, recency, the current directory, and learned command sequences.\n\nUnlike a generative assistant, it does not create commands or execute a suggestion automatically. That makes it worth considering when you want help recalling commands you have already used.\n\nzsh-autosuggestions remains a familiar alternative for inline suggestions. Compare each tool's setup and behavior in your own shell workflow before switching."
+      : null;
 
   return {
     id: answer.id,
@@ -233,11 +248,18 @@ export function answerResult(answer: HomeAnswer, brand: HomeBrand): VisibilityRe
     engine: ENGINES.find((engine) => engine.id === answer.engine)?.id ?? "chatgpt",
     collector: "stub",
     fetchedAt: new Date(`${answer.date}T12:00:00Z`),
-    outcome: answer.mentions.includes(definition.name) ? "mentioned" : "miss",
-    rawAnswer: answer.mentions.length
-      ? `This simulated answer recommends investigating ${answer.mentions.join(" and ")}.`
-      : "This simulated answer does not mention any tracked brand.",
-    sources: [],
+    outcome:
+      sourceExample && answer.engine === "chatgpt"
+        ? "cited"
+        : answer.mentions.includes(definition.name)
+          ? "mentioned"
+          : "miss",
+    rawAnswer:
+      demoAnswer ??
+      (answer.mentions.length
+        ? `This simulated answer recommends investigating ${answer.mentions.join(" and ")}.`
+        : "This simulated answer does not mention any tracked brand."),
+    sources,
     errorCode: null,
     appearances: answer.mentions
       .filter((name) => name !== definition.name)
@@ -272,12 +294,20 @@ export function resultForState(
   if (state !== "running" && state !== "partial") return result;
 
   if (index % 3 === 0)
-    return { ...result, outcome: null, rawAnswer: "", fetchedAt: null, appearances: [] };
+    return {
+      ...result,
+      outcome: null,
+      rawAnswer: "",
+      fetchedAt: null,
+      appearances: [],
+      sources: [],
+    };
   if (index % 3 === 1)
     return {
       ...result,
       outcome: "error",
       rawAnswer: "",
+      sources: [],
       errorCode: "collection_failed",
       appearances: [],
     };

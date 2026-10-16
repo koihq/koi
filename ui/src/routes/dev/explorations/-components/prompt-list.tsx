@@ -260,7 +260,7 @@ function PromptPreviewLink({
     ...search,
     view: "visibility" as const,
     promptId: row.prompt.id,
-    answerId: undefined,
+    runId: undefined,
     responseEngine: undefined,
     compareId: undefined,
   };

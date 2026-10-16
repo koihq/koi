@@ -11,6 +11,7 @@ import {
   gapChange,
   inScope,
   promptRows,
+  promptRuns,
   rateFor,
   summarize,
   type VisibilityScope,
@@ -43,6 +44,18 @@ function sample(day: number, index: number, mentioned: boolean, rival: boolean):
 }
 
 describe("prompt visibility", () => {
+  it("groups a prompt by run across all engines and keeps older runs outside the metric period", () => {
+    const runs = promptRuns(records, data.prompts[0].id);
+
+    expect(runs).toHaveLength(180);
+    expect(runs[0].id).toBe("tally:89");
+    expect(runs.at(-1)?.id).toBe("tally:-90");
+    expect(ENGINES.every((engine) => runs[0].results[engine.id]?.result.engine === engine.id)).toBe(
+      true,
+    );
+    expect(inScope(records, { days: 7, promptIds: [data.prompts[0].id] })).toHaveLength(28);
+  });
+
   it("uses answer counts for rates and keeps the comparison identity fixed across periods", () => {
     const answers = [
       ...Array.from({ length: 100 }, (_, i) => sample(89, i, i < 50, i < 68)),
@@ -162,7 +175,7 @@ describe("prompt visibility", () => {
       status: "past",
       sort: "rate",
       descending: "true",
-      answerId: [],
+      runId: [],
     });
     expect(parsed).toMatchObject({
       days: 90,
@@ -173,7 +186,7 @@ describe("prompt visibility", () => {
     });
     expect(parsed.engines).toBeUndefined();
     expect(parsed.page).toBeUndefined();
-    expect(parsed.answerId).toBeUndefined();
+    expect(parsed.runId).toBeUndefined();
     expect(inScope(buildEvidence("deja"), scope)).toEqual([]);
     expect(buildEvidence(brand, "empty")).toEqual([]);
     expect(buildEvidence(brand, "review")).toEqual([]);

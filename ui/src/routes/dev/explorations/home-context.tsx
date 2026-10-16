@@ -46,7 +46,7 @@ export const Route = createFileRoute("/dev/explorations/home-context")({
     if (location.pathname.replace(/\/$/, "") === HOME_PATH && search.view === "competitors") {
       throw redirect({
         to: COMPETITORS_PATH,
-        search: { ...search, view: undefined, promptId: undefined, answerId: undefined },
+        search: { ...search, view: undefined, promptId: undefined, runId: undefined },
         replace: true,
       });
     }
@@ -137,7 +137,7 @@ function Workspace({
     view: "visibility" as const,
     brand,
     promptId: undefined,
-    answerId: undefined,
+    runId: undefined,
     responseEngine: undefined,
   };
   const back = (
@@ -239,19 +239,19 @@ function Workspace({
       }}
       compareId={search.compareId}
       onCompare={(compareId) => update({ compareId })}
-      onDaysChange={(next) => update({ days: next, answerId: undefined })}
+      onDaysChange={(next) => update({ days: next })}
       onEnginesChange={(engines) =>
         update({
           engines: engines.length ? engines : undefined,
           responseEngine: undefined,
-          answerId: undefined,
+          runId: undefined,
           page: undefined,
         })
       }
       onManage={() =>
         void navigate({
           to: COMPETITORS_PATH,
-          search: { ...search, view: undefined, promptId: undefined, answerId: undefined },
+          search: { ...search, view: undefined, promptId: undefined, runId: undefined },
         })
       }
     />
@@ -301,7 +301,7 @@ function Workspace({
                       ...search,
                       view: undefined,
                       promptId: undefined,
-                      answerId: undefined,
+                      runId: undefined,
                     }}
                     className="hc-header-link"
                     aria-label={C.competitors}
@@ -370,9 +370,7 @@ function Workspace({
               onSearch={update}
               onSave={(text, id) => state.savePrompt(brand, text, id)}
               back={back}
-            >
-              {signal}
-            </PromptDetail>
+            />
           ) : (
             <section className="hc-empty">
               <h1 id="hc-page-heading" tabIndex={-1}>
@@ -460,7 +458,7 @@ function TrackingStatus({ data, brand }: { data: PreviewBrand; brand: HomeBrand 
               view: undefined,
               brand,
               promptId: undefined,
-              answerId: undefined,
+              runId: undefined,
             })}
             className="hc-text-link"
           >

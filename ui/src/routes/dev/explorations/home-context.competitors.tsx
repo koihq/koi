@@ -14,7 +14,7 @@ function CompetitorsPage() {
     <>
       <Link
         to="/dev/explorations/home-context"
-        search={{ ...search, view: undefined, promptId: undefined, answerId: undefined }}
+        search={{ ...search, view: undefined, promptId: undefined, runId: undefined }}
         className="hc-text-link"
       >
         {V.back}

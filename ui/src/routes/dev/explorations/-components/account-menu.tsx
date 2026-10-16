@@ -37,7 +37,7 @@ export function AccountMenu({
                 view: "settings",
                 brand,
                 promptId: undefined,
-                answerId: undefined,
+                runId: undefined,
               })}
             />
           }

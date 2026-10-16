@@ -12,6 +12,7 @@ import { ENGINES } from "../-lib/data";
 import { HOME_LOGOS, type HomeAnswer } from "../-lib/home-evidence";
 import C from "../-locales/home-signal.en.json";
 import M from "../-locales/mvp.en.json";
+import V from "../-locales/prompt-visibility.en.json";
 import { HomeBrandText } from "./home-brand-text";
 
 export function AnswerContent({
@@ -25,13 +26,30 @@ export function AnswerContent({
 }) {
   return (
     <div className="hc-answer-content">
+      <blockquote className="hc-original-question">
+        <HomeBrandText text={result.promptText} />
+      </blockquote>
+      <AnswerBody result={result} brandName={brandName} stopped={stopped} />
+      <SourceList result={result} />
+    </div>
+  );
+}
+
+export function AnswerBody({
+  result,
+  brandName,
+  stopped,
+}: {
+  result: VisibilityResult;
+  brandName: string;
+  stopped: boolean;
+}) {
+  return (
+    <>
       <div className="hc-answer-outcome">
         <BrandPill name={brandName} {...HOME_LOGOS[brandName]} />
         <span>{result.outcome ? M[result.outcome] : stopped ? M.notCollected : M.pending}</span>
       </div>
-      <blockquote className="hc-original-question">
-        <HomeBrandText text={result.promptText} />
-      </blockquote>
       <p className="hc-answer-detail">
         {result.rawAnswer ? (
           <HomeBrandText text={result.rawAnswer} />
@@ -56,26 +74,41 @@ export function AnswerContent({
           ))}
         </section>
       )}
-      <section className="hc-detail-section" aria-label={M.sources}>
-        <h3>{M.sources}</h3>
-        {result.sources.length ? (
-          result.sources.map((source) => {
-            const url = safeSourceURL(source);
-
-            return url ? (
-              <a key={source} href={url} target="_blank" rel="noopener noreferrer">
-                {source}
-              </a>
-            ) : (
-              <p key={source}>{source}</p>
-            );
-          })
-        ) : (
-          <p>{M.noSources}</p>
-        )}
-      </section>
       <p className="hc-caption">{C.detailNote}</p>
-    </div>
+    </>
+  );
+}
+
+export function SourceList({
+  result,
+  sample = false,
+  emptyMessage = M.noSources,
+}: {
+  result: VisibilityResult;
+  sample?: boolean;
+  emptyMessage?: string;
+}) {
+  const title = sample && result.sources.length ? V.sampleSources : M.sources;
+
+  return (
+    <section className="hc-detail-section" aria-label={title}>
+      <h3>{title}</h3>
+      {result.sources.length ? (
+        result.sources.map((source) => {
+          const url = safeSourceURL(source);
+
+          return url ? (
+            <a key={source} href={url} target="_blank" rel="noopener noreferrer">
+              {source}
+            </a>
+          ) : (
+            <p key={source}>{source}</p>
+          );
+        })
+      ) : (
+        <p>{emptyMessage}</p>
+      )}
+    </section>
   );
 }
 

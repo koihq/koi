@@ -61,16 +61,37 @@ describe("MVP exploration", () => {
       const answers = homeEvidence(brand).filter((answer) => answer.day >= 60);
       const results = answers.map((answer) => answerResult(answer, brand));
       const adaptedRate =
-        (results.filter((result) => result.outcome === "mentioned").length / results.length) * 100;
+        (results.filter((result) => result.outcome === "mentioned" || result.outcome === "cited")
+          .length /
+          results.length) *
+        100;
 
       expect(adaptedRate).toBe(mentionRate(answers, HOME_BRANDS[brand].name));
       expect(results.map((result) => result.promptText)).toEqual(
         answers.map((answer) => answer.prompt),
       );
-      expect(
-        results.every((result) => result.collector === "stub" && result.sources.length === 0),
-      ).toBe(true);
+      expect(results.every((result) => result.collector === "stub")).toBe(true);
     }
+  });
+
+  it("labels illustrative source examples and removes them from incomplete results", () => {
+    const answer = homeEvidence("deja").find(
+      (item) =>
+        item.day === 89 &&
+        item.prompt === HOME_BRANDS.deja.topics.alternatives[0] &&
+        item.engine === "chatgpt",
+    );
+    if (!answer) throw new Error("Missing source example");
+
+    const result = answerResult(answer, "deja");
+    expect(result.outcome).toBe("cited");
+    expect(result.sources).toEqual([
+      "https://github.com/Giammarco-Ferranti/deja",
+      "https://github.com/zsh-users/zsh-autosuggestions",
+    ]);
+    expect(result.rawAnswer.split("\n\n")).toHaveLength(3);
+    expect(resultForState(answer, "deja", 0, "partial").sources).toEqual([]);
+    expect(resultForState(answer, "deja", 1, "partial").sources).toEqual([]);
   });
 
   it("confirms reviewed drafts but leaves observed competitors for individual identity review", () => {

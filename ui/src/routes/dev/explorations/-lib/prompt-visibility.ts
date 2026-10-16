@@ -17,6 +17,12 @@ import {
 } from "./home-evidence";
 
 export type EvidenceRecord = { answer: HomeAnswer; result: VisibilityResult; stopped: boolean };
+export type PromptRun = {
+  id: string;
+  date: string;
+  day: number;
+  results: Partial<Record<VisibilityEngine, EvidenceRecord>>;
+};
 export type MentionStats = {
   mentioned: number;
   completed: number;
@@ -40,6 +46,26 @@ export type PromptRow = {
 };
 export type VisibilityScope = { days: number; engines?: VisibilityEngine[]; promptIds: string[] };
 export const LAST_DAY = 89;
+
+export function promptRuns(records: EvidenceRecord[], promptId: string): PromptRun[] {
+  const runs = new Map<string, PromptRun>();
+
+  for (const record of records) {
+    if (record.result.promptId !== promptId) continue;
+
+    const id = record.result.runId;
+    const run = runs.get(id) ?? {
+      id,
+      date: record.answer.date,
+      day: record.answer.day,
+      results: {},
+    };
+    run.results[record.result.engine] = record;
+    runs.set(id, run);
+  }
+
+  return [...runs.values()].sort((a, b) => b.day - a.day || b.id.localeCompare(a.id));
+}
 
 export function buildEvidence(brand: HomeBrand, scenario?: ExplorationState): EvidenceRecord[] {
   if (scenario === "empty" || scenario === "review") return [];
