@@ -129,6 +129,12 @@ html[data-home-context-theme-switching] *::after {
   min-height: 32px;
   margin-bottom: 40px;
 }
+.hc-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
 .hc-brand-switcher {
   display: flex;
   align-items: center;
@@ -780,7 +786,8 @@ html[data-exploration-theme="home-context"] .hc-answer-panel {
 }
 
 /* MVP extensions reuse the Home study's type roles, surfaces, and controls. */
-.hc-account-trigger {
+.hc-account-trigger,
+.hc-header-link {
   position: relative;
   display: grid;
   place-items: center;
@@ -796,12 +803,24 @@ html[data-exploration-theme="home-context"] .hc-answer-panel {
   color: var(--hc-secondary);
   cursor: pointer;
 }
-.hc-account-trigger::before {
+.hc-account-trigger::before,
+.hc-header-link::before {
   content: "";
   position: absolute;
   inset: -8px;
 }
+.hc-header-link[aria-current="page"] {
+  background: var(--hc-control-hover);
+  color: var(--hc-text);
+}
+@media (hover: hover) and (pointer: fine) {
+  .hc-header-link:hover {
+    background: var(--hc-control-hover);
+    color: var(--hc-text);
+  }
+}
 .hc-account-trigger:focus-visible,
+.hc-header-link:focus-visible,
 .hc-row-content:focus-visible,
 .hc-text-link:focus-visible {
   outline: 2px solid var(--ring);

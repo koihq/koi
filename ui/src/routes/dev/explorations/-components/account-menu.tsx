@@ -32,7 +32,13 @@ export function AccountMenu({
             <Link
               from="/dev/explorations/home-context"
               to="/dev/explorations/home-context"
-              search={(previous) => ({ ...previous, view: "settings", brand })}
+              search={(previous) => ({
+                ...previous,
+                view: "settings",
+                brand,
+                promptId: undefined,
+                answerId: undefined,
+              })}
             />
           }
         >

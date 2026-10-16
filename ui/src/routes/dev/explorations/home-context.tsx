@@ -1,16 +1,18 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { type ReactNode, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AccountMenu } from "./-components/account-menu";
 import { BrandSwitcher } from "./-components/brand-switcher";
 import { Icon } from "./-components/common";
 import { CompetitorEditor } from "./-components/competitor-editor";
 import { CompetitorList } from "./-components/competitor-list";
 import { HomeSignal } from "./-components/home-signal";
+import { WorkspaceContext } from "./-components/home-workspace-context";
 import { copy, ListPagination, LocalChoice } from "./-components/list-controls";
 import { PromptDetail } from "./-components/prompt-detail";
 import { PromptEditor } from "./-components/prompt-editor";
@@ -39,11 +41,22 @@ import "./-home-context.css";
 
 export const Route = createFileRoute("/dev/explorations/home-context")({
   validateSearch: parseExplorationSearch,
+  beforeLoad: ({ location, search }) => {
+    if (location.pathname.replace(/\/$/, "") === HOME_PATH && search.view === "competitors") {
+      throw redirect({
+        to: COMPETITORS_PATH,
+        search: { ...search, view: undefined, promptId: undefined, answerId: undefined },
+        replace: true,
+      });
+    }
+  },
   component: HomeContext,
 });
 
 type Theme = "light" | "dark";
 
+const HOME_PATH = "/dev/explorations/home-context";
+const COMPETITORS_PATH = "/dev/explorations/home-context/competitors";
 const THEME_STORAGE_KEY = "koi:home-context:theme:v1";
 
 function HomeContext() {
@@ -78,9 +91,14 @@ function Workspace({
 }) {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const competitorPage = pathname.replace(/\/$/, "") === COMPETITORS_PATH;
   const brand = search.brand ?? "deja";
-  const view =
-    search.view === "settings" || search.view === "competitors" ? search.view : "visibility";
+  const view = competitorPage
+    ? "competitors"
+    : search.view === "settings"
+      ? "settings"
+      : "visibility";
   const state = useExplorationState(search.state);
   const [signedOut, setSignedOut] = useState(false);
   const [recovered, setRecovered] = useState(false);
@@ -231,7 +249,8 @@ function Workspace({
       }
       onManage={() =>
         void navigate({
-          search: { ...search, view: "competitors", promptId: undefined, answerId: undefined },
+          to: COMPETITORS_PATH,
+          search: { ...search, view: undefined, promptId: undefined, answerId: undefined },
         })
       }
     />
@@ -265,16 +284,44 @@ function Workspace({
             preferences.current[brand] = { days: search.days, engines: search.engines };
             listEntry.current = null;
             void navigate({
+              to: competitorPage ? COMPETITORS_PATH : HOME_PATH,
               search: { brand: next, state: search.state, ...preferences.current[next] },
             });
           }}
         />
-        <AccountMenu
-          brand={brand}
-          darkMode={theme === "dark"}
-          onDarkModeChange={(checked) => onThemeChange(checked ? "dark" : "light")}
-          onLogout={() => setSignedOut(true)}
-        />
+        <div className="hc-header-actions">
+          <TooltipProvider delay={350}>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    to={COMPETITORS_PATH}
+                    search={{
+                      ...search,
+                      view: undefined,
+                      promptId: undefined,
+                      answerId: undefined,
+                    }}
+                    className="hc-header-link"
+                    aria-label={C.competitors}
+                    aria-current={competitorPage ? "page" : undefined}
+                  />
+                }
+              >
+                <Icon name="competitors" size={16} />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={8} className="hc-brand-tooltip">
+                {C.competitors}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <AccountMenu
+            brand={brand}
+            darkMode={theme === "dark"}
+            onDarkModeChange={(checked) => onThemeChange(checked ? "dark" : "light")}
+            onLogout={() => setSignedOut(true)}
+          />
+        </div>
       </header>
       <main id="home-context-main" className="hc-main">
         {!recovered && (search.state === "loading" || search.state === "error") ? (
@@ -306,28 +353,10 @@ function Workspace({
               onSave={(request) => state.saveBrand(brand, request)}
             />
           </section>
-        ) : view === "competitors" ? (
-          <>
-            <Link
-              from="/dev/explorations/home-context"
-              to="/dev/explorations/home-context"
-              search={{ ...search, view: "visibility", promptId: undefined }}
-              className="hc-text-link"
-            >
-              {V.back}
-            </Link>
-            <Management
-              key={`${brand}:competitors`}
-              kind="competitors"
-              brand={brand}
-              state={state}
-              scenario={search.state}
-              rows={rows}
-              search={search}
-              onSearch={update}
-              onOpen={() => {}}
-            />
-          </>
+        ) : competitorPage ? (
+          <WorkspaceContext.Provider value={{ brand, state, search, rows, update }}>
+            <Outlet />
+          </WorkspaceContext.Provider>
         ) : search.promptId ? (
           selected ? (
             <PromptDetail
@@ -423,8 +452,14 @@ function TrackingStatus({ data, brand }: { data: PreviewBrand; brand: HomeBrand 
         {!data.reviewed.competitors && (
           <Link
             from="/dev/explorations/home-context"
-            to="/dev/explorations/home-context"
-            search={(previous) => ({ ...previous, view: "competitors", brand })}
+            to={COMPETITORS_PATH}
+            search={(previous) => ({
+              ...previous,
+              view: undefined,
+              brand,
+              promptId: undefined,
+              answerId: undefined,
+            })}
             className="hc-text-link"
           >
             {C.reviewCompetitorsLink}
@@ -435,7 +470,7 @@ function TrackingStatus({ data, brand }: { data: PreviewBrand; brand: HomeBrand 
   );
 }
 
-function Management({
+export function Management({
   kind,
   brand,
   state,

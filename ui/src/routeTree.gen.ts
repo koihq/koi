@@ -33,6 +33,7 @@ import { Route as AuthenticatedAppMentionsIndexRouteImport } from './routes/_aut
 import { Route as AuthenticatedAppPromptsIndexRouteImport } from './routes/_authenticated/_app/prompts/index'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
 import { Route as DevExplorationsDirectionSectionRouteImport } from './routes/dev/explorations/$direction/$section'
+import { Route as DevExplorationsHomeContextCompetitorsRouteImport } from './routes/dev/explorations/home-context.competitors'
 import { Route as DevExplorationsTradeRepublicPanelsRouteImport } from './routes/dev/explorations/trade-republic/panels'
 import { Route as AuthenticatedSettingsSettingsCompetitorsIndexRouteImport } from './routes/_authenticated/_settings/settings/competitors/index'
 import { Route as AuthenticatedSettingsSettingsPromptsIndexRouteImport } from './routes/_authenticated/_settings/settings/prompts/index'
@@ -161,6 +162,12 @@ const DevExplorationsDirectionSectionRoute =
     path: '/$direction/$section',
     getParentRoute: () => DevExplorationsRouteRoute,
   } as any)
+const DevExplorationsHomeContextCompetitorsRoute =
+  DevExplorationsHomeContextCompetitorsRouteImport.update({
+    id: '/competitors',
+    path: '/competitors',
+    getParentRoute: () => DevExplorationsHomeContextRoute,
+  } as any)
 const DevExplorationsTradeRepublicPanelsRoute =
   DevExplorationsTradeRepublicPanelsRouteImport.update({
     id: '/trade-republic/panels',
@@ -188,7 +195,7 @@ export interface FileRoutesByFullPath {
   '/sign-up/': typeof SignUpIndexRoute
   '/brief': typeof AuthenticatedAppBriefRoute
   '/citations': typeof AuthenticatedAppCitationsRoute
-  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRoute
+  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRouteWithChildren
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/dev/ui/': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
+  '/dev/explorations/home-context/competitors': typeof DevExplorationsHomeContextCompetitorsRoute
   '/dev/explorations/trade-republic/panels': typeof DevExplorationsTradeRepublicPanelsRoute
   '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
   '/mentions/': typeof AuthenticatedAppMentionsIndexRoute
@@ -212,7 +220,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpIndexRoute
   '/brief': typeof AuthenticatedAppBriefRoute
   '/citations': typeof AuthenticatedAppCitationsRoute
-  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRoute
+  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRouteWithChildren
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
@@ -223,6 +231,7 @@ export interface FileRoutesByTo {
   '/dev/ui': typeof DevUiIndexRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
+  '/dev/explorations/home-context/competitors': typeof DevExplorationsHomeContextCompetitorsRoute
   '/dev/explorations/trade-republic/panels': typeof DevExplorationsTradeRepublicPanelsRoute
   '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
   '/mentions': typeof AuthenticatedAppMentionsIndexRoute
@@ -241,7 +250,7 @@ export interface FileRoutesById {
   '/sign-up/': typeof SignUpIndexRoute
   '/_authenticated/_app/brief': typeof AuthenticatedAppBriefRoute
   '/_authenticated/_app/citations': typeof AuthenticatedAppCitationsRoute
-  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRoute
+  '/dev/explorations/home-context': typeof DevExplorationsHomeContextRouteWithChildren
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
@@ -253,6 +262,7 @@ export interface FileRoutesById {
   '/dev/ui/': typeof DevUiIndexRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/$direction/$section': typeof DevExplorationsDirectionSectionRoute
+  '/dev/explorations/home-context/competitors': typeof DevExplorationsHomeContextCompetitorsRoute
   '/dev/explorations/trade-republic/panels': typeof DevExplorationsTradeRepublicPanelsRoute
   '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
   '/_authenticated/_app/mentions/': typeof AuthenticatedAppMentionsIndexRoute
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/dev/ui/'
     | '/settings/brand'
     | '/dev/explorations/$direction/$section'
+    | '/dev/explorations/home-context/competitors'
     | '/dev/explorations/trade-republic/panels'
     | '/competitors/'
     | '/mentions/'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/dev/ui'
     | '/settings/brand'
     | '/dev/explorations/$direction/$section'
+    | '/dev/explorations/home-context/competitors'
     | '/dev/explorations/trade-republic/panels'
     | '/competitors'
     | '/mentions'
@@ -334,6 +346,7 @@ export interface FileRouteTypes {
     | '/dev/ui/'
     | '/_authenticated/_settings/settings/brand'
     | '/dev/explorations/$direction/$section'
+    | '/dev/explorations/home-context/competitors'
     | '/dev/explorations/trade-republic/panels'
     | '/_authenticated/_app/competitors/'
     | '/_authenticated/_app/mentions/'
@@ -520,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevExplorationsDirectionSectionRouteImport
       parentRoute: typeof DevExplorationsRouteRoute
     }
+    '/dev/explorations/home-context/competitors': {
+      id: '/dev/explorations/home-context/competitors'
+      path: '/competitors'
+      fullPath: '/dev/explorations/home-context/competitors'
+      preLoaderRoute: typeof DevExplorationsHomeContextCompetitorsRouteImport
+      parentRoute: typeof DevExplorationsHomeContextRoute
+    }
     '/dev/explorations/trade-republic/panels': {
       id: '/dev/explorations/trade-republic/panels'
       path: '/trade-republic/panels'
@@ -601,15 +621,30 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface DevExplorationsHomeContextRouteChildren {
+  DevExplorationsHomeContextCompetitorsRoute: typeof DevExplorationsHomeContextCompetitorsRoute
+}
+
+const DevExplorationsHomeContextRouteChildren: DevExplorationsHomeContextRouteChildren =
+  {
+    DevExplorationsHomeContextCompetitorsRoute:
+      DevExplorationsHomeContextCompetitorsRoute,
+  }
+
+const DevExplorationsHomeContextRouteWithChildren =
+  DevExplorationsHomeContextRoute._addFileChildren(
+    DevExplorationsHomeContextRouteChildren,
+  )
+
 interface DevExplorationsRouteRouteChildren {
-  DevExplorationsHomeContextRoute: typeof DevExplorationsHomeContextRoute
+  DevExplorationsHomeContextRoute: typeof DevExplorationsHomeContextRouteWithChildren
   DevExplorationsIndexRoute: typeof DevExplorationsIndexRoute
   DevExplorationsDirectionSectionRoute: typeof DevExplorationsDirectionSectionRoute
   DevExplorationsTradeRepublicPanelsRoute: typeof DevExplorationsTradeRepublicPanelsRoute
 }
 
 const DevExplorationsRouteRouteChildren: DevExplorationsRouteRouteChildren = {
-  DevExplorationsHomeContextRoute: DevExplorationsHomeContextRoute,
+  DevExplorationsHomeContextRoute: DevExplorationsHomeContextRouteWithChildren,
   DevExplorationsIndexRoute: DevExplorationsIndexRoute,
   DevExplorationsDirectionSectionRoute: DevExplorationsDirectionSectionRoute,
   DevExplorationsTradeRepublicPanelsRoute:

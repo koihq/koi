@@ -1,8 +1,9 @@
 # MVP exploration walkthrough
 
 Open `http://localhost:5173/dev/explorations/home-context` during `make dev`.
-The existing overview is now Visibility. The four dock destinations are Visibility,
-Mentions, Prompts, and Competitors; Settings is in the account pill.
+The home view contains visibility and the full prompt list. The competitor icon beside
+the account pill opens `/dev/explorations/home-context/competitors`; Settings is in
+the account pill.
 
 This is the exploration implementation. Lists and settings change locally for the
 current session, including when switching brands. Reloading resets them. Log out
@@ -21,8 +22,8 @@ Compare with commit `0216998`, using the same viewport, brand, period, and brows
    insets. Open a Mentions answer and compare the same panel.
 3. Check the new list surfaces and 16px headings against the overview's material
    and type hierarchy. There is no production sidebar or generic table chrome.
-4. Check 320px, 390px, desktop, and 200% zoom. Long questions/URLs wrap; the dock
-   leaves the final action reachable. Menus and forms retain the same typeface.
+4. Check 320px, 390px, desktop, and 200% zoom. Long questions/URLs wrap; the header
+   controls remain reachable. Menus and forms retain the same typeface.
 5. Use Tab, Enter, arrows within menus, and Escape. Closing an answer or editor
    returns focus to its trigger (or the heading if the trigger was removed).
 
@@ -37,7 +38,7 @@ establish pixel-level browser fidelity or rendered contrast.
 - Open Account → Settings. Save a valid domain-or-GitHub identity and country;
   navigate away and back. Koi has no invented default domain: provide an identity
   when testing its settings save, or use another populated brand.
-- In Prompts, add, edit, search, filter, confirm a drafted item, and delete.
+- In Home's prompt list, add, edit, search, filter, confirm a drafted item, and delete.
   Try blank text. Cancel and re-open a form. Historical answer text stays unchanged.
 - In Competitors, use manual entry and the small sample-directory lookup. Open
   More details for GitHub/aliases/URLs. Try a duplicate identity and an invalid URL.
@@ -50,13 +51,13 @@ establish pixel-level browser fidelity or rendered contrast.
 
 ## Explicit state examples
 
-Append the parameters below to `/dev/explorations/home-context`. They are development
+Use the URLs below under `/dev/explorations/home-context`. They are development
 fixtures, not controls in the product UI. Changing `state` resets the sample session.
 
 | Parameters | Inspect |
 | --- | --- |
 | `?view=prompts&state=empty` | Empty list, manual add, review readiness |
-| `?view=competitors&state=review` | Review instruction; observed suggestions excluded from bulk confirmation |
+| `/competitors?state=review` | Review instruction; observed suggestions excluded from bulk confirmation |
 | `?view=mentions&state=loading` | Stable shell and loading content; intentionally static fixture |
 | `?view=mentions&state=error` | Inline error and functioning Retry |
 | `?view=mentions&state=running` | Pending answers and completed/total status |
@@ -66,7 +67,7 @@ fixtures, not controls in the product UI. Changing `state` resets the sample ses
 | `?view=prompts&state=draft-empty` | No-new-suggestions feedback |
 | `?view=prompts&state=draft-queued` | Static queued state |
 | `?view=prompts&state=draft-running` | Static drafting state |
-| `?view=competitors&state=optional-off` | Manual controls usable without optional drafting/lookup |
+| `/competitors?state=optional-off` | Manual controls usable without optional drafting/lookup |
 
 Fixed empty/review scenarios stay collection-free after review; their ready message
 marks the end of setup. They do not synthesize a new collection when a button is pressed.
