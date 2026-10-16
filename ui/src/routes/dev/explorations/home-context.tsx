@@ -37,7 +37,6 @@ import {
 } from "./-lib/prompt-visibility";
 import C from "./-locales/mvp.en.json";
 import V from "./-locales/prompt-visibility.en.json";
-import "./-styles.css";
 import "./-home-context.css";
 
 export const Route = createFileRoute("/dev/explorations/home-context")({
