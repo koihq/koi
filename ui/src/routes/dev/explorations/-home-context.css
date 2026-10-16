@@ -1169,7 +1169,12 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 }
 .hc-signal-metric {
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.hc-signal-info {
+  align-self: flex-end;
+  transform: translateY(-7px);
 }
 .hc-signal .hc-rate {
   margin: 0;
@@ -1177,8 +1182,9 @@ html[data-exploration-theme="home-context"] :is(.hc-answer-panel, .hc-form-dialo
 .hc-signal-reading {
   display: inline-flex;
   align-items: baseline;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  white-space: nowrap;
 }
 .hc-signal-comparison-reading,
 .hc-signal-comparison-rate {
@@ -1356,6 +1362,11 @@ html[data-exploration-theme="home-context"]
 }
 .hc-metric-details p {
   margin: 0;
+  color: var(--hc-secondary);
+}
+.hc-metric-details strong {
+  color: var(--hc-text);
+  font-weight: 600;
 }
 .hc-inspect input {
   position: absolute;

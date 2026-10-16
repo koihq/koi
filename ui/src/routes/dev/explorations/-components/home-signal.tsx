@@ -163,7 +163,6 @@ export function HomeSignal({
                     className="hc-signal-delta"
                     data-direction={change ? (change > 0 ? "positive" : "negative") : undefined}
                   >
-                    <span aria-hidden="true">{"·"}</span>
                     <span aria-hidden="true">
                       {change === null ? (
                         "—"
@@ -208,7 +207,7 @@ export function HomeSignal({
               }}
             >
               <TooltipTrigger
-                render={<Button variant="ghost" size="icon-lg" />}
+                render={<Button variant="ghost" size="icon-lg" className="hc-signal-info" />}
                 aria-label={C.metricDetails}
                 aria-expanded={detailsOpen}
                 closeOnClick={false}
@@ -230,24 +229,28 @@ export function HomeSignal({
                     {selectedPoint ? formatSignalDate(selectedPoint.date) : C.heading}
                   </strong>
                   <p>
-                    {copy(C.sampleCount, {
-                      mentioned: selectedPoint?.mentioned ?? stats.mentioned,
-                      completed: selectedPoint?.completed ?? stats.completed,
-                    })}
+                    {C.mentionedIn} <strong>{selectedPoint?.mentioned ?? stats.mentioned}</strong>{" "}
+                    {C.of} <strong>{selectedPoint?.completed ?? stats.completed}</strong>{" "}
+                    {C.completedSampleAnswers}
                   </p>
                   <p>
-                    {selectedPoint
-                      ? selectedPoint.changePoints === null
-                        ? C.noDailyComparison
-                        : copy(C.dailyChange, {
-                            points: signedPoints(selectedPoint.changePoints),
-                          })
-                      : stats.previousRate === null
-                        ? C.noComparison
-                        : copy(C.previousValue, {
-                            rate: percent(stats.previousRate),
-                            days: scope.days,
-                          })}
+                    {selectedPoint ? (
+                      selectedPoint.changePoints === null ? (
+                        C.noDailyComparison
+                      ) : (
+                        <>
+                          <strong>{signedPoints(selectedPoint.changePoints)}</strong>{" "}
+                          {C.vsPreviousCompletedDataDay}
+                        </>
+                      )
+                    ) : stats.previousRate === null ? (
+                      C.noComparison
+                    ) : (
+                      <>
+                        <strong>{percent(stats.previousRate)}</strong>{" "}
+                        {copy(C.previousPeriodSuffix, { days: scope.days })}
+                      </>
+                    )}
                   </p>
                   {excluded > 0 && <p>{copy(C.collectionNote, { count: excluded })}</p>}
                   <p>{C.multiple}</p>
