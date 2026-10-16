@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { VisibilityEngine } from "@/api/generated";
+import { ENGINES } from "./data";
 import { createPreviewBrand, parseExplorationSearch } from "./exploration-fixtures";
 import {
   buildEvidence,
@@ -11,6 +13,7 @@ import {
   promptRows,
   rateFor,
   summarize,
+  type VisibilityScope,
 } from "./prompt-visibility";
 
 const brand = "tally";
@@ -78,8 +81,8 @@ describe("prompt visibility", () => {
   });
 
   it("uses matching evidence for table rows, scoped details, engine cells, and daily points", () => {
-    const rows = promptRows(records, brand, data, 30, "chatgpt");
-    const selectedScope = { ...scope, engine: "chatgpt" };
+    const rows = promptRows(records, brand, data, 30, ["chatgpt"]);
+    const selectedScope: VisibilityScope = { ...scope, engines: ["chatgpt"] };
     const summary = summarize(records, brand, selectedScope, brands[0]);
     const history = inScope(records, selectedScope);
     const series = dailySeries(records, brand, selectedScope, brands[0]);
@@ -149,7 +152,7 @@ describe("prompt visibility", () => {
   it("validates URL state and isolates each brand's evidence", () => {
     const parsed = parseExplorationSearch({
       days: "90",
-      engine: "invented",
+      engines: ["invented"],
       page: -1,
       pageSize: "50",
       status: "past",
@@ -164,7 +167,7 @@ describe("prompt visibility", () => {
       sort: "rate",
       descending: true,
     });
-    expect(parsed.engine).toBeUndefined();
+    expect(parsed.engines).toBeUndefined();
     expect(parsed.page).toBeUndefined();
     expect(parsed.answerId).toBeUndefined();
     expect(inScope(buildEvidence("deja"), scope)).toEqual([]);
@@ -175,5 +178,58 @@ describe("prompt visibility", () => {
         (record) => record.stopped && record.result.outcome === null,
       ),
     ).toBe(true);
+  });
+
+  it("aggregates selected engines by answer count across periods, charts, and rows", () => {
+    const withEngine = (record: EvidenceRecord, engine: VisibilityEngine) => ({
+      ...record,
+      result: { ...record.result, engine },
+    });
+    const answers = [
+      ...Array.from({ length: 9 }, (_, i) => withEngine(sample(89, i, true, false), "chatgpt")),
+      withEngine(sample(89, 9, false, true), "gemini"),
+      withEngine(sample(89, 10, false, true), "perplexity"),
+      withEngine(sample(59, 0, false, false), "chatgpt"),
+      withEngine(sample(59, 1, true, true), "gemini"),
+    ];
+    const engines: VisibilityEngine[] = ["chatgpt", "gemini"];
+    const filtered = { ...scope, engines };
+    const stats = summarize(answers, brand, filtered, brands[0]);
+
+    expect(stats).toMatchObject({
+      mentioned: 9,
+      completed: 10,
+      rate: 90,
+      previousRate: 50,
+      changePoints: 40,
+    });
+    expect(summarize(answers, brand, filtered, brands[1]).rate).toBe(10);
+    expect(dailySeries(answers, brand, filtered, brands[0]).at(-1)?.rate).toBe(90);
+    expect(promptRows(answers, brand, data, 30, engines)[0].stats).toEqual(stats);
+    expect(promptRows(answers, brand, data, 30, engines)[0].engines.map((item) => item.id)).toEqual(
+      engines,
+    );
+
+    const all = inScope(answers, scope);
+    expect(inScope(answers, { ...scope, engines: [] })).toEqual(all);
+    expect(inScope(answers, { ...scope, engines: ENGINES.map((engine) => engine.id) })).toEqual(
+      all,
+    );
+    expect(inScope(answers, { ...scope, engines: ["gemini"] })).toHaveLength(1);
+    expect(
+      summarize(answers, brand, { ...scope, engines: ["google_ai_overviews"] }, brands[0]).rate,
+    ).toBeNull();
+  });
+
+  it("normalizes multiple engine URL values while retiring the scalar filter", () => {
+    expect(
+      parseExplorationSearch({ engines: ["gemini", "invented", "chatgpt", "gemini"] }).engines,
+    ).toEqual(["chatgpt", "gemini"]);
+    expect(
+      parseExplorationSearch({ engines: ENGINES.map((engine) => engine.id) }).engines,
+    ).toHaveLength(4);
+    expect(parseExplorationSearch({ engines: [] }).engines).toBeUndefined();
+    expect(parseExplorationSearch({ engines: "chatgpt" }).engines).toBeUndefined();
+    expect(parseExplorationSearch({ engine: "chatgpt" }).engines).toBeUndefined();
   });
 });

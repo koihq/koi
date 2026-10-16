@@ -44,7 +44,7 @@ export function PromptDetail({
   const editTrigger = useRef<HTMLButtonElement | null>(null);
   const reader = useRef<HTMLElement | null>(null);
   const lastTrigger = useRef<HTMLButtonElement | null>(null);
-  const engine = search.responseEngine ?? search.engine ?? "chatgpt";
+  const engine = search.responseEngine ?? search.engines?.[0] ?? "chatgpt";
   const scope = { days: search.days ?? 30, promptIds: [row.prompt.id] };
   const period = inScope(records, scope);
   const answers = period

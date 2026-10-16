@@ -1,5 +1,6 @@
 import type { Brand } from "@/api/brands.api";
 import type { Competitor } from "@/api/competitors.api";
+import type { VisibilityEngine } from "@/api/generated";
 import type { Prompt } from "@/api/prompts.api";
 import type { VisibilityResult } from "@/api/runs.api";
 import type { ApiListResponse } from "@/api/shared/types";
@@ -35,7 +36,7 @@ export type ExplorationSearch = {
   brand?: HomeBrand;
   state?: ExplorationState;
   days?: 7 | 30 | 90;
-  engine?: string;
+  engines?: VisibilityEngine[];
   promptId?: string;
   compareId?: string;
   q?: string;
@@ -55,13 +56,16 @@ export function parseExplorationSearch(search: Record<string, unknown>): Explora
   const days = Number(search.days);
   const pageSize = Number(search.pageSize);
   const page = Number(search.page);
+  const engines = ENGINES.filter(
+    (item) => Array.isArray(search.engines) && search.engines.includes(item.id),
+  ).map((item) => item.id);
 
   return {
     view: VIEWS.find((value) => value === search.view),
     brand: (Object.keys(HOME_BRANDS) as HomeBrand[]).find((value) => value === search.brand),
     state: STATES.find((value) => value === search.state),
     days: days === 7 || days === 30 || days === 90 ? days : undefined,
-    engine: engine(search.engine),
+    engines: engines.length ? engines : undefined,
     promptId: id(search.promptId),
     compareId: id(search.compareId),
     q: typeof search.q === "string" ? search.q.slice(0, 500) : undefined,

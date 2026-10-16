@@ -1,3 +1,4 @@
+import type { VisibilityEngine } from "@/api/generated";
 import type { Prompt } from "@/api/prompts.api";
 import type { VisibilityResult } from "@/api/runs.api";
 import { ENGINES } from "./data";
@@ -38,7 +39,7 @@ export type PromptRow = {
   leaders: ComparedBrand[];
   leaderRate: number | null;
 };
-export type VisibilityScope = { days: number; engine?: string; promptIds: string[] };
+export type VisibilityScope = { days: number; engines?: VisibilityEngine[]; promptIds: string[] };
 export const LAST_DAY = 89;
 
 export function buildEvidence(brand: HomeBrand, scenario?: ExplorationState): EvidenceRecord[] {
@@ -97,7 +98,7 @@ export function inScope(records: EvidenceRecord[], scope: VisibilityScope, previ
   return records.filter(
     ({ answer, result }) =>
       ids.has(result.promptId) &&
-      (!scope.engine || result.engine === scope.engine) &&
+      (!scope.engines?.length || scope.engines.includes(result.engine)) &&
       answer.day >= end - scope.days &&
       answer.day < end,
   );
@@ -143,7 +144,12 @@ export function dailySeries(
   scope: VisibilityScope,
   target: ComparedBrand,
 ) {
-  const selected = inScope(records, scope);
+  const promptIds = new Set(scope.promptIds);
+  const selected = records.filter(
+    ({ result }) =>
+      promptIds.has(result.promptId) &&
+      (!scope.engines?.length || scope.engines.includes(result.engine)),
+  );
   const byDay = new Map<number, EvidenceRecord[]>();
   for (const record of selected) {
     const entries = byDay.get(record.answer.day) ?? [];
@@ -151,12 +157,30 @@ export function dailySeries(
     byDay.set(record.answer.day, entries);
   }
 
+  const firstDay = LAST_DAY + 1 - scope.days;
+  let previousRate: number | null = null;
+
+  for (let day = firstDay - 1; day >= 0; day -= 1) {
+    const rate = rateFor(target.measured ? (byDay.get(day) ?? []) : [], brand, target.id).rate;
+    if (rate === null) continue;
+
+    previousRate = rate;
+    break;
+  }
+
   return Array.from({ length: scope.days }, (_, index) => {
-    const day = LAST_DAY + 1 - scope.days + index;
+    const day = firstDay + index;
+    const stats = rateFor(target.measured ? (byDay.get(day) ?? []) : [], brand, target.id);
+    const changePoints =
+      stats.rate !== null && previousRate !== null ? stats.rate - previousRate : null;
+
+    if (stats.rate !== null) previousRate = stats.rate;
+
     return {
       day,
       date: collectionDate(day),
-      ...rateFor(target.measured ? (byDay.get(day) ?? []) : [], brand, target.id),
+      ...stats,
+      changePoints,
     };
   });
 }
@@ -170,7 +194,7 @@ export function promptRows(
   brand: HomeBrand,
   data: PreviewBrand,
   days: number,
-  engine?: string,
+  engines?: VisibilityEngine[],
 ): PromptRow[] {
   const prompts = new Map(data.prompts.map((prompt) => [prompt.id, { prompt, past: false }]));
   for (const { result } of records) {
@@ -189,7 +213,7 @@ export function promptRows(
   const brands = comparedBrands(brand, data);
 
   return [...prompts.values()].map(({ prompt, past }) => {
-    const scope = { days, engine, promptIds: [prompt.id] };
+    const scope = { days, engines, promptIds: [prompt.id] };
     const scores = brands.map((item) => ({
       item,
       rate: summarize(records, brand, scope, item).rate,
@@ -200,10 +224,12 @@ export function promptRows(
       prompt,
       past,
       stats: summarize(records, brand, scope, brands[0]),
-      engines: ENGINES.filter((item) => !engine || item.id === engine).map((item) => ({
-        id: item.id,
-        rate: summarize(records, brand, { ...scope, engine: item.id }, brands[0]).rate,
-      })),
+      engines: ENGINES.filter((item) => !engines?.length || engines.includes(item.id)).map(
+        (item) => ({
+          id: item.id,
+          rate: summarize(records, brand, { ...scope, engines: [item.id] }, brands[0]).rate,
+        }),
+      ),
       leaders:
         leaderRate > 0
           ? scores.filter((item) => item.rate === leaderRate).map((item) => item.item)

@@ -1,7 +1,5 @@
 {
   "heading": "Mentioned in answers",
-  "scope": "All tracked prompts",
-  "period": "This {days}-day period",
   "previousPeriod": "vs previous {days} days",
   "sampleCount": "Mentioned in {mentioned} of {completed} completed sample answers",
   "change": "Change",
@@ -16,7 +14,9 @@
   "allEngines": "All engines",
   "inspectDate": "Inspect collection date",
   "chartDescription": "Daily mention rate on a fixed 0 to 100 percent scale. Missing collections are gaps.",
-  "point": "{date}: {brand}, {rate}, {count} completed answers",
+  "point": "{date}: {brand}, {rate}, {change}, {count} completed answers",
+  "dailyChange": "{points} vs the previous completed data day",
+  "noDailyComparison": "No previous completed data day",
   "chartRange": "Collection dates",
   "compare": "Compare with {name}",
   "removeComparison": "Remove comparison",
@@ -68,8 +68,16 @@
   "latestPoint": "Latest observation: {date}",
   "noHistoricalPrompts": "No past prompts match these filters.",
   "periodLabel": "{days}D",
-  "scopeLabel": "{brand} · All tracked prompts",
   "previewLabel": "Sample data through October 13, 2026 · Changes stay in this session.",
   "actions": "Actions",
-  "inspectHint": "Inspect the chart for daily rates. Use arrow keys when focused."
+  "metricDetails": "Mention rate details",
+  "previousValue": "{rate} in the previous {days} days",
+  "shortPoints": "{points} pp",
+  "competitors": "Competitors",
+  "noPeriodAnswers": "No answers in this period",
+  "clearEngines": "Clear engine filters",
+  "dailyCount": "{mentioned} / {completed} answers",
+  "endpoint": "{name}: {rate} on {date}",
+  "percentSign": "%",
+  "unavailable": "—"
 }

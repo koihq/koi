@@ -42,6 +42,18 @@ Light and dark are the same layout. Invert the canvas, keep the hierarchy. No se
 
 Keys live in `ui/src/locales`. Sentence case. CTAs name the action (`Sign in`, not `Submit`). Errors say how to recover. Empty states invite an action. No em dashes as a style tic. No authoring vocabulary in UI copy (“composition”, “hierarchy”).
 
+**Let context do the explaining.** Do not repeat information already established by
+navigation, selection, or nearby controls. Remove explanatory text that adds no useful
+meaning. Prefer a familiar icon when its meaning is clear, with an accessible name and
+a tooltip when needed. Put secondary definitions and evidence behind contextual
+disclosure. Keep text that identifies an ambiguous metric, explains a consequential
+state, or helps someone recover.
+
+For example, do not repeat the selected brand beside its switcher, add “All tracked
+prompts” when the view already establishes that scope, restate the selected period, or
+print chart interaction instructions beneath an inspectable chart. Preserve accessible
+names and keyboard behavior when removing visible instructions.
+
 ## PNG mark
 
 The mark is the one loud thing. Orange is identity, not the theme.

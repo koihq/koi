@@ -85,7 +85,7 @@ function Workspace({
   const [signedOut, setSignedOut] = useState(false);
   const [recovered, setRecovered] = useState(false);
   const preferences = useRef<
-    Partial<Record<HomeBrand, Pick<ExplorationSearch, "days" | "engine">>>
+    Partial<Record<HomeBrand, Pick<ExplorationSearch, "days" | "engines">>>
   >({});
   const listEntry = useRef<{ search: ExplorationSearch; id: string; scroll: number } | null>(null);
   const previousPage = useRef({ brand, view, promptId: search.promptId, signedOut });
@@ -93,8 +93,8 @@ function Workspace({
   const days = search.days ?? 30;
   const records = useMemo(() => buildEvidence(brand, search.state), [brand, search.state]);
   const rows = useMemo(
-    () => promptRows(records, brand, data, days, search.engine),
-    [records, brand, data, days, search.engine],
+    () => promptRows(records, brand, data, days, search.engines),
+    [records, brand, data, days, search.engines],
   );
   const selected = search.promptId
     ? rows.find((row) => row.prompt.id === search.promptId)
@@ -213,7 +213,7 @@ function Workspace({
       records={records}
       scope={{
         days,
-        engine: search.engine,
+        engines: search.engines,
         promptIds: selected
           ? [selected.prompt.id]
           : data.prompts.filter((item) => item.confirmed).map((item) => item.id),
@@ -221,8 +221,13 @@ function Workspace({
       compareId={search.compareId}
       onCompare={(compareId) => update({ compareId })}
       onDaysChange={(next) => update({ days: next, answerId: undefined })}
-      onEngineChange={(engine) =>
-        update({ engine, responseEngine: undefined, answerId: undefined })
+      onEnginesChange={(engines) =>
+        update({
+          engines: engines.length ? engines : undefined,
+          responseEngine: undefined,
+          answerId: undefined,
+          page: undefined,
+        })
       }
       onManage={() =>
         void navigate({
@@ -257,7 +262,7 @@ function Workspace({
           value={brand}
           maxVisible={3}
           onChange={(next) => {
-            preferences.current[brand] = { days: search.days, engine: search.engine };
+            preferences.current[brand] = { days: search.days, engines: search.engines };
             listEntry.current = null;
             void navigate({
               search: { brand: next, state: search.state, ...preferences.current[next] },
@@ -351,7 +356,6 @@ function Workspace({
             <h1 id="hc-page-heading" tabIndex={-1} className="sr-only">
               {C.visibility}
             </h1>
-            <p className="hc-scope-note">{copy(V.scopeLabel, { brand: data.settings.name })}</p>
             {signal}
             {(search.state === "empty" || search.state === "review") && (
               <TrackingStatus data={data} brand={brand} />
