@@ -27,6 +27,7 @@
   "dashboard": {
     "title": "Visibility",
     "aiVisibility": "AI visibility",
+    "percentSign": "%",
     "metricDetails": "How visibility is calculated",
     "metricExplanation": "This preview uses sample rates for confirmed prompts and competitors. Saved answers below come from collection runs.",
     "sampleAnalytics": "Sample analytics. Saved answers and citations come from collection runs.",

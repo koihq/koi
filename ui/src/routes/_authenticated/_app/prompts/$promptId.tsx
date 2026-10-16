@@ -1,3 +1,4 @@
+import NumberFlow, { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -14,7 +15,7 @@ import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
 import { BrandPill } from "@/components/blocks/brand-pill";
-import { VisibilityChart } from "@/components/blocks/visibility-chart";
+import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,6 +58,8 @@ function PromptDetail() {
   const mutations = usePromptMutations(brand.id);
   const [search, setSearch] = useQueryStates(detailSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
+  const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
+  const canAnimateNumbers = useCanAnimate();
   const [editing, setEditing] = useState(false);
   const runTrigger = useRef<HTMLButtonElement | null>(null);
   const editTrigger = useRef<HTMLButtonElement | null>(null);
@@ -98,6 +101,12 @@ function PromptDetail() {
       rate: mockRate(brand.id, measured, scope, competitor),
     }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
+  const metricRate = series[inspected ?? -1]?.rate ?? rate;
+
+  function inspect(index: number | null, input: InspectionInput) {
+    setInspectionInput(input);
+    setInspected(index);
+  }
 
   function openRun(id: string, trigger: HTMLButtonElement, engine?: VisibilityEngine) {
     runTrigger.current = trigger;
@@ -136,14 +145,33 @@ function PromptDetail() {
         <section
           className="min-w-0 rounded-lg bg-surface p-5 min-[801px]:min-h-[412px]"
           aria-labelledby="detail-visibility-heading"
+          onPointerDownCapture={(event) =>
+            setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
+          }
+          onKeyDownCapture={() => setInspectionInput("keyboard")}
         >
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="detail-visibility-heading" className="text-base font-bold">
                 {t("home:dashboard.aiVisibility")}
               </h2>
-              <strong className="mt-4 block text-4xl leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                {rate === null ? "—" : `${(series[inspected ?? -1]?.rate ?? rate).toFixed(1)}%`}
+              <strong className="mt-4 block text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
+                {metricRate === null ? (
+                  "—"
+                ) : (
+                  <NumberFlow
+                    value={Number(metricRate.toFixed(1))}
+                    locales={i18n.language}
+                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                    animated={canAnimateNumbers && inspectionInput === "pointer"}
+                    className="[--number-flow-mask-height:0.3em]"
+                  />
+                )}
+                {metricRate !== null && (
+                  <span className="ml-0.5 text-[0.667em] text-muted-foreground">
+                    {t("home:dashboard.percentSign")}
+                  </span>
+                )}
               </strong>
               <p className="text-xs font-normal text-muted-foreground">
                 {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
@@ -170,8 +198,11 @@ function PromptDetail() {
             <VisibilityChart
               series={series}
               comparison={comparedSeries}
+              brand={brand}
+              competitor={comparison}
               inspected={inspected}
-              onInspect={setInspected}
+              inspectionInput={inspectionInput}
+              onInspect={inspect}
               locale={i18n.language}
               variant="detail"
             />
@@ -205,12 +236,13 @@ function PromptDetail() {
                 type="button"
                 aria-pressed={comparison?.id === competitor.id}
                 className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-md p-2 text-start hover:bg-muted aria-pressed:bg-muted"
-                onClick={() =>
+                onClick={() => {
                   void setSearch(
                     { compareId: comparison?.id === competitor.id ? "" : competitor.id },
                     { history: "push" },
-                  )
-                }
+                  );
+                  setInspected(null);
+                }}
               >
                 <span className="justify-self-start">
                   <BrandPill name={competitor.name} domain={competitor.domain} />

@@ -52,6 +52,7 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 | Compact choice | `Select` / `SelectTrigger` / `SelectValue` / `SelectContent` / `SelectItem` |
 | Label | `Label` (prefer `FieldLabel` in forms) |
 | Structural split | `Separator` — **one split**, never as grouping. Do not put `FieldSeparator` between form fields |
+| Data chart | `ChartContainer` / `ChartTooltip` with Recharts series |
 
 `FieldGroup` gap is the default grouping. Do not add `Card`, `Table`, or `Tabs` until a product screen needs the behavior.
 

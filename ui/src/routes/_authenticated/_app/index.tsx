@@ -7,6 +7,7 @@ import {
   Settings01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import NumberFlow, { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -22,10 +23,11 @@ import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine } from "@/api/generated";
 import type { Prompt } from "@/api/prompts.api";
+import { BrandIcon } from "@/components/blocks/brand-icon";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { PromptManager, promptSearchParams } from "@/components/blocks/prompt-manager";
 import { TrackingSummary } from "@/components/blocks/tracking-review";
-import { VisibilityChart } from "@/components/blocks/visibility-chart";
+import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTracking } from "@/hooks/use-tracking";
@@ -82,6 +84,8 @@ function Home() {
   const tracking = useTracking(brand.id);
   const [graph, setGraph] = useQueryStates(graphSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
+  const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
+  const canAnimateNumbers = useCanAnimate();
   const selectedEngines = graph.engines
     .split(",")
     .filter((id): id is VisibilityEngine => engines.some((engine) => engine.id === id));
@@ -122,6 +126,23 @@ function Home() {
     }))
     .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
   const selectedPoint = inspected === null ? undefined : series[inspected];
+  const selectedComparisonPoint = inspected === null ? undefined : comparedSeries[inspected];
+  const comparisonRate = comparison
+    ? mockRate(brand.id, confirmedPrompts, scope, comparison)
+    : null;
+  const headlineRate = selectedPoint?.rate ?? rate;
+  const rawChange = selectedPoint
+    ? inspected !== null && inspected > 0
+      ? selectedPoint.rate - series[inspected - 1].rate
+      : null
+    : change;
+  const headlineChange = rawChange === null ? null : Number(rawChange.toFixed(1));
+  const animateNumbers = canAnimateNumbers && inspectionInput === "pointer";
+
+  function inspect(index: number | null, input: InspectionInput) {
+    setInspectionInput(input);
+    setInspected(index);
+  }
 
   return (
     <div className="grid gap-6 pb-24">
@@ -129,6 +150,10 @@ function Home() {
       <section
         className="min-w-0 rounded-lg bg-surface p-4 sm:p-7"
         aria-labelledby="signal-heading"
+        onPointerDownCapture={(event) =>
+          setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
+        }
+        onKeyDownCapture={() => setInspectionInput("keyboard")}
       >
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
@@ -161,16 +186,87 @@ function Home() {
                 </Button>
               </p>
             ) : (
-              <div className="mt-4 flex items-baseline gap-2 whitespace-nowrap text-[13px]">
-                <strong className="text-4xl leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                  {selectedPoint || rate !== null
-                    ? `${(selectedPoint?.rate ?? rate)?.toFixed(1)}%`
-                    : "—"}
-                </strong>
-                {!selectedPoint && change !== null && (
-                  <span className={change >= 0 ? "text-positive" : "text-negative"}>
-                    {`${change > 0 ? "+" : ""}${change.toFixed(1)}`}
-                  </span>
+              <div className="mt-4 flex flex-wrap items-baseline gap-2 text-[13px]">
+                {comparison && comparisonRate !== null ? (
+                  <div className="flex flex-wrap items-center gap-5">
+                    {(
+                      [
+                        { subject: brand, value: selectedPoint?.rate ?? rate },
+                        {
+                          subject: comparison,
+                          value: selectedComparisonPoint?.rate ?? comparisonRate,
+                        },
+                      ] as const
+                    ).map(({ subject, value }) => (
+                      <span
+                        key={subject.id}
+                        className="inline-flex items-center gap-2 whitespace-nowrap"
+                      >
+                        <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
+                        <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
+                          {value === null ? (
+                            "—"
+                          ) : (
+                            <NumberFlow
+                              value={Number(value.toFixed(1))}
+                              locales={i18n.language}
+                              format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                              animated={animateNumbers}
+                              className="[--number-flow-mask-height:0.3em]"
+                            />
+                          )}
+                          {value !== null && (
+                            <span className="ml-0.5 text-[0.667em] text-muted-foreground">
+                              {t("dashboard.percentSign")}
+                            </span>
+                          )}
+                        </strong>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <strong className="whitespace-nowrap text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
+                      {headlineRate === null ? (
+                        "—"
+                      ) : (
+                        <NumberFlow
+                          value={Number(headlineRate.toFixed(1))}
+                          locales={i18n.language}
+                          format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                          animated={animateNumbers}
+                          className="[--number-flow-mask-height:0.3em]"
+                        />
+                      )}
+                      {headlineRate !== null && (
+                        <span className="ml-0.5 text-[0.667em] text-muted-foreground">
+                          {t("dashboard.percentSign")}
+                        </span>
+                      )}
+                    </strong>
+                    <span
+                      className={
+                        headlineChange === null
+                          ? "text-muted-foreground"
+                          : headlineChange >= 0
+                            ? "text-positive"
+                            : "text-negative"
+                      }
+                    >
+                      {headlineChange === null ? (
+                        "—"
+                      ) : (
+                        <NumberFlow
+                          value={Math.abs(headlineChange)}
+                          prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
+                          locales={i18n.language}
+                          format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                          animated={animateNumbers}
+                          className="[--number-flow-mask-height:0.3em]"
+                        />
+                      )}
+                    </span>
+                  </>
                 )}
                 {selectedPoint && (
                   <time
@@ -241,8 +337,11 @@ function Home() {
           <VisibilityChart
             series={series}
             comparison={comparedSeries}
+            brand={brand}
+            competitor={comparison}
             inspected={inspected}
-            onInspect={setInspected}
+            inspectionInput={inspectionInput}
+            onInspect={inspect}
             locale={i18n.language}
           />
         )}
@@ -290,12 +389,13 @@ function Home() {
                   key={competitor.id}
                   type="button"
                   aria-pressed={graph.compareId === competitor.id}
-                  onClick={() =>
+                  onClick={() => {
                     void setGraph(
                       { compareId: graph.compareId === competitor.id ? "" : competitor.id },
                       { history: "push" },
-                    )
-                  }
+                    );
+                    setInspected(null);
+                  }}
                   className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_60px_65px] items-center gap-1.5 rounded-md p-2 text-start hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:grid-cols-[minmax(0,1fr)_76px_88px] sm:gap-4 max-[359px]:grid-cols-[minmax(0,1fr)_auto] max-[359px]:gap-y-2"
                 >
                   <span className="min-w-0 justify-self-start max-[359px]:col-span-2">
