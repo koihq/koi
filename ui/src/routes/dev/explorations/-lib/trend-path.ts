@@ -50,7 +50,7 @@ export function smoothSegments(points: PlotPoint[]): CurveSegment[] {
   });
 }
 
-export function trendPath(points: (PlotPoint | null)[]) {
+function visibleRuns(points: (PlotPoint | null)[]) {
   const runs: PlotPoint[][] = [];
   let run: PlotPoint[] = [];
 
@@ -63,13 +63,28 @@ export function trendPath(points: (PlotPoint | null)[]) {
     }
   }
 
-  const pair = (point: PlotPoint) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
-  return runs
-    .map((points) => {
-      const curves = smoothSegments(points).map(
-        ({ first, second, to }) => `C${pair(first)} ${pair(second)} ${pair(to)}`,
-      );
-      return `M${pair(points[0])} ${curves.join(" ")}`;
+  return runs;
+}
+
+const pair = (point: PlotPoint) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`;
+
+function runPath(points: PlotPoint[]) {
+  const curves = smoothSegments(points).map(
+    ({ first, second, to }) => `C${pair(first)} ${pair(second)} ${pair(to)}`,
+  );
+  return `M${pair(points[0])} ${curves.join(" ")}`;
+}
+
+export function trendPath(points: (PlotPoint | null)[]) {
+  return visibleRuns(points).map(runPath).join(" ");
+}
+
+export function trendAreaPath(points: (PlotPoint | null)[], baseline: number) {
+  return visibleRuns(points)
+    .filter((run) => run.length > 1)
+    .map((run) => {
+      const last = run[run.length - 1];
+      return `${runPath(run)} L${pair({ x: last.x, y: baseline })} L${pair({ x: run[0].x, y: baseline })} Z`;
     })
     .join(" ");
 }

@@ -36,8 +36,7 @@ export type PromptRow = {
   past: boolean;
   stats: MentionStats;
   engines: { id: string; rate: number | null }[];
-  leaders: ComparedBrand[];
-  leaderRate: number | null;
+  topBrands: { brand: ComparedBrand; rate: number }[];
 };
 export type VisibilityScope = { days: number; engines?: VisibilityEngine[]; promptIds: string[] };
 export const LAST_DAY = 89;
@@ -218,7 +217,14 @@ export function promptRows(
       item,
       rate: summarize(records, brand, scope, item).rate,
     }));
-    const leaderRate = Math.max(0, ...scores.map((item) => item.rate ?? 0));
+    const topBrands = scores
+      .filter(
+        (item): item is { item: ComparedBrand; rate: number } =>
+          item.rate !== null && item.rate > 0,
+      )
+      .sort((a, b) => b.rate - a.rate)
+      .slice(0, 4)
+      .map(({ item, rate }) => ({ brand: item, rate }));
 
     return {
       prompt,
@@ -230,11 +236,7 @@ export function promptRows(
           rate: summarize(records, brand, { ...scope, engines: [item.id] }, brands[0]).rate,
         }),
       ),
-      leaders:
-        leaderRate > 0
-          ? scores.filter((item) => item.rate === leaderRate).map((item) => item.item)
-          : [],
-      leaderRate: leaderRate || null,
+      topBrands,
     };
   });
 }

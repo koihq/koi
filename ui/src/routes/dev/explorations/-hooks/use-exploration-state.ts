@@ -150,6 +150,23 @@ export function useExplorationState(scenario?: ExplorationState) {
       update(brand, (data) => finishReview(data, kind)),
     confirm: (brand: HomeBrand, kind: "prompts" | "competitors", id: string) =>
       update(brand, (data) => confirmItem(data, kind, id)),
+    confirmPrompts: (brand: HomeBrand, ids: string[]) => {
+      const selected = new Set(ids);
+      update(brand, (data) => ({
+        ...data,
+        prompts: data.prompts.map((prompt) =>
+          selected.has(prompt.id) ? { ...prompt, confirmed: true } : prompt,
+        ),
+      }));
+    },
+    removePrompts: (brand: HomeBrand, ids: string[]) => {
+      checkSave();
+      const selected = new Set(ids);
+      update(brand, (data) => ({
+        ...data,
+        prompts: data.prompts.filter((prompt) => !selected.has(prompt.id)),
+      }));
+    },
     remove: (brand: HomeBrand, kind: "prompts" | "competitors", id: string) => {
       checkSave();
       update(brand, (data) => ({ ...data, [kind]: data[kind].filter((item) => item.id !== id) }));

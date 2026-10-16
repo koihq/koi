@@ -61,6 +61,10 @@ describe("prompt visibility", () => {
     expect(rival.rate).toBe(68);
     expect(gapChange(you, rival)).toBe(5);
     expect((rival.rate ?? 0) - (you.rate ?? 0)).toBe(18);
+    expect(promptRows(answers, brand, data, 30)[0].topBrands.slice(0, 2)).toEqual([
+      { brand: brands[1], rate: 68 },
+      { brand: brands[0], rate: 50 },
+    ]);
   });
 
   it("excludes failed and pending answers, while retaining real zeroes and cited outcomes", () => {
@@ -123,18 +127,18 @@ describe("prompt visibility", () => {
     expect(filterPromptRows(rows, {}).every((row) => !row.past)).toBe(true);
   });
 
-  it("does not fabricate observations for new prompts or competitors, and exposes tied leaders", () => {
+  it("does not fabricate observations and ranks up to four mentioned brands", () => {
     const edited = createPreviewBrand(brand);
     edited.prompts.push({ ...edited.prompts[0], id: "new", text: "New question" });
     edited.competitors.push({ ...edited.competitors[0], id: "new-brand", name: "New brand" });
     const rows = promptRows([sample(89, 0, true, true)], brand, edited, 30);
 
-    expect(rows[0].leaders.map((item) => item.id)).toEqual([brands[0].id, brands[1].id]);
+    expect(rows[0].topBrands.map(({ brand }) => brand.id)).toEqual([brands[0].id, brands[1].id]);
     expect(rows.find((row) => row.prompt.id === "new")?.stats.rate).toBeNull();
     const newBrand = comparedBrands(brand, edited).find((item) => item.id === "new-brand");
     if (!newBrand) throw new Error("Missing new competitor");
     expect(summarize(records, brand, scope, newBrand).rate).toBeNull();
-    expect(promptRows([sample(89, 0, false, false)], brand, data, 30)[0].leaders).toEqual([]);
+    expect(promptRows([sample(89, 0, false, false)], brand, data, 30)[0].topBrands).toEqual([]);
   });
 
   it("filters before sorting and keeps unavailable rates last in either direction", () => {

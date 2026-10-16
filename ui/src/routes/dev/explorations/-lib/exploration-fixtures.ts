@@ -136,13 +136,29 @@ export function createPreviewBrand(brand: HomeBrand, state?: ExplorationState): 
     },
     prompts: empty
       ? []
-      : prompts.map((text, index) => ({
-          id: `${brand}:prompt:${index}`,
-          brandId: brand,
-          text,
-          source: "manual",
-          confirmed: true,
-        })),
+      : [
+          ...prompts.map((text, index) => ({
+            id: `${brand}:prompt:${index}`,
+            brandId: brand,
+            text,
+            source: "manual" as const,
+            confirmed: true,
+          })),
+          ...(brand === "beehiiv"
+            ? [
+                "How should I compare newsletter platforms for a local publication?",
+                "Which newsletter tool supports a private member community?",
+                "Can I import subscribers and keep their existing paid plans?",
+                "What should a creator measure after sending their first ten issues?",
+              ].map((text, index) => ({
+                id: `${brand}:draft:${index}`,
+                brandId: brand,
+                text,
+                source: "drafted" as const,
+                confirmed: false,
+              }))
+            : []),
+        ],
     competitors: empty
       ? []
       : [

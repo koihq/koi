@@ -44,6 +44,18 @@ describe("MVP exploration", () => {
     });
   });
 
+  it("offers a multi-page beehiiv sample with measured and draft prompts", () => {
+    const sample = createPreviewBrand("beehiiv");
+    const first = pageOf(sample.prompts, 1, 20);
+    const second = pageOf(sample.prompts, 2, 20);
+
+    expect(sample.prompts).toHaveLength(28);
+    expect(first.hasNext).toBe(true);
+    expect(second.items).toHaveLength(8);
+    expect(sample.prompts.filter((prompt) => !prompt.confirmed)).toHaveLength(4);
+    expect(homeEvidence("beehiiv").filter((answer) => answer.day === 89)).toHaveLength(96);
+  });
+
   it("preserves baseline mention rates when adapting evidence for the shared answer panel", () => {
     for (const brand of Object.keys(HOME_BRANDS) as HomeBrand[]) {
       const answers = homeEvidence(brand).filter((answer) => answer.day >= 60);

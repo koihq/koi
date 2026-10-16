@@ -51,6 +51,15 @@ function signedPoints(value: number | null) {
   });
 }
 
+function formatHeadlineDate(value: string) {
+  return new Date(`${value}T12:00:00Z`).toLocaleDateString("en", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function HomeSignal({
   brand,
   data,
@@ -128,135 +137,140 @@ export function HomeSignal({
       onPointerDownCapture={() => setInput("pointer")}
       onKeyDownCapture={() => setInput("keyboard")}
     >
-      <h2 id={titleId} className="sr-only">
-        {C.heading}
-      </h2>
       <TooltipProvider delay={350}>
         <div className="hc-signal-header">
-          <div className="hc-signal-metric">
-            <div className="hc-signal-reading">
-              {showComparisonReadout && selected && selectedPoint && selectedComparisonPoint ? (
-                <div className="hc-signal-comparison-reading">
-                  <SignalRate brand={you} rate={selectedPoint.rate} animated={animateNumbers} />
-                  <SignalRate
-                    brand={selected}
-                    rate={selectedComparisonPoint.rate}
-                    animated={animateNumbers}
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="hc-rate">
-                    {headlineRate === null ? (
-                      "—"
-                    ) : (
-                      <NumberFlow
-                        className="hc-signal-number"
-                        value={Number(headlineRate.toFixed(1))}
-                        format={{ maximumFractionDigits: 1 }}
-                        animated={animateNumbers}
-                      />
-                    )}
-                    {headlineRate !== null && <span>{C.percentSign}</span>}
+          <div className="hc-signal-summary">
+            <div className="hc-signal-intro">
+              <time dateTime={series[series.length - 1].date}>
+                {formatHeadlineDate(series[series.length - 1].date)}
+              </time>
+              <h2 id={titleId}>{C.visibilityTitle}</h2>
+            </div>
+            <div className="hc-signal-metric">
+              <div className="hc-signal-reading">
+                {showComparisonReadout && selected && selectedPoint && selectedComparisonPoint ? (
+                  <div className="hc-signal-comparison-reading">
+                    <SignalRate brand={you} rate={selectedPoint.rate} animated={animateNumbers} />
+                    <SignalRate
+                      brand={selected}
+                      rate={selectedComparisonPoint.rate}
+                      animated={animateNumbers}
+                    />
                   </div>
-                  <span
-                    className="hc-signal-delta"
-                    data-direction={change ? (change > 0 ? "positive" : "negative") : undefined}
-                  >
-                    <span aria-hidden="true">
-                      {change === null ? (
+                ) : (
+                  <>
+                    <div className="hc-rate">
+                      {headlineRate === null ? (
                         "—"
                       ) : (
                         <NumberFlow
                           className="hc-signal-number"
-                          value={Math.abs(change)}
-                          prefix={change > 0 ? "+" : change < 0 ? "−" : undefined}
+                          value={Number(headlineRate.toFixed(1))}
                           format={{ maximumFractionDigits: 1 }}
                           animated={animateNumbers}
                         />
                       )}
+                      {headlineRate !== null && <span>{C.percentSign}</span>}
+                    </div>
+                    <span
+                      className="hc-signal-delta"
+                      data-direction={change ? (change > 0 ? "positive" : "negative") : undefined}
+                    >
+                      <span aria-hidden="true">
+                        {change === null ? (
+                          "—"
+                        ) : (
+                          <NumberFlow
+                            className="hc-signal-number"
+                            value={Math.abs(change)}
+                            prefix={change > 0 ? "+" : change < 0 ? "−" : undefined}
+                            format={{ maximumFractionDigits: 1 }}
+                            animated={animateNumbers}
+                          />
+                        )}
+                      </span>
+                      <span className="sr-only">
+                        {change === null
+                          ? activeInspection
+                            ? C.noDailyComparison
+                            : C.noComparison
+                          : copy(change > 0 ? C.up : change < 0 ? C.down : C.unchanged, {
+                              points: points(change),
+                            })}
+                      </span>
                     </span>
-                    <span className="sr-only">
-                      {change === null
-                        ? activeInspection
-                          ? C.noDailyComparison
-                          : C.noComparison
-                        : copy(change > 0 ? C.up : change < 0 ? C.down : C.unchanged, {
-                            points: points(change),
-                          })}
-                    </span>
-                  </span>
-                </>
-              )}
-              {selectedPoint && (
-                <time className="hc-selected-date" dateTime={selectedPoint.date}>
-                  {formatSignalDate(selectedPoint.date)}
-                </time>
-              )}
-            </div>
-            <Tooltip
-              open={detailsOpen}
-              onOpenChange={(open, details) => {
-                if (
-                  detailsPinned &&
-                  (details.reason === "trigger-hover" || details.reason === "trigger-focus")
-                )
-                  return;
-                setDetailsOpen(open);
-                if (!open) setDetailsPinned(false);
-              }}
-            >
-              <TooltipTrigger
-                render={<Button variant="ghost" size="icon-lg" className="hc-signal-info" />}
-                aria-label={C.metricDetails}
-                aria-expanded={detailsOpen}
-                closeOnClick={false}
-                onClick={() => {
-                  setDetailsPinned(!detailsPinned);
-                  setDetailsOpen(!detailsPinned);
+                  </>
+                )}
+                {selectedPoint && (
+                  <time className="hc-selected-date" dateTime={selectedPoint.date}>
+                    {formatSignalDate(selectedPoint.date)}
+                  </time>
+                )}
+              </div>
+              <Tooltip
+                open={detailsOpen}
+                onOpenChange={(open, details) => {
+                  if (
+                    detailsPinned &&
+                    (details.reason === "trigger-hover" || details.reason === "trigger-focus")
+                  )
+                    return;
+                  setDetailsOpen(open);
+                  if (!open) setDetailsPinned(false);
                 }}
               >
-                <HugeiconsIcon icon={InformationCircleIcon} aria-hidden="true" />
-              </TooltipTrigger>
-              <TooltipContent
-                className="hc-signal-tooltip"
-                data-input={input}
-                side="bottom"
-                align="start"
-              >
-                <div className="hc-metric-details">
-                  <strong>
-                    {selectedPoint ? formatSignalDate(selectedPoint.date) : C.heading}
-                  </strong>
-                  <p>
-                    {C.mentionedIn} <strong>{selectedPoint?.mentioned ?? stats.mentioned}</strong>{" "}
-                    {C.of} <strong>{selectedPoint?.completed ?? stats.completed}</strong>{" "}
-                    {C.completedSampleAnswers}
-                  </p>
-                  <p>
-                    {selectedPoint ? (
-                      selectedPoint.changePoints === null ? (
-                        C.noDailyComparison
+                <TooltipTrigger
+                  render={<Button variant="ghost" size="icon-lg" className="hc-signal-info" />}
+                  aria-label={C.metricDetails}
+                  aria-expanded={detailsOpen}
+                  closeOnClick={false}
+                  onClick={() => {
+                    setDetailsPinned(!detailsPinned);
+                    setDetailsOpen(!detailsPinned);
+                  }}
+                >
+                  <HugeiconsIcon icon={InformationCircleIcon} aria-hidden="true" />
+                </TooltipTrigger>
+                <TooltipContent
+                  className="hc-signal-tooltip"
+                  data-input={input}
+                  side="bottom"
+                  align="start"
+                >
+                  <div className="hc-metric-details">
+                    <strong>
+                      {selectedPoint ? formatSignalDate(selectedPoint.date) : C.heading}
+                    </strong>
+                    <p>
+                      {C.mentionedIn} <strong>{selectedPoint?.mentioned ?? stats.mentioned}</strong>{" "}
+                      {C.of} <strong>{selectedPoint?.completed ?? stats.completed}</strong>{" "}
+                      {C.completedSampleAnswers}
+                    </p>
+                    <p>
+                      {selectedPoint ? (
+                        selectedPoint.changePoints === null ? (
+                          C.noDailyComparison
+                        ) : (
+                          <>
+                            <strong>{signedPoints(selectedPoint.changePoints)}</strong>{" "}
+                            {C.vsPreviousCompletedDataDay}
+                          </>
+                        )
+                      ) : stats.previousRate === null ? (
+                        C.noComparison
                       ) : (
                         <>
-                          <strong>{signedPoints(selectedPoint.changePoints)}</strong>{" "}
-                          {C.vsPreviousCompletedDataDay}
+                          <strong>{percent(stats.previousRate)}</strong>{" "}
+                          {copy(C.previousPeriodSuffix, { days: scope.days })}
                         </>
-                      )
-                    ) : stats.previousRate === null ? (
-                      C.noComparison
-                    ) : (
-                      <>
-                        <strong>{percent(stats.previousRate)}</strong>{" "}
-                        {copy(C.previousPeriodSuffix, { days: scope.days })}
-                      </>
-                    )}
-                  </p>
-                  {excluded > 0 && <p>{copy(C.collectionNote, { count: excluded })}</p>}
-                  <p>{C.multiple}</p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+                      )}
+                    </p>
+                    {excluded > 0 && <p>{copy(C.collectionNote, { count: excluded })}</p>}
+                    <p>{C.multiple}</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
           <fieldset className="hc-engine-filter" aria-label={C.byEngine}>
             {ENGINES.map((engine) => {

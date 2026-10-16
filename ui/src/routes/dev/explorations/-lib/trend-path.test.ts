@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { smoothSegments, trendPath } from "./trend-path";
+import { smoothSegments, trendAreaPath, trendPath } from "./trend-path";
 
 describe("visibility trend geometry", () => {
   it("passes through observations and never overshoots consecutive values", () => {
@@ -40,5 +40,27 @@ describe("visibility trend geometry", () => {
     expect(path).toContain("M60.00,0.00");
     expect(trendPath([null, null])).toBe("");
     expect(smoothSegments([{ x: 0, y: 0 }])).toEqual([]);
+  });
+
+  it("fills only observed runs and closes each one at the baseline", () => {
+    const area = trendAreaPath(
+      [
+        { x: 0, y: 10 },
+        { x: 20, y: 20 },
+        null,
+        { x: 60, y: 30 },
+        null,
+        { x: 100, y: 40 },
+        { x: 120, y: 50 },
+      ],
+      100,
+    );
+
+    expect(area.match(/M/g)).toHaveLength(2);
+    expect(area.match(/Z/g)).toHaveLength(2);
+    expect(area).toContain("L20.00,100.00 L0.00,100.00 Z");
+    expect(area).toContain("L120.00,100.00 L100.00,100.00 Z");
+    expect(area).not.toContain("M60.00,30.00");
+    expect(trendAreaPath([null, { x: 60, y: 30 }], 100)).toBe("");
   });
 });

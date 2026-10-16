@@ -30,6 +30,7 @@ import {
 import { HOME_BRANDS, HOME_LOGOS, type HomeBrand } from "./-lib/home-evidence";
 import {
   buildEvidence,
+  type EvidenceRecord,
   filterPromptRows,
   type PromptRow,
   promptRows,
@@ -396,6 +397,7 @@ function Workspace({
               state={state}
               scenario={search.state}
               rows={rows}
+              records={records}
               search={search}
               onSearch={update}
               onOpen={(id) => {
@@ -476,6 +478,7 @@ export function Management({
   state,
   scenario,
   rows,
+  records,
   search,
   onSearch,
   onOpen,
@@ -485,6 +488,7 @@ export function Management({
   state: ReturnType<typeof useExplorationState>;
   scenario?: ExplorationState;
   rows: PromptRow[];
+  records?: EvidenceRecord[];
   search: ExplorationSearch;
   onSearch: (patch: Partial<ExplorationSearch>) => void;
   onOpen: (id: string) => void;
@@ -660,12 +664,17 @@ export function Management({
       {response.items.length ? (
         kind === "prompts" ? (
           <PromptList
+            key={`${brand}:${search.days}:${search.engines?.join(",")}:${search.q}:${search.status}:${search.sort}:${search.descending}:${page}:${pageSize}`}
             rows={promptPage.items}
+            records={records ?? []}
+            brand={brand}
             search={search}
             onOpen={onOpen}
             onEdit={edit}
             onConfirm={(id) => state.confirm(brand, kind, id)}
             onDelete={remove}
+            onConfirmMany={(ids) => state.confirmPrompts(brand, ids)}
+            onDeleteMany={async (ids) => state.removePrompts(brand, ids)}
           />
         ) : (
           <CompetitorList
