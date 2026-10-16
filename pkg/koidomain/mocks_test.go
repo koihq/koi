@@ -3123,6 +3123,160 @@ func (_c *MockVisibilityRepository_List_Call) RunAndReturn(run func(context1 con
 	return _c
 }
 
+// ListHistoricalPrompts provides a mock function for the type MockVisibilityRepository
+func (_mock *MockVisibilityRepository) ListHistoricalPrompts(context1 context.Context, uUID uuid.UUID, pageParams PageParams) (*Page[HistoricalPrompt], error) {
+	ret := _mock.Called(context1, uUID, pageParams)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListHistoricalPrompts")
+	}
+
+	var r0 *Page[HistoricalPrompt]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, PageParams) (*Page[HistoricalPrompt], error)); ok {
+		return returnFunc(context1, uUID, pageParams)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, PageParams) *Page[HistoricalPrompt]); ok {
+		r0 = returnFunc(context1, uUID, pageParams)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Page[HistoricalPrompt])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, PageParams) error); ok {
+		r1 = returnFunc(context1, uUID, pageParams)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockVisibilityRepository_ListHistoricalPrompts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListHistoricalPrompts'
+type MockVisibilityRepository_ListHistoricalPrompts_Call struct {
+	*mock.Call
+}
+
+// ListHistoricalPrompts is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+//   - pageParams PageParams
+func (_e *MockVisibilityRepository_Expecter) ListHistoricalPrompts(context1 interface{}, uUID interface{}, pageParams interface{}) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+	return &MockVisibilityRepository_ListHistoricalPrompts_Call{Call: _e.mock.On("ListHistoricalPrompts", context1, uUID, pageParams)}
+}
+
+func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Run(run func(context1 context.Context, uUID uuid.UUID, pageParams PageParams)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 PageParams
+		if args[2] != nil {
+			arg2 = args[2].(PageParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Return(page *Page[HistoricalPrompt], err error) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+	_c.Call.Return(page, err)
+	return _c
+}
+
+func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams PageParams) (*Page[HistoricalPrompt], error)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListPromptRuns provides a mock function for the type MockVisibilityRepository
+func (_mock *MockVisibilityRepository) ListPromptRuns(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams PageParams) (*Page[PromptHistoryRun], error) {
+	ret := _mock.Called(context1, uUID, uUID1, pageParams)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPromptRuns")
+	}
+
+	var r0 *Page[PromptHistoryRun]
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)); ok {
+		return returnFunc(context1, uUID, uUID1, pageParams)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, PageParams) *Page[PromptHistoryRun]); ok {
+		r0 = returnFunc(context1, uUID, uUID1, pageParams)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Page[PromptHistoryRun])
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, uuid.UUID, PageParams) error); ok {
+		r1 = returnFunc(context1, uUID, uUID1, pageParams)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockVisibilityRepository_ListPromptRuns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListPromptRuns'
+type MockVisibilityRepository_ListPromptRuns_Call struct {
+	*mock.Call
+}
+
+// ListPromptRuns is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+//   - uUID1 uuid.UUID
+//   - pageParams PageParams
+func (_e *MockVisibilityRepository_Expecter) ListPromptRuns(context1 interface{}, uUID interface{}, uUID1 interface{}, pageParams interface{}) *MockVisibilityRepository_ListPromptRuns_Call {
+	return &MockVisibilityRepository_ListPromptRuns_Call{Call: _e.mock.On("ListPromptRuns", context1, uUID, uUID1, pageParams)}
+}
+
+func (_c *MockVisibilityRepository_ListPromptRuns_Call) Run(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams PageParams)) *MockVisibilityRepository_ListPromptRuns_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		var arg3 PageParams
+		if args[3] != nil {
+			arg3 = args[3].(PageParams)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockVisibilityRepository_ListPromptRuns_Call) Return(page *Page[PromptHistoryRun], err error) *MockVisibilityRepository_ListPromptRuns_Call {
+	_c.Call.Return(page, err)
+	return _c
+}
+
+func (_c *MockVisibilityRepository_ListPromptRuns_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams PageParams) (*Page[PromptHistoryRun], error)) *MockVisibilityRepository_ListPromptRuns_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListResults provides a mock function for the type MockVisibilityRepository
 func (_mock *MockVisibilityRepository) ListResults(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams PageParams) (*Page[VisibilityResult], error) {
 	ret := _mock.Called(context1, uUID, uUID1, pageParams)

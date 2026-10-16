@@ -125,7 +125,7 @@ export function GenerationControls({
             </Button>
           ) : null}
           {!run && mode === "competitors" ? (
-            <Link to="/prompts" className="underline underline-offset-4">
+            <Link to="/" hash="prompts" className="underline underline-offset-4">
               {t("startDraftOnPrompts")}
             </Link>
           ) : null}

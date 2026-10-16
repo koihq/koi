@@ -31,10 +31,12 @@ are closed; it cannot establish the original app's typography.
 
 [Calibre](https://klim.co.nz/fonts/calibre/) is a Klim Type Foundry family with regular,
 medium, semibold, and other weights, web font files, and tabular numerals. No Calibre
-files have been added. The current Home study tries locally installed Calibre Regular,
-Medium, and Bold, then Helvetica Neue, Helvetica, and Arial. On a Mac without Calibre this normally
-renders Helvetica Neue. This is an approximation; exact parity needs licensed Calibre webfont
-assets and verification against the original app. Other Koi routes still use Inter.
+files have been added. The earlier Home study tried locally installed Calibre Regular,
+Medium, and Bold, then Helvetica Neue, Helvetica, and Arial. On a Mac without Calibre this
+normally rendered Helvetica Neue. This was an approximation; the current implementation
+uses Inter Variable across all routes.
+
+Production decision, October 16: Inter Variable is used across the app and the home-context exploration. The earlier Calibre notes below record the visual research, not the current implementation.
 
 Weight correction, October 14: no Calibre files were found in the repository or the checked
 local font directories. Inspection of `/System/Library/Fonts/HelveticaNeue.ttc` found Regular

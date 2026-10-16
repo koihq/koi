@@ -47,27 +47,8 @@
   transform: translateY(0);
 }
 
-/* Calibre is preferred only when installed locally; no unlicensed font is bundled. */
-@font-face {
-  font-family: "Koi Calibre Local";
-  src: local("Calibre Regular"), local("Calibre-Regular");
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Koi Calibre Local";
-  src: local("Calibre Medium"), local("Calibre-Medium");
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Koi Calibre Local";
-  src: local("Calibre Bold"), local("Calibre-Bold");
-  font-weight: 700;
-  font-display: swap;
-}
 html[data-exploration-theme="home-context"] {
-  --hc-font: "Koi Calibre Local", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --hc-font: var(--font-sans);
   /* Koi role sizes inferred from Mobbin references, not recovered Fey CSS. */
   --hc-type-meta: 0.75rem;
   --hc-type-ui: 0.8125rem;

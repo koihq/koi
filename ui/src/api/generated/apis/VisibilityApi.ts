@@ -20,6 +20,16 @@ import {
     EnvelopeToJSON,
 } from '../models/Envelope';
 import {
+    type HistoricalPromptPage,
+    HistoricalPromptPageFromJSON,
+    HistoricalPromptPageToJSON,
+} from '../models/HistoricalPromptPage';
+import {
+    type PromptHistoryRunPage,
+    PromptHistoryRunPageFromJSON,
+    PromptHistoryRunPageToJSON,
+} from '../models/PromptHistoryRunPage';
+import {
     type TrackingStatus,
     TrackingStatusFromJSON,
     TrackingStatusToJSON,
@@ -47,6 +57,19 @@ export interface GetVisibilityRunRequest {
 
 export interface GetVisibilityTrackingRequest {
     brandID: string;
+}
+
+export interface ListHistoricalPromptsRequest {
+    brandID: string;
+    page?: number;
+    pageSize?: number;
+}
+
+export interface ListPromptHistoryRunsRequest {
+    brandID: string;
+    promptID: string;
+    page?: number;
+    pageSize?: number;
 }
 
 export interface ListVisibilityResultsRequest {
@@ -112,6 +135,60 @@ export interface VisibilityApiInterface {
     /**
      */
     getVisibilityTracking(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TrackingStatus>;
+
+    /**
+     * Creates request options for listHistoricalPrompts without sending the request
+     * @param {string} brandID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    listHistoricalPromptsRequestOpts(requestParameters: ListHistoricalPromptsRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Deleted prompts with saved run results, newest snapshot first.
+     * @param {string} brandID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    listHistoricalPromptsRaw(requestParameters: ListHistoricalPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HistoricalPromptPage>>;
+
+    /**
+     * Deleted prompts with saved run results, newest snapshot first.
+     */
+    listHistoricalPrompts(brandID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage>;
+
+    /**
+     * Creates request options for listPromptHistoryRuns without sending the request
+     * @param {string} brandID
+     * @param {string} promptID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    listPromptHistoryRunsRequestOpts(requestParameters: ListPromptHistoryRunsRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Saved runs and answers for a live or deleted prompt, newest first.
+     * @param {string} brandID
+     * @param {string} promptID
+     * @param {number} [page]
+     * @param {number} [pageSize]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    listPromptHistoryRunsRaw(requestParameters: ListPromptHistoryRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PromptHistoryRunPage>>;
+
+    /**
+     * Saved runs and answers for a live or deleted prompt, newest first.
+     */
+    listPromptHistoryRuns(brandID: string, promptID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptHistoryRunPage>;
 
     /**
      * Creates request options for listVisibilityResults without sending the request
@@ -264,6 +341,120 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
      */
     async getVisibilityTracking(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TrackingStatus> {
         const response = await this.getVisibilityTrackingRaw({ brandID: brandID }, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listHistoricalPrompts without sending the request
+     */
+    async listHistoricalPromptsRequestOpts(requestParameters: ListHistoricalPromptsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandID'] == null) {
+            throw new runtime.RequiredError(
+                'brandID',
+                'Required parameter "brandID" was null or undefined when calling listHistoricalPrompts().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['pageSize'] != null) {
+            queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{brandID}/prompt-history`;
+        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Deleted prompts with saved run results, newest snapshot first.
+     */
+    async listHistoricalPromptsRaw(requestParameters: ListHistoricalPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HistoricalPromptPage>> {
+        const requestOptions = await this.listHistoricalPromptsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HistoricalPromptPageFromJSON(jsonValue));
+    }
+
+    /**
+     * Deleted prompts with saved run results, newest snapshot first.
+     */
+    async listHistoricalPrompts(brandID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage> {
+        const response = await this.listHistoricalPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize }, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listPromptHistoryRuns without sending the request
+     */
+    async listPromptHistoryRunsRequestOpts(requestParameters: ListPromptHistoryRunsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandID'] == null) {
+            throw new runtime.RequiredError(
+                'brandID',
+                'Required parameter "brandID" was null or undefined when calling listPromptHistoryRuns().'
+            );
+        }
+
+        if (requestParameters['promptID'] == null) {
+            throw new runtime.RequiredError(
+                'promptID',
+                'Required parameter "promptID" was null or undefined when calling listPromptHistoryRuns().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['page'] != null) {
+            queryParameters['page'] = requestParameters['page'];
+        }
+
+        if (requestParameters['pageSize'] != null) {
+            queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{brandID}/prompt-history/{promptID}/runs`;
+        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Saved runs and answers for a live or deleted prompt, newest first.
+     */
+    async listPromptHistoryRunsRaw(requestParameters: ListPromptHistoryRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PromptHistoryRunPage>> {
+        const requestOptions = await this.listPromptHistoryRunsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PromptHistoryRunPageFromJSON(jsonValue));
+    }
+
+    /**
+     * Saved runs and answers for a live or deleted prompt, newest first.
+     */
+    async listPromptHistoryRuns(brandID: string, promptID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptHistoryRunPage> {
+        const response = await this.listPromptHistoryRunsRaw({ brandID: brandID, promptID: promptID, page: page, pageSize: pageSize }, initOverrides);
         return await response.value();
     }
 

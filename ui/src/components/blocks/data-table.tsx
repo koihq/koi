@@ -31,6 +31,7 @@ export function DataTable<T extends BaseEntity>({
   failed,
   onRetry,
   columns,
+  tableClassName,
   q,
   status,
   pageSize,
@@ -49,6 +50,7 @@ export function DataTable<T extends BaseEntity>({
   failed: boolean;
   onRetry: () => void;
   columns: ColumnDef<T>[];
+  tableClassName?: string;
   q: string;
   status: TableStatus;
   pageSize: 10 | 20 | 50;
@@ -158,7 +160,7 @@ export function DataTable<T extends BaseEntity>({
         </div>
       ) : (
         <div className="mt-5">
-          <Table aria-label={t("tableLabel")}>
+          <Table aria-label={t("tableLabel")} className={tableClassName}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>

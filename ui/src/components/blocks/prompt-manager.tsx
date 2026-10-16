@@ -1,0 +1,672 @@
+import {
+  ChatGptIcon,
+  GoogleGeminiIcon,
+  GoogleIcon,
+  MoreHorizontalIcon,
+  PerplexityAiIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useApi } from "@/api/apiProvider";
+import type { Competitor } from "@/api/competitors.api";
+import type { HistoricalPrompt } from "@/api/generated";
+import type { Prompt } from "@/api/prompts.api";
+import { BrandPill } from "@/components/blocks/brand-pill";
+import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
+import { GenerationControls } from "@/components/blocks/generation-controls";
+import { PromptPreviewLink } from "@/components/blocks/prompt-preview-link";
+import { TrackingReview } from "@/components/blocks/tracking-review";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { tableSearchParams } from "@/hooks/use-table-state";
+import { engines, mockChangePoints, mockRate, type VisibilityScope } from "@/lib/mock-visibility";
+import { promptKey, runKey, trackingKey } from "@/lib/query-keys";
+import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
+import { usePromptMutations } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-mutations";
+
+export const promptSearchParams = {
+  ...tableSearchParams,
+  pageSize: parseAsNumberLiteral([10, 20, 50] as const)
+    .withDefault(20)
+    .withOptions({ clearOnDefault: true }),
+  status: parseAsStringLiteral(["all", "confirmed", "unconfirmed", "past"] as const)
+    .withDefault("all")
+    .withOptions({ clearOnDefault: true }),
+  sort: parseAsStringLiteral(["original", "prompt", "rate", "change"] as const)
+    .withDefault("original")
+    .withOptions({ clearOnDefault: true }),
+  descending: parseAsBoolean.withDefault(false).withOptions({ clearOnDefault: true }),
+};
+
+const engineIcons = {
+  chatgpt: ChatGptIcon,
+  perplexity: PerplexityAiIcon,
+  gemini: GoogleGeminiIcon,
+  google_ai_overviews: GoogleIcon,
+};
+
+type PromptRow = { id: string; text: string; prompt?: Prompt; past: boolean };
+const rateSegments = Array.from({ length: 32 }, (_, index) => `segment-${index}`);
+const promptHeadClass =
+  "p-2 text-start text-xs font-normal text-muted-foreground [overflow-wrap:anywhere]";
+const promptCellClass =
+  "p-2 align-middle text-start text-[13px] [overflow-wrap:anywhere] group-hover:bg-muted group-focus-within:bg-muted group-data-[selected]:bg-muted";
+
+function rateBars(rate: number | null) {
+  return (
+    <span className="inline-flex max-w-[140px] items-center gap-0.5" aria-hidden="true">
+      {rateSegments.map((segment, index) => (
+        <span
+          key={segment}
+          className="h-[15px] w-0.5 flex-[0_0_2px] bg-muted data-[filled=true]:bg-positive"
+          data-filled={rate !== null && index < Math.round((rate / 100) * 32)}
+        />
+      ))}
+    </span>
+  );
+}
+
+export function PromptManager({
+  brandID,
+  scope,
+  competitors,
+  allPrompts,
+  loading,
+  failed,
+  onRetry,
+  draftStartFailed = false,
+}: {
+  brandID: string;
+  scope: VisibilityScope;
+  competitors: Competitor[];
+  allPrompts: Prompt[];
+  loading: boolean;
+  failed: boolean;
+  onRetry: () => void;
+  draftStartFailed?: boolean;
+}) {
+  const { t } = useTranslation(["management", "home"]);
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const mutations = usePromptMutations(brandID);
+  const [search, setSearch] = useQueryStates(promptSearchParams);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [editing, setEditing] = useState<Prompt>();
+  const [deleting, setDeleting] = useState<Prompt>();
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
+  const [bulkFailed, setBulkFailed] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const trigger = useRef<HTMLElement | null>(null);
+  const history = useQuery({
+    queryKey: [...runKey(brandID), "past-prompts", "all"],
+    enabled: search.status === "past",
+    queryFn: async ({ signal }) => {
+      const items: HistoricalPrompt[] = [];
+      for (let page = 1; ; page += 1) {
+        const response = await api.runs.historicalPrompts(brandID, page, 50, { signal });
+        items.push(...response.items);
+        if (!response.hasNext) return items;
+      }
+    },
+  });
+
+  const rows = useMemo(() => {
+    const live: PromptRow[] = allPrompts.map((prompt) => ({
+      id: prompt.id,
+      text: prompt.text,
+      prompt,
+      past: false,
+    }));
+    const past: PromptRow[] = (history.data ?? []).map((prompt) => ({
+      id: prompt.promptId,
+      text: prompt.promptText,
+      past: true,
+    }));
+    const source = search.status === "past" ? past : live;
+    const query = search.q.trim().toLocaleLowerCase();
+    const matching = source.filter(
+      (row) =>
+        row.text.toLocaleLowerCase().includes(query) &&
+        (search.status === "all" ||
+          search.status === "past" ||
+          row.prompt?.confirmed === (search.status === "confirmed")),
+    );
+    if (search.sort === "original") return matching;
+
+    return matching.sort((left, right) => {
+      if (search.sort === "prompt") {
+        const difference = left.text.localeCompare(right.text);
+        return search.descending ? -difference : difference;
+      }
+      const value = (row: PromptRow) => {
+        if (!row.prompt?.confirmed) return null;
+        return search.sort === "rate"
+          ? mockRate(brandID, [row.prompt], scope)
+          : mockChangePoints(brandID, [row.prompt], scope);
+      };
+      const leftValue = value(left);
+      const rightValue = value(right);
+      if (leftValue === null) return rightValue === null ? 0 : 1;
+      if (rightValue === null) return -1;
+      return (leftValue - rightValue) * (search.descending ? -1 : 1);
+    });
+  }, [
+    allPrompts,
+    brandID,
+    history.data,
+    scope,
+    search.descending,
+    search.q,
+    search.sort,
+    search.status,
+  ]);
+  const page = Math.max(1, search.page);
+  const totalPages = Math.ceil(rows.length / search.pageSize);
+  const visible = rows.slice((page - 1) * search.pageSize, page * search.pageSize);
+  const visibleLiveIDs = visible.filter((row) => !row.past).map((row) => row.id);
+  const selectedVisible = selected.filter((id) => visibleLiveIDs.includes(id));
+  const selectedPrompts = allPrompts.filter((prompt) => selectedVisible.includes(prompt.id));
+  const pending = Object.values(mutations).some((mutation) => mutation.isPending) || bulkPending;
+
+  useEffect(() => {
+    if (page > Math.max(1, totalPages)) {
+      void setSearch({ page: Math.max(1, totalPages) }, { history: "replace" });
+    }
+  }, [page, setSearch, totalPages]);
+
+  async function invalidate() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: promptKey(brandID) }),
+      queryClient.invalidateQueries({ queryKey: runKey(brandID) }),
+      queryClient.invalidateQueries({ queryKey: trackingKey(brandID) }),
+    ]);
+  }
+
+  async function bulkAction(kind: "confirm" | "delete") {
+    const targets = selectedPrompts.filter((prompt) => kind === "delete" || !prompt.confirmed);
+    if (!targets.length) return;
+    setBulkPending(true);
+    setBulkFailed(false);
+    const results = await Promise.allSettled(
+      targets.map((prompt) =>
+        kind === "confirm"
+          ? api.prompts.confirm(brandID, prompt.id)
+          : api.prompts.delete(brandID, prompt.id),
+      ),
+    );
+    const failedIDs = targets
+      .filter((_, index) => results[index].status === "rejected")
+      .map((prompt) => prompt.id);
+    setSelected(failedIDs);
+    setBulkFailed(failedIDs.length > 0);
+    await invalidate();
+    setBulkPending(false);
+    if (kind === "delete" && !failedIDs.length) setBulkDeleting(false);
+  }
+
+  function changeSearch(patch: Partial<typeof search>) {
+    void setSearch({ ...patch, page: 1 }, { history: "replace" });
+    setSelected([]);
+  }
+
+  function select(id: string) {
+    setSelected((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  const renderPrompt = (row: PromptRow) =>
+    row.prompt ? (
+      <PromptPreviewLink
+        prompt={row.prompt}
+        brandID={brandID}
+        competitors={competitors}
+        scope={scope}
+      />
+    ) : (
+      <Link
+        to="/prompts/$promptId"
+        params={{ promptId: row.id }}
+        className="text-foreground hover:underline"
+      >
+        {row.text}
+      </Link>
+    );
+
+  const renderRate = (row: PromptRow) => {
+    const rate = row.prompt?.confirmed ? mockRate(brandID, [row.prompt], scope) : null;
+    const change = row.prompt?.confirmed ? mockChangePoints(brandID, [row.prompt], scope) : null;
+    return (
+      <div className="grid gap-0.5 text-[13px]">
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums">{rate === null ? "—" : `${rate.toFixed(1)}%`}</span>
+          {rateBars(rate)}
+        </div>
+        <small
+          className={`text-xs font-normal ${change === null ? "" : change >= 0 ? "text-positive" : "text-negative"}`}
+        >
+          {change === null
+            ? t(row.past ? "home:detail.historical" : "home:dashboard.awaitingReview")
+            : `${change > 0 ? "+" : ""}${change.toFixed(1)} points`}
+        </small>
+      </div>
+    );
+  };
+
+  const renderEngines = (row: PromptRow) => (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      {engines.map((engine) => (
+        <span
+          key={engine.id}
+          title={`${engine.name}: ${row.prompt?.confirmed ? `${mockRate(brandID, [row.prompt], { ...scope, engines: [engine.id] })?.toFixed(1)}%` : "—"}`}
+        >
+          <HugeiconsIcon icon={engineIcons[engine.id]} size={14} aria-hidden="true" />
+        </span>
+      ))}
+      <span className="ms-2 tabular-nums">
+        {row.prompt?.confirmed ? `${mockRate(brandID, [row.prompt], scope)?.toFixed(1)}%` : "—"}
+      </span>
+    </span>
+  );
+
+  const renderBrands = (row: PromptRow) => {
+    if (!row.prompt?.confirmed)
+      return <span className="text-xs font-normal text-muted-foreground">{"—"}</span>;
+    const top = competitors
+      .map((competitor) => ({
+        competitor,
+        rate: mockRate(brandID, [row.prompt as Prompt], scope, competitor) ?? 0,
+      }))
+      .sort((left, right) => right.rate - left.rate)
+      .slice(0, 3);
+    return top.length ? (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap">
+        {top.map(({ competitor, rate }) => (
+          <span key={competitor.id} className="flex items-center gap-1">
+            <BrandPill name={competitor.name} domain={competitor.domain} iconOnly />
+            <span className="tabular-nums">{`${rate.toFixed(1)}%`}</span>
+          </span>
+        ))}
+      </span>
+    ) : (
+      <span className="text-xs font-normal text-muted-foreground">{"—"}</span>
+    );
+  };
+
+  const renderActions = (row: PromptRow) =>
+    row.prompt ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label={t("home:dashboard.promptActions", { text: row.text })}
+          className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <HugeiconsIcon icon={MoreHorizontalIcon} size={18} aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {!row.prompt.confirmed && (
+            <DropdownMenuItem disabled={pending} onClick={() => mutations.confirm.mutate(row.id)}>
+              {t("confirm")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem disabled={pending} onClick={() => setEditing(row.prompt)}>
+            {t("edit")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={pending}
+            onClick={() => {
+              trigger.current = document.activeElement as HTMLElement;
+              setDeleting(row.prompt);
+            }}
+          >
+            {t("delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : null;
+
+  return (
+    <section
+      id="prompts"
+      aria-labelledby="prompts-heading"
+      className="min-w-0 rounded-lg bg-surface p-4 sm:p-7 scroll-mt-8"
+    >
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h2 id="prompts-heading" ref={heading} tabIndex={-1} className="text-[13px] font-medium">
+          {t("prompts")}
+        </h2>
+        <PromptDialog
+          label={t("addPrompt")}
+          pending={mutations.create.isPending}
+          onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}
+          variant="ghost"
+        />
+      </div>
+      <div className="[&:not(:empty)]:mb-3">
+        <TrackingReview brandID={brandID} kind="prompts" disabled={pending} />
+      </div>
+      {mutations.confirm.isError && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          {t("mutationError")}
+        </p>
+      )}
+      <div className="mb-4 flex flex-wrap items-center gap-3 [&>select]:w-[88px]">
+        <Input
+          value={search.q}
+          onChange={(event) => changeSearch({ q: event.target.value })}
+          placeholder={t("searchPrompts")}
+          aria-label={t("searchPrompts")}
+          className="w-full max-w-80"
+        />
+        <select
+          aria-label={t("statusLabel")}
+          value={search.status}
+          onChange={(event) => changeSearch({ status: event.target.value as typeof search.status })}
+          className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
+        >
+          <option value="all">{t("all")}</option>
+          <option value="confirmed">{t("confirmed")}</option>
+          <option value="unconfirmed">{t("unconfirmed")}</option>
+          <option value="past">{t("home:history.title")}</option>
+        </select>
+        <select
+          aria-label={t("home:dashboard.sortPrompts")}
+          value={search.sort}
+          onChange={(event) => changeSearch({ sort: event.target.value as typeof search.sort })}
+          className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
+        >
+          <option value="original">{t("home:dashboard.originalOrder")}</option>
+          <option value="prompt">{t("prompt")}</option>
+          <option value="rate">{t("home:dashboard.mentionRate")}</option>
+          <option value="change">{t("home:dashboard.sortChange")}</option>
+        </select>
+        {search.sort !== "original" && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => changeSearch({ descending: !search.descending })}
+          >
+            {t(search.descending ? "home:dashboard.descending" : "home:dashboard.ascending")}
+          </Button>
+        )}
+        <div className="[&>div]:m-0 [&_output:empty]:hidden">
+          <GenerationControls
+            brandID={brandID}
+            mode="prompts"
+            setupStartFailed={draftStartFailed}
+          />
+        </div>
+      </div>
+
+      {selectedVisible.length > 0 && (
+        <div className="sticky top-2 z-10 mx-auto my-3 flex w-fit flex-wrap items-center gap-2 rounded-xl border border-border bg-popover px-2.5 py-2 text-[13px]">
+          <output>{t("home:dashboard.selectedCount", { count: selectedVisible.length })}</output>
+          {selectedPrompts.some((prompt) => !prompt.confirmed) && (
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending}
+              onClick={() => void bulkAction("confirm")}
+            >
+              {t("confirm")}
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={pending}
+            onClick={() => setBulkDeleting(true)}
+          >
+            {t("delete")}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setSelected([])}>
+            {t("home:dashboard.clearSelection")}
+          </Button>
+        </div>
+      )}
+      {bulkFailed && !bulkDeleting && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("home:dashboard.bulkError")}
+        </p>
+      )}
+
+      <TooltipProvider delay={350}>
+        {failed || (history.isError && search.status === "past") ? (
+          <p role="alert" className="py-12 text-sm text-destructive">
+            {t("loadError")}{" "}
+            <Button
+              variant="link"
+              onClick={() => (search.status === "past" ? void history.refetch() : onRetry())}
+            >
+              {t("retry")}
+            </Button>
+          </p>
+        ) : loading || (search.status === "past" && history.isPending) ? (
+          <p className="py-12 text-sm text-muted-foreground">{t("loading")}</p>
+        ) : visible.length === 0 ? (
+          <p className="py-12 text-sm text-muted-foreground">
+            {search.q || search.status !== "all" ? t("noStatusResults") : t("promptEmpty")}
+          </p>
+        ) : (
+          <>
+            <div className="hidden min-[1101px]:block">
+              <table className="prompt-table w-full table-fixed border-separate border-spacing-y-1">
+                <thead>
+                  <tr>
+                    <th className={`${promptHeadClass} w-[4%]`}>
+                      <input
+                        type="checkbox"
+                        aria-label={t("home:dashboard.selectPage")}
+                        checked={
+                          visibleLiveIDs.length > 0 &&
+                          selectedVisible.length === visibleLiveIDs.length
+                        }
+                        onChange={() =>
+                          setSelected((current) =>
+                            selectedVisible.length === visibleLiveIDs.length
+                              ? current.filter((id) => !visibleLiveIDs.includes(id))
+                              : [...new Set([...current, ...visibleLiveIDs])],
+                          )
+                        }
+                      />
+                    </th>
+                    <th className={`${promptHeadClass} w-[31%]`}>{t("prompt")}</th>
+                    <th className={`${promptHeadClass} w-[23%]`}>{t("home:dashboard.yourRate")}</th>
+                    <th className={`${promptHeadClass} w-[14%]`}>{t("home:dashboard.byEngine")}</th>
+                    <th className={`${promptHeadClass} w-[19%]`}>
+                      {t("home:dashboard.mostMentionedBrands")}
+                    </th>
+                    <th className={`${promptHeadClass} w-[9%]`}>{t("actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="group"
+                      data-selected={selectedVisible.includes(row.id) || undefined}
+                    >
+                      <td className={`${promptCellClass} rounded-s-md`}>
+                        {!row.past && (
+                          <input
+                            type="checkbox"
+                            aria-label={t("home:dashboard.selectPrompt", { text: row.text })}
+                            checked={selectedVisible.includes(row.id)}
+                            onChange={() => select(row.id)}
+                          />
+                        )}
+                      </td>
+                      <td className={promptCellClass}>{renderPrompt(row)}</td>
+                      <td className={promptCellClass}>{renderRate(row)}</td>
+                      <td className={promptCellClass}>{renderEngines(row)}</td>
+                      <td className={promptCellClass}>{renderBrands(row)}</td>
+                      <td className={`${promptCellClass} rounded-e-md`}>{renderActions(row)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="grid gap-1 min-[1101px]:hidden">
+              {visible.map((row) => (
+                <li
+                  key={row.id}
+                  data-selected={selectedVisible.includes(row.id) || undefined}
+                  className="min-w-0 rounded-md p-3 focus-within:bg-muted data-[selected]:bg-muted"
+                >
+                  <div className="flex items-start gap-3">
+                    {!row.past && (
+                      <input
+                        type="checkbox"
+                        aria-label={t("home:dashboard.selectPrompt", { text: row.text })}
+                        checked={selectedVisible.includes(row.id)}
+                        onChange={() => select(row.id)}
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">{renderPrompt(row)}</div>
+                  </div>
+                  <dl className="my-4 grid gap-3">
+                    <div className="grid grid-cols-1 gap-1 min-[441px]:grid-cols-[120px_minmax(0,1fr)] min-[441px]:gap-3">
+                      <dt className="text-xs font-normal text-muted-foreground">
+                        {t("home:dashboard.yourRate")}
+                      </dt>
+                      <dd>{renderRate(row)}</dd>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1 min-[441px]:grid-cols-[120px_minmax(0,1fr)] min-[441px]:gap-3">
+                      <dt className="text-xs font-normal text-muted-foreground">
+                        {t("home:dashboard.byEngine")}
+                      </dt>
+                      <dd>{renderEngines(row)}</dd>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1 min-[441px]:grid-cols-[120px_minmax(0,1fr)] min-[441px]:gap-3">
+                      <dt className="text-xs font-normal text-muted-foreground">
+                        {t("home:dashboard.mostMentionedBrands")}
+                      </dt>
+                      <dd>{renderBrands(row)}</dd>
+                    </div>
+                  </dl>
+                  {renderActions(row)}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </TooltipProvider>
+      <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <span className="whitespace-nowrap">
+          {t("home:dashboard.page", { current: page, total: Math.max(1, totalPages) })}
+        </span>
+        <select
+          aria-label={t("pageSizeLabel")}
+          value={search.pageSize}
+          onChange={(event) =>
+            changeSearch({ pageSize: Number(event.target.value) as 10 | 20 | 50 })
+          }
+          className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
+        >
+          <option value={10}>{"10"}</option>
+          <option value={20}>{"20"}</option>
+          <option value={50}>{"50"}</option>
+        </select>
+        <div className="flex gap-2 sm:ms-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => void setSearch({ page: page - 1 }, { history: "push" })}
+          >
+            {t("home:dashboard.previous")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => void setSearch({ page: page + 1 }, { history: "push" })}
+          >
+            {t("home:dashboard.next")}
+          </Button>
+        </div>
+      </div>
+
+      <PromptDialog
+        prompt={editing}
+        label={t("edit")}
+        hideTrigger
+        open={Boolean(editing)}
+        onOpenChange={(open) => {
+          if (!open) setEditing(undefined);
+        }}
+        pending={mutations.update.isPending}
+        onSave={(request) =>
+          editing
+            ? mutations.update.mutateAsync({ id: editing.id, request }).then(() => undefined)
+            : Promise.resolve()
+        }
+      />
+      <DeleteItemDialog
+        itemID={deleting?.id}
+        title={t("deletePromptTitle")}
+        description={t("promptDeleteDescription")}
+        actionLabel={t("deletePrompt")}
+        onClose={() => setDeleting(undefined)}
+        pending={mutations.remove.isPending}
+        failed={mutations.remove.isError}
+        onDelete={mutations.remove.mutateAsync}
+        finalFocus={() => (trigger.current?.isConnected ? trigger.current : heading.current)}
+      />
+      <AlertDialog
+        open={bulkDeleting}
+        onOpenChange={(open) => {
+          if (!bulkPending) setBulkDeleting(open);
+        }}
+      >
+        <AlertDialogContent finalFocus={() => heading.current}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("home:dashboard.deleteSelectedTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("home:dashboard.deleteSelectedDescription", { count: selectedVisible.length })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {bulkFailed && (
+            <p role="alert" className="text-sm text-destructive">
+              {t("home:dashboard.bulkError")}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkPending}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={bulkPending}
+              onClick={() => void bulkAction("delete")}
+            >
+              {t("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}

@@ -1,4 +1,6 @@
 import type {
+  HistoricalPromptPage,
+  PromptHistoryRunPage,
   VisibilityApi,
   VisibilityResult,
   VisibilityResultPage,
@@ -35,5 +37,20 @@ export function createRunsApi(api: VisibilityApi) {
       initOverrides?: RequestInit,
     ): Promise<VisibilityResultPage> =>
       callApi(() => api.listVisibilityResults(brandID, runID, page, pageSize, initOverrides)),
+    historicalPrompts: (
+      brandID: string,
+      page = 1,
+      pageSize = 20,
+      initOverrides?: RequestInit,
+    ): Promise<HistoricalPromptPage> =>
+      callApi(() => api.listHistoricalPrompts(brandID, page, pageSize, initOverrides)),
+    promptHistory: (
+      brandID: string,
+      promptID: string,
+      page = 1,
+      pageSize = 10,
+      initOverrides?: RequestInit,
+    ): Promise<PromptHistoryRunPage> =>
+      callApi(() => api.listPromptHistoryRuns(brandID, promptID, page, pageSize, initOverrides)),
   };
 }

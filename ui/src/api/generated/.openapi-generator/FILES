@@ -31,8 +31,12 @@ models/GenerationPage.ts
 models/GenerationRequest.ts
 models/GenerationStatus.ts
 models/HealthResponse.ts
+models/HistoricalPrompt.ts
+models/HistoricalPromptPage.ts
 models/MeRes.ts
 models/OrgRes.ts
+models/PromptHistoryRun.ts
+models/PromptHistoryRunPage.ts
 models/PromptPage.ts
 models/PromptPatchRequest.ts
 models/PromptRequest.ts

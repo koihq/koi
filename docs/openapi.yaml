@@ -55,6 +55,49 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/prompt-history:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+    get:
+      tags: [visibility]
+      operationId: listHistoricalPrompts
+      description: Deleted prompts with saved run results, newest snapshot first.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Page of historical prompts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoricalPromptPage"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{brandID}/prompt-history/{promptID}/runs:
+    parameters:
+      - $ref: "#/components/parameters/BrandID"
+      - $ref: "#/components/parameters/PromptID"
+    get:
+      tags: [visibility]
+      operationId: listPromptHistoryRuns
+      description: Saved runs and answers for a live or deleted prompt, newest first.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Page of runs with this prompt's results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptHistoryRunPage"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/runs/{runID}:
     parameters:
       - $ref: "#/components/parameters/BrandID"
@@ -818,6 +861,68 @@ components:
           schema:
             $ref: "#/components/schemas/Envelope"
   schemas:
+    HistoricalPrompt:
+      type: object
+      required: [prompt_id, prompt_text, last_seen_at]
+      properties:
+        prompt_id:
+          type: string
+          format: uuid
+        prompt_text:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+    HistoricalPromptPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoricalPrompt"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    PromptHistoryRun:
+      type: object
+      required: [run, results]
+      properties:
+        run:
+          $ref: "#/components/schemas/VisibilityRunStatus"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityResult"
+    PromptHistoryRunPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptHistoryRun"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
     VisibilityRunStatus:
       type: object
       required: [id, brand_id, engines, state, total_results, completed_results, created_at, started_at, finished_at, error_code, status_url]

@@ -3,8 +3,11 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 
 import { ApiProvider, createApi } from "@/api/apiProvider";
+import { initializeTheme } from "@/hooks/use-theme";
 import "@/config/i18n";
 import { routeTree } from "./routeTree.gen";
+
+initializeTheme();
 
 const api = createApi();
 const queryClient = new QueryClient();

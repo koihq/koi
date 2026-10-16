@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -14,17 +14,19 @@ function BrandSettings() {
   const { brand } = Route.useRouteContext();
   const { t } = useTranslation("brand");
   const api = useApi();
+  const router = useRouter();
   const [saved, setSaved] = useState(false);
 
   async function updateBrand(body: CreateBrand) {
     setSaved(false);
     await api.brands.update(brand.id, body);
+    await router.invalidate();
     setSaved(true);
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h2 className="text-2xl font-medium tracking-tight">{t("settings.title")}</h2>
+    <div className="max-w-2xl pb-24">
+      <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("settings.title")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{t("settings.description")}</p>
       <div className="mt-10">
         <BrandForm brand={brand} submitLabel={t("settings.save")} onSubmit={updateBrand} />

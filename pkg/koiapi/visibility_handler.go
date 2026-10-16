@@ -157,3 +157,70 @@ func (h *VisibilityHandler) ListResults(w http.ResponseWriter, r *http.Request) 
 
 	api.JSON(w, r, http.StatusOK, results)
 }
+
+func (h *VisibilityHandler) ListHistoricalPrompts(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+
+	page, err := pageParams(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	result, err := h.querier.ListHistoricalPrompts(r.Context(), brandID, page)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	api.JSON(w, r, http.StatusOK, result)
+}
+
+type promptHistoryRunRes struct {
+	Run     visibilityStatus             `json:"run"`
+	Results []koidomain.VisibilityResult `json:"results"`
+}
+
+func (h *VisibilityHandler) ListPromptRuns(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+
+	promptID, ok := pathID(w, r, "promptID")
+	if !ok {
+		return
+	}
+
+	page, err := pageParams(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	history, err := h.querier.ListPromptRuns(r.Context(), brandID, promptID, page)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	items := make([]promptHistoryRunRes, 0, len(history.Items))
+	for i := range history.Items {
+		items = append(items, promptHistoryRunRes{
+			Run:     publicVisibilityStatus(&history.Items[i].Run),
+			Results: history.Items[i].Results,
+		})
+	}
+
+	api.JSON(w, r, http.StatusOK, koidomain.Page[promptHistoryRunRes]{
+		Items:       items,
+		TotalItems:  history.TotalItems,
+		TotalPages:  history.TotalPages,
+		CurrentPage: history.CurrentPage,
+		HasNext:     history.HasNext,
+		HasPrev:     history.HasPrev,
+	})
+}

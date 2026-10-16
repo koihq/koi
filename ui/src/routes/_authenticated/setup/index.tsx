@@ -9,7 +9,7 @@ import { KoiMark } from "@/components/blocks/koi-mark";
 export const Route = createFileRoute("/_authenticated/setup/")({
   beforeLoad: ({ context }) => {
     if (context.brand) {
-      throw redirect({ to: "/prompts" });
+      throw redirect({ to: "/" });
     }
   },
   component: Setup,
@@ -44,7 +44,7 @@ function Setup() {
 
     await router.invalidate();
     await router.navigate({
-      to: "/prompts",
+      to: "/",
       search: draftStartFailed ? { draftStart: "failed" } : {},
     });
   }

@@ -7,7 +7,7 @@ description: Koi visual judgment — founder/AEO reader job, composition, PNG ma
 
 Koi is an agent-first AEO tool. A founder opens it to answer: do answer engines mention us, who do they recommend instead, and what should my agent do next.
 
-Read [primitives.md](primitives.md) for tokens and the shadcn inventory. Mechanics live in `ui/src/styles.css` and `ui/src/components/ui`. Do not invent a parallel type scale, palette, or component set.
+Read [primitives.md](primitives.md) and `docs/design-system.md` for the current tokens, composition, and shadcn inventory. Mechanics live in `ui/src/styles.css` and `ui/src/components/ui`. Do not invent a parallel type scale, palette, or component set.
 
 This file owns Koi judgment. Accessibility, layout, writing, type, color, and polish rules live in the installed `better-*` skills — point at them, do not copy them here.
 
@@ -15,26 +15,21 @@ This file owns Koi judgment. Accessibility, layout, writing, type, color, and po
 
 Two speeds on every product surface:
 
-1. **Executive** — mention, top substitutes, the brief. Visible in the first viewport.
-2. **Audit** — prompt × engine × citation. Full width when it is a table.
+1. **Executive** — visibility trend and strongest comparison. Visible in the first viewport.
+2. **Audit** — prompt detail, engine answer, and citation. Reachable from each prompt.
 
 Frame the screen around that job. Do not start from a dashboard template.
 
 ## Composition
 
-Use this geometry when a mentions surface exists:
+Use the home-context geometry: compact brand header, one full-width visibility signal, then the prompt list. Competitors and settings are adjacent routes.
 
-```
-rail |  brand + verdict + engines     |  runs / citations / brief
-     |  (facts, definition list)      |  (activity, not a widget grid)
-```
-
-- The authenticated shell has a labeled sidebar that collapses to a narrow icon rail. The main area is an inset surface on desktop.
+- The authenticated shell has a compact header with one visible brand. It keeps the underlying brand-scoped API and ownership model.
 - **Definition-list metadata:** muted label column, value column. Gap and type role group rows. No boxes, no rules between rows.
 - The title is the page. A run id stays quiet (`tabular-nums`). The sentence is the heading.
 - One focal relationship per viewport. Magnitude shares one scale; comparison uses the same basis; the markdown brief is one primary object.
 
-Auth is a quiet centered column. Home stays a brief introduction until there is real mention data.
+Auth is a quiet centered column. Home uses a useful empty state until there are confirmed prompts; the analytical series can be deterministic mock values during the migration.
 
 Light and dark are the same layout. Invert the canvas, keep the hierarchy. No separate “marketing light” and “tool dark.”
 
@@ -87,7 +82,7 @@ These are disallowed, not taste. Name them when rejecting work.
 | Name | Never | Instead |
 | --- | --- | --- |
 | **Mono chrome** | `--font-mono`, `font-mono`, Geist Mono, JetBrains, mono on IDs, timestamps, KPIs, tables, “code-like” labels | Inter Variable for everything. Aligned numbers use `tabular-nums` |
-| **Card kit** | shadcn `Card`; boxed metrics, metadata, sections, or lists “to group them” | Gap, alignment, type role. A surface is earned (dialog, popover, a quoted artifact) |
+| **Card kit** | shadcn `Card`; boxed metrics, metadata, sections, or lists “to group them” | Gap, alignment, type role. The main signal and answer panel may use a surface |
 | **Hairline habit** | `Separator` / `FieldSeparator` between fields, under headings, between timeline rows | Space owns grouping. One structural split at most (rail \| body, facts \| activity) |
 | **Decorative shadow** | Shadows on static panels or sections, including the authenticated main surface | Use canvas contrast and a single structural border. Add a shadow only when it clarifies meaningful overlap or elevation |
 | **Primitive override** | Route `className` changing size or type of a `ui/` control (`h-9 text-sm` on `Input`) | Use the primitive’s CVA sizes. Density is Mira compact |

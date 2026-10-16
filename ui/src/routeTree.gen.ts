@@ -17,8 +17,6 @@ import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/_app/index'
-import { Route as AuthenticatedAppBriefRouteImport } from './routes/_authenticated/_app/brief'
-import { Route as AuthenticatedAppCitationsRouteImport } from './routes/_authenticated/_app/citations'
 import { Route as AuthenticatedSetupIndexRouteImport } from './routes/_authenticated/setup/index'
 import { Route as DevExplorationsHomeContextRouteImport } from './routes/dev/explorations/home-context'
 import { Route as DevUiIndexRouteImport } from './routes/dev/ui/index'
@@ -30,6 +28,7 @@ import { Route as DevUiSidebarRouteImport } from './routes/dev/ui/sidebar'
 import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_authenticated/_app/competitors/index'
 import { Route as AuthenticatedAppMentionsIndexRouteImport } from './routes/_authenticated/_app/mentions/index'
 import { Route as AuthenticatedAppPromptsIndexRouteImport } from './routes/_authenticated/_app/prompts/index'
+import { Route as AuthenticatedAppPromptsPromptIdRouteImport } from './routes/_authenticated/_app/prompts/$promptId'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
 import { Route as DevExplorationsHomeContextCompetitorsRouteImport } from './routes/dev/explorations/home-context.competitors'
 import { Route as AuthenticatedSettingsSettingsCompetitorsIndexRouteImport } from './routes/_authenticated/_settings/settings/competitors/index'
@@ -72,17 +71,6 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
-const AuthenticatedAppBriefRoute = AuthenticatedAppBriefRouteImport.update({
-  id: '/brief',
-  path: '/brief',
-  getParentRoute: () => AuthenticatedAppRoute,
-} as any)
-const AuthenticatedAppCitationsRoute =
-  AuthenticatedAppCitationsRouteImport.update({
-    id: '/citations',
-    path: '/citations',
-    getParentRoute: () => AuthenticatedAppRoute,
-  } as any)
 const AuthenticatedSetupIndexRoute = AuthenticatedSetupIndexRouteImport.update({
   id: '/setup/',
   path: '/setup/',
@@ -142,6 +130,12 @@ const AuthenticatedAppPromptsIndexRoute =
     path: '/prompts/',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppPromptsPromptIdRoute =
+  AuthenticatedAppPromptsPromptIdRouteImport.update({
+    id: '/prompts/$promptId',
+    path: '/prompts/$promptId',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedSettingsSettingsBrandRoute =
   AuthenticatedSettingsSettingsBrandRouteImport.update({
     id: '/settings/brand',
@@ -173,8 +167,6 @@ export interface FileRoutesByFullPath {
   '/dev/ui': typeof DevUiRouteRouteWithChildren
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
-  '/brief': typeof AuthenticatedAppBriefRoute
-  '/citations': typeof AuthenticatedAppCitationsRoute
   '/dev/explorations/home-context': typeof DevExplorationsHomeContextRouteWithChildren
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
@@ -183,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/setup/': typeof AuthenticatedSetupIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
+  '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/home-context/competitors': typeof DevExplorationsHomeContextCompetitorsRoute
   '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
@@ -196,8 +189,6 @@ export interface FileRoutesByTo {
   '/dev/explorations': typeof DevExplorationsRouteRouteWithChildren
   '/sign-in': typeof SignInIndexRoute
   '/sign-up': typeof SignUpIndexRoute
-  '/brief': typeof AuthenticatedAppBriefRoute
-  '/citations': typeof AuthenticatedAppCitationsRoute
   '/dev/explorations/home-context': typeof DevExplorationsHomeContextRouteWithChildren
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
@@ -206,6 +197,7 @@ export interface FileRoutesByTo {
   '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/setup': typeof AuthenticatedSetupIndexRoute
   '/dev/ui': typeof DevUiIndexRoute
+  '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/home-context/competitors': typeof DevExplorationsHomeContextCompetitorsRoute
   '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
@@ -223,8 +215,6 @@ export interface FileRoutesById {
   '/_authenticated/_settings': typeof AuthenticatedSettingsRouteWithChildren
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
-  '/_authenticated/_app/brief': typeof AuthenticatedAppBriefRoute
-  '/_authenticated/_app/citations': typeof AuthenticatedAppCitationsRoute
   '/dev/explorations/home-context': typeof DevExplorationsHomeContextRouteWithChildren
   '/dev/ui/button': typeof DevUiButtonRoute
   '/dev/ui/field': typeof DevUiFieldRoute
@@ -234,6 +224,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/setup/': typeof AuthenticatedSetupIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
+  '/_authenticated/_app/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
   '/dev/explorations/home-context/competitors': typeof DevExplorationsHomeContextCompetitorsRoute
   '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
@@ -250,8 +241,6 @@ export interface FileRouteTypes {
     | '/dev/ui'
     | '/sign-in/'
     | '/sign-up/'
-    | '/brief'
-    | '/citations'
     | '/dev/explorations/home-context'
     | '/dev/ui/button'
     | '/dev/ui/field'
@@ -260,6 +249,7 @@ export interface FileRouteTypes {
     | '/dev/ui/sidebar'
     | '/setup/'
     | '/dev/ui/'
+    | '/prompts/$promptId'
     | '/settings/brand'
     | '/dev/explorations/home-context/competitors'
     | '/competitors/'
@@ -273,8 +263,6 @@ export interface FileRouteTypes {
     | '/dev/explorations'
     | '/sign-in'
     | '/sign-up'
-    | '/brief'
-    | '/citations'
     | '/dev/explorations/home-context'
     | '/dev/ui/button'
     | '/dev/ui/field'
@@ -283,6 +271,7 @@ export interface FileRouteTypes {
     | '/dev/ui/sidebar'
     | '/setup'
     | '/dev/ui'
+    | '/prompts/$promptId'
     | '/settings/brand'
     | '/dev/explorations/home-context/competitors'
     | '/competitors'
@@ -299,8 +288,6 @@ export interface FileRouteTypes {
     | '/_authenticated/_settings'
     | '/sign-in/'
     | '/sign-up/'
-    | '/_authenticated/_app/brief'
-    | '/_authenticated/_app/citations'
     | '/dev/explorations/home-context'
     | '/dev/ui/button'
     | '/dev/ui/field'
@@ -310,6 +297,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/'
     | '/_authenticated/setup/'
     | '/dev/ui/'
+    | '/_authenticated/_app/prompts/$promptId'
     | '/_authenticated/_settings/settings/brand'
     | '/dev/explorations/home-context/competitors'
     | '/_authenticated/_app/competitors/'
@@ -383,20 +371,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
-    '/_authenticated/_app/brief': {
-      id: '/_authenticated/_app/brief'
-      path: '/brief'
-      fullPath: '/brief'
-      preLoaderRoute: typeof AuthenticatedAppBriefRouteImport
-      parentRoute: typeof AuthenticatedAppRoute
-    }
-    '/_authenticated/_app/citations': {
-      id: '/_authenticated/_app/citations'
-      path: '/citations'
-      fullPath: '/citations'
-      preLoaderRoute: typeof AuthenticatedAppCitationsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/setup/': {
@@ -476,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppPromptsIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/_app/prompts/$promptId': {
+      id: '/_authenticated/_app/prompts/$promptId'
+      path: '/prompts/$promptId'
+      fullPath: '/prompts/$promptId'
+      preLoaderRoute: typeof AuthenticatedAppPromptsPromptIdRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/_settings/settings/brand': {
       id: '/_authenticated/_settings/settings/brand'
       path: '/settings/brand'
@@ -508,18 +489,16 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAppRouteChildren {
-  AuthenticatedAppBriefRoute: typeof AuthenticatedAppBriefRoute
-  AuthenticatedAppCitationsRoute: typeof AuthenticatedAppCitationsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppPromptsPromptIdRoute: typeof AuthenticatedAppPromptsPromptIdRoute
   AuthenticatedAppCompetitorsIndexRoute: typeof AuthenticatedAppCompetitorsIndexRoute
   AuthenticatedAppMentionsIndexRoute: typeof AuthenticatedAppMentionsIndexRoute
   AuthenticatedAppPromptsIndexRoute: typeof AuthenticatedAppPromptsIndexRoute
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
-  AuthenticatedAppBriefRoute: AuthenticatedAppBriefRoute,
-  AuthenticatedAppCitationsRoute: AuthenticatedAppCitationsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppPromptsPromptIdRoute: AuthenticatedAppPromptsPromptIdRoute,
   AuthenticatedAppCompetitorsIndexRoute: AuthenticatedAppCompetitorsIndexRoute,
   AuthenticatedAppMentionsIndexRoute: AuthenticatedAppMentionsIndexRoute,
   AuthenticatedAppPromptsIndexRoute: AuthenticatedAppPromptsIndexRoute,
