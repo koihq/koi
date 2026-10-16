@@ -74,7 +74,9 @@ export function AnswerBody({
           ))}
         </section>
       )}
-      <p className="hc-caption">{C.detailNote}</p>
+      <p className="hc-caption">
+        {result.runId.startsWith("recorded:") ? C.recordedDetailNote : C.detailNote}
+      </p>
     </>
   );
 }
@@ -88,7 +90,12 @@ export function SourceList({
   sample?: boolean;
   emptyMessage?: string;
 }) {
-  const title = sample && result.sources.length ? V.sampleSources : M.sources;
+  const title =
+    sample && result.sources.length
+      ? result.runId.startsWith("recorded:")
+        ? V.recordedSources
+        : V.sampleSources
+      : M.sources;
 
   return (
     <section className="hc-detail-section" aria-label={title}>
@@ -145,7 +152,7 @@ export function AnswerPanel({
               <span>
                 {answer?.date}
                 {C.separator}
-                {M.synthetic}
+                {result?.runId.startsWith("recorded:") ? M.recordedSample : M.synthetic}
               </span>
             </span>
           </DialogDescription>

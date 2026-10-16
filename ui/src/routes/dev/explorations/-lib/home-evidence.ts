@@ -28,6 +28,7 @@ export const HOME_BRANDS = {
     rivals: ["zsh-autosuggestions"],
     topics: {
       alternatives: [
+        "best zsh plugin for inline predictive command autosuggestions",
         "What are alternatives to zsh-autosuggestions?",
         "Which zsh suggestion tools should I try?",
       ],

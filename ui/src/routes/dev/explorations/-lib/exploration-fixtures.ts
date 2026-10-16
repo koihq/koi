@@ -109,6 +109,93 @@ const REPOSITORIES: Record<string, string> = {
   "zsh-autosuggestions": "https://github.com/zsh-users/zsh-autosuggestions",
 };
 
+export const RECORDED_PROMPT = "best zsh plugin for inline predictive command autosuggestions";
+const RECORDED_RESPONSES: Record<
+  number,
+  Partial<
+    Record<
+      VisibilityEngine,
+      { outcome: "cited" | "miss" | "error"; rawAnswer: string; sources: string[] }
+    >
+  >
+> = {
+  84: {
+    chatgpt: {
+      outcome: "cited",
+      rawAnswer:
+        "If you mean inline “ghost text” suggestions as you type, my pick is zsh-autosuggestions.\n\nBest default: zsh-autosuggestions — mature, fast, ~36k GitHub stars, and specifically designed for Fish-like inline suggestions based on your history/completion system.\n\nMore powerful completion UI: zsh-autocomplete — automatically shows actual completion candidates while typing, rather than just one ghost-text prediction.\n\nInteresting newer option: Deja — tries to improve on traditional history-prefix matching with fuzzy matching, directory awareness, command-sequence prediction, and frecency.",
+      sources: [
+        "https://github.com/zsh-users/zsh-autosuggestions",
+        "https://github.com/marlonrichert/zsh-autocomplete/blob/main/README.md",
+        "https://github.com/Giammarco-Ferranti/deja",
+        "https://github.com/zsh-users/zsh-autosuggestions/blob/master/INSTALL.md",
+      ],
+    },
+    gemini: {
+      outcome: "miss",
+      rawAnswer:
+        "When it comes to inline predictive command autosuggestions (the “ghost text” style popularized by Fish shell), there is a clear industry standard, alongside a couple of popular alternatives depending on what kind of prediction you want.\n\nThe Undisputed Gold Standard: zsh-autosuggestions\n\nIt draws Fish-like ghost text inline as you type, predicting commands based on your history and completion items.",
+      sources: [
+        "https://github.com/zsh-users/zsh-autosuggestions",
+        "https://catalins.tech/zsh-plugins/#:~:text=It's%20a%20handy%20plugin%20that%20helps%20you,and%20restart%20Zsh%20as%20follows%3A%20source%20~%2F.zshrc.",
+        "https://www.reddit.com/r/linux4noobs/comments/1o9rbem/i_remember_there_was_a_very_useful_autocomplete/#:~:text=*%20zsh%2Dautosuggestions%20felt%20too%20dumb%2C%20so%20I,characters%20when%20using%20zsh%20autocomplete%20and%20autosuggestions.",
+        "https://www.reddit.com/r/commandline/comments/1sv5ivz/zshsage_a_smarter_autosuggestions_that_learn_from/#:~:text=So%20I%20built%20zsh%2Dsage.%20*%20The%20autosuggestion,sure%2C%20faint%20grey%20when%20it's%20a%20stretch.",
+        "https://www.reddit.com/r/commandline/comments/1sv5ivz/zshsage_a_smarter_autosuggestions_that_learn_from/#:~:text=Long%20prefix%20like%20git%20commit%20%2Dm%20%22f,totally%20different%20UX%20and%20works%20alongside%20sage.",
+        "https://www.reddit.com/r/commandline/comments/1sv5ivz/zshsage_a_smarter_autosuggestions_that_learn_from/#:~:text=*%20%5BOC%5D%20Deja%20v0.4.2%20%2D%20smarter%20zsh,about%20attendance%3F%2031%20upvotes%20%C2%B7%2022%20comments.",
+        "https://tiagodanin.com/post/the-best-autocomplete-plugin-for-zsh/#:~:text=With%20Homebrew%2C%20install%20the%20package%20and%20source,needs%20to%20find%20them%20already%20in%20place.",
+      ],
+    },
+    google_ai_overviews: { outcome: "miss", rawAnswer: "", sources: [] },
+    perplexity: {
+      outcome: "miss",
+      rawAnswer:
+        "zsh-autosuggestions is a solid default: it displays muted inline suggestions as you type, based on your command history and completions. Press → or End to accept one.",
+      sources: [
+        "https://github.com/zsh-users/zsh-autosuggestions",
+        "https://github.com/zsh-users/zsh-autosuggestions/blob/master/README.md",
+        "https://www.kali.org/tools/zsh-autosuggestions/",
+        "https://best-of-web.builder.io/library/zsh-users/zsh-autosuggestions",
+        "https://troglodyteconsulting.com/terminal/autosuggestions/",
+        "https://github.com/numbnet/zsh-autosuggestions",
+        "https://www.reddit.com/r/zsh/comments/13tv3if/question_what_are_the_best_plugins_for_zsh/",
+        "https://danielkorn.io/post/zsh-autosuggestions/",
+        "https://www.reddit.com/r/zsh/comments/1v8rq7s/an_alternative_to_zsh_autosuggestion_and/",
+        "https://github.com/gstax/zsh-autosuggestions",
+      ],
+    },
+  },
+  85: {
+    chatgpt: {
+      outcome: "cited",
+      rawAnswer:
+        "For inline predictive command autosuggestions in Zsh, my default recommendation is zsh-autosuggestions. But if you want smarter predictions rather than just matching your command history, there’s a newer alternative worth considering.\n\nTop picks\n\nDisplays a muted gray continuation of your command as you type, based on shell history or completion results. Lightweight, mature, and easy to configure.\n\nUses directory awareness, fuzzy matching, and command-sequence prediction to improve on simple history-prefix matching. It requires a separate background daemon.\n\nBest if you want a richer, continuously updating completion interface with selectable candidates, rather than only inline ghost text.",
+      sources: [
+        "https://github.com/zsh-users/zsh-autosuggestions",
+        "https://github.com/zsh-users/zsh-autos",
+        "https://github.com/Giammarco-Ferranti/deja",
+        "https://ds31x.tistory.com/81",
+        "https://formulae.brew.sh/formula/zsh-autocomplete",
+        "https://github.com/bd-naveent/zsh-autosuggestions",
+        "https://github.com/marlonrichert/zsh-autocomplete",
+        "https://github.com/zsh-users/zsh-history-substring-search/issues/17",
+        "https://stackoverflow.com/questions/13613698/zsh-history-completion-menu",
+        "https://formulae.brew.sh/formula/zsh-autosuggestions",
+        "https://explore.market.dev/ecosystems/zsh/projects/zsh-you-should-use",
+        "https://formulae.brew.sh/formula/zsh-you-should-use",
+        "https://github.com/ohmyzsh/ohmyzsh/wiki/plugins",
+        "https://github.locker/zsh-users/zsh-autosuggestions",
+        "https://linuxhaxor.net/code/setup-configure-autocomplete-zsh.html",
+        "https://qgithub.com/MichaelAquilina/zsh-you-should-use",
+        "https://sourceforge.net/projects/zsh-autosuggestions.mirror/",
+        "https://www.reddit.com/r/zsh/comments/v08lsx",
+      ],
+    },
+    gemini: { outcome: "error", rawAnswer: "", sources: [] },
+    google_ai_overviews: { outcome: "error", rawAnswer: "", sources: [] },
+    perplexity: { outcome: "error", rawAnswer: "", sources: [] },
+  },
+};
+
 export const SUGGESTIONS: Record<HomeBrand, { name: string; domain: string }> = {
   deja: { name: "fish", domain: "fishshell.com" },
   koi: { name: "Otterly", domain: "otterly.ai" },
@@ -223,7 +310,11 @@ export function answerResult(answer: HomeAnswer, brand: HomeBrand): VisibilityRe
   const definition = HOME_BRANDS[brand];
   const prompts = Object.values(definition.topics).flat();
   const position = prompts.indexOf(answer.prompt);
-  const sourceExample = brand === "deja" && answer.day === 89 && position === 0;
+  const recorded =
+    brand === "deja" && position === 0 && answer.prompt === RECORDED_PROMPT
+      ? RECORDED_RESPONSES[answer.day]?.[answer.engine as VisibilityEngine]
+      : undefined;
+  const sourceExample = brand === "deja" && answer.day === 89 && position === 1;
   const sources = sourceExample
     ? answer.engine === "chatgpt"
       ? [
@@ -238,37 +329,57 @@ export function answerResult(answer: HomeAnswer, brand: HomeBrand): VisibilityRe
     sourceExample && answer.engine === "chatgpt"
       ? "Deja is an option for zsh users who want suggestions drawn from command history. It ranks fuzzy matches using frequency, recency, the current directory, and learned command sequences.\n\nUnlike a generative assistant, it does not create commands or execute a suggestion automatically. That makes it worth considering when you want help recalling commands you have already used.\n\nzsh-autosuggestions remains a familiar alternative for inline suggestions. Compare each tool's setup and behavior in your own shell workflow before switching."
       : null;
+  const recordedRunAt = !recorded
+    ? undefined
+    : answer.day === 84
+      ? "2026-10-08T13:06:09.739765+02:00"
+      : answer.day === 85
+        ? "2026-10-09T17:57:55.300907+02:00"
+        : undefined;
 
   return {
     id: answer.id,
-    runId: `${brand}:${answer.day}`,
+    runId: recorded ? `recorded:deja:${answer.date}` : `${brand}:${answer.day}`,
     promptId: `${brand}:prompt:${position}`,
     promptText: answer.prompt,
     promptPosition: position,
     engine: ENGINES.find((engine) => engine.id === answer.engine)?.id ?? "chatgpt",
-    collector: "stub",
-    fetchedAt: new Date(`${answer.date}T12:00:00Z`),
+    collector: recorded ? "cloro" : "stub",
+    fetchedAt: recordedRunAt ? new Date(recordedRunAt) : new Date(`${answer.date}T12:00:00Z`),
     outcome:
-      sourceExample && answer.engine === "chatgpt"
+      recorded?.outcome ??
+      (sourceExample && answer.engine === "chatgpt"
         ? "cited"
         : answer.mentions.includes(definition.name)
           ? "mentioned"
-          : "miss",
+          : "miss"),
     rawAnswer:
+      recorded?.rawAnswer ??
       demoAnswer ??
       (answer.mentions.length
         ? `This simulated answer recommends investigating ${answer.mentions.join(" and ")}.`
         : "This simulated answer does not mention any tracked brand."),
-    sources,
-    errorCode: null,
-    appearances: answer.mentions
-      .filter((name) => name !== definition.name)
-      .map((name) => ({
-        competitorId: `${brand}:competitor:${definition.rivals.indexOf(name)}`,
-        name,
-        confirmed: true,
-        evidence: [],
-      })),
+    sources: recorded?.sources ?? sources,
+    errorCode: recorded?.outcome === "error" ? "collection_failed" : null,
+    appearances: recorded
+      ? recorded.rawAnswer.includes("zsh-autosuggestions")
+        ? [
+            {
+              competitorId: "deja:competitor:0",
+              name: "zsh-autosuggestions",
+              confirmed: true,
+              evidence: [],
+            },
+          ]
+        : []
+      : answer.mentions
+          .filter((name) => name !== definition.name)
+          .map((name) => ({
+            competitorId: `${brand}:competitor:${definition.rivals.indexOf(name)}`,
+            name,
+            confirmed: true,
+            evidence: [],
+          })),
   };
 }
 

@@ -366,6 +366,7 @@ function Workspace({
               records={records}
               brand={brand}
               brandName={data.settings.name}
+              data={data}
               search={search}
               onSearch={update}
               onSave={(text, id) => state.savePrompt(brand, text, id)}

@@ -56,29 +56,73 @@ describe("MVP exploration", () => {
     expect(homeEvidence("beehiiv").filter((answer) => answer.day === 89)).toHaveLength(96);
   });
 
-  it("preserves baseline mention rates when adapting evidence for the shared answer panel", () => {
+  it("preserves synthetic mention rates when adapting evidence for the shared answer panel", () => {
     for (const brand of Object.keys(HOME_BRANDS) as HomeBrand[]) {
       const answers = homeEvidence(brand).filter((answer) => answer.day >= 60);
       const results = answers.map((answer) => answerResult(answer, brand));
+      const baseline = results.flatMap((result, index) =>
+        result.rawAnswer.startsWith("This simulated answer")
+          ? [{ answer: answers[index], result }]
+          : [],
+      );
       const adaptedRate =
-        (results.filter((result) => result.outcome === "mentioned" || result.outcome === "cited")
-          .length /
-          results.length) *
+        (baseline.filter(
+          ({ result }) => result.outcome === "mentioned" || result.outcome === "cited",
+        ).length /
+          baseline.length) *
         100;
 
-      expect(adaptedRate).toBe(mentionRate(answers, HOME_BRANDS[brand].name));
+      expect(adaptedRate).toBe(
+        mentionRate(
+          baseline.map(({ answer }) => answer),
+          HOME_BRANDS[brand].name,
+        ),
+      );
       expect(results.map((result) => result.promptText)).toEqual(
         answers.map((answer) => answer.prompt),
       );
-      expect(results.every((result) => result.collector === "stub")).toBe(true);
+      expect(
+        results.every(
+          (result) =>
+            result.collector === (result.runId.startsWith("recorded:") ? "cloro" : "stub"),
+        ),
+      ).toBe(true);
     }
+  });
+
+  it("shows recorded outcomes and sources from the two Deja runs", () => {
+    const answers = homeEvidence("deja").filter(
+      (answer) =>
+        answer.prompt === HOME_BRANDS.deja.topics.alternatives[0] &&
+        (answer.day === 84 || answer.day === 85),
+    );
+    const results = answers.map((answer) => answerResult(answer, "deja"));
+    const chatgpt = results.find(
+      (result) => result.engine === "chatgpt" && result.runId.endsWith("2026-10-08"),
+    );
+    const gemini = results.find(
+      (result) => result.engine === "gemini" && result.runId.endsWith("2026-10-08"),
+    );
+    const perplexity = results.find(
+      (result) => result.engine === "perplexity" && result.runId.endsWith("2026-10-08"),
+    );
+    const nextDayFailure = results.find(
+      (result) => result.engine === "gemini" && result.runId.endsWith("2026-10-09"),
+    );
+
+    expect(chatgpt).toMatchObject({ outcome: "cited", sources: expect.any(Array) });
+    expect(chatgpt?.rawAnswer).toContain("zsh-autosuggestions");
+    expect(gemini).toMatchObject({ outcome: "miss" });
+    expect(gemini?.rawAnswer).toContain("ghost text");
+    expect(perplexity?.rawAnswer).toContain("solid default");
+    expect(nextDayFailure).toMatchObject({ outcome: "error", rawAnswer: "", sources: [] });
   });
 
   it("labels illustrative source examples and removes them from incomplete results", () => {
     const answer = homeEvidence("deja").find(
       (item) =>
         item.day === 89 &&
-        item.prompt === HOME_BRANDS.deja.topics.alternatives[0] &&
+        item.prompt === HOME_BRANDS.deja.topics.alternatives[1] &&
         item.engine === "chatgpt",
     );
     if (!answer) throw new Error("Missing source example");

@@ -71,6 +71,7 @@
   "pending": "Pending",
   "notCollected": "Not collected",
   "synthetic": "Synthetic answer",
+  "recordedSample": "Recorded answer excerpt",
   "noAnswer": "No answer text was collected.",
   "answerFailed": "This answer could not be collected. Other answers are still available.",
   "answerPending": "Waiting for this answer.",

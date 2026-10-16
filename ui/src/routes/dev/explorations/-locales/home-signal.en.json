@@ -15,5 +15,6 @@
   "recap": "Your recap",
   "leading": "Your brand leads this sample.",
   "noBrands": "No tracked brands",
-  "detailNote": "This is a synthetic fixture for evaluating the evidence flow. It has no collected sources."
+  "detailNote": "This is a synthetic fixture for evaluating the evidence flow. It has no collected sources.",
+  "recordedDetailNote": "Excerpt from a collected engine response. The original answer may be longer."
 }

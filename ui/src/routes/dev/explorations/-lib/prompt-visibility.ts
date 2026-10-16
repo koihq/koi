@@ -6,6 +6,7 @@ import {
   type ExplorationSearch,
   type ExplorationState,
   type PreviewBrand,
+  RECORDED_PROMPT,
   resultForState,
 } from "./exploration-fixtures";
 import {
@@ -20,6 +21,7 @@ export type EvidenceRecord = { answer: HomeAnswer; result: VisibilityResult; sto
 export type PromptRun = {
   id: string;
   date: string;
+  timestamp?: string;
   day: number;
   results: Partial<Record<VisibilityEngine, EvidenceRecord>>;
 };
@@ -57,6 +59,7 @@ export function promptRuns(records: EvidenceRecord[], promptId: string): PromptR
     const run = runs.get(id) ?? {
       id,
       date: record.answer.date,
+      timestamp: id.startsWith("recorded:") ? record.result.fetchedAt?.toISOString() : undefined,
       day: record.answer.day,
       results: {},
     };
@@ -67,11 +70,32 @@ export function promptRuns(records: EvidenceRecord[], promptId: string): PromptR
   return [...runs.values()].sort((a, b) => b.day - a.day || b.id.localeCompare(a.id));
 }
 
+export function runCompetitors(results: Partial<Record<VisibilityEngine, EvidenceRecord>>) {
+  const found = new Map<string, { id: string; name: string }>();
+
+  for (const record of Object.values(results)) {
+    for (const appearance of record?.result.appearances ?? []) {
+      const key = appearance.competitorId ?? appearance.name.toLocaleLowerCase();
+      found.set(key, { id: key, name: appearance.name });
+    }
+  }
+
+  return [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function buildEvidence(brand: HomeBrand, scenario?: ExplorationState): EvidenceRecord[] {
   if (scenario === "empty" || scenario === "review") return [];
 
   const days = new Map<number, HomeAnswer[]>();
   for (const answer of homeEvidence(brand)) {
+    if (
+      brand === "deja" &&
+      answer.prompt === RECORDED_PROMPT &&
+      answer.day !== 84 &&
+      answer.day !== 85
+    )
+      continue;
+
     const entries = days.get(answer.day) ?? [];
     entries.push(answer);
     days.set(answer.day, entries);

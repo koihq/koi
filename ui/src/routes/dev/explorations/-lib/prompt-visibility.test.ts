@@ -13,6 +13,7 @@ import {
   promptRows,
   promptRuns,
   rateFor,
+  runCompetitors,
   summarize,
   type VisibilityScope,
 } from "./prompt-visibility";
@@ -44,6 +45,33 @@ function sample(day: number, index: number, mentioned: boolean, rival: boolean):
 }
 
 describe("prompt visibility", () => {
+  it("keeps the captured Deja prompt history to its two recorded runs", () => {
+    const deja = createPreviewBrand("deja");
+    const promptId = deja.prompts[0].id;
+    const captured = promptRuns(buildEvidence("deja"), promptId);
+
+    expect(captured.map((run) => run.id)).toEqual([
+      "recorded:deja:2026-10-09",
+      "recorded:deja:2026-10-08",
+    ]);
+    expect(captured[0].results.gemini?.result.outcome).toBe("error");
+    expect(captured[0].results.chatgpt?.result.outcome).toBe("cited");
+    expect(captured[1].results.gemini?.result.outcome).toBe("miss");
+    expect(captured[1].results.perplexity?.result.rawAnswer).toContain("solid default");
+    expect(captured[0].timestamp).toBe("2026-10-09T15:57:55.300Z");
+    expect(captured[1].timestamp).toBe("2026-10-08T11:06:09.739Z");
+  });
+
+  it("lists each competitor once across every engine in a run", () => {
+    const first = sample(89, 0, true, true);
+    const second = sample(89, 1, false, true);
+
+    expect(runCompetitors({ chatgpt: first, gemini: second })).toEqual([
+      { id: brands[1].id, name: brands[1].name },
+    ]);
+    expect(runCompetitors({ chatgpt: sample(89, 2, false, false) })).toEqual([]);
+  });
+
   it("groups a prompt by run across all engines and keeps older runs outside the metric period", () => {
     const runs = promptRuns(records, data.prompts[0].id);
 
