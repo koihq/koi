@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
+import { BrandIcon } from "@/components/blocks/brand-icon";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,7 @@ function PromptDetail() {
   const series = mockSeries(brand.id, measured, scope);
   const comparedSeries = comparison ? mockSeries(brand.id, measured, scope, comparison) : [];
   const rate = mockRate(brand.id, measured, scope);
+  const comparisonRate = comparison ? mockRate(brand.id, measured, scope, comparison) : null;
   const rivals = (competitors.data ?? [])
     .map((competitor) => ({
       competitor,
@@ -102,6 +104,7 @@ function PromptDetail() {
     }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
   const metricRate = series[inspected ?? -1]?.rate ?? rate;
+  const metricComparisonRate = comparedSeries[inspected ?? -1]?.rate ?? comparisonRate;
 
   function inspect(index: number | null, input: InspectionInput) {
     setInspectionInput(input);
@@ -155,24 +158,60 @@ function PromptDetail() {
               <h2 id="detail-visibility-heading" className="text-base font-bold">
                 {t("home:dashboard.aiVisibility")}
               </h2>
-              <strong className="mt-4 block text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                {metricRate === null ? (
-                  "—"
-                ) : (
-                  <NumberFlow
-                    value={Number(metricRate.toFixed(1))}
-                    locales={i18n.language}
-                    format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                    animated={canAnimateNumbers && inspectionInput === "pointer"}
-                    className="[--number-flow-mask-height:0.3em]"
-                  />
-                )}
-                {metricRate !== null && (
-                  <span className="ml-0.5 text-[0.667em] text-muted-foreground">
-                    {t("home:dashboard.percentSign")}
-                  </span>
-                )}
-              </strong>
+              {comparison && metricComparisonRate !== null ? (
+                <div className="mt-4 flex flex-wrap items-center gap-5">
+                  {(
+                    [
+                      { subject: brand, value: metricRate },
+                      { subject: comparison, value: metricComparisonRate },
+                    ] as const
+                  ).map(({ subject, value }) => (
+                    <span
+                      key={subject.id}
+                      className="inline-flex items-center gap-2 whitespace-nowrap"
+                    >
+                      <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
+                      <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
+                        {value === null ? (
+                          "—"
+                        ) : (
+                          <NumberFlow
+                            value={Number(value.toFixed(1))}
+                            locales={i18n.language}
+                            format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                            animated={canAnimateNumbers && inspectionInput === "pointer"}
+                            className="[--number-flow-mask-height:0.3em]"
+                          />
+                        )}
+                        {value !== null && (
+                          <span className="ml-0.5 text-[0.667em] text-muted-foreground">
+                            {t("home:dashboard.percentSign")}
+                          </span>
+                        )}
+                      </strong>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <strong className="mt-4 block text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
+                  {metricRate === null ? (
+                    "—"
+                  ) : (
+                    <NumberFlow
+                      value={Number(metricRate.toFixed(1))}
+                      locales={i18n.language}
+                      format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                      animated={canAnimateNumbers && inspectionInput === "pointer"}
+                      className="[--number-flow-mask-height:0.3em]"
+                    />
+                  )}
+                  {metricRate !== null && (
+                    <span className="ml-0.5 text-[0.667em] text-muted-foreground">
+                      {t("home:dashboard.percentSign")}
+                    </span>
+                  )}
+                </strong>
+              )}
               <p className="text-xs font-normal text-muted-foreground">
                 {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
               </p>

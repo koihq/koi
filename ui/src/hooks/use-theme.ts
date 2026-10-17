@@ -24,11 +24,13 @@ export function useTheme() {
   );
 
   function changeTheme(next: Theme) {
-    document.documentElement.setAttribute("data-theme-switching", "");
+    const root = document.documentElement;
+    root.setAttribute("data-theme-switching", "");
     setTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-    document.documentElement.style.colorScheme = next;
-    requestAnimationFrame(() => document.documentElement.removeAttribute("data-theme-switching"));
+    root.classList.toggle("dark", next === "dark");
+    root.style.colorScheme = next;
+    root.getBoundingClientRect();
+    requestAnimationFrame(() => root.removeAttribute("data-theme-switching"));
 
     try {
       localStorage.setItem(STORAGE_KEY, next);

@@ -17,7 +17,7 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
@@ -55,6 +55,8 @@ const engineIcons = {
   google_ai_overviews: GoogleIcon,
 };
 
+const MemoPromptManager = memo(PromptManager);
+
 export const Route = createFileRoute("/_authenticated/_app/")({
   validateSearch: createStandardSchemaV1(
     {
@@ -85,11 +87,20 @@ function Home() {
   const [graph, setGraph] = useQueryStates(graphSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsPinned, setDetailsPinned] = useState(false);
   const canAnimateNumbers = useCanAnimate();
-  const selectedEngines = graph.engines
-    .split(",")
-    .filter((id): id is VisibilityEngine => engines.some((engine) => engine.id === id));
-  const scope: VisibilityScope = { days: graph.days, engines: selectedEngines };
+  const selectedEngines = useMemo(
+    () =>
+      graph.engines
+        .split(",")
+        .filter((id): id is VisibilityEngine => engines.some((engine) => engine.id === id)),
+    [graph.engines],
+  );
+  const scope: VisibilityScope = useMemo(
+    () => ({ days: graph.days, engines: selectedEngines }),
+    [graph.days, selectedEngines],
+  );
 
   const prompts = useQuery({
     queryKey: [...promptKey(brand.id), "analytics"],
@@ -113,23 +124,27 @@ function Home() {
     [competitors.data],
   );
   const comparison = confirmedCompetitors.find((competitor) => competitor.id === graph.compareId);
-  const series = mockSeries(brand.id, confirmedPrompts, scope);
-  const comparedSeries = comparison
-    ? mockSeries(brand.id, confirmedPrompts, scope, comparison)
-    : [];
-  const rate = mockRate(brand.id, confirmedPrompts, scope);
-  const change = mockChangePoints(brand.id, confirmedPrompts, scope);
-  const rivals = confirmedCompetitors
-    .map((competitor) => ({
-      competitor,
-      rate: mockRate(brand.id, confirmedPrompts, scope, competitor),
-    }))
-    .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
+  const { series, comparedSeries, rate, change, rivals, comparisonRate } = useMemo(() => {
+    const series = mockSeries(brand.id, confirmedPrompts, scope);
+    const comparedSeries = comparison
+      ? mockSeries(brand.id, confirmedPrompts, scope, comparison)
+      : [];
+    const rate = mockRate(brand.id, confirmedPrompts, scope);
+    const change = mockChangePoints(brand.id, confirmedPrompts, scope);
+    const rivals = confirmedCompetitors
+      .map((competitor) => ({
+        competitor,
+        rate: mockRate(brand.id, confirmedPrompts, scope, competitor),
+      }))
+      .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
+    const comparisonRate = comparison
+      ? mockRate(brand.id, confirmedPrompts, scope, comparison)
+      : null;
+
+    return { series, comparedSeries, rate, change, rivals, comparisonRate };
+  }, [brand.id, confirmedPrompts, scope, comparison, confirmedCompetitors]);
   const selectedPoint = inspected === null ? undefined : series[inspected];
   const selectedComparisonPoint = inspected === null ? undefined : comparedSeries[inspected];
-  const comparisonRate = comparison
-    ? mockRate(brand.id, confirmedPrompts, scope, comparison)
-    : null;
   const headlineRate = selectedPoint?.rate ?? rate;
   const rawChange = selectedPoint
     ? inspected !== null && inspected > 0
@@ -137,12 +152,24 @@ function Home() {
       : null
     : change;
   const headlineChange = rawChange === null ? null : Number(rawChange.toFixed(1));
+  const previousRate = selectedPoint
+    ? inspected !== null && inspected > 0
+      ? series[inspected - 1].rate
+      : null
+    : rate !== null && change !== null
+      ? rate - change
+      : null;
   const animateNumbers = canAnimateNumbers && inspectionInput === "pointer";
+  const retryPrompts = useCallback(() => void prompts.refetch(), [prompts.refetch]);
 
-  function inspect(index: number | null, input: InspectionInput) {
+  const inspect = useCallback((index: number | null, input: InspectionInput) => {
     setInspectionInput(input);
     setInspected(index);
-  }
+    if (index !== null) {
+      setDetailsOpen(false);
+      setDetailsPinned(false);
+    }
+  }, []);
 
   return (
     <div className="grid gap-6 pb-24">
@@ -280,20 +307,69 @@ function Home() {
                   </time>
                 )}
                 <TooltipProvider delay={350}>
-                  <Tooltip>
+                  <Tooltip
+                    open={detailsOpen}
+                    onOpenChange={(open, details) => {
+                      if (
+                        detailsPinned &&
+                        (details.reason === "trigger-hover" || details.reason === "trigger-focus")
+                      ) {
+                        return;
+                      }
+                      setDetailsOpen(open);
+                      if (!open) setDetailsPinned(false);
+                    }}
+                  >
                     <TooltipTrigger
                       render={
-                        <button
-                          type="button"
-                          className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        <Button
+                          variant="ghost"
+                          size="icon-lg"
+                          className="relative -top-[7px] self-end"
                         />
                       }
                       aria-label={t("dashboard.metricDetails")}
+                      aria-expanded={detailsOpen}
+                      closeOnClick={false}
+                      onClick={() => {
+                        setDetailsPinned(!detailsPinned);
+                        setDetailsOpen(!detailsPinned);
+                      }}
                     >
                       <HugeiconsIcon icon={InformationCircleIcon} size={16} aria-hidden="true" />
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-72 text-xs">
-                      {t("dashboard.metricExplanation")}
+                    <TooltipContent
+                      className="metric-details-tooltip block w-fit max-w-[32ch] rounded-[10px] border border-(--metric-tooltip-border) bg-(--metric-tooltip) p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
+                      data-input={inspectionInput}
+                      side="bottom"
+                      align="start"
+                    >
+                      <div className="metric-details grid gap-2">
+                        <strong className="font-semibold">
+                          {selectedPoint
+                            ? selectedPoint.date.toLocaleDateString(i18n.language, {
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : t("dashboard.metricHeading")}
+                        </strong>
+                        <p className="text-muted-foreground">{t("dashboard.metricPreview")}</p>
+                        <p className="text-muted-foreground">
+                          {previousRate === null
+                            ? t(
+                                selectedPoint
+                                  ? "dashboard.metricNoPreviousDay"
+                                  : "dashboard.metricNoPreviousPeriod",
+                              )
+                            : t(
+                                selectedPoint
+                                  ? "dashboard.metricPreviousDay"
+                                  : "dashboard.metricPreviousPeriod",
+                                { rate: previousRate.toFixed(1), days: graph.days },
+                              )}
+                        </p>
+                        <p className="text-muted-foreground">{t("dashboard.metricSavedAnswers")}</p>
+                      </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -343,6 +419,7 @@ function Home() {
             inspectionInput={inspectionInput}
             onInspect={inspect}
             locale={i18n.language}
+            scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
           />
         )}
 
@@ -425,14 +502,14 @@ function Home() {
           <TrackingSummary brandID={brand.id} />
         </div>
       )}
-      <PromptManager
+      <MemoPromptManager
         brandID={brand.id}
         scope={scope}
         competitors={confirmedCompetitors}
         allPrompts={prompts.data ?? []}
         loading={prompts.isPending}
         failed={prompts.isError}
-        onRetry={() => void prompts.refetch()}
+        onRetry={retryPrompts}
         draftStartFailed={draftStart === "failed"}
       />
       {confirmedPrompts.length > 0 && (

@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
+import { BrandPill } from "@/components/blocks/brand-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { mockRate, mockSeries, type VisibilityScope } from "@/lib/mock-visibility";
-import { trendPath } from "@/lib/trend-path";
+import { trendAreaPath, trendPath } from "@/lib/trend-path";
 
 export function PromptPreviewLink({
   prompt,
@@ -18,11 +20,13 @@ export function PromptPreviewLink({
   scope: VisibilityScope;
 }) {
   const { t } = useTranslation("home");
+  const gradientId = useId().replaceAll(":", "");
+  const [open, setOpen] = useState(false);
   const link = (
     <Link
       to="/prompts/$promptId"
       params={{ promptId: prompt.id }}
-      className="block max-w-2xl whitespace-normal text-sm underline-offset-4 hover:underline"
+      className="block max-w-2xl text-sm/normal font-medium text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline"
     >
       {prompt.text}
     </Link>
@@ -37,52 +41,98 @@ export function PromptPreviewLink({
     .map((item) => ({ item, rate: mockRate(brandID, [prompt], scope, item) ?? 0 }))
     .sort((left, right) => right.rate - left.rate)
     .slice(0, 3);
-  const line = trendPath(
-    series.map((point, index) => {
-      const x = (index / Math.max(1, series.length - 1)) * 280;
-      const y = 70 - (point.rate / 100) * 70;
-      return { x, y };
-    }),
-  );
+  const width = 320;
+  const height = 96;
+  const points = series.map((point, index) => ({
+    x: (index / Math.max(1, series.length - 1)) * width,
+    y: 8 + ((100 - point.rate) / 100) * (height - 16),
+  }));
+  const line = trendPath(points);
+  const area = trendAreaPath(points, height);
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={link} />
-      <TooltipContent
-        side="bottom"
-        align="start"
-        className="w-80 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-3 p-4"
-      >
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="font-medium">{t("dashboard.title")}</span>
-          <strong className="text-lg font-medium tabular-nums">{`${rate?.toFixed(1)}%`}</strong>
-        </div>
-        <svg
-          viewBox="0 0 280 70"
-          preserveAspectRatio="none"
-          className="h-16 w-full"
-          role="img"
-          aria-label={t("dashboard.chartDescription")}
+    <Tooltip open={open} onOpenChange={(next) => !next && setOpen(false)}>
+      <TooltipTrigger
+        render={link}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setOpen(true);
+        }}
+        onPointerLeave={() => setOpen(false)}
+        onFocus={(event) => {
+          if (event.currentTarget.matches(":focus-visible")) setOpen(true);
+        }}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+        }}
+        onClick={() => setOpen(false)}
+      />
+      {open && (
+        <TooltipContent
+          side="right"
+          align="start"
+          sideOffset={14}
+          className="flex w-[min(290px,calc(100vw-32px))] max-w-[calc(100vw-32px)] flex-col items-stretch gap-0 overflow-hidden rounded-[12px] border border-[var(--metric-tooltip-border)] [background:linear-gradient(165deg,#ffffff0c,#ffffff02_55%),color-mix(in_srgb,var(--popover)_80%,transparent)]! p-[14px_14px_0] text-foreground shadow-[0_16px_60px_var(--metric-tooltip-shadow)] backdrop-blur-[24px] backdrop-saturate-[130%] animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
         >
-          <path
-            d={line}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        {rivals.length > 0 && (
-          <div className="space-y-1 border-t border-background/20 pt-2">
-            {rivals.map(({ item, rate: rivalRate }) => (
-              <p key={item.id} className="flex justify-between gap-3">
-                <span className="truncate">{item.name}</span>
-                <span className="tabular-nums">{`${rivalRate.toFixed(1)}%`}</span>
-              </p>
-            ))}
+          <div className="flex items-start justify-between gap-4">
+            <div className="grid gap-1.5">
+              <span className="text-xs text-muted-foreground">{t("dashboard.yourRate")}</span>
+              <strong className="text-xl font-medium tabular-nums leading-none">
+                {rate === null ? "—" : `${rate.toFixed(1)}%`}
+              </strong>
+            </div>
+            <div className="grid justify-items-end gap-1.5 text-right">
+              <span className="text-xs text-muted-foreground">{t("dashboard.competitors")}</span>
+              {rivals.length ? (
+                <span className="pointer-events-none inline-flex pe-2">
+                  {rivals.map(({ item }) => (
+                    <span
+                      key={item.id}
+                      className="relative -me-[7px] grid size-6 place-items-center rounded-full bg-surface shadow-[0_0_0_1px_var(--surface)] [&_[data-slot=brand-icon]]:size-4"
+                    >
+                      <BrandPill name={item.name} domain={item.domain} iconOnly />
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {t("dashboard.noCompetitors")}
+                </span>
+              )}
+            </div>
           </div>
-        )}
-      </TooltipContent>
+          {line ? (
+            <svg
+              viewBox={`0 0 ${width} ${height}`}
+              preserveAspectRatio="none"
+              className="mt-3 -mx-3.5 block h-24 w-[calc(100%+28px)]"
+              role="img"
+              aria-label={t("dashboard.chartDescription")}
+            >
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0.08" />
+                </linearGradient>
+              </defs>
+              {area && <path d={area} fill={`url(#${gradientId})`} />}
+              <path
+                d={line}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+          ) : (
+            <div className="mt-3 -mx-3.5 grid h-24 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
+              {t("dashboard.noComparison")}
+            </div>
+          )}
+        </TooltipContent>
+      )}
     </Tooltip>
   );
 }

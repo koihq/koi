@@ -19,6 +19,8 @@ import { BrandPill } from "@/components/blocks/brand-pill";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
 import { PromptPreviewLink } from "@/components/blocks/prompt-preview-link";
+import { PromptRateBreakdown } from "@/components/blocks/prompt-rate-breakdown";
+import { PromptSelectCheckbox } from "@/components/blocks/prompt-select-checkbox";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import {
   AlertDialog,
@@ -38,6 +40,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { tableSearchParams } from "@/hooks/use-table-state";
 import { engines, mockChangePoints, mockRate, type VisibilityScope } from "@/lib/mock-visibility";
@@ -69,9 +86,11 @@ const engineIcons = {
 type PromptRow = { id: string; text: string; prompt?: Prompt; past: boolean };
 const rateSegments = Array.from({ length: 32 }, (_, index) => `segment-${index}`);
 const promptHeadClass =
-  "p-2 text-start text-xs font-normal text-muted-foreground [overflow-wrap:anywhere]";
+  "h-auto px-2 py-1.5 text-start text-xs font-normal text-muted-foreground whitespace-normal [overflow-wrap:anywhere]";
 const promptCellClass =
-  "p-2 align-middle text-start text-[13px] [overflow-wrap:anywhere] group-hover:bg-muted group-focus-within:bg-muted group-data-[selected]:bg-muted";
+  "px-2 py-3.5 align-middle text-start text-[13px]/[1.5] whitespace-normal [overflow-wrap:anywhere] group-data-[selected]:bg-signal-pill motion-safe:transition-[background-color] motion-safe:duration-[120ms]";
+const promptRowLinkClass =
+  "block max-w-2xl text-sm/normal font-medium text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline";
 
 function rateBars(rate: number | null) {
   return (
@@ -79,11 +98,44 @@ function rateBars(rate: number | null) {
       {rateSegments.map((segment, index) => (
         <span
           key={segment}
-          className="h-[15px] w-0.5 flex-[0_0_2px] bg-muted data-[filled=true]:bg-positive"
+          className="h-4 w-0.5 flex-[0_0_2px] rounded-[1px] bg-signal-pill data-[filled=true]:bg-positive"
           data-filled={rate !== null && index < Math.round((rate / 100) * 32)}
         />
       ))}
     </span>
+  );
+}
+
+function PromptChoice({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      value={value}
+      items={options}
+      onValueChange={(next) => {
+        if (next !== null) onChange(next);
+      }}
+    >
+      <SelectTrigger aria-label={label}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -237,38 +289,44 @@ export function PromptManager({
     );
   }
 
-  const renderPrompt = (row: PromptRow) =>
-    row.prompt ? (
-      <PromptPreviewLink
-        prompt={row.prompt}
-        brandID={brandID}
-        competitors={competitors}
-        scope={scope}
-      />
-    ) : (
-      <Link
-        to="/prompts/$promptId"
-        params={{ promptId: row.id }}
-        className="text-foreground hover:underline"
-      >
-        {row.text}
-      </Link>
-    );
+  const renderPrompt = (row: PromptRow) => (
+    <div>
+      {row.prompt ? (
+        <PromptPreviewLink
+          prompt={row.prompt}
+          brandID={brandID}
+          competitors={competitors}
+          scope={scope}
+        />
+      ) : (
+        <Link to="/prompts/$promptId" params={{ promptId: row.id }} className={promptRowLinkClass}>
+          {row.text}
+        </Link>
+      )}
+      {(row.past || !row.prompt?.confirmed) && (
+        <small className="mt-1.5 block text-xs text-muted-foreground">
+          {row.past ? t("home:dashboard.pastPrompt") : t("home:dashboard.draft")}
+        </small>
+      )}
+    </div>
+  );
 
   const renderRate = (row: PromptRow) => {
     const rate = row.prompt?.confirmed ? mockRate(brandID, [row.prompt], scope) : null;
     const change = row.prompt?.confirmed ? mockChangePoints(brandID, [row.prompt], scope) : null;
     return (
-      <div className="grid gap-0.5 text-[13px]">
-        <div className="flex items-center gap-2">
-          <span className="tabular-nums">{rate === null ? "—" : `${rate.toFixed(1)}%`}</span>
+      <div className="grid gap-[3px] text-[13px]">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="tabular-nums">
+            {rate === null ? t("home:dashboard.noAnswersYet") : `${rate.toFixed(1)}%`}
+          </span>
           {rateBars(rate)}
         </div>
         <small
           className={`text-xs font-normal ${change === null ? "" : change >= 0 ? "text-positive" : "text-negative"}`}
         >
           {change === null
-            ? t(row.past ? "home:detail.historical" : "home:dashboard.awaitingReview")
+            ? t("home:dashboard.noPreviousData")
             : `${change > 0 ? "+" : ""}${change.toFixed(1)} points`}
         </small>
       </div>
@@ -276,24 +334,26 @@ export function PromptManager({
   };
 
   const renderEngines = (row: PromptRow) => (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-      {engines.map((engine) => (
-        <span
-          key={engine.id}
-          title={`${engine.name}: ${row.prompt?.confirmed ? `${mockRate(brandID, [row.prompt], { ...scope, engines: [engine.id] })?.toFixed(1)}%` : "—"}`}
-        >
-          <HugeiconsIcon icon={engineIcons[engine.id]} size={14} aria-hidden="true" />
-        </span>
-      ))}
-      <span className="ms-2 tabular-nums">
-        {row.prompt?.confirmed ? `${mockRate(brandID, [row.prompt], scope)?.toFixed(1)}%` : "—"}
-      </span>
-    </span>
+    <PromptRateBreakdown
+      label={t("home:dashboard.byEngine")}
+      items={(row.prompt?.confirmed ? engines : []).map((engine) => ({
+        id: engine.id,
+        name: engine.name,
+        rate: row.prompt?.confirmed
+          ? mockRate(brandID, [row.prompt], { ...scope, engines: [engine.id] })
+          : null,
+        icon: <HugeiconsIcon icon={engineIcons[engine.id]} size={16} aria-hidden="true" />,
+      }))}
+    />
   );
 
   const renderBrands = (row: PromptRow) => {
     if (!row.prompt?.confirmed)
-      return <span className="text-xs font-normal text-muted-foreground">{"—"}</span>;
+      return (
+        <span className="text-xs font-normal text-muted-foreground">
+          {t("home:dashboard.noData")}
+        </span>
+      );
     const top = competitors
       .map((competitor) => ({
         competitor,
@@ -301,50 +361,57 @@ export function PromptManager({
       }))
       .sort((left, right) => right.rate - left.rate)
       .slice(0, 3);
-    return top.length ? (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap">
-        {top.map(({ competitor, rate }) => (
-          <span key={competitor.id} className="flex items-center gap-1">
-            <BrandPill name={competitor.name} domain={competitor.domain} iconOnly />
-            <span className="tabular-nums">{`${rate.toFixed(1)}%`}</span>
-          </span>
-        ))}
-      </span>
-    ) : (
-      <span className="text-xs font-normal text-muted-foreground">{"—"}</span>
+    return (
+      <PromptRateBreakdown
+        label={t("home:dashboard.mostMentionedBrands")}
+        emptyLabel={t("home:dashboard.noBrandMentions")}
+        items={top.map(({ competitor, rate }) => ({
+          id: competitor.id,
+          name: competitor.name,
+          rate,
+          icon: <BrandPill name={competitor.name} domain={competitor.domain} iconOnly />,
+        }))}
+      />
     );
   };
 
   const renderActions = (row: PromptRow) =>
     row.prompt ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={t("home:dashboard.promptActions", { text: row.text })}
-          className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <HugeiconsIcon icon={MoreHorizontalIcon} size={18} aria-hidden="true" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {!row.prompt.confirmed && (
-            <DropdownMenuItem disabled={pending} onClick={() => mutations.confirm.mutate(row.id)}>
-              {t("confirm")}
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuItem disabled={pending} onClick={() => setEditing(row.prompt)}>
-            {t("edit")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
+      <div className="flex flex-wrap items-center gap-2">
+        {!row.prompt.confirmed && (
+          <Button
+            variant="ghost"
+            size="sm"
             disabled={pending}
-            onClick={() => {
-              trigger.current = document.activeElement as HTMLElement;
-              setDeleting(row.prompt);
-            }}
+            onClick={() => mutations.confirm.mutate(row.id)}
           >
-            {t("delete")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {t("confirm")}
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label={t("home:dashboard.promptActions", { text: row.text })}
+            className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <HugeiconsIcon icon={MoreHorizontalIcon} size={16} aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem disabled={pending} onClick={() => setEditing(row.prompt)}>
+              {t("edit")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={pending}
+              onClick={() => {
+                trigger.current = document.activeElement as HTMLElement;
+                setDeleting(row.prompt);
+              }}
+            >
+              {t("delete")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     ) : null;
 
   return (
@@ -372,7 +439,7 @@ export function PromptManager({
           {t("mutationError")}
         </p>
       )}
-      <div className="mb-4 flex flex-wrap items-center gap-3 [&>select]:w-[88px]">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <Input
           value={search.q}
           onChange={(event) => changeSearch({ q: event.target.value })}
@@ -380,28 +447,28 @@ export function PromptManager({
           aria-label={t("searchPrompts")}
           className="w-full max-w-80"
         />
-        <select
-          aria-label={t("statusLabel")}
+        <PromptChoice
+          label={t("statusLabel")}
           value={search.status}
-          onChange={(event) => changeSearch({ status: event.target.value as typeof search.status })}
-          className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
-        >
-          <option value="all">{t("all")}</option>
-          <option value="confirmed">{t("confirmed")}</option>
-          <option value="unconfirmed">{t("unconfirmed")}</option>
-          <option value="past">{t("home:history.title")}</option>
-        </select>
-        <select
-          aria-label={t("home:dashboard.sortPrompts")}
+          options={[
+            { value: "all", label: t("all") },
+            { value: "confirmed", label: t("confirmed") },
+            { value: "unconfirmed", label: t("unconfirmed") },
+            { value: "past", label: t("home:history.title") },
+          ]}
+          onChange={(value) => changeSearch({ status: value as typeof search.status })}
+        />
+        <PromptChoice
+          label={t("home:dashboard.sortPrompts")}
           value={search.sort}
-          onChange={(event) => changeSearch({ sort: event.target.value as typeof search.sort })}
-          className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
-        >
-          <option value="original">{t("home:dashboard.originalOrder")}</option>
-          <option value="prompt">{t("prompt")}</option>
-          <option value="rate">{t("home:dashboard.mentionRate")}</option>
-          <option value="change">{t("home:dashboard.sortChange")}</option>
-        </select>
+          options={[
+            { value: "original", label: t("home:dashboard.originalOrder") },
+            { value: "prompt", label: t("prompt") },
+            { value: "rate", label: t("home:dashboard.mentionRate") },
+            { value: "change", label: t("home:dashboard.sortChange") },
+          ]}
+          onChange={(value) => changeSearch({ sort: value as typeof search.sort })}
+        />
         {search.sort !== "original" && (
           <Button
             type="button"
@@ -417,13 +484,21 @@ export function PromptManager({
             brandID={brandID}
             mode="prompts"
             setupStartFailed={draftStartFailed}
+            hideSuccessMessage
           />
         </div>
       </div>
 
+      <output className="sr-only" aria-live="polite">
+        {selectedVisible.length
+          ? t("home:dashboard.selectedCount", { count: selectedVisible.length })
+          : ""}
+      </output>
       {selectedVisible.length > 0 && (
-        <div className="sticky top-2 z-10 mx-auto my-3 flex w-fit flex-wrap items-center gap-2 rounded-xl border border-border bg-popover px-2.5 py-2 text-[13px]">
-          <output>{t("home:dashboard.selectedCount", { count: selectedVisible.length })}</output>
+        <div className="fixed bottom-[max(24px,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-[12px] border border-[var(--metric-tooltip-border)] [background:linear-gradient(165deg,#ffffff0c,#ffffff02_55%),color-mix(in_srgb,var(--popover)_80%,transparent)] px-2.5 py-2 text-[13px] text-muted-foreground shadow-[0_16px_60px_var(--metric-tooltip-shadow)] backdrop-blur-[24px] backdrop-saturate-[130%]">
+          <span className="px-2 text-foreground">
+            {t("home:dashboard.selectedCount", { count: selectedVisible.length })}
+          </span>
           {selectedPrompts.some((prompt) => !prompt.confirmed) && (
             <Button
               type="button"
@@ -454,7 +529,7 @@ export function PromptManager({
         </p>
       )}
 
-      <TooltipProvider delay={350}>
+      <TooltipProvider delay={0}>
         {failed || (history.isError && search.status === "past") ? (
           <p role="alert" className="py-12 text-sm text-destructive">
             {t("loadError")}{" "}
@@ -474,74 +549,105 @@ export function PromptManager({
         ) : (
           <>
             <div className="hidden min-[1101px]:block">
-              <table className="prompt-table w-full table-fixed border-separate border-spacing-y-1">
-                <thead>
-                  <tr>
-                    <th className={`${promptHeadClass} w-[4%]`}>
-                      <input
-                        type="checkbox"
-                        aria-label={t("home:dashboard.selectPage")}
-                        checked={
-                          visibleLiveIDs.length > 0 &&
-                          selectedVisible.length === visibleLiveIDs.length
-                        }
-                        onChange={() =>
-                          setSelected((current) =>
+              <Table
+                aria-label={t("tableLabel")}
+                className="prompt-table table-fixed border-separate border-spacing-y-1"
+              >
+                <TableHeader>
+                  <TableRow className="border-0 hover:bg-transparent">
+                    <TableHead className={`${promptHeadClass} w-[4%] text-center`}>
+                      {visibleLiveIDs.length > 0 && (
+                        <PromptSelectCheckbox
+                          label={t("home:dashboard.selectPage")}
+                          checked={
+                            visibleLiveIDs.length > 0 &&
                             selectedVisible.length === visibleLiveIDs.length
-                              ? current.filter((id) => !visibleLiveIDs.includes(id))
-                              : [...new Set([...current, ...visibleLiveIDs])],
-                          )
-                        }
-                      />
-                    </th>
-                    <th className={`${promptHeadClass} w-[31%]`}>{t("prompt")}</th>
-                    <th className={`${promptHeadClass} w-[23%]`}>{t("home:dashboard.yourRate")}</th>
-                    <th className={`${promptHeadClass} w-[14%]`}>{t("home:dashboard.byEngine")}</th>
-                    <th className={`${promptHeadClass} w-[19%]`}>
+                          }
+                          indeterminate={
+                            selectedVisible.length > 0 &&
+                            selectedVisible.length < visibleLiveIDs.length
+                          }
+                          onChange={(checked) =>
+                            setSelected((current) =>
+                              checked
+                                ? [...new Set([...current, ...visibleLiveIDs])]
+                                : current.filter((id) => !visibleLiveIDs.includes(id)),
+                            )
+                          }
+                        />
+                      )}
+                    </TableHead>
+                    <TableHead className={`${promptHeadClass} w-[31%]`}>{t("prompt")}</TableHead>
+                    <TableHead className={`${promptHeadClass} w-[23%]`}>
+                      {t("home:dashboard.yourRate")}
+                    </TableHead>
+                    <TableHead className={`${promptHeadClass} w-[14%]`}>
+                      {t("home:dashboard.byEngine")}
+                    </TableHead>
+                    <TableHead className={`${promptHeadClass} w-[19%]`}>
                       {t("home:dashboard.mostMentionedBrands")}
-                    </th>
-                    <th className={`${promptHeadClass} w-[9%]`}>{t("actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                    <TableHead className={`${promptHeadClass} w-[9%]`}>{t("actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {visible.map((row) => (
-                    <tr
+                    <TableRow
                       key={row.id}
-                      className="group"
+                      className="group border-0 transition-none hover:bg-transparent"
                       data-selected={selectedVisible.includes(row.id) || undefined}
                     >
-                      <td className={`${promptCellClass} rounded-s-md`}>
+                      <TableCell className={`${promptCellClass} rounded-s-md text-center`}>
                         {!row.past && (
-                          <input
-                            type="checkbox"
-                            aria-label={t("home:dashboard.selectPrompt", { text: row.text })}
+                          <PromptSelectCheckbox
+                            label={t("home:dashboard.selectPrompt", { text: row.text })}
                             checked={selectedVisible.includes(row.id)}
                             onChange={() => select(row.id)}
                           />
                         )}
-                      </td>
-                      <td className={promptCellClass}>{renderPrompt(row)}</td>
-                      <td className={promptCellClass}>{renderRate(row)}</td>
-                      <td className={promptCellClass}>{renderEngines(row)}</td>
-                      <td className={promptCellClass}>{renderBrands(row)}</td>
-                      <td className={`${promptCellClass} rounded-e-md`}>{renderActions(row)}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className={promptCellClass}>{renderPrompt(row)}</TableCell>
+                      <TableCell className={promptCellClass}>{renderRate(row)}</TableCell>
+                      <TableCell className={promptCellClass}>{renderEngines(row)}</TableCell>
+                      <TableCell className={promptCellClass}>{renderBrands(row)}</TableCell>
+                      <TableCell className={`${promptCellClass} rounded-e-md`}>
+                        {renderActions(row)}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
+            {visibleLiveIDs.length > 0 && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground min-[1101px]:hidden">
+                <PromptSelectCheckbox
+                  label={t("home:dashboard.selectPage")}
+                  checked={selectedVisible.length === visibleLiveIDs.length}
+                  indeterminate={
+                    selectedVisible.length > 0 && selectedVisible.length < visibleLiveIDs.length
+                  }
+                  onChange={(checked) =>
+                    setSelected((current) =>
+                      checked
+                        ? [...new Set([...current, ...visibleLiveIDs])]
+                        : current.filter((id) => !visibleLiveIDs.includes(id)),
+                    )
+                  }
+                />
+                {t("home:dashboard.selectPage")}
+              </div>
+            )}
             <ul className="grid gap-1 min-[1101px]:hidden">
               {visible.map((row) => (
                 <li
                   key={row.id}
                   data-selected={selectedVisible.includes(row.id) || undefined}
-                  className="min-w-0 rounded-md p-3 focus-within:bg-muted data-[selected]:bg-muted"
+                  className="min-w-0 rounded-md p-3 data-[selected]:bg-signal-pill"
                 >
                   <div className="flex items-start gap-3">
                     {!row.past && (
-                      <input
-                        type="checkbox"
-                        aria-label={t("home:dashboard.selectPrompt", { text: row.text })}
+                      <PromptSelectCheckbox
+                        label={t("home:dashboard.selectPrompt", { text: row.text })}
                         checked={selectedVisible.includes(row.id)}
                         onChange={() => select(row.id)}
                       />
@@ -579,18 +685,12 @@ export function PromptManager({
         <span className="whitespace-nowrap">
           {t("home:dashboard.page", { current: page, total: Math.max(1, totalPages) })}
         </span>
-        <select
-          aria-label={t("pageSizeLabel")}
-          value={search.pageSize}
-          onChange={(event) =>
-            changeSearch({ pageSize: Number(event.target.value) as 10 | 20 | 50 })
-          }
-          className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
-        >
-          <option value={10}>{"10"}</option>
-          <option value={20}>{"20"}</option>
-          <option value={50}>{"50"}</option>
-        </select>
+        <PromptChoice
+          label={t("pageSizeLabel")}
+          value={String(search.pageSize)}
+          options={[10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))}
+          onChange={(value) => changeSearch({ pageSize: Number(value) as 10 | 20 | 50 })}
+        />
         <div className="flex gap-2 sm:ms-auto">
           <Button
             variant="ghost"

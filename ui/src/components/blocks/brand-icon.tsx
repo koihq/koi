@@ -69,8 +69,9 @@ export function BrandIcon({
       import.meta.env.VITE_LOGODEV_PUBLISHABLE_KEY,
       theme ?? (dark ? "dark" : "light"),
     );
-  const [failedURL, setFailedURL] = useState<string>();
-  const showLogo = logoURL !== null && failedURL !== logoURL;
+  const logoKey = src ?? domain.toLowerCase();
+  const [failedLogoKey, setFailedLogoKey] = useState<string>();
+  const showLogo = logoURL !== null && failedLogoKey !== logoKey;
 
   return (
     <span
@@ -93,7 +94,7 @@ export function BrandIcon({
             "block object-contain",
             fit === "image" ? "size-full rounded-full" : "size-3/4",
           )}
-          onError={() => setFailedURL(logoURL)}
+          onError={() => setFailedLogoKey(logoKey)}
         />
       ) : (
         brandInitial(name, domain)

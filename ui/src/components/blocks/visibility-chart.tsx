@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  type DotProps,
   LabelList,
   type LabelProps,
   Line,
   LineChart,
-  type MouseHandlerDataParam,
   ReferenceDot,
   XAxis,
   YAxis,
 } from "recharts";
 import { BrandIcon } from "@/components/blocks/brand-icon";
-import { type ChartConfig, ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
 
 export type VisibilityPoint = { date: Date; rate: number | null };
 export type InspectionInput = "pointer" | "touch" | "keyboard";
@@ -71,6 +71,17 @@ function endpointLabel(
   };
 }
 
+function ActiveMarker({ cx, cy, fill }: DotProps) {
+  if (cx == null || cy == null) return <g />;
+
+  return (
+    <g className="signal-active-marker" style={{ transform: `translate(${cx}px, ${cy}px)` }}>
+      <circle r={8} fill="var(--signal-pill)" />
+      <circle r={6} fill={fill} />
+    </g>
+  );
+}
+
 export function VisibilityChart({
   series,
   comparison,
@@ -80,6 +91,7 @@ export function VisibilityChart({
   inspectionInput,
   onInspect,
   locale,
+  scopeKey,
   variant = "home",
 }: {
   series: VisibilityPoint[];
@@ -90,24 +102,30 @@ export function VisibilityChart({
   inspectionInput: InspectionInput | null;
   onInspect: (index: number | null, input: InspectionInput) => void;
   locale?: string;
+  scopeKey?: string;
   variant?: "home" | "detail";
 }) {
   const { t } = useTranslation("home");
   const figure = useRef<HTMLElement>(null);
+  const previousScope = useRef(scopeKey);
   const [width, setWidth] = useState(320);
   const activeIndex = inspected === null ? null : clamp(inspected, 0, series.length - 1);
   const lastIndex = series.length - 1;
   const last = series[lastIndex];
   const otherLast = comparison[lastIndex];
   const rightPadding = Math.max(width * 0.15, PILL_WIDTH + 16);
-  const data = series.map((point, index) => ({
-    day: point.date.toISOString(),
-    own: point.rate,
-    other: comparison[index]?.rate ?? null,
-    ownPast: activeIndex !== null && index <= activeIndex ? point.rate : null,
-    otherPast:
-      activeIndex !== null && index <= activeIndex ? (comparison[index]?.rate ?? null) : null,
-  }));
+  const data = useMemo(
+    () =>
+      series.map((point, index) => ({
+        day: point.date.toISOString(),
+        own: point.rate,
+        other: comparison[index]?.rate ?? null,
+        ownPast: activeIndex !== null && index <= activeIndex ? point.rate : null,
+        otherPast:
+          activeIndex !== null && index <= activeIndex ? (comparison[index]?.rate ?? null) : null,
+      })),
+    [series, comparison, activeIndex],
+  );
   const selected = activeIndex === null ? null : data[activeIndex];
   const selectedDate = activeIndex === null ? null : series[activeIndex]?.date;
   const readout = selectedDate
@@ -122,6 +140,24 @@ export function VisibilityChart({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    const changed = previousScope.current !== scopeKey;
+    previousScope.current = scopeKey;
+    if (!changed || inspectionInput !== "pointer") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const plot = figure.current?.querySelector<HTMLElement>("[data-slot=chart]");
+    const animation = plot?.animate(
+      [
+        { opacity: 0.55, transform: "translateY(5px) scaleY(0.96)" },
+        { opacity: 1, transform: "translateY(0) scaleY(1)" },
+      ],
+      { duration: 260, easing: "cubic-bezier(0.23, 1, 0.32, 1)" },
+    );
+
+    return () => animation?.cancel();
+  }, [scopeKey, inspectionInput]);
 
   useEffect(() => {
     if (inspectionInput !== "touch" || inspected === null) return;
@@ -143,16 +179,22 @@ export function VisibilityChart({
     };
   }, [inspected, inspectionInput, onInspect]);
 
-  function inspect(payload: MouseHandlerDataParam, input: InspectionInput) {
-    const index = Number(payload.activeTooltipIndex);
-    if (payload.isTooltipActive && Number.isInteger(index) && index >= 0 && index < series.length) {
-      onInspect(index, input);
-    }
+  function inspect(clientX: number, input: InspectionInput) {
+    const bounds = figure.current?.getBoundingClientRect();
+    if (!bounds) return;
+
+    const index = clamp(
+      Math.round(((clientX - bounds.left) / Math.max(1, bounds.width - rightPadding)) * lastIndex),
+      0,
+      lastIndex,
+    );
+    if (index !== inspected || input !== inspectionInput) onInspect(index, input);
   }
 
   return (
     <figure
       ref={figure}
+      data-motion={inspectionInput === "pointer"}
       className={variant === "detail" ? "relative -mx-5 mt-5 mb-2" : "relative -mx-4 mt-6 sm:-mx-7"}
     >
       <ChartContainer
@@ -161,21 +203,25 @@ export function VisibilityChart({
         className="h-[220px] w-full aspect-auto touch-pan-y [&_.recharts-surface]:overflow-visible"
         role="img"
         aria-label={t("dashboard.chartDescription")}
-        onTouchCancel={() => onInspect(null, "touch")}
+        onPointerDown={(event) => {
+          if (!event.isPrimary) return;
+          if (event.pointerType === "touch") event.currentTarget.setPointerCapture(event.pointerId);
+          inspect(event.clientX, event.pointerType === "touch" ? "touch" : "pointer");
+        }}
+        onPointerMove={(event) => {
+          if (!event.isPrimary || (event.pointerType === "touch" && !event.buttons)) return;
+          inspect(event.clientX, event.pointerType === "touch" ? "touch" : "pointer");
+        }}
+        onPointerLeave={() => {
+          if (inspectionInput === "pointer") onInspect(null, "pointer");
+        }}
+        onPointerCancel={(event) =>
+          onInspect(null, event.pointerType === "touch" ? "touch" : "pointer")
+        }
       >
-        <LineChart
-          data={data}
-          margin={{ top: 16, right: 0, bottom: 16, left: 0 }}
-          onMouseMove={(payload) => inspect(payload, "pointer")}
-          onMouseLeave={() => {
-            if (inspectionInput === "pointer") onInspect(null, "pointer");
-          }}
-          onTouchStart={(payload) => inspect(payload, "touch")}
-          onTouchMove={(payload) => inspect(payload, "touch")}
-        >
+        <LineChart data={data} margin={{ top: 16, right: 0, bottom: 16, left: 0 }}>
           <XAxis dataKey="day" hide height={0} padding={{ right: rightPadding }} />
           <YAxis hide width={0} domain={[0, 100]} allowDataOverflow />
-          <ChartTooltip content={() => null} cursor={false} />
           <Line
             dataKey="other"
             type="monotone"
@@ -269,20 +315,16 @@ export function VisibilityChart({
                 <ReferenceDot
                   x={selected.day}
                   y={selected.own}
-                  r={6}
                   fill="var(--color-own)"
-                  stroke="var(--signal-pill)"
-                  strokeWidth={2}
+                  shape={ActiveMarker}
                 />
               )}
               {selected?.other !== null && selected?.other !== undefined && (
                 <ReferenceDot
                   x={selected.day}
                   y={selected.other}
-                  r={6}
                   fill="var(--color-other)"
-                  stroke="var(--signal-pill)"
-                  strokeWidth={2}
+                  shape={ActiveMarker}
                 />
               )}
             </>

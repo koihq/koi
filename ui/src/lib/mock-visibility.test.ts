@@ -54,4 +54,19 @@ describe("temporary visibility values", () => {
     );
     expect(Number.isFinite(mockChangePoints("brand-1", [confirmed], scope))).toBe(true);
   });
+
+  it("keeps overlapping ranges aligned and compares against the preceding days", () => {
+    const seven = mockSeries("brand-1", [confirmed], { days: 7, engines: [] });
+    const thirty = mockSeries("brand-1", [confirmed], { days: 30, engines: [] });
+    const ninety = mockSeries("brand-1", [confirmed], { days: 90, engines: [] });
+    const average = (values: typeof seven) =>
+      values.reduce((sum, point) => sum + point.rate, 0) / values.length;
+
+    expect(seven).toEqual(thirty.slice(-7));
+    expect(thirty).toEqual(ninety.slice(-30));
+    expect(mockChangePoints("brand-1", [confirmed], { days: 7, engines: [] })).toBeCloseTo(
+      average(thirty.slice(-7)) - average(thirty.slice(-14, -7)),
+    );
+    expect(ninety.every((point) => point.rate >= 0 && point.rate <= 100)).toBe(true);
+  });
 });

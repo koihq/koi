@@ -1611,7 +1611,10 @@ html[data-exploration-theme="home-context"]
 .hc-prompt-table tbody td {
   transition: none;
 }
-.hc-prompt-table tbody tr:is(:hover, :focus-within, [data-selected]) td {
+.hc-prompt-table
+  tbody
+  tr:is([data-selected], :focus-within:not(:has(.hc-prompt-check-wrap:focus-within)))
+  td {
   background: var(--hc-pill);
 }
 .hc-prompt-table tbody tr td:first-child {
@@ -1691,7 +1694,12 @@ html[data-exploration-theme="home-context"]
   transform: scale(1);
 }
 @media (hover: hover) and (pointer: fine) {
-  .hc-prompt-table tbody:has(tr:hover) tr:not(:hover):not(:focus-within):not([data-selected]) {
+  .hc-prompt-table tbody tr:hover:not(:has(.hc-prompt-check-wrap:hover)) td {
+    background: var(--hc-pill);
+  }
+  .hc-prompt-table
+    tbody:has(tr:hover:not(:has(.hc-prompt-check-wrap:hover)))
+    tr:not(:hover):not(:focus-within):not([data-selected]) {
     opacity: var(--hc-row-deemphasis);
   }
   .hc-prompt-table
@@ -1962,8 +1970,7 @@ html[data-exploration-theme="home-context"] .hc-prompt-preview > :last-child {
     padding: 12px;
     border-radius: 8px;
   }
-  .hc-prompt-mobile > li[data-selected],
-  .hc-prompt-mobile > li:focus-within {
+  .hc-prompt-mobile > li[data-selected] {
     background: var(--hc-pill);
   }
   .hc-prompt-mobile-heading {
