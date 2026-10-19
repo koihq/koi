@@ -23,11 +23,16 @@ type PromptPatchRequest struct {
 type PromptHandler struct {
 	querier   koidomain.PromptQuerier
 	commander koidomain.PromptCommander
+	analytics *koidomain.VisibilityAnalyticsQuerier
 	sess      *scs.SessionManager
 }
 
-func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, sess *scs.SessionManager) *PromptHandler {
-	return &PromptHandler{querier: q, commander: c, sess: sess}
+func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, sess *scs.SessionManager, analytics ...*koidomain.VisibilityAnalyticsQuerier) *PromptHandler {
+	h := &PromptHandler{querier: q, commander: c, sess: sess}
+	if len(analytics) > 0 {
+		h.analytics = analytics[0]
+	}
+	return h
 }
 
 func (h *PromptHandler) Routes() func(chi.Router) {
@@ -83,6 +88,25 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 		api.WriteDomainError(w, r, err)
 
 		return
+	}
+	if h.analytics != nil {
+		days, engines, err := visibilityScope(r)
+		if err != nil {
+			api.WriteDomainError(w, r, err)
+			return
+		}
+		ids := make([]uuid.UUID, 0, len(prompts.Items))
+		for _, prompt := range prompts.Items {
+			ids = append(ids, prompt.ID)
+		}
+		byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, ids, days, engines)
+		if err != nil {
+			api.WriteDomainError(w, r, err)
+			return
+		}
+		for i := range prompts.Items {
+			prompts.Items[i].Visibility = byPrompt[prompts.Items[i].ID]
+		}
 	}
 
 	api.JSON(w, r, http.StatusOK, prompts)

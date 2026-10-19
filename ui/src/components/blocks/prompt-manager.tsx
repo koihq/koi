@@ -13,8 +13,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
-import type { HistoricalPrompt } from "@/api/generated";
 import type { Prompt } from "@/api/prompts.api";
+import type { HistoricalPromptWithVisibility } from "@/api/runs.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
@@ -57,8 +57,14 @@ import {
 } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { tableSearchParams } from "@/hooks/use-table-state";
-import { engines, mockChangePoints, mockRate, type VisibilityScope } from "@/lib/mock-visibility";
 import { promptKey, runKey, trackingKey } from "@/lib/query-keys";
+import {
+  change,
+  engines,
+  rate,
+  type VisibilityReport,
+  type VisibilityScope,
+} from "@/lib/visibility";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
 import { usePromptMutations } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-mutations";
 
@@ -83,7 +89,13 @@ const engineIcons = {
   google_ai_overviews: GoogleIcon,
 };
 
-type PromptRow = { id: string; text: string; prompt?: Prompt; past: boolean };
+type PromptRow = {
+  id: string;
+  text: string;
+  prompt?: Prompt;
+  visibility?: VisibilityReport;
+  past: boolean;
+};
 const rateSegments = Array.from({ length: 32 }, (_, index) => `segment-${index}`);
 const promptHeadClass =
   "h-auto px-2 py-1.5 text-start text-xs font-normal text-muted-foreground whitespace-normal [overflow-wrap:anywhere]";
@@ -172,12 +184,12 @@ export function PromptManager({
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
   const history = useQuery({
-    queryKey: [...runKey(brandID), "past-prompts", "all"],
+    queryKey: [...runKey(brandID), "past-prompts", "all", scope],
     enabled: search.status === "past",
     queryFn: async ({ signal }) => {
-      const items: HistoricalPrompt[] = [];
+      const items: HistoricalPromptWithVisibility[] = [];
       for (let page = 1; ; page += 1) {
-        const response = await api.runs.historicalPrompts(brandID, page, 50, { signal });
+        const response = await api.runs.historicalPrompts(brandID, page, 50, { signal }, scope);
         items.push(...response.items);
         if (!response.hasNext) return items;
       }
@@ -189,11 +201,13 @@ export function PromptManager({
       id: prompt.id,
       text: prompt.text,
       prompt,
+      visibility: prompt.visibility,
       past: false,
     }));
     const past: PromptRow[] = (history.data ?? []).map((prompt) => ({
       id: prompt.promptId,
       text: prompt.promptText,
+      visibility: prompt.visibility,
       past: true,
     }));
     const source = search.status === "past" ? past : live;
@@ -213,10 +227,7 @@ export function PromptManager({
         return search.descending ? -difference : difference;
       }
       const value = (row: PromptRow) => {
-        if (!row.prompt?.confirmed) return null;
-        return search.sort === "rate"
-          ? mockRate(brandID, [row.prompt], scope)
-          : mockChangePoints(brandID, [row.prompt], scope);
+        return search.sort === "rate" ? rate(row.visibility) : change(row.visibility);
       };
       const leftValue = value(left);
       const rightValue = value(right);
@@ -224,16 +235,7 @@ export function PromptManager({
       if (rightValue === null) return -1;
       return (leftValue - rightValue) * (search.descending ? -1 : 1);
     });
-  }, [
-    allPrompts,
-    brandID,
-    history.data,
-    scope,
-    search.descending,
-    search.q,
-    search.sort,
-    search.status,
-  ]);
+  }, [allPrompts, history.data, search.descending, search.q, search.sort, search.status]);
   const page = Math.max(1, search.page);
   const totalPages = Math.ceil(rows.length / search.pageSize);
   const visible = rows.slice((page - 1) * search.pageSize, page * search.pageSize);
@@ -292,12 +294,7 @@ export function PromptManager({
   const renderPrompt = (row: PromptRow) => (
     <div>
       {row.prompt ? (
-        <PromptPreviewLink
-          prompt={row.prompt}
-          brandID={brandID}
-          competitors={competitors}
-          scope={scope}
-        />
+        <PromptPreviewLink prompt={row.prompt} competitors={competitors} />
       ) : (
         <Link to="/prompts/$promptId" params={{ promptId: row.id }} className={promptRowLinkClass}>
           {row.text}
@@ -312,22 +309,22 @@ export function PromptManager({
   );
 
   const renderRate = (row: PromptRow) => {
-    const rate = row.prompt?.confirmed ? mockRate(brandID, [row.prompt], scope) : null;
-    const change = row.prompt?.confirmed ? mockChangePoints(brandID, [row.prompt], scope) : null;
+    const currentRate = rate(row.visibility);
+    const currentChange = change(row.visibility);
     return (
       <div className="grid gap-[3px] text-[13px]">
         <div className="flex flex-wrap items-center gap-2">
           <span className="tabular-nums">
-            {rate === null ? t("home:dashboard.noAnswersYet") : `${rate.toFixed(1)}%`}
+            {currentRate === null ? t("home:dashboard.noAnswersYet") : `${currentRate.toFixed(1)}%`}
           </span>
-          {rateBars(rate)}
+          {rateBars(currentRate)}
         </div>
         <small
-          className={`text-xs font-normal ${change === null ? "" : change >= 0 ? "text-positive" : "text-negative"}`}
+          className={`text-xs font-normal ${currentChange === null ? "" : currentChange >= 0 ? "text-positive" : "text-negative"}`}
         >
-          {change === null
+          {currentChange === null
             ? t("home:dashboard.noPreviousData")
-            : `${change > 0 ? "+" : ""}${change.toFixed(1)} points`}
+            : `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(1)} points`}
         </small>
       </div>
     );
@@ -336,19 +333,17 @@ export function PromptManager({
   const renderEngines = (row: PromptRow) => (
     <PromptRateBreakdown
       label={t("home:dashboard.byEngine")}
-      items={(row.prompt?.confirmed ? engines : []).map((engine) => ({
+      items={engines.map((engine) => ({
         id: engine.id,
         name: engine.name,
-        rate: row.prompt?.confirmed
-          ? mockRate(brandID, [row.prompt], { ...scope, engines: [engine.id] })
-          : null,
+        rate: rate(row.visibility, engine.id),
         icon: <HugeiconsIcon icon={engineIcons[engine.id]} size={16} aria-hidden="true" />,
       }))}
     />
   );
 
   const renderBrands = (row: PromptRow) => {
-    if (!row.prompt?.confirmed)
+    if (!row.visibility?.metric.completed)
       return (
         <span className="text-xs font-normal text-muted-foreground">
           {t("home:dashboard.noData")}
@@ -357,9 +352,10 @@ export function PromptManager({
     const top = competitors
       .map((competitor) => ({
         competitor,
-        rate: mockRate(brandID, [row.prompt as Prompt], scope, competitor) ?? 0,
+        rate: rate(row.visibility, undefined, competitor.id),
       }))
-      .sort((left, right) => right.rate - left.rate)
+      .filter(({ rate: competitorRate }) => competitorRate !== null && competitorRate > 0)
+      .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
       .slice(0, 3);
     return (
       <PromptRateBreakdown

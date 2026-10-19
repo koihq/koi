@@ -129,7 +129,7 @@ export function VisibilityChart({
   const selected = activeIndex === null ? null : data[activeIndex];
   const selectedDate = activeIndex === null ? null : series[activeIndex]?.date;
   const readout = selectedDate
-    ? `${selectedDate.toLocaleDateString(locale, { month: "short", day: "numeric" })}: ${brand.name} ${selected?.own == null ? "—" : `${selected.own.toFixed(1)}%`}${competitor && selected?.other != null ? `, ${competitor.name} ${selected.other.toFixed(1)}%` : ""}`
+    ? `${selectedDate.toLocaleDateString(locale, { month: "short", day: "numeric" })}: ${brand.name} ${selected?.own == null ? t("dashboard.noData") : `${selected.own.toFixed(1)}%`}${competitor && selected?.other != null ? `, ${competitor.name} ${selected.other.toFixed(1)}%` : ""}`
     : undefined;
 
   useEffect(() => {
@@ -288,6 +288,36 @@ export function VisibilityChart({
           )}
           {activeIndex === null ? (
             <>
+              {series.map((point, index) =>
+                index < lastIndex &&
+                point.rate !== null &&
+                (index === 0 || series[index - 1].rate === null) &&
+                series[index + 1].rate === null ? (
+                  <ReferenceDot
+                    key={`own-${point.date.toISOString()}`}
+                    x={point.date.toISOString()}
+                    y={point.rate}
+                    r={3}
+                    fill="var(--color-own)"
+                    stroke="none"
+                  />
+                ) : null,
+              )}
+              {comparison.map((point, index) =>
+                index < lastIndex &&
+                point.rate !== null &&
+                (index === 0 || comparison[index - 1].rate === null) &&
+                comparison[index + 1].rate === null ? (
+                  <ReferenceDot
+                    key={`other-${point.date.toISOString()}`}
+                    x={point.date.toISOString()}
+                    y={point.rate}
+                    r={3}
+                    fill="var(--color-other)"
+                    stroke="none"
+                  />
+                ) : null,
+              )}
               {last && last.rate !== null && (
                 <ReferenceDot
                   x={last.date.toISOString()}

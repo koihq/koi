@@ -142,9 +142,10 @@ type VisibilityInputs struct {
 }
 
 type HistoricalPrompt struct {
-	PromptID   uuid.UUID `json:"prompt_id"`
-	PromptText string    `json:"prompt_text"`
-	LastSeenAt time.Time `json:"last_seen_at"`
+	PromptID   uuid.UUID         `json:"prompt_id"`
+	PromptText string            `json:"prompt_text"`
+	LastSeenAt time.Time         `json:"last_seen_at"`
+	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
 }
 
 type PromptHistoryRun struct {

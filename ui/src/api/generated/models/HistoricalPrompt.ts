@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { VisibilityReport } from './VisibilityReport';
+import {
+    VisibilityReportFromJSON,
+    VisibilityReportFromJSONTyped,
+    VisibilityReportToJSON,
+    VisibilityReportToJSONTyped,
+} from './VisibilityReport';
+
 /**
  * 
  * @export
@@ -38,6 +46,12 @@ export interface HistoricalPrompt {
      * @memberof HistoricalPrompt
      */
     lastSeenAt: Date;
+    /**
+     * 
+     * @type {VisibilityReport}
+     * @memberof HistoricalPrompt
+     */
+    visibility?: VisibilityReport;
 }
 
 /**
@@ -63,6 +77,7 @@ export function HistoricalPromptFromJSONTyped(json: any, ignoreDiscriminator: bo
         'promptId': json['prompt_id'],
         'promptText': json['prompt_text'],
         'lastSeenAt': (new Date(json['last_seen_at'])),
+        'visibility': json['visibility'] == null ? undefined : VisibilityReportFromJSON(json['visibility']),
     };
 }
 
@@ -80,6 +95,7 @@ export function HistoricalPromptToJSONTyped(value?: HistoricalPrompt | null, ign
         'prompt_id': value['promptId'],
         'prompt_text': value['promptText'],
         'last_seen_at': value['lastSeenAt'].toISOString(),
+        'visibility': VisibilityReportToJSON(value['visibility']),
     };
 }
 

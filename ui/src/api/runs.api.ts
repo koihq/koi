@@ -2,16 +2,19 @@ import type {
   HistoricalPromptPage,
   PromptHistoryRunPage,
   VisibilityApi,
+  VisibilityReport,
   VisibilityResult,
   VisibilityResultPage,
   VisibilityRunPage,
   VisibilityRunStatus,
 } from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
+import type { VisibilityScope } from "@/lib/visibility";
 
 export type VisibilityRun = VisibilityRunStatus;
 
 export type { VisibilityResult };
+export type HistoricalPromptWithVisibility = HistoricalPromptPage["items"][number];
 
 export function createRunsApi(api: VisibilityApi) {
   return {
@@ -42,8 +45,46 @@ export function createRunsApi(api: VisibilityApi) {
       page = 1,
       pageSize = 20,
       initOverrides?: RequestInit,
+      scope: VisibilityScope = { days: 30, engines: [] },
     ): Promise<HistoricalPromptPage> =>
-      callApi(() => api.listHistoricalPrompts(brandID, page, pageSize, initOverrides)),
+      callApi(() =>
+        api.listHistoricalPrompts(
+          brandID,
+          page,
+          pageSize,
+          scope.days,
+          scope.engines.join(",") || undefined,
+          initOverrides,
+        ),
+      ),
+    summary: (
+      brandID: string,
+      scope: VisibilityScope,
+      initOverrides?: RequestInit,
+    ): Promise<VisibilityReport> =>
+      callApi(() =>
+        api.getVisibilitySummary(
+          brandID,
+          scope.days,
+          scope.engines.join(",") || undefined,
+          initOverrides,
+        ),
+      ),
+    promptVisibility: (
+      brandID: string,
+      promptID: string,
+      scope: VisibilityScope,
+      initOverrides?: RequestInit,
+    ): Promise<VisibilityReport> =>
+      callApi(() =>
+        api.getPromptVisibility(
+          brandID,
+          promptID,
+          scope.days,
+          scope.engines.join(",") || undefined,
+          initOverrides,
+        ),
+      ),
     promptHistory: (
       brandID: string,
       promptID: string,

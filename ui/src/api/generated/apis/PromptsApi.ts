@@ -70,6 +70,8 @@ export interface ListPromptsRequest {
     pageSize?: number;
     q?: string;
     confirmed?: boolean;
+    days?: ListPromptsDaysEnum;
+    engines?: string;
 }
 
 export interface UpdatePromptRequest {
@@ -205,6 +207,8 @@ export interface PromptsApiInterface {
      * @param {number} [pageSize] 
      * @param {string} [q] 
      * @param {boolean} [confirmed] 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
      */
@@ -217,6 +221,8 @@ export interface PromptsApiInterface {
      * @param {number} [pageSize] 
      * @param {string} [q] 
      * @param {boolean} [confirmed] 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
@@ -225,7 +231,7 @@ export interface PromptsApiInterface {
 
     /**
      */
-    listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage>;
+    listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, days?: ListPromptsDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage>;
 
     /**
      * Creates request options for updatePrompt without sending the request
@@ -535,6 +541,14 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
             queryParameters['confirmed'] = requestParameters['confirmed'];
         }
 
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        if (requestParameters['engines'] != null) {
+            queryParameters['engines'] = requestParameters['engines'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -560,8 +574,8 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage> {
-        const response = await this.listPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize, q: q, confirmed: confirmed }, initOverrides);
+    async listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, days?: ListPromptsDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage> {
+        const response = await this.listPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize, q: q, confirmed: confirmed, days: days, engines: engines }, initOverrides);
         return await response.value();
     }
 
@@ -627,3 +641,13 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
     }
 
 }
+
+/**
+ * @export
+ */
+export const ListPromptsDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type ListPromptsDaysEnum = typeof ListPromptsDaysEnum[keyof typeof ListPromptsDaysEnum];

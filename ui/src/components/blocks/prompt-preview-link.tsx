@@ -1,26 +1,21 @@
 import { Link } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { mockRate, mockSeries, type VisibilityScope } from "@/lib/mock-visibility";
-import { trendAreaPath, trendPath } from "@/lib/trend-path";
+import { trendPath } from "@/lib/trend-path";
+import { rate, series as visibilitySeries } from "@/lib/visibility";
 
 export function PromptPreviewLink({
   prompt,
-  brandID,
   competitors,
-  scope,
 }: {
   prompt: Prompt;
-  brandID: string;
   competitors: Competitor[];
-  scope: VisibilityScope;
 }) {
   const { t } = useTranslation("home");
-  const gradientId = useId().replaceAll(":", "");
   const [open, setOpen] = useState(false);
   const link = (
     <Link
@@ -32,23 +27,32 @@ export function PromptPreviewLink({
     </Link>
   );
 
-  if (!prompt.confirmed) return link;
+  if (!prompt.visibility?.metric.completed) return link;
 
-  const series = mockSeries(brandID, [prompt], scope);
-  const rate = mockRate(brandID, [prompt], scope);
+  const series = visibilitySeries(prompt.visibility);
+  const currentRate = rate(prompt.visibility);
   const rivals = competitors
     .filter((item) => item.confirmed)
-    .map((item) => ({ item, rate: mockRate(brandID, [prompt], scope, item) ?? 0 }))
-    .sort((left, right) => right.rate - left.rate)
+    .map((item) => ({ item, rate: rate(prompt.visibility, undefined, item.id) }))
+    .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
     .slice(0, 3);
   const width = 320;
   const height = 96;
-  const points = series.map((point, index) => ({
-    x: (index / Math.max(1, series.length - 1)) * width,
-    y: 8 + ((100 - point.rate) / 100) * (height - 16),
-  }));
-  const line = trendPath(points);
-  const area = trendAreaPath(points, height);
+  const points = series.map((point, index) =>
+    point.rate === null
+      ? null
+      : {
+          x: (index / Math.max(1, series.length - 1)) * width,
+          y: 8 + ((100 - point.rate) / 100) * (height - 16),
+        },
+  );
+  const segments: { x: number; y: number }[][] = [];
+  for (const [index, point] of points.entries()) {
+    if (point) {
+      if (!segments.length || points[index - 1] === null) segments.push([]);
+      segments.at(-1)?.push(point);
+    }
+  }
 
   return (
     <Tooltip open={open} onOpenChange={(next) => !next && setOpen(false)}>
@@ -78,7 +82,7 @@ export function PromptPreviewLink({
             <div className="grid gap-1.5">
               <span className="text-xs text-muted-foreground">{t("dashboard.yourRate")}</span>
               <strong className="text-xl font-medium tabular-nums leading-none">
-                {rate === null ? "—" : `${rate.toFixed(1)}%`}
+                {currentRate === null ? "—" : `${currentRate.toFixed(1)}%`}
               </strong>
             </div>
             <div className="grid justify-items-end gap-1.5 text-right">
@@ -101,7 +105,7 @@ export function PromptPreviewLink({
               )}
             </div>
           </div>
-          {line ? (
+          {segments.length ? (
             <svg
               viewBox={`0 0 ${width} ${height}`}
               preserveAspectRatio="none"
@@ -109,22 +113,27 @@ export function PromptPreviewLink({
               role="img"
               aria-label={t("dashboard.chartDescription")}
             >
-              <defs>
-                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity="0.08" />
-                </linearGradient>
-              </defs>
-              {area && <path d={area} fill={`url(#${gradientId})`} />}
-              <path
-                d={line}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-              />
+              {segments.map((segment) =>
+                segment.length > 1 ? (
+                  <path
+                    key={segment[0].x}
+                    d={trendPath(segment)}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ) : (
+                  <circle
+                    key={segment[0].x}
+                    cx={segment[0].x}
+                    cy={segment[0].y}
+                    r="3"
+                    fill="currentColor"
+                  />
+                ),
+              )}
             </svg>
           ) : (
             <div className="mt-3 -mx-3.5 grid h-24 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 import type { PromptPatchRequest, PromptRequest, PromptRes, PromptsApi } from "@/api/generated";
 import { callApi } from "@/api/shared/apiClient";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
+import type { VisibilityScope } from "@/lib/visibility";
 
 export type Prompt = PromptRes;
 
@@ -12,6 +13,7 @@ export interface PromptListParams extends BaseListParams {
   pageSize?: 10 | 20 | 50;
   q?: string;
   confirmed?: boolean;
+  scope?: VisibilityScope;
 }
 
 export function createPromptsApi(api: PromptsApi) {
@@ -28,6 +30,8 @@ export function createPromptsApi(api: PromptsApi) {
           params.pageSize,
           params.q,
           params.confirmed,
+          params.scope?.days,
+          params.scope?.engines.join(",") || undefined,
           initOverrides,
         ),
       ),

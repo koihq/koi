@@ -56,16 +56,19 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 				koidomain.NewPromptQuerier(store),
 				koidomain.NewPromptCommander(store),
 				sess,
+				koidomain.NewVisibilityAnalyticsQuerier(store),
 			).Routes())
 			r.Route("/{brandID}/competitors", NewCompetitorHandler(
 				koidomain.NewCompetitorQuerier(store, searcher),
 				koidomain.NewCompetitorCommander(store),
 				sess,
 			).Routes())
-			visibility := NewVisibilityHandler(koidomain.NewVisibilityQuerier(store), sess)
+			visibility := NewVisibilityHandler(koidomain.NewVisibilityQuerier(store), sess, koidomain.NewVisibilityAnalyticsQuerier(store))
 			r.With(Authorizer(sess)).Get("/{brandID}/tracking", visibility.Tracking)
 			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history", visibility.ListHistoricalPrompts)
 			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/runs", visibility.ListPromptRuns)
+			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/visibility", visibility.PromptVisibility)
+			r.With(Authorizer(sess)).Get("/{brandID}/visibility/summary", visibility.Summary)
 			r.Route("/{brandID}/runs", visibility.Routes())
 			r.Route("/{brandID}/generations", NewGenerationHandler(
 				koidomain.NewGenerationQuerier(store),

@@ -31,14 +31,14 @@ import { type InspectionInput, VisibilityChart } from "@/components/blocks/visib
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTracking } from "@/hooks/use-tracking";
+import { competitorKey, promptKey } from "@/lib/query-keys";
 import {
   engines,
-  mockChangePoints,
-  mockRate,
-  mockSeries,
   type VisibilityScope,
-} from "@/lib/mock-visibility";
-import { competitorKey, promptKey } from "@/lib/query-keys";
+  change as visibilityChange,
+  rate as visibilityRate,
+  series as visibilitySeries,
+} from "@/lib/visibility";
 
 const graphSearchParams = {
   days: parseAsNumberLiteral([7, 30, 90] as const)
@@ -103,9 +103,15 @@ function Home() {
   );
 
   const prompts = useQuery({
-    queryKey: [...promptKey(brand.id), "analytics"],
+    queryKey: [...promptKey(brand.id), "analytics", scope],
     queryFn: ({ signal }) =>
-      allPages<Prompt>((page) => api.prompts.list(brand.id, { page, pageSize: 50 }, { signal })),
+      allPages<Prompt>((page) =>
+        api.prompts.list(brand.id, { page, pageSize: 50, scope }, { signal }),
+      ),
+  });
+  const summary = useQuery({
+    queryKey: [...promptKey(brand.id), "visibility-summary", scope],
+    queryFn: ({ signal }) => api.runs.summary(brand.id, scope, { signal }),
   });
   const competitors = useQuery({
     queryKey: [...competitorKey(brand.id), "analytics"],
@@ -125,30 +131,29 @@ function Home() {
   );
   const comparison = confirmedCompetitors.find((competitor) => competitor.id === graph.compareId);
   const { series, comparedSeries, rate, change, rivals, comparisonRate } = useMemo(() => {
-    const series = mockSeries(brand.id, confirmedPrompts, scope);
-    const comparedSeries = comparison
-      ? mockSeries(brand.id, confirmedPrompts, scope, comparison)
-      : [];
-    const rate = mockRate(brand.id, confirmedPrompts, scope);
-    const change = mockChangePoints(brand.id, confirmedPrompts, scope);
+    const report = summary.data;
+    const series = visibilitySeries(report);
+    const comparedSeries = comparison ? visibilitySeries(report, comparison.id) : [];
+    const rate = visibilityRate(report);
+    const change = visibilityChange(report);
     const rivals = confirmedCompetitors
       .map((competitor) => ({
         competitor,
-        rate: mockRate(brand.id, confirmedPrompts, scope, competitor),
+        rate: visibilityRate(report, undefined, competitor.id),
       }))
       .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
-    const comparisonRate = comparison
-      ? mockRate(brand.id, confirmedPrompts, scope, comparison)
-      : null;
+    const comparisonRate = comparison ? visibilityRate(report, undefined, comparison.id) : null;
 
     return { series, comparedSeries, rate, change, rivals, comparisonRate };
-  }, [brand.id, confirmedPrompts, scope, comparison, confirmedCompetitors]);
+  }, [summary.data, comparison, confirmedCompetitors]);
   const selectedPoint = inspected === null ? undefined : series[inspected];
   const selectedComparisonPoint = inspected === null ? undefined : comparedSeries[inspected];
-  const headlineRate = selectedPoint?.rate ?? rate;
+  const headlineRate = selectedPoint ? selectedPoint.rate : rate;
   const rawChange = selectedPoint
     ? inspected !== null && inspected > 0
-      ? selectedPoint.rate - series[inspected - 1].rate
+      ? selectedPoint.rate !== null && series[inspected - 1].rate !== null
+        ? selectedPoint.rate - (series[inspected - 1].rate ?? 0)
+        : null
       : null
     : change;
   const headlineChange = rawChange === null ? null : Number(rawChange.toFixed(1));
@@ -197,9 +202,9 @@ function Home() {
             <h2 id="signal-heading" className="mt-0.5 text-xl leading-tight font-bold">
               {t("dashboard.aiVisibility")}
             </h2>
-            {prompts.isPending || competitors.isPending ? (
+            {prompts.isPending || competitors.isPending || summary.isPending ? (
               <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
-            ) : prompts.isError || competitors.isError ? (
+            ) : prompts.isError || competitors.isError || summary.isError ? (
               <p role="alert" className="mt-6 text-sm">
                 {t("dashboard.loadError")}{" "}
                 <Button
@@ -207,6 +212,7 @@ function Home() {
                   onClick={() => {
                     void prompts.refetch();
                     void competitors.refetch();
+                    void summary.refetch();
                   }}
                 >
                   {t("dashboard.retry")}
@@ -218,10 +224,12 @@ function Home() {
                   <div className="flex flex-wrap items-center gap-5">
                     {(
                       [
-                        { subject: brand, value: selectedPoint?.rate ?? rate },
+                        { subject: brand, value: selectedPoint ? selectedPoint.rate : rate },
                         {
                           subject: comparison,
-                          value: selectedComparisonPoint?.rate ?? comparisonRate,
+                          value: selectedComparisonPoint
+                            ? selectedComparisonPoint.rate
+                            : comparisonRate,
                         },
                       ] as const
                     ).map(({ subject, value }) => (
@@ -232,7 +240,7 @@ function Home() {
                         <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
                         <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
                           {value === null ? (
-                            "—"
+                            t("dashboard.noData")
                           ) : (
                             <NumberFlow
                               value={Number(value.toFixed(1))}
@@ -255,7 +263,7 @@ function Home() {
                   <>
                     <strong className="whitespace-nowrap text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
                       {headlineRate === null ? (
-                        "—"
+                        t("dashboard.noData")
                       ) : (
                         <NumberFlow
                           value={Number(headlineRate.toFixed(1))}
@@ -353,7 +361,6 @@ function Home() {
                               })
                             : t("dashboard.metricHeading")}
                         </strong>
-                        <p className="text-muted-foreground">{t("dashboard.metricPreview")}</p>
                         <p className="text-muted-foreground">
                           {previousRate === null
                             ? t(
@@ -404,10 +411,18 @@ function Home() {
 
         {rate === null ? (
           <div className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
-            <p>{t("dashboard.emptyDescription")}</p>
-            <a href="#prompts" className="underline underline-offset-4">
-              {t("dashboard.managePrompts")}
-            </a>
+            <p>
+              {t(
+                confirmedPrompts.length > 0
+                  ? "dashboard.noCompletedAnswers"
+                  : "dashboard.emptyDescription",
+              )}
+            </p>
+            {confirmedPrompts.length === 0 && (
+              <a href="#prompts" className="underline underline-offset-4">
+                {t("dashboard.managePrompts")}
+              </a>
+            )}
           </div>
         ) : (
           <VisibilityChart
@@ -512,11 +527,6 @@ function Home() {
         onRetry={retryPrompts}
         draftStartFailed={draftStart === "failed"}
       />
-      {confirmedPrompts.length > 0 && (
-        <p className="text-xs font-normal text-muted-foreground mt-8">
-          {t("dashboard.sampleAnalytics")}
-        </p>
-      )}
     </div>
   );
 }

@@ -35,6 +35,11 @@ import {
     TrackingStatusToJSON,
 } from '../models/TrackingStatus';
 import {
+    type VisibilityReport,
+    VisibilityReportFromJSON,
+    VisibilityReportToJSON,
+} from '../models/VisibilityReport';
+import {
     type VisibilityResultPage,
     VisibilityResultPageFromJSON,
     VisibilityResultPageToJSON,
@@ -50,9 +55,22 @@ import {
     VisibilityRunStatusToJSON,
 } from '../models/VisibilityRunStatus';
 
+export interface GetPromptVisibilityRequest {
+    brandID: string;
+    promptID: string;
+    days?: GetPromptVisibilityDaysEnum;
+    engines?: string;
+}
+
 export interface GetVisibilityRunRequest {
     brandID: string;
     runID: string;
+}
+
+export interface GetVisibilitySummaryRequest {
+    brandID: string;
+    days?: GetVisibilitySummaryDaysEnum;
+    engines?: string;
 }
 
 export interface GetVisibilityTrackingRequest {
@@ -63,6 +81,8 @@ export interface ListHistoricalPromptsRequest {
     brandID: string;
     page?: number;
     pageSize?: number;
+    days?: ListHistoricalPromptsDaysEnum;
+    engines?: string;
 }
 
 export interface ListPromptHistoryRunsRequest {
@@ -93,6 +113,33 @@ export interface ListVisibilityRunsRequest {
  */
 export interface VisibilityApiInterface {
     /**
+     * Creates request options for getPromptVisibility without sending the request
+     * @param {string} brandID 
+     * @param {string} promptID 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    getPromptVisibilityRequestOpts(requestParameters: GetPromptVisibilityRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} brandID 
+     * @param {string} promptID 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    getPromptVisibilityRaw(requestParameters: GetPromptVisibilityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilityReport>>;
+
+    /**
+     */
+    getPromptVisibility(brandID: string, promptID: string, days?: GetPromptVisibilityDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityReport>;
+
+    /**
      * Creates request options for getVisibilityRun without sending the request
      * @param {string} brandID 
      * @param {string} runID 
@@ -114,6 +161,31 @@ export interface VisibilityApiInterface {
     /**
      */
     getVisibilityRun(brandID: string, runID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityRunStatus>;
+
+    /**
+     * Creates request options for getVisibilitySummary without sending the request
+     * @param {string} brandID 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    getVisibilitySummaryRequestOpts(requestParameters: GetVisibilitySummaryRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} brandID 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    getVisibilitySummaryRaw(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilityReport>>;
+
+    /**
+     */
+    getVisibilitySummary(brandID: string, days?: GetVisibilitySummaryDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityReport>;
 
     /**
      * Creates request options for getVisibilityTracking without sending the request
@@ -138,9 +210,11 @@ export interface VisibilityApiInterface {
 
     /**
      * Creates request options for listHistoricalPrompts without sending the request
-     * @param {string} brandID
-     * @param {number} [page]
-     * @param {number} [pageSize]
+     * @param {string} brandID 
+     * @param {number} [page] 
+     * @param {number} [pageSize] 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
      * @throws {RequiredError}
      * @memberof VisibilityApiInterface
      */
@@ -148,9 +222,11 @@ export interface VisibilityApiInterface {
 
     /**
      * Deleted prompts with saved run results, newest snapshot first.
-     * @param {string} brandID
-     * @param {number} [page]
-     * @param {number} [pageSize]
+     * @param {string} brandID 
+     * @param {number} [page] 
+     * @param {number} [pageSize] 
+     * @param {7 | 30 | 90} [days] 
+     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof VisibilityApiInterface
@@ -160,14 +236,14 @@ export interface VisibilityApiInterface {
     /**
      * Deleted prompts with saved run results, newest snapshot first.
      */
-    listHistoricalPrompts(brandID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage>;
+    listHistoricalPrompts(brandID: string, page?: number, pageSize?: number, days?: ListHistoricalPromptsDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage>;
 
     /**
      * Creates request options for listPromptHistoryRuns without sending the request
-     * @param {string} brandID
-     * @param {string} promptID
-     * @param {number} [page]
-     * @param {number} [pageSize]
+     * @param {string} brandID 
+     * @param {string} promptID 
+     * @param {number} [page] 
+     * @param {number} [pageSize] 
      * @throws {RequiredError}
      * @memberof VisibilityApiInterface
      */
@@ -175,10 +251,10 @@ export interface VisibilityApiInterface {
 
     /**
      * Saved runs and answers for a live or deleted prompt, newest first.
-     * @param {string} brandID
-     * @param {string} promptID
-     * @param {number} [page]
-     * @param {number} [pageSize]
+     * @param {string} brandID 
+     * @param {string} promptID 
+     * @param {number} [page] 
+     * @param {number} [pageSize] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof VisibilityApiInterface
@@ -251,6 +327,65 @@ export interface VisibilityApiInterface {
 export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInterface {
 
     /**
+     * Creates request options for getPromptVisibility without sending the request
+     */
+    async getPromptVisibilityRequestOpts(requestParameters: GetPromptVisibilityRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandID'] == null) {
+            throw new runtime.RequiredError(
+                'brandID',
+                'Required parameter "brandID" was null or undefined when calling getPromptVisibility().'
+            );
+        }
+
+        if (requestParameters['promptID'] == null) {
+            throw new runtime.RequiredError(
+                'promptID',
+                'Required parameter "promptID" was null or undefined when calling getPromptVisibility().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        if (requestParameters['engines'] != null) {
+            queryParameters['engines'] = requestParameters['engines'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{brandID}/prompt-history/{promptID}/visibility`;
+        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async getPromptVisibilityRaw(requestParameters: GetPromptVisibilityRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilityReport>> {
+        const requestOptions = await this.getPromptVisibilityRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VisibilityReportFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getPromptVisibility(brandID: string, promptID: string, days?: GetPromptVisibilityDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityReport> {
+        const response = await this.getPromptVisibilityRaw({ brandID: brandID, promptID: promptID, days: days, engines: engines }, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getVisibilityRun without sending the request
      */
     async getVisibilityRunRequestOpts(requestParameters: GetVisibilityRunRequest): Promise<runtime.RequestOpts> {
@@ -298,6 +433,57 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
      */
     async getVisibilityRun(brandID: string, runID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityRunStatus> {
         const response = await this.getVisibilityRunRaw({ brandID: brandID, runID: runID }, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getVisibilitySummary without sending the request
+     */
+    async getVisibilitySummaryRequestOpts(requestParameters: GetVisibilitySummaryRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandID'] == null) {
+            throw new runtime.RequiredError(
+                'brandID',
+                'Required parameter "brandID" was null or undefined when calling getVisibilitySummary().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        if (requestParameters['engines'] != null) {
+            queryParameters['engines'] = requestParameters['engines'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{brandID}/visibility/summary`;
+        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async getVisibilitySummaryRaw(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilityReport>> {
+        const requestOptions = await this.getVisibilitySummaryRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => VisibilityReportFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async getVisibilitySummary(brandID: string, days?: GetVisibilitySummaryDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityReport> {
+        const response = await this.getVisibilitySummaryRaw({ brandID: brandID, days: days, engines: engines }, initOverrides);
         return await response.value();
     }
 
@@ -365,6 +551,14 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
             queryParameters['pageSize'] = requestParameters['pageSize'];
         }
 
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        if (requestParameters['engines'] != null) {
+            queryParameters['engines'] = requestParameters['engines'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -392,8 +586,8 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
     /**
      * Deleted prompts with saved run results, newest snapshot first.
      */
-    async listHistoricalPrompts(brandID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage> {
-        const response = await this.listHistoricalPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize }, initOverrides);
+    async listHistoricalPrompts(brandID: string, page?: number, pageSize?: number, days?: ListHistoricalPromptsDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage> {
+        const response = await this.listHistoricalPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize, days: days, engines: engines }, initOverrides);
         return await response.value();
     }
 
@@ -571,3 +765,31 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
     }
 
 }
+
+/**
+ * @export
+ */
+export const GetPromptVisibilityDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type GetPromptVisibilityDaysEnum = typeof GetPromptVisibilityDaysEnum[keyof typeof GetPromptVisibilityDaysEnum];
+/**
+ * @export
+ */
+export const GetVisibilitySummaryDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type GetVisibilitySummaryDaysEnum = typeof GetVisibilitySummaryDaysEnum[keyof typeof GetVisibilitySummaryDaysEnum];
+/**
+ * @export
+ */
+export const ListHistoricalPromptsDaysEnum = {
+    NUMBER_7: 7,
+    NUMBER_30: 30,
+    NUMBER_90: 90
+} as const;
+export type ListHistoricalPromptsDaysEnum = typeof ListHistoricalPromptsDaysEnum[keyof typeof ListHistoricalPromptsDaysEnum];

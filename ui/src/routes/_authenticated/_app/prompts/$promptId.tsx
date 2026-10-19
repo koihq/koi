@@ -25,9 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { engines, mockRate, mockSeries, type VisibilityScope } from "@/lib/mock-visibility";
 import { competitorKey, promptKey, runKey } from "@/lib/query-keys";
 import { safeSourceURL } from "@/lib/source-url";
+import {
+  engines,
+  type VisibilityScope,
+  rate as visibilityRate,
+  series as visibilitySeries,
+} from "@/lib/visibility";
 import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
 import { usePromptMutations } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-mutations";
 
@@ -85,26 +90,32 @@ function PromptDetail() {
       }
     },
   });
+  const scope: VisibilityScope = { days: search.days, engines: [] };
+  const visibility = useQuery({
+    queryKey: [...runKey(brand.id), "prompt-visibility", promptId, search.days],
+    queryFn: ({ signal }) => api.runs.promptVisibility(brand.id, promptId, scope, { signal }),
+  });
 
   const runs = history.data?.items ?? [];
   const run = runs.find((item) => item.run.id === search.runId);
   const result = run?.results.find((item) => item.engine === search.responseEngine);
   const title = prompt.data?.text ?? runs[0]?.results[0]?.promptText;
-  const scope: VisibilityScope = { days: search.days, engines: [] };
-  const measured = prompt.data?.confirmed ? [prompt.data] : [];
   const comparison = competitors.data?.find((item) => item.id === search.compareId);
-  const series = mockSeries(brand.id, measured, scope);
-  const comparedSeries = comparison ? mockSeries(brand.id, measured, scope, comparison) : [];
-  const rate = mockRate(brand.id, measured, scope);
-  const comparisonRate = comparison ? mockRate(brand.id, measured, scope, comparison) : null;
+  const series = visibilitySeries(visibility.data);
+  const comparedSeries = comparison ? visibilitySeries(visibility.data, comparison.id) : [];
+  const rate = visibilityRate(visibility.data);
+  const comparisonRate = comparison
+    ? visibilityRate(visibility.data, undefined, comparison.id)
+    : null;
   const rivals = (competitors.data ?? [])
     .map((competitor) => ({
       competitor,
-      rate: mockRate(brand.id, measured, scope, competitor),
+      rate: visibilityRate(visibility.data, undefined, competitor.id),
     }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
-  const metricRate = series[inspected ?? -1]?.rate ?? rate;
-  const metricComparisonRate = comparedSeries[inspected ?? -1]?.rate ?? comparisonRate;
+  const metricRate = inspected === null ? rate : (series[inspected]?.rate ?? null);
+  const metricComparisonRate =
+    inspected === null ? comparisonRate : (comparedSeries[inspected]?.rate ?? null);
 
   function inspect(index: number | null, input: InspectionInput) {
     setInspectionInput(input);
@@ -143,6 +154,9 @@ function PromptDetail() {
       {prompt.isError && title && (
         <p className="text-xs font-normal text-muted-foreground">{t("home:detail.historical")}</p>
       )}
+      {prompt.data && !prompt.data.confirmed && (
+        <p className="text-xs font-normal text-muted-foreground">{t("home:dashboard.draft")}</p>
+      )}
 
       <div className="grid gap-4 min-[801px]:grid-cols-[minmax(0,1fr)_332px]">
         <section
@@ -173,7 +187,7 @@ function PromptDetail() {
                       <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
                       <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
                         {value === null ? (
-                          "—"
+                          t("home:dashboard.noData")
                         ) : (
                           <NumberFlow
                             value={Number(value.toFixed(1))}
@@ -195,7 +209,7 @@ function PromptDetail() {
               ) : (
                 <strong className="mt-4 block text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
                   {metricRate === null ? (
-                    "—"
+                    t("home:dashboard.noData")
                   ) : (
                     <NumberFlow
                       value={Number(metricRate.toFixed(1))}
@@ -233,7 +247,7 @@ function PromptDetail() {
               ))}
             </fieldset>
           </div>
-          {series.length ? (
+          {visibility.data?.metric.completed ? (
             <VisibilityChart
               series={series}
               comparison={comparedSeries}
@@ -464,12 +478,6 @@ function PromptDetail() {
           </div>
         )}
       </section>
-
-      {measured.length > 0 && (
-        <p className="text-xs font-normal text-muted-foreground mt-12">
-          {t("home:dashboard.sampleAnalytics")}
-        </p>
-      )}
 
       <Dialog
         open={Boolean(search.runId)}
