@@ -1,20 +1,23 @@
 ---
 name: ui-plan
-description: Plan new or changed pages, views, flows, and components through Mobbin research, explicit design principles, checks against project skills, and a precise implementation handoff for a simpler model. Use whenever preparing or revising a UI change plan. Existing screen and diff reviews keep their own review skills.
+description: Explore the design of a UI view or component through Mobbin research, design principles, and a precise implementation handoff. Use when the user asks to explore a view or component, compare design directions, or explicitly invokes ui-plan. Do not trigger for routine UI plans or implementation tasks.
 ---
 
 # UI plan
 
-Own the research and design judgment before handing implementation to another model.
+Use this skill for a requested design exploration of a UI view or component. A page
+counts as a view. A routine plan or implementation request does not by itself require
+this exploration. Own the research and design judgment before handing implementation
+to another model.
 The executor may have less reasoning ability and no conversation history. Resolve the
 design here; give it concrete edits and observable outcomes.
 
 Follow this order: understand the target → research Mobbin → report the exploration →
 define principles → check applicable skills → finalize the implementation plan.
-Apply it to individual components as well as whole pages. Scale depth to the change,
-but keep research and reasoning in every UI plan.
+Apply it to individual components as well as whole views. Scale depth to the exploration,
+but keep research and reasoning in each exploration that uses this skill.
 
-A planning request produces a plan, without changing application source. If the user
+An exploration-only request produces a plan, without changing application source. If the user
 also authorized implementation, complete this sequence before implementing; this skill
 does not add a separate approval step or authorize changing models or spawning agents.
 
@@ -49,7 +52,7 @@ Clarify a material unknown early; continue research that does not depend on its 
 
 ## 2. Research Mobbin before choosing the design
 
-Every new UI plan requires actual Mobbin research. Discover and use the available
+Every exploration using this skill requires actual Mobbin research. Discover and use the available
 Mobbin connector tools; a list of familiar products or remembered screenshots does not
 count. Revisions of the same plan may reuse its inspected results when the UI problem
 has not changed; identify that reuse and research any newly introduced pattern.
