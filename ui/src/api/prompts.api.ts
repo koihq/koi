@@ -8,11 +8,14 @@ export type Prompt = PromptRes;
 export type CreatePrompt = PromptRequest;
 
 export type UpdatePrompt = PromptPatchRequest;
+export type PromptSort = "original" | "prompt" | "rate" | "change";
 
 export interface PromptListParams extends BaseListParams {
   pageSize?: 10 | 20 | 50;
   q?: string;
   confirmed?: boolean;
+  sort?: PromptSort;
+  descending?: boolean;
   scope?: VisibilityScope;
 }
 
@@ -30,6 +33,8 @@ export function createPromptsApi(api: PromptsApi) {
           params.pageSize,
           params.q,
           params.confirmed,
+          params.sort,
+          params.descending,
           params.scope?.days,
           params.scope?.engines.join(",") || undefined,
           initOverrides,

@@ -3124,8 +3124,8 @@ func (_c *MockVisibilityRepository_List_Call) RunAndReturn(run func(context1 con
 }
 
 // ListHistoricalPrompts provides a mock function for the type MockVisibilityRepository
-func (_mock *MockVisibilityRepository) ListHistoricalPrompts(context1 context.Context, uUID uuid.UUID, pageParams PageParams) (*Page[HistoricalPrompt], error) {
-	ret := _mock.Called(context1, uUID, pageParams)
+func (_mock *MockVisibilityRepository) ListHistoricalPrompts(context1 context.Context, uUID uuid.UUID, promptListParams PromptListParams) (*Page[HistoricalPrompt], error) {
+	ret := _mock.Called(context1, uUID, promptListParams)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListHistoricalPrompts")
@@ -3133,18 +3133,18 @@ func (_mock *MockVisibilityRepository) ListHistoricalPrompts(context1 context.Co
 
 	var r0 *Page[HistoricalPrompt]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, PageParams) (*Page[HistoricalPrompt], error)); ok {
-		return returnFunc(context1, uUID, pageParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)); ok {
+		return returnFunc(context1, uUID, promptListParams)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, PageParams) *Page[HistoricalPrompt]); ok {
-		r0 = returnFunc(context1, uUID, pageParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, PromptListParams) *Page[HistoricalPrompt]); ok {
+		r0 = returnFunc(context1, uUID, promptListParams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*Page[HistoricalPrompt])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, PageParams) error); ok {
-		r1 = returnFunc(context1, uUID, pageParams)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, PromptListParams) error); ok {
+		r1 = returnFunc(context1, uUID, promptListParams)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -3159,12 +3159,12 @@ type MockVisibilityRepository_ListHistoricalPrompts_Call struct {
 // ListHistoricalPrompts is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - pageParams PageParams
-func (_e *MockVisibilityRepository_Expecter) ListHistoricalPrompts(context1 interface{}, uUID interface{}, pageParams interface{}) *MockVisibilityRepository_ListHistoricalPrompts_Call {
-	return &MockVisibilityRepository_ListHistoricalPrompts_Call{Call: _e.mock.On("ListHistoricalPrompts", context1, uUID, pageParams)}
+//   - promptListParams PromptListParams
+func (_e *MockVisibilityRepository_Expecter) ListHistoricalPrompts(context1 interface{}, uUID interface{}, promptListParams interface{}) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+	return &MockVisibilityRepository_ListHistoricalPrompts_Call{Call: _e.mock.On("ListHistoricalPrompts", context1, uUID, promptListParams)}
 }
 
-func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Run(run func(context1 context.Context, uUID uuid.UUID, pageParams PageParams)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Run(run func(context1 context.Context, uUID uuid.UUID, promptListParams PromptListParams)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -3174,9 +3174,9 @@ func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Run(run func(cont
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 PageParams
+		var arg2 PromptListParams
 		if args[2] != nil {
-			arg2 = args[2].(PageParams)
+			arg2 = args[2].(PromptListParams)
 		}
 		run(
 			arg0,
@@ -3192,7 +3192,7 @@ func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Return(page *Page
 	return _c
 }
 
-func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams PageParams) (*Page[HistoricalPrompt], error)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
+func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, promptListParams PromptListParams) (*Page[HistoricalPrompt], error)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
 	_c.Call.Return(run)
 	return _c
 }

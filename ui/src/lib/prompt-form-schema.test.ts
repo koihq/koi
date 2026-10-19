@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { promptFormSchema } from "@/routes/_authenticated/_app/prompts/-types/prompt-form-schema";
+import { promptFormSchema } from "@/lib/prompt-form-schema";
 
 describe("promptFormSchema", () => {
   it("validates and trims prompts", () => {

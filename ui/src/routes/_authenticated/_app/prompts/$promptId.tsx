@@ -1,4 +1,4 @@
-import NumberFlow, { useCanAnimate } from "@number-flow/react";
+import { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
@@ -14,9 +14,10 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
-import { BrandIcon } from "@/components/blocks/brand-icon";
 import { BrandPill } from "@/components/blocks/brand-pill";
+import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
+import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +26,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { usePromptMutations } from "@/hooks/use-prompt-mutations";
+import { collectPages } from "@/lib/collect-pages";
 import { competitorKey, promptKey, runKey } from "@/lib/query-keys";
 import { safeSourceURL } from "@/lib/source-url";
 import {
@@ -33,8 +36,6 @@ import {
   rate as visibilityRate,
   series as visibilitySeries,
 } from "@/lib/visibility";
-import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
-import { usePromptMutations } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-mutations";
 
 const detailSearchParams = {
   page: parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true }),
@@ -82,12 +83,11 @@ function PromptDetail() {
   const competitors = useQuery({
     queryKey: [...competitorKey(brand.id), "detail-comparison"],
     queryFn: async ({ signal }) => {
-      const items: Competitor[] = [];
-      for (let page = 1; ; page += 1) {
-        const response = await api.competitors.list(brand.id, { page, pageSize: 50 }, { signal });
-        items.push(...response.items);
-        if (!response.hasNext) return items.filter((item) => item.confirmed);
-      }
+      const items = await collectPages<Competitor>((page) =>
+        api.competitors.list(brand.id, { page, pageSize: 50 }, { signal }),
+      );
+
+      return items.filter((item) => item.confirmed);
     },
   });
   const scope: VisibilityScope = { days: search.days, engines: [] };
@@ -172,60 +172,16 @@ function PromptDetail() {
               <h2 id="detail-visibility-heading" className="text-base font-bold">
                 {t("home:dashboard.aiVisibility")}
               </h2>
-              {comparison && metricComparisonRate !== null ? (
-                <div className="mt-4 flex flex-wrap items-center gap-5">
-                  {(
-                    [
-                      { subject: brand, value: metricRate },
-                      { subject: comparison, value: metricComparisonRate },
-                    ] as const
-                  ).map(({ subject, value }) => (
-                    <span
-                      key={subject.id}
-                      className="inline-flex items-center gap-2 whitespace-nowrap"
-                    >
-                      <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
-                      <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                        {value === null ? (
-                          t("home:dashboard.noData")
-                        ) : (
-                          <NumberFlow
-                            value={Number(value.toFixed(1))}
-                            locales={i18n.language}
-                            format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                            animated={canAnimateNumbers && inspectionInput === "pointer"}
-                            className="[--number-flow-mask-height:0.3em]"
-                          />
-                        )}
-                        {value !== null && (
-                          <span className="ml-0.5 text-[0.667em] text-muted-foreground">
-                            {t("home:dashboard.percentSign")}
-                          </span>
-                        )}
-                      </strong>
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <strong className="mt-4 block text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                  {metricRate === null ? (
-                    t("home:dashboard.noData")
-                  ) : (
-                    <NumberFlow
-                      value={Number(metricRate.toFixed(1))}
-                      locales={i18n.language}
-                      format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                      animated={canAnimateNumbers && inspectionInput === "pointer"}
-                      className="[--number-flow-mask-height:0.3em]"
-                    />
-                  )}
-                  {metricRate !== null && (
-                    <span className="ml-0.5 text-[0.667em] text-muted-foreground">
-                      {t("home:dashboard.percentSign")}
-                    </span>
-                  )}
-                </strong>
-              )}
+              <VisibilityHeadline
+                brand={brand}
+                competitor={comparison}
+                rate={metricRate}
+                comparisonRate={metricComparisonRate}
+                paired={Boolean(comparison && metricComparisonRate !== null)}
+                locale={i18n.language}
+                animated={canAnimateNumbers && inspectionInput === "pointer"}
+                variant="detail"
+              />
               <p className="text-xs font-normal text-muted-foreground">
                 {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
               </p>
@@ -401,19 +357,7 @@ function PromptDetail() {
                                 }
                                 aria-label={`${engine.name}: ${t(`visibility:outcomes.${status}`, { defaultValue: status })}`}
                               >
-                                <BrandPill
-                                  name={engine.name}
-                                  domain={
-                                    engine.id === "chatgpt"
-                                      ? "chatgpt.com"
-                                      : engine.id === "perplexity"
-                                        ? "perplexity.ai"
-                                        : engine.id === "gemini"
-                                          ? "gemini.google.com"
-                                          : "google.com"
-                                  }
-                                  iconOnly
-                                />
+                                <BrandPill name={engine.name} domain={engine.domain} iconOnly />
                                 <span>
                                   {t(`visibility:outcomes.${status}`, { defaultValue: status })}
                                 </span>
@@ -513,18 +457,7 @@ function PromptDetail() {
                         void setSearch({ responseEngine: engine.id }, { history: "replace" })
                       }
                     >
-                      <BrandPill
-                        name={engine.name}
-                        domain={
-                          engine.id === "chatgpt"
-                            ? "chatgpt.com"
-                            : engine.id === "perplexity"
-                              ? "perplexity.ai"
-                              : engine.id === "gemini"
-                                ? "gemini.google.com"
-                                : "google.com"
-                        }
-                      />
+                      <BrandPill name={engine.name} domain={engine.domain} />
                       <span>{cell?.outcome ?? "Pending"}</span>
                     </button>
                   );

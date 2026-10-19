@@ -56,7 +56,17 @@ func (r *GormPromptRepository) Get(ctx context.Context, filter koidomain.PromptF
 }
 
 func (r *GormPromptRepository) List(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Page[koidomain.Prompt], error) {
-	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, filter.Page, "created_at ASC, id ASC")
+	order := promptSortOrder(filter.Sort, filter.Descending, "prompts.text", "prompts.created_at ASC, prompts.id ASC")
+
+	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB {
+		db = applyPromptFilter(db, filter)
+		if filter.Sort == koidomain.PromptSortRate || filter.Sort == koidomain.PromptSortChange {
+			join, args := visibilitySortJoin("prompts.id", filter.BrandID, filter.Days, filter.Engines)
+			db = db.Joins(join, args...)
+		}
+
+		return db
+	}, filter.Page, order)
 }
 
 func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.PromptFilter, update koidomain.PromptUpdate) error {

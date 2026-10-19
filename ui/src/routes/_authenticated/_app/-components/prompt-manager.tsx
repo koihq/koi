@@ -9,18 +9,15 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
-import type { HistoricalPromptWithVisibility } from "@/api/runs.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
-import { PromptPreviewLink } from "@/components/blocks/prompt-preview-link";
-import { PromptRateBreakdown } from "@/components/blocks/prompt-rate-breakdown";
-import { PromptSelectCheckbox } from "@/components/blocks/prompt-select-checkbox";
+import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import {
   AlertDialog,
@@ -56,6 +53,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
 import { promptKey, runKey, trackingKey } from "@/lib/query-keys";
 import {
@@ -65,8 +63,17 @@ import {
   type VisibilityReport,
   type VisibilityScope,
 } from "@/lib/visibility";
-import { PromptDialog } from "@/routes/_authenticated/_app/prompts/-components/prompt-dialog";
-import { usePromptMutations } from "@/routes/_authenticated/_app/prompts/-hooks/use-prompt-mutations";
+import { PromptPreviewLink } from "@/routes/_authenticated/_app/-components/prompt-preview-link";
+import { PromptRateBreakdown } from "@/routes/_authenticated/_app/-components/prompt-rate-breakdown";
+import { PromptSelectCheckbox } from "@/routes/_authenticated/_app/-components/prompt-select-checkbox";
+
+type PromptRow = {
+  id: string;
+  text: string;
+  prompt?: Prompt;
+  visibility?: VisibilityReport;
+  past: boolean;
+};
 
 export const promptSearchParams = {
   ...tableSearchParams,
@@ -89,13 +96,6 @@ const engineIcons = {
   google_ai_overviews: GoogleIcon,
 };
 
-type PromptRow = {
-  id: string;
-  text: string;
-  prompt?: Prompt;
-  visibility?: VisibilityReport;
-  past: boolean;
-};
 const rateSegments = Array.from({ length: 32 }, (_, index) => `segment-${index}`);
 const promptHeadClass =
   "h-auto px-2 py-1.5 text-start text-xs font-normal text-muted-foreground whitespace-normal [overflow-wrap:anywhere]";
@@ -155,19 +155,11 @@ export function PromptManager({
   brandID,
   scope,
   competitors,
-  allPrompts,
-  loading,
-  failed,
-  onRetry,
   draftStartFailed = false,
 }: {
   brandID: string;
   scope: VisibilityScope;
   competitors: Competitor[];
-  allPrompts: Prompt[];
-  loading: boolean;
-  failed: boolean;
-  onRetry: () => void;
   draftStartFailed?: boolean;
 }) {
   const { t } = useTranslation(["management", "home"]);
@@ -183,72 +175,64 @@ export function PromptManager({
   const [bulkFailed, setBulkFailed] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
-  const history = useQuery({
-    queryKey: [...runKey(brandID), "past-prompts", "all", scope],
-    enabled: search.status === "past",
-    queryFn: async ({ signal }) => {
-      const items: HistoricalPromptWithVisibility[] = [];
-      for (let page = 1; ; page += 1) {
-        const response = await api.runs.historicalPrompts(brandID, page, 50, { signal }, scope);
-        items.push(...response.items);
-        if (!response.hasNext) return items;
-      }
-    },
-  });
-
-  const rows = useMemo(() => {
-    const live: PromptRow[] = allPrompts.map((prompt) => ({
-      id: prompt.id,
-      text: prompt.text,
-      prompt,
-      visibility: prompt.visibility,
-      past: false,
-    }));
-    const past: PromptRow[] = (history.data ?? []).map((prompt) => ({
-      id: prompt.promptId,
-      text: prompt.promptText,
-      visibility: prompt.visibility,
-      past: true,
-    }));
-    const source = search.status === "past" ? past : live;
-    const query = search.q.trim().toLocaleLowerCase();
-    const matching = source.filter(
-      (row) =>
-        row.text.toLocaleLowerCase().includes(query) &&
-        (search.status === "all" ||
-          search.status === "past" ||
-          row.prompt?.confirmed === (search.status === "confirmed")),
-    );
-    if (search.sort === "original") return matching;
-
-    return matching.sort((left, right) => {
-      if (search.sort === "prompt") {
-        const difference = left.text.localeCompare(right.text);
-        return search.descending ? -difference : difference;
-      }
-      const value = (row: PromptRow) => {
-        return search.sort === "rate" ? rate(row.visibility) : change(row.visibility);
-      };
-      const leftValue = value(left);
-      const rightValue = value(right);
-      if (leftValue === null) return rightValue === null ? 0 : 1;
-      if (rightValue === null) return -1;
-      return (leftValue - rightValue) * (search.descending ? -1 : 1);
-    });
-  }, [allPrompts, history.data, search.descending, search.q, search.sort, search.status]);
   const page = Math.max(1, search.page);
-  const totalPages = Math.ceil(rows.length / search.pageSize);
-  const visible = rows.slice((page - 1) * search.pageSize, page * search.pageSize);
+  const confirmed =
+    search.status === "confirmed" ? true : search.status === "unconfirmed" ? false : undefined;
+  const params = {
+    page,
+    pageSize: search.pageSize,
+    q: search.q.trim() || undefined,
+    sort: search.sort,
+    descending: search.descending,
+    scope,
+  };
+  const live = useQuery({
+    queryKey: [...promptKey(brandID), "list", params, confirmed],
+    enabled: search.status !== "past",
+    queryFn: ({ signal }) => api.prompts.list(brandID, { ...params, confirmed }, { signal }),
+  });
+  const history = useQuery({
+    queryKey: [...runKey(brandID), "past-prompts", params],
+    enabled: search.status === "past",
+    queryFn: ({ signal }) => api.runs.historicalPrompts(brandID, params, { signal }),
+  });
+  const active = search.status === "past" ? history : live;
+  const totalPages = active.data?.totalPages ?? 0;
+  const visible: PromptRow[] =
+    search.status === "past"
+      ? (history.data?.items ?? []).map((prompt) => ({
+          id: prompt.promptId,
+          text: prompt.promptText,
+          visibility: prompt.visibility,
+          past: true,
+        }))
+      : (live.data?.items ?? []).map((prompt) => ({
+          id: prompt.id,
+          text: prompt.text,
+          prompt,
+          visibility: prompt.visibility,
+          past: false,
+        }));
+  const previousPage = useRef(page);
   const visibleLiveIDs = visible.filter((row) => !row.past).map((row) => row.id);
   const selectedVisible = selected.filter((id) => visibleLiveIDs.includes(id));
-  const selectedPrompts = allPrompts.filter((prompt) => selectedVisible.includes(prompt.id));
+  const selectedPrompts = visible.flatMap((row) =>
+    row.prompt && selectedVisible.includes(row.id) ? [row.prompt] : [],
+  );
   const pending = Object.values(mutations).some((mutation) => mutation.isPending) || bulkPending;
 
   useEffect(() => {
-    if (page > Math.max(1, totalPages)) {
+    if (active.isSuccess && page > Math.max(1, totalPages)) {
       void setSearch({ page: Math.max(1, totalPages) }, { history: "replace" });
     }
-  }, [page, setSearch, totalPages]);
+  }, [active.isSuccess, page, setSearch, totalPages]);
+
+  useEffect(() => {
+    if (previousPage.current === page) return;
+
+    previousPage.current = page;
+    setSelected([]);
+  }, [page]);
 
   async function invalidate() {
     await Promise.all([
@@ -261,23 +245,32 @@ export function PromptManager({
   async function bulkAction(kind: "confirm" | "delete") {
     const targets = selectedPrompts.filter((prompt) => kind === "delete" || !prompt.confirmed);
     if (!targets.length) return;
+
     setBulkPending(true);
     setBulkFailed(false);
-    const results = await Promise.allSettled(
-      targets.map((prompt) =>
-        kind === "confirm"
-          ? api.prompts.confirm(brandID, prompt.id)
-          : api.prompts.delete(brandID, prompt.id),
-      ),
-    );
-    const failedIDs = targets
-      .filter((_, index) => results[index].status === "rejected")
-      .map((prompt) => prompt.id);
-    setSelected(failedIDs);
-    setBulkFailed(failedIDs.length > 0);
-    await invalidate();
-    setBulkPending(false);
-    if (kind === "delete" && !failedIDs.length) setBulkDeleting(false);
+
+    try {
+      const results = await Promise.allSettled(
+        targets.map((prompt) =>
+          kind === "confirm"
+            ? api.prompts.confirm(brandID, prompt.id)
+            : api.prompts.delete(brandID, prompt.id),
+        ),
+      );
+      const failedIDs = targets
+        .filter((_, index) => results[index].status === "rejected")
+        .map((prompt) => prompt.id);
+
+      setSelected(failedIDs);
+      setBulkFailed(failedIDs.length > 0);
+      await invalidate();
+
+      if (kind === "delete" && !failedIDs.length) setBulkDeleting(false);
+    } catch {
+      setBulkFailed(true);
+    } finally {
+      setBulkPending(false);
+    }
   }
 
   function changeSearch(patch: Partial<typeof search>) {
@@ -526,17 +519,14 @@ export function PromptManager({
       )}
 
       <TooltipProvider delay={0}>
-        {failed || (history.isError && search.status === "past") ? (
+        {active.isError ? (
           <p role="alert" className="py-12 text-sm text-destructive">
             {t("loadError")}{" "}
-            <Button
-              variant="link"
-              onClick={() => (search.status === "past" ? void history.refetch() : onRetry())}
-            >
+            <Button variant="link" onClick={() => void active.refetch()}>
               {t("retry")}
             </Button>
           </p>
-        ) : loading || (search.status === "past" && history.isPending) ? (
+        ) : active.isPending ? (
           <p className="py-12 text-sm text-muted-foreground">{t("loading")}</p>
         ) : visible.length === 0 ? (
           <p className="py-12 text-sm text-muted-foreground">

@@ -48,7 +48,11 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 
 	brandSession(t, client, ts.URL, userID)
 	page := koidomain.PageParams{Page: 1, PageSize: 10}
-	q.EXPECT().ListHistoricalPrompts(identityIs(userID), brandID, page).Return(
+	q.EXPECT().ListHistoricalPrompts(identityIs(userID), brandID, koidomain.PromptListParams{
+		Page: page,
+		Sort: koidomain.PromptSortOriginal,
+		Days: 30,
+	}).Return(
 		&koidomain.Page[koidomain.HistoricalPrompt]{
 			Items: []koidomain.HistoricalPrompt{{
 				PromptID:   promptID,

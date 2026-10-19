@@ -24,7 +24,7 @@ func historyPage[T any](items []T, total int64, params koidomain.PageParams) *ko
 	return page
 }
 
-func (r *GormVisibilityRepository) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, params koidomain.PageParams) (*koidomain.Page[koidomain.HistoricalPrompt], error) {
+func (r *GormVisibilityRepository) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, params koidomain.PromptListParams) (*koidomain.Page[koidomain.HistoricalPrompt], error) {
 	if _, err := NewGormBrandRepository(r.db).Get(ctx, brandID); err != nil {
 		return nil, err
 	}
@@ -34,24 +34,44 @@ func (r *GormVisibilityRepository) ListHistoricalPrompts(ctx context.Context, br
 		LEFT JOIN prompts AS prompt ON prompt.id = result.prompt_id AND prompt.brand_id = run.brand_id
 		WHERE run.brand_id = ? AND prompt.id IS NULL`
 
+	const snapshots = `SELECT DISTINCT ON (result.prompt_id)
+		result.prompt_id, result.prompt_text, run.created_at AS last_seen_at ` + from + `
+		ORDER BY result.prompt_id, run.created_at DESC, run.id DESC`
+	base := ` FROM (` + snapshots + `) AS snapshot`
+	where := ""
+	countArgs := []any{brandID}
+	if params.Query != "" {
+		where = ` WHERE snapshot.prompt_text ILIKE ? ESCAPE '!'`
+		countArgs = append(countArgs, likePattern(params.Query))
+	}
+
 	var total int64
-	if err := r.db.WithContext(ctx).Raw(`SELECT count(DISTINCT result.prompt_id) `+from, brandID).Scan(&total).Error; err != nil {
+	if err := r.db.WithContext(ctx).Raw(`SELECT count(*)`+base+where, countArgs...).Scan(&total).Error; err != nil {
 		return nil, mapDBError(err)
 	}
 
 	items := make([]koidomain.HistoricalPrompt, 0)
 	if total > 0 {
-		const snapshots = `SELECT DISTINCT ON (result.prompt_id)
-			result.prompt_id, result.prompt_text, run.created_at AS last_seen_at ` + from + `
-			ORDER BY result.prompt_id, run.created_at DESC, run.id DESC`
-		query := `SELECT * FROM (` + snapshots + `) AS snapshot
-			ORDER BY last_seen_at DESC, prompt_id DESC LIMIT ? OFFSET ?`
-		if err := r.db.WithContext(ctx).Raw(query, brandID, params.PageSize, (params.Page-1)*params.PageSize).Scan(&items).Error; err != nil {
+		args := []any{brandID}
+		join := ""
+		if params.Sort == koidomain.PromptSortRate || params.Sort == koidomain.PromptSortChange {
+			var rankArgs []any
+			join, rankArgs = visibilitySortJoin("snapshot.prompt_id", brandID, params.Days, params.Engines)
+			args = append(args, rankArgs...)
+		}
+		if params.Query != "" {
+			args = append(args, likePattern(params.Query))
+		}
+
+		order := promptSortOrder(params.Sort, params.Descending, "snapshot.prompt_text", "snapshot.last_seen_at DESC, snapshot.prompt_id DESC")
+		query := `SELECT snapshot.*` + base + ` ` + join + where + ` ORDER BY ` + order + ` LIMIT ? OFFSET ?`
+		args = append(args, params.Page.PageSize, (params.Page.Page-1)*params.Page.PageSize)
+		if err := r.db.WithContext(ctx).Raw(query, args...).Scan(&items).Error; err != nil {
 			return nil, mapDBError(err)
 		}
 	}
 
-	return historyPage(items, total, params), nil
+	return historyPage(items, total, params.Page), nil
 }
 
 func promptRunsQuery(db *gorm.DB, brandID, promptID uuid.UUID) *gorm.DB {

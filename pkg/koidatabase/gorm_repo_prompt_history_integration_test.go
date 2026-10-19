@@ -29,7 +29,7 @@ func TestPromptHistoryKeepsDeletedPromptSnapshots(t *testing.T) {
 	require.Equal(t, run.ID, live.Items[0].Run.ID)
 
 	require.NoError(t, koidomain.NewPromptCommander(store).Delete(ctx, brand.ID, prompt.ID))
-	historical, err := querier.ListHistoricalPrompts(ctx, brand.ID, page)
+	historical, err := querier.ListHistoricalPrompts(ctx, brand.ID, koidomain.PromptListParams{Page: page})
 	require.NoError(t, err)
 	require.EqualValues(t, 1, historical.TotalItems)
 	require.Equal(t, prompt.ID, historical.Items[0].PromptID)
@@ -50,7 +50,7 @@ func TestPromptHistoryKeepsDeletedPromptSnapshots(t *testing.T) {
 	require.True(t, empty.HasPrev)
 
 	stranger := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: uuid.New()})
-	_, err = querier.ListHistoricalPrompts(stranger, brand.ID, page)
+	_, err = querier.ListHistoricalPrompts(stranger, brand.ID, koidomain.PromptListParams{Page: page})
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 	_, err = querier.ListPromptRuns(stranger, brand.ID, prompt.ID, page)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)

@@ -22,15 +22,14 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine } from "@/api/generated";
-import type { Prompt } from "@/api/prompts.api";
-import { BrandIcon } from "@/components/blocks/brand-icon";
 import { BrandPill } from "@/components/blocks/brand-pill";
-import { PromptManager, promptSearchParams } from "@/components/blocks/prompt-manager";
 import { TrackingSummary } from "@/components/blocks/tracking-review";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
+import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTracking } from "@/hooks/use-tracking";
+import { collectPages } from "@/lib/collect-pages";
 import { competitorKey, promptKey } from "@/lib/query-keys";
 import {
   engines,
@@ -39,6 +38,10 @@ import {
   rate as visibilityRate,
   series as visibilitySeries,
 } from "@/lib/visibility";
+import {
+  PromptManager,
+  promptSearchParams,
+} from "@/routes/_authenticated/_app/-components/prompt-manager";
 
 const graphSearchParams = {
   days: parseAsNumberLiteral([7, 30, 90] as const)
@@ -69,15 +72,6 @@ export const Route = createFileRoute("/_authenticated/_app/")({
   component: Home,
 });
 
-async function allPages<T>(fetchPage: (page: number) => Promise<{ items: T[]; hasNext: boolean }>) {
-  const items: T[] = [];
-  for (let page = 1; ; page += 1) {
-    const response = await fetchPage(page);
-    items.push(...response.items);
-    if (!response.hasNext) return items;
-  }
-}
-
 function Home() {
   const { t, i18n } = useTranslation("home");
   const { brand } = Route.useRouteContext();
@@ -103,11 +97,9 @@ function Home() {
   );
 
   const prompts = useQuery({
-    queryKey: [...promptKey(brand.id), "analytics", scope],
+    queryKey: [...promptKey(brand.id), "confirmed-count"],
     queryFn: ({ signal }) =>
-      allPages<Prompt>((page) =>
-        api.prompts.list(brand.id, { page, pageSize: 50, scope }, { signal }),
-      ),
+      api.prompts.list(brand.id, { page: 1, pageSize: 10, confirmed: true }, { signal }),
   });
   const summary = useQuery({
     queryKey: [...promptKey(brand.id), "visibility-summary", scope],
@@ -116,15 +108,12 @@ function Home() {
   const competitors = useQuery({
     queryKey: [...competitorKey(brand.id), "analytics"],
     queryFn: ({ signal }) =>
-      allPages<Competitor>((page) =>
+      collectPages<Competitor>((page) =>
         api.competitors.list(brand.id, { page, pageSize: 50 }, { signal }),
       ),
   });
 
-  const confirmedPrompts = useMemo(
-    () => (prompts.data ?? []).filter((prompt) => prompt.confirmed),
-    [prompts.data],
-  );
+  const hasConfirmedPrompts = (prompts.data?.totalItems ?? 0) > 0;
   const confirmedCompetitors = useMemo(
     () => (competitors.data ?? []).filter((competitor) => competitor.confirmed),
     [competitors.data],
@@ -165,7 +154,6 @@ function Home() {
       ? rate - change
       : null;
   const animateNumbers = canAnimateNumbers && inspectionInput === "pointer";
-  const retryPrompts = useCallback(() => void prompts.refetch(), [prompts.refetch]);
 
   const inspect = useCallback((index: number | null, input: InspectionInput) => {
     setInspectionInput(input);
@@ -220,88 +208,41 @@ function Home() {
               </p>
             ) : (
               <div className="mt-4 flex flex-wrap items-baseline gap-2 text-[13px]">
-                {comparison && comparisonRate !== null ? (
-                  <div className="flex flex-wrap items-center gap-5">
-                    {(
-                      [
-                        { subject: brand, value: selectedPoint ? selectedPoint.rate : rate },
-                        {
-                          subject: comparison,
-                          value: selectedComparisonPoint
-                            ? selectedComparisonPoint.rate
-                            : comparisonRate,
-                        },
-                      ] as const
-                    ).map(({ subject, value }) => (
-                      <span
-                        key={subject.id}
-                        className="inline-flex items-center gap-2 whitespace-nowrap"
-                      >
-                        <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
-                        <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                          {value === null ? (
-                            t("dashboard.noData")
-                          ) : (
-                            <NumberFlow
-                              value={Number(value.toFixed(1))}
-                              locales={i18n.language}
-                              format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                              animated={animateNumbers}
-                              className="[--number-flow-mask-height:0.3em]"
-                            />
-                          )}
-                          {value !== null && (
-                            <span className="ml-0.5 text-[0.667em] text-muted-foreground">
-                              {t("dashboard.percentSign")}
-                            </span>
-                          )}
-                        </strong>
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    <strong className="whitespace-nowrap text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
-                      {headlineRate === null ? (
-                        t("dashboard.noData")
-                      ) : (
-                        <NumberFlow
-                          value={Number(headlineRate.toFixed(1))}
-                          locales={i18n.language}
-                          format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                          animated={animateNumbers}
-                          className="[--number-flow-mask-height:0.3em]"
-                        />
-                      )}
-                      {headlineRate !== null && (
-                        <span className="ml-0.5 text-[0.667em] text-muted-foreground">
-                          {t("dashboard.percentSign")}
-                        </span>
-                      )}
-                    </strong>
-                    <span
-                      className={
-                        headlineChange === null
-                          ? "text-muted-foreground"
-                          : headlineChange >= 0
-                            ? "text-positive"
-                            : "text-negative"
-                      }
-                    >
-                      {headlineChange === null ? (
-                        "—"
-                      ) : (
-                        <NumberFlow
-                          value={Math.abs(headlineChange)}
-                          prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
-                          locales={i18n.language}
-                          format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                          animated={animateNumbers}
-                          className="[--number-flow-mask-height:0.3em]"
-                        />
-                      )}
-                    </span>
-                  </>
+                <VisibilityHeadline
+                  brand={brand}
+                  competitor={comparison}
+                  rate={headlineRate}
+                  comparisonRate={
+                    selectedComparisonPoint ? selectedComparisonPoint.rate : comparisonRate
+                  }
+                  paired={Boolean(comparison && comparisonRate !== null)}
+                  locale={i18n.language}
+                  animated={animateNumbers}
+                  variant="home"
+                />
+                {(!comparison || comparisonRate === null) && (
+                  <span
+                    className={
+                      headlineChange === null
+                        ? "text-muted-foreground"
+                        : headlineChange >= 0
+                          ? "text-positive"
+                          : "text-negative"
+                    }
+                  >
+                    {headlineChange === null ? (
+                      "—"
+                    ) : (
+                      <NumberFlow
+                        value={Math.abs(headlineChange)}
+                        prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
+                        locales={i18n.language}
+                        format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                        animated={animateNumbers}
+                        className="[--number-flow-mask-height:0.3em]"
+                      />
+                    )}
+                  </span>
                 )}
                 {selectedPoint && (
                   <time
@@ -413,12 +354,10 @@ function Home() {
           <div className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
             <p>
               {t(
-                confirmedPrompts.length > 0
-                  ? "dashboard.noCompletedAnswers"
-                  : "dashboard.emptyDescription",
+                hasConfirmedPrompts ? "dashboard.noCompletedAnswers" : "dashboard.emptyDescription",
               )}
             </p>
-            {confirmedPrompts.length === 0 && (
+            {!hasConfirmedPrompts && (
               <a href="#prompts" className="underline underline-offset-4">
                 {t("dashboard.managePrompts")}
               </a>
@@ -512,7 +451,7 @@ function Home() {
         </div>
       </section>
 
-      {tracking.data && confirmedPrompts.length === 0 && (
+      {tracking.data && !hasConfirmedPrompts && (
         <div className="mt-6 border-l-2 border-border pl-4">
           <TrackingSummary brandID={brand.id} />
         </div>
@@ -521,10 +460,6 @@ function Home() {
         brandID={brand.id}
         scope={scope}
         competitors={confirmedCompetitors}
-        allPrompts={prompts.data ?? []}
-        loading={prompts.isPending}
-        failed={prompts.isError}
-        onRetry={retryPrompts}
         draftStartFailed={draftStart === "failed"}
       />
     </div>

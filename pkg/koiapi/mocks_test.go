@@ -2003,8 +2003,8 @@ func (_c *MockPromptQuerier_Get_Call) RunAndReturn(run func(context1 context.Con
 }
 
 // List provides a mock function for the type MockPromptQuerier
-func (_mock *MockPromptQuerier) List(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Prompt], error) {
-	ret := _mock.Called(context1, uUID, pageParams, s, b)
+func (_mock *MockPromptQuerier) List(context1 context.Context, uUID uuid.UUID, promptListParams koidomain.PromptListParams) (*koidomain.Page[koidomain.Prompt], error) {
+	ret := _mock.Called(context1, uUID, promptListParams)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -2012,18 +2012,18 @@ func (_mock *MockPromptQuerier) List(context1 context.Context, uUID uuid.UUID, p
 
 	var r0 *koidomain.Page[koidomain.Prompt]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) (*koidomain.Page[koidomain.Prompt], error)); ok {
-		return returnFunc(context1, uUID, pageParams, s, b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PromptListParams) (*koidomain.Page[koidomain.Prompt], error)); ok {
+		return returnFunc(context1, uUID, promptListParams)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) *koidomain.Page[koidomain.Prompt]); ok {
-		r0 = returnFunc(context1, uUID, pageParams, s, b)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PromptListParams) *koidomain.Page[koidomain.Prompt]); ok {
+		r0 = returnFunc(context1, uUID, promptListParams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Page[koidomain.Prompt])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PageParams, string, *bool) error); ok {
-		r1 = returnFunc(context1, uUID, pageParams, s, b)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PromptListParams) error); ok {
+		r1 = returnFunc(context1, uUID, promptListParams)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -2038,14 +2038,12 @@ type MockPromptQuerier_List_Call struct {
 // List is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - pageParams koidomain.PageParams
-//   - s string
-//   - b *bool
-func (_e *MockPromptQuerier_Expecter) List(context1 interface{}, uUID interface{}, pageParams interface{}, s interface{}, b interface{}) *MockPromptQuerier_List_Call {
-	return &MockPromptQuerier_List_Call{Call: _e.mock.On("List", context1, uUID, pageParams, s, b)}
+//   - promptListParams koidomain.PromptListParams
+func (_e *MockPromptQuerier_Expecter) List(context1 interface{}, uUID interface{}, promptListParams interface{}) *MockPromptQuerier_List_Call {
+	return &MockPromptQuerier_List_Call{Call: _e.mock.On("List", context1, uUID, promptListParams)}
 }
 
-func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool)) *MockPromptQuerier_List_Call {
+func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uUID uuid.UUID, promptListParams koidomain.PromptListParams)) *MockPromptQuerier_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -2055,24 +2053,14 @@ func (_c *MockPromptQuerier_List_Call) Run(run func(context1 context.Context, uU
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 koidomain.PageParams
+		var arg2 koidomain.PromptListParams
 		if args[2] != nil {
-			arg2 = args[2].(koidomain.PageParams)
-		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
-		var arg4 *bool
-		if args[4] != nil {
-			arg4 = args[4].(*bool)
+			arg2 = args[2].(koidomain.PromptListParams)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -2083,7 +2071,7 @@ func (_c *MockPromptQuerier_List_Call) Return(page *koidomain.Page[koidomain.Pro
 	return _c
 }
 
-func (_c *MockPromptQuerier_List_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams, s string, b *bool) (*koidomain.Page[koidomain.Prompt], error)) *MockPromptQuerier_List_Call {
+func (_c *MockPromptQuerier_List_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, promptListParams koidomain.PromptListParams) (*koidomain.Page[koidomain.Prompt], error)) *MockPromptQuerier_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2767,8 +2755,8 @@ func (_c *MockVisibilityQuerier_List_Call) RunAndReturn(run func(context1 contex
 }
 
 // ListHistoricalPrompts provides a mock function for the type MockVisibilityQuerier
-func (_mock *MockVisibilityQuerier) ListHistoricalPrompts(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams) (*koidomain.Page[koidomain.HistoricalPrompt], error) {
-	ret := _mock.Called(context1, uUID, pageParams)
+func (_mock *MockVisibilityQuerier) ListHistoricalPrompts(context1 context.Context, uUID uuid.UUID, promptListParams koidomain.PromptListParams) (*koidomain.Page[koidomain.HistoricalPrompt], error) {
+	ret := _mock.Called(context1, uUID, promptListParams)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListHistoricalPrompts")
@@ -2776,18 +2764,18 @@ func (_mock *MockVisibilityQuerier) ListHistoricalPrompts(context1 context.Conte
 
 	var r0 *koidomain.Page[koidomain.HistoricalPrompt]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams) (*koidomain.Page[koidomain.HistoricalPrompt], error)); ok {
-		return returnFunc(context1, uUID, pageParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PromptListParams) (*koidomain.Page[koidomain.HistoricalPrompt], error)); ok {
+		return returnFunc(context1, uUID, promptListParams)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PageParams) *koidomain.Page[koidomain.HistoricalPrompt]); ok {
-		r0 = returnFunc(context1, uUID, pageParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, koidomain.PromptListParams) *koidomain.Page[koidomain.HistoricalPrompt]); ok {
+		r0 = returnFunc(context1, uUID, promptListParams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Page[koidomain.HistoricalPrompt])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PageParams) error); ok {
-		r1 = returnFunc(context1, uUID, pageParams)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, koidomain.PromptListParams) error); ok {
+		r1 = returnFunc(context1, uUID, promptListParams)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -2802,12 +2790,12 @@ type MockVisibilityQuerier_ListHistoricalPrompts_Call struct {
 // ListHistoricalPrompts is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - pageParams koidomain.PageParams
-func (_e *MockVisibilityQuerier_Expecter) ListHistoricalPrompts(context1 interface{}, uUID interface{}, pageParams interface{}) *MockVisibilityQuerier_ListHistoricalPrompts_Call {
-	return &MockVisibilityQuerier_ListHistoricalPrompts_Call{Call: _e.mock.On("ListHistoricalPrompts", context1, uUID, pageParams)}
+//   - promptListParams koidomain.PromptListParams
+func (_e *MockVisibilityQuerier_Expecter) ListHistoricalPrompts(context1 interface{}, uUID interface{}, promptListParams interface{}) *MockVisibilityQuerier_ListHistoricalPrompts_Call {
+	return &MockVisibilityQuerier_ListHistoricalPrompts_Call{Call: _e.mock.On("ListHistoricalPrompts", context1, uUID, promptListParams)}
 }
 
-func (_c *MockVisibilityQuerier_ListHistoricalPrompts_Call) Run(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams)) *MockVisibilityQuerier_ListHistoricalPrompts_Call {
+func (_c *MockVisibilityQuerier_ListHistoricalPrompts_Call) Run(run func(context1 context.Context, uUID uuid.UUID, promptListParams koidomain.PromptListParams)) *MockVisibilityQuerier_ListHistoricalPrompts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -2817,9 +2805,9 @@ func (_c *MockVisibilityQuerier_ListHistoricalPrompts_Call) Run(run func(context
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 koidomain.PageParams
+		var arg2 koidomain.PromptListParams
 		if args[2] != nil {
-			arg2 = args[2].(koidomain.PageParams)
+			arg2 = args[2].(koidomain.PromptListParams)
 		}
 		run(
 			arg0,
@@ -2835,7 +2823,7 @@ func (_c *MockVisibilityQuerier_ListHistoricalPrompts_Call) Return(page *koidoma
 	return _c
 }
 
-func (_c *MockVisibilityQuerier_ListHistoricalPrompts_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams koidomain.PageParams) (*koidomain.Page[koidomain.HistoricalPrompt], error)) *MockVisibilityQuerier_ListHistoricalPrompts_Call {
+func (_c *MockVisibilityQuerier_ListHistoricalPrompts_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, promptListParams koidomain.PromptListParams) (*koidomain.Page[koidomain.HistoricalPrompt], error)) *MockVisibilityQuerier_ListHistoricalPrompts_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -5,7 +5,7 @@ import type { CreatePrompt } from "@/api/prompts.api";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { promptFormSchema } from "@/routes/_authenticated/_app/prompts/-types/prompt-form-schema";
+import { promptFormSchema } from "@/lib/prompt-form-schema";
 
 export function PromptForm({
   initialText = "",

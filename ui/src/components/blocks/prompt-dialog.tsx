@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { CreatePrompt, Prompt } from "@/api/prompts.api";
+import { PromptForm } from "@/components/blocks/prompt-form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +12,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PromptForm } from "@/routes/_authenticated/_app/prompts/-components/prompt-form";
 
 export function PromptDialog({
   prompt,

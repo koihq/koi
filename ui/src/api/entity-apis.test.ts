@@ -144,6 +144,9 @@ describe("entity API wrappers", () => {
       pageSize: 10,
       q: "best tools",
       confirmed: false,
+      sort: "rate",
+      descending: true,
+      scope: { days: 30, engines: ["chatgpt"] },
     });
 
     await api.confirmAll("brand");
@@ -154,8 +157,10 @@ describe("entity API wrappers", () => {
       10,
       "best tools",
       false,
-      undefined,
-      undefined,
+      "rate",
+      true,
+      30,
+      "chatgpt",
       undefined,
     );
     expect(client.confirmAllPrompts).toHaveBeenCalledWith("brand");
@@ -175,9 +180,13 @@ describe("entity API wrappers", () => {
       days: scope.days,
       engines: [...scope.engines],
     });
-    await api.historicalPrompts("brand", 2, 50, undefined, {
-      days: scope.days,
-      engines: [...scope.engines],
+    await api.historicalPrompts("brand", {
+      page: 2,
+      pageSize: 50,
+      q: "saved",
+      sort: "change",
+      descending: true,
+      scope: { days: scope.days, engines: [...scope.engines] },
     });
 
     expect(client.getVisibilitySummary).toHaveBeenCalledWith(
@@ -197,6 +206,9 @@ describe("entity API wrappers", () => {
       "brand",
       2,
       50,
+      "saved",
+      "change",
+      true,
       7,
       "chatgpt,gemini",
       undefined,

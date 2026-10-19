@@ -8,6 +8,7 @@ import type {
   VisibilityRunPage,
   VisibilityRunStatus,
 } from "@/api/generated";
+import type { PromptSort } from "@/api/prompts.api";
 import { callApi } from "@/api/shared/apiClient";
 import type { VisibilityScope } from "@/lib/visibility";
 
@@ -15,6 +16,15 @@ export type VisibilityRun = VisibilityRunStatus;
 
 export type { VisibilityResult };
 export type HistoricalPromptWithVisibility = HistoricalPromptPage["items"][number];
+
+export type HistoricalPromptListParams = {
+  page: number;
+  pageSize: 10 | 20 | 50;
+  q?: string;
+  sort?: PromptSort;
+  descending?: boolean;
+  scope: VisibilityScope;
+};
 
 export function createRunsApi(api: VisibilityApi) {
   return {
@@ -42,18 +52,19 @@ export function createRunsApi(api: VisibilityApi) {
       callApi(() => api.listVisibilityResults(brandID, runID, page, pageSize, initOverrides)),
     historicalPrompts: (
       brandID: string,
-      page = 1,
-      pageSize = 20,
+      params: HistoricalPromptListParams,
       initOverrides?: RequestInit,
-      scope: VisibilityScope = { days: 30, engines: [] },
     ): Promise<HistoricalPromptPage> =>
       callApi(() =>
         api.listHistoricalPrompts(
           brandID,
-          page,
-          pageSize,
-          scope.days,
-          scope.engines.join(",") || undefined,
+          params.page,
+          params.pageSize,
+          params.q,
+          params.sort,
+          params.descending,
+          params.scope.days,
+          params.scope.engines.join(",") || undefined,
           initOverrides,
         ),
       ),

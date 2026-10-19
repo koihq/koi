@@ -87,6 +87,9 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+        - $ref: "#/components/parameters/PromptSort"
+        - $ref: "#/components/parameters/Descending"
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
@@ -395,6 +398,8 @@ paths:
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/Confirmed"
+        - $ref: "#/components/parameters/PromptSort"
+        - $ref: "#/components/parameters/Descending"
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
@@ -863,6 +868,19 @@ components:
       in: query
       schema:
         type: string
+    PromptSort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [original, prompt, rate, change]
+        default: original
+    Descending:
+      name: descending
+      in: query
+      schema:
+        type: boolean
+        default: false
     BrandID:
       name: brandID
       in: path

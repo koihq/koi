@@ -162,7 +162,7 @@ type VisibilityRepository interface {
 	Inputs(context.Context, uuid.UUID) (VisibilityInputs, error)
 	CreateAndEnqueue(context.Context, *VisibilityRun, []VisibilityResult) error
 	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
-	ListHistoricalPrompts(context.Context, uuid.UUID, PageParams) (*Page[HistoricalPrompt], error)
+	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
 
@@ -179,7 +179,7 @@ type VisibilityQuerier interface {
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
 	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
-	ListHistoricalPrompts(context.Context, uuid.UUID, PageParams) (*Page[HistoricalPrompt], error)
+	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
 
@@ -215,12 +215,12 @@ func (s *visibilityService) ListResults(ctx context.Context, brandID, runID uuid
 	return s.store.VisibilityRepo().ListResults(ctx, brandID, runID, page)
 }
 
-func (s *visibilityService) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, page PageParams) (*Page[HistoricalPrompt], error) {
+func (s *visibilityService) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, params PromptListParams) (*Page[HistoricalPrompt], error) {
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
 
-	return s.store.VisibilityRepo().ListHistoricalPrompts(ctx, brandID, page)
+	return s.store.VisibilityRepo().ListHistoricalPrompts(ctx, brandID, params)
 }
 
 func (s *visibilityService) ListPromptRuns(ctx context.Context, brandID, promptID uuid.UUID, page PageParams) (*Page[PromptHistoryRun], error) {

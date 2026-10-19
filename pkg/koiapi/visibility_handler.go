@@ -240,28 +240,23 @@ func (h *VisibilityHandler) ListHistoricalPrompts(w http.ResponseWriter, r *http
 		return
 	}
 
-	page, err := pageParams(r)
+	params, err := promptListQuery(r, false)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
 
-	result, err := h.querier.ListHistoricalPrompts(r.Context(), brandID, page)
+	result, err := h.querier.ListHistoricalPrompts(r.Context(), brandID, params)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
 	}
 	if h.analytics != nil {
-		days, engines, err := visibilityScope(r)
-		if err != nil {
-			api.WriteDomainError(w, r, err)
-			return
-		}
 		ids := make([]uuid.UUID, 0, len(result.Items))
 		for _, prompt := range result.Items {
 			ids = append(ids, prompt.PromptID)
 		}
-		byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, ids, days, engines)
+		byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, ids, params.Days, params.Engines)
 		if err != nil {
 			api.WriteDomainError(w, r, err)
 			return
