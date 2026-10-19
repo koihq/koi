@@ -37,6 +37,8 @@ export function TrackingReview({
   const reviewed =
     kind === "prompts" ? tracking.data?.promptsReviewed : tracking.data?.competitorsReviewed;
 
+  if (reviewed && !finish.isError && !tracking.isError) return null;
+
   return (
     <div className="max-w-sm space-y-2 text-sm">
       <Button
@@ -92,7 +94,7 @@ export function TrackingSummary({ brandID }: { brandID: string }) {
       {state.blockedReason ? <p>{t(`blocked.${state.blockedReason}`)}</p> : null}
       <div className="flex flex-wrap gap-4">
         {!state.promptsReviewed ? (
-          <Link to="/prompts" className="underline underline-offset-4">
+          <Link to="/" hash="prompts" className="underline underline-offset-4">
             {t("reviewPrompts")}
           </Link>
         ) : null}

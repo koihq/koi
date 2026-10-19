@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { VisibilityReport } from './VisibilityReport';
+import {
+    VisibilityReportFromJSON,
+    VisibilityReportFromJSONTyped,
+    VisibilityReportToJSON,
+    VisibilityReportToJSONTyped,
+} from './VisibilityReport';
+
 /**
  * 
  * @export
@@ -50,6 +58,12 @@ export interface PromptRes {
      * @memberof PromptRes
      */
     confirmed: boolean;
+    /**
+     * 
+     * @type {VisibilityReport}
+     * @memberof PromptRes
+     */
+    visibility?: VisibilityReport;
 }
 
 
@@ -90,6 +104,7 @@ export function PromptResFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'text': json['text'],
         'source': json['source'],
         'confirmed': json['confirmed'],
+        'visibility': json['visibility'] == null ? undefined : VisibilityReportFromJSON(json['visibility']),
     };
 }
 
@@ -109,6 +124,7 @@ export function PromptResToJSONTyped(value?: PromptRes | null, ignoreDiscriminat
         'text': value['text'],
         'source': value['source'],
         'confirmed': value['confirmed'],
+        'visibility': VisibilityReportToJSON(value['visibility']),
     };
 }
 

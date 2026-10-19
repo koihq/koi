@@ -28,10 +28,12 @@ export function BrandForm({
   brand,
   submitLabel,
   onSubmit,
+  countryOptions,
 }: {
   brand?: Brand;
   submitLabel: string;
   onSubmit: (body: CreateBrand) => Promise<void>;
+  countryOptions?: BrandCountry[];
 }) {
   const { t } = useTranslation("brand");
   const [country, setCountry] = useState(brand?.country ?? "");
@@ -156,6 +158,7 @@ export function BrandForm({
         <Field data-invalid={fieldErrors.country ? true : undefined}>
           <FieldLabel htmlFor="brand-country">{t("fields.country.label")}</FieldLabel>
           <CountryCombobox
+            countryOptions={countryOptions}
             initialCode={brand?.country}
             invalid={Boolean(fieldErrors.country)}
             describedBy={
@@ -218,11 +221,13 @@ function CountryCombobox({
   invalid,
   describedBy,
   onValueChange,
+  countryOptions,
 }: {
   initialCode?: string;
   invalid: boolean;
   describedBy: string;
   onValueChange: (code: string) => void;
+  countryOptions?: BrandCountry[];
 }) {
   const { t } = useTranslation("brand");
   const api = useApi();
@@ -243,16 +248,21 @@ function CountryCombobox({
     queryFn: ({ signal }) => api.brands.listCountries(search || undefined, { signal }),
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,
+    enabled: countryOptions === undefined,
   });
 
-  const options = countries.data ?? [];
+  const options = countryOptions
+    ? countryOptions.filter((country) =>
+        `${country.code} ${country.name}`.toLowerCase().includes(trimmed.toLowerCase()),
+      )
+    : (countries.data ?? []);
 
   let emptyMessage = t("fields.country.noResults");
-  if (countries.isPending || countries.isFetching || trimmed !== search) {
+  if (!countryOptions && (countries.isPending || countries.isFetching || trimmed !== search)) {
     emptyMessage = t("fields.country.searching");
   }
 
-  if (countries.isError) emptyMessage = t("fields.country.searchError");
+  if (!countryOptions && countries.isError) emptyMessage = t("fields.country.searchError");
 
   return (
     <Combobox
@@ -287,7 +297,7 @@ function CountryCombobox({
         placeholder={t("fields.country.placeholder")}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
-        aria-busy={countries.isFetching}
+        aria-busy={!countryOptions && countries.isFetching}
         showClear={Boolean(inputValue)}
       />
       <ComboboxContent>

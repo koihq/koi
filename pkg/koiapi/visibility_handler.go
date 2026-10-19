@@ -2,6 +2,9 @@ package koiapi
 
 import (
 	"net/http"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
@@ -13,12 +16,85 @@ import (
 )
 
 type VisibilityHandler struct {
-	querier koidomain.VisibilityQuerier
-	sess    *scs.SessionManager
+	querier   koidomain.VisibilityQuerier
+	analytics *koidomain.VisibilityAnalyticsQuerier
+	sess      *scs.SessionManager
 }
 
-func NewVisibilityHandler(q koidomain.VisibilityQuerier, sess *scs.SessionManager) *VisibilityHandler {
-	return &VisibilityHandler{querier: q, sess: sess}
+func NewVisibilityHandler(q koidomain.VisibilityQuerier, sess *scs.SessionManager, analytics ...*koidomain.VisibilityAnalyticsQuerier) *VisibilityHandler {
+	h := &VisibilityHandler{querier: q, sess: sess}
+	if len(analytics) > 0 {
+		h.analytics = analytics[0]
+	}
+	return h
+}
+
+func visibilityScope(r *http.Request) (int, []koidomain.EngineID, error) {
+	days := 30
+	if raw := r.URL.Query().Get("days"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil || value != 7 && value != 30 && value != 90 {
+			return 0, nil, koidomain.Validation(koidomain.FieldError{Field: "days", Code: koidomain.FieldInvalid})
+		}
+		days = value
+	}
+	var engines []koidomain.EngineID
+	if raw := r.URL.Query().Get("engines"); raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			engine := koidomain.EngineID(part)
+			if !slices.Contains(koidomain.VisibilityEngines(), engine) {
+				return 0, nil, koidomain.Validation(koidomain.FieldError{Field: "engines", Code: koidomain.FieldInvalid})
+			}
+			if !slices.Contains(engines, engine) {
+				engines = append(engines, engine)
+			}
+		}
+	}
+	return days, engines, nil
+}
+
+func (h *VisibilityHandler) Summary(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+	days, engines, err := visibilityScope(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	_, report, err := h.analytics.Aggregate(r.Context(), brandID, nil, days, engines)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	api.JSON(w, r, http.StatusOK, report)
+}
+
+func (h *VisibilityHandler) PromptVisibility(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+	promptID, ok := pathID(w, r, "promptID")
+	if !ok {
+		return
+	}
+	days, engines, err := visibilityScope(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	if _, err := h.querier.ListPromptRuns(r.Context(), brandID, promptID, koidomain.PageParams{Page: 1, PageSize: 1}); err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, []uuid.UUID{promptID}, days, engines)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	api.JSON(w, r, http.StatusOK, byPrompt[promptID])
 }
 
 func (h *VisibilityHandler) Routes() func(chi.Router) {
@@ -156,4 +232,85 @@ func (h *VisibilityHandler) ListResults(w http.ResponseWriter, r *http.Request) 
 	}
 
 	api.JSON(w, r, http.StatusOK, results)
+}
+
+func (h *VisibilityHandler) ListHistoricalPrompts(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+
+	params, err := promptListQuery(r, false)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	result, err := h.querier.ListHistoricalPrompts(r.Context(), brandID, params)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+	if h.analytics != nil {
+		ids := make([]uuid.UUID, 0, len(result.Items))
+		for _, prompt := range result.Items {
+			ids = append(ids, prompt.PromptID)
+		}
+		byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, ids, params.Days, params.Engines)
+		if err != nil {
+			api.WriteDomainError(w, r, err)
+			return
+		}
+		for i := range result.Items {
+			result.Items[i].Visibility = byPrompt[result.Items[i].PromptID]
+		}
+	}
+
+	api.JSON(w, r, http.StatusOK, result)
+}
+
+type promptHistoryRunRes struct {
+	Run     visibilityStatus             `json:"run"`
+	Results []koidomain.VisibilityResult `json:"results"`
+}
+
+func (h *VisibilityHandler) ListPromptRuns(w http.ResponseWriter, r *http.Request) {
+	_, brandID, ok := requestOwnerAndBrand(w, r)
+	if !ok {
+		return
+	}
+
+	promptID, ok := pathID(w, r, "promptID")
+	if !ok {
+		return
+	}
+
+	page, err := pageParams(r)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	history, err := h.querier.ListPromptRuns(r.Context(), brandID, promptID, page)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	items := make([]promptHistoryRunRes, 0, len(history.Items))
+	for i := range history.Items {
+		items = append(items, promptHistoryRunRes{
+			Run:     publicVisibilityStatus(&history.Items[i].Run),
+			Results: history.Items[i].Results,
+		})
+	}
+
+	api.JSON(w, r, http.StatusOK, koidomain.Page[promptHistoryRunRes]{
+		Items:       items,
+		TotalItems:  history.TotalItems,
+		TotalPages:  history.TotalPages,
+		CurrentPage: history.CurrentPage,
+		HasNext:     history.HasNext,
+		HasPrev:     history.HasPrev,
+	})
 }

@@ -141,6 +141,18 @@ type VisibilityInputs struct {
 	Prompts []Prompt
 }
 
+type HistoricalPrompt struct {
+	PromptID   uuid.UUID         `json:"prompt_id"`
+	PromptText string            `json:"prompt_text"`
+	LastSeenAt time.Time         `json:"last_seen_at"`
+	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
+}
+
+type PromptHistoryRun struct {
+	Run     VisibilityRun      `json:"run"`
+	Results []VisibilityResult `json:"results"`
+}
+
 type VisibilityRepository interface {
 	FinishReview(context.Context, uuid.UUID, string) error
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
@@ -150,6 +162,8 @@ type VisibilityRepository interface {
 	Inputs(context.Context, uuid.UUID) (VisibilityInputs, error)
 	CreateAndEnqueue(context.Context, *VisibilityRun, []VisibilityResult) error
 	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
+	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
+	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
 
 type TrackingStatus struct {
@@ -165,6 +179,8 @@ type VisibilityQuerier interface {
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
 	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
+	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
+	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
 
 type visibilityService struct{ store Store }
@@ -197,4 +213,20 @@ func (s *visibilityService) ListResults(ctx context.Context, brandID, runID uuid
 	}
 
 	return s.store.VisibilityRepo().ListResults(ctx, brandID, runID, page)
+}
+
+func (s *visibilityService) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, params PromptListParams) (*Page[HistoricalPrompt], error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
+		return nil, err
+	}
+
+	return s.store.VisibilityRepo().ListHistoricalPrompts(ctx, brandID, params)
+}
+
+func (s *visibilityService) ListPromptRuns(ctx context.Context, brandID, promptID uuid.UUID, page PageParams) (*Page[PromptHistoryRun], error) {
+	if err := ownedBrand(ctx, s.store, brandID); err != nil {
+		return nil, err
+	}
+
+	return s.store.VisibilityRepo().ListPromptRuns(ctx, brandID, promptID, page)
 }

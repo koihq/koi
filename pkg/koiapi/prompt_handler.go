@@ -23,11 +23,16 @@ type PromptPatchRequest struct {
 type PromptHandler struct {
 	querier   koidomain.PromptQuerier
 	commander koidomain.PromptCommander
+	analytics *koidomain.VisibilityAnalyticsQuerier
 	sess      *scs.SessionManager
 }
 
-func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, sess *scs.SessionManager) *PromptHandler {
-	return &PromptHandler{querier: q, commander: c, sess: sess}
+func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, sess *scs.SessionManager, analytics ...*koidomain.VisibilityAnalyticsQuerier) *PromptHandler {
+	h := &PromptHandler{querier: q, commander: c, sess: sess}
+	if len(analytics) > 0 {
+		h.analytics = analytics[0]
+	}
+	return h
 }
 
 func (h *PromptHandler) Routes() func(chi.Router) {
@@ -65,24 +70,90 @@ func requestOwnerAndBrand(w http.ResponseWriter, r *http.Request) (uuid.UUID, uu
 	return userID, brandID, ok
 }
 
+func promptListQuery(r *http.Request, includeConfirmed bool) (koidomain.PromptListParams, error) {
+	page, err := pageParams(r)
+	if err != nil {
+		return koidomain.PromptListParams{}, err
+	}
+
+	query, err := optionalStringQuery(r, "q")
+	if err != nil {
+		return koidomain.PromptListParams{}, err
+	}
+
+	sortValue, err := optionalStringQuery(r, "sort")
+	if err != nil {
+		return koidomain.PromptListParams{}, err
+	}
+	sort := koidomain.PromptSort(sortValue)
+	if sort == "" {
+		sort = koidomain.PromptSortOriginal
+	}
+	switch sort {
+	case koidomain.PromptSortOriginal, koidomain.PromptSortText, koidomain.PromptSortRate, koidomain.PromptSortChange:
+	default:
+		return koidomain.PromptListParams{}, koidomain.Validation(koidomain.FieldError{Field: "sort", Code: koidomain.FieldInvalid})
+	}
+
+	descending, err := optionalBoolQuery(r, "descending")
+	if err != nil {
+		return koidomain.PromptListParams{}, err
+	}
+
+	days, engines, err := visibilityScope(r)
+	if err != nil {
+		return koidomain.PromptListParams{}, err
+	}
+
+	params := koidomain.PromptListParams{
+		Page:    page,
+		Query:   query,
+		Sort:    sort,
+		Days:    days,
+		Engines: engines,
+	}
+	if descending != nil {
+		params.Descending = *descending
+	}
+	if includeConfirmed {
+		params.Confirmed, err = optionalBoolQuery(r, "confirmed")
+	}
+
+	return params, err
+}
+
 func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 	_, brandID, ok := requestOwnerAndBrand(w, r)
 	if !ok {
 		return
 	}
 
-	params, err := readListQuery(r)
+	params, err := promptListQuery(r, true)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	prompts, err := h.querier.List(r.Context(), brandID, params.Page, params.Query, params.Confirmed)
+	prompts, err := h.querier.List(r.Context(), brandID, params)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 
 		return
+	}
+	if h.analytics != nil {
+		ids := make([]uuid.UUID, 0, len(prompts.Items))
+		for _, prompt := range prompts.Items {
+			ids = append(ids, prompt.ID)
+		}
+		byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, ids, params.Days, params.Engines)
+		if err != nil {
+			api.WriteDomainError(w, r, err)
+			return
+		}
+		for i := range prompts.Items {
+			prompts.Items[i].Visibility = byPrompt[prompts.Items[i].ID]
+		}
 	}
 
 	api.JSON(w, r, http.StatusOK, prompts)

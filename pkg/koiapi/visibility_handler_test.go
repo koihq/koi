@@ -25,11 +25,88 @@ func newVisibilityTestServer(t *testing.T, q koidomain.VisibilityQuerier) *httpt
 		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.Route("/api/v1/brands/{brandID}/runs", NewVisibilityHandler(q, sess).Routes())
+	handler := NewVisibilityHandler(q, sess)
+	r.Route("/api/v1/brands/{brandID}/runs", handler.Routes())
+	r.With(Authorizer(sess)).Get("/api/v1/brands/{brandID}/prompt-history", handler.ListHistoricalPrompts)
+	r.With(Authorizer(sess)).Get("/api/v1/brands/{brandID}/prompt-history/{promptID}/runs", handler.ListPromptRuns)
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 
 	return ts
+}
+
+func TestVisibilityHandlerPromptHistory(t *testing.T) {
+	brandID, promptID, runID, userID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	q := NewMockVisibilityQuerier(t)
+	ts := newVisibilityTestServer(t, q)
+	client := newCookieClient(t)
+	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/prompt-history"
+
+	response := doJSON(t, client, http.MethodGet, base, "")
+	require.Equal(t, http.StatusUnauthorized, response.StatusCode)
+	response.Body.Close()
+
+	brandSession(t, client, ts.URL, userID)
+	page := koidomain.PageParams{Page: 1, PageSize: 10}
+	q.EXPECT().ListHistoricalPrompts(identityIs(userID), brandID, koidomain.PromptListParams{
+		Page: page,
+		Sort: koidomain.PromptSortOriginal,
+		Days: 30,
+	}).Return(
+		&koidomain.Page[koidomain.HistoricalPrompt]{
+			Items: []koidomain.HistoricalPrompt{{
+				PromptID:   promptID,
+				PromptText: "Saved question?",
+				LastSeenAt: time.Date(2026, 10, 5, 10, 30, 0, 0, time.UTC),
+			}},
+			TotalItems:  1,
+			TotalPages:  1,
+			CurrentPage: 1,
+		}, nil,
+	)
+	response = doJSON(t, client, http.MethodGet, base+"?pageSize=10", "")
+	var snapshots map[string]any
+	readJSON(t, response, &snapshots)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.EqualValues(t, 1, snapshots["totalItems"])
+	require.Equal(t, promptID.String(), snapshots["items"].([]any)[0].(map[string]any)["prompt_id"])
+
+	run := koidomain.VisibilityRun{
+		BaseEntity:    koidomain.BaseEntity{ID: runID},
+		BrandID:       brandID,
+		Engines:       koidomain.VisibilityEngines(),
+		State:         koidomain.VisibilitySucceeded,
+		BrandSnapshot: koidomain.BrandSnapshot{Name: "private snapshot"},
+	}
+	q.EXPECT().ListPromptRuns(identityIs(userID), brandID, promptID, page).Return(
+		&koidomain.Page[koidomain.PromptHistoryRun]{
+			Items: []koidomain.PromptHistoryRun{{
+				Run: run,
+				Results: []koidomain.VisibilityResult{{
+					RunID:       runID,
+					PromptID:    promptID,
+					PromptText:  "Saved question?",
+					Engine:      koidomain.EngineChatGPT,
+					Collector:   koidomain.CollectorCloro,
+					Sources:     []string{"https://example.com"},
+					Appearances: []koidomain.CompetitorAppearance{},
+				}},
+			}},
+			TotalItems:  1,
+			TotalPages:  1,
+			CurrentPage: 1,
+		}, nil,
+	)
+	response = doJSON(t, client, http.MethodGet, base+"/"+promptID.String()+"/runs?pageSize=10", "")
+	var history map[string]any
+	readJSON(t, response, &history)
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	item := history["items"].([]any)[0].(map[string]any)
+	publicRun := item["run"].(map[string]any)
+	require.Equal(t, runID.String(), publicRun["id"])
+	require.NotContains(t, publicRun, "brand_snapshot")
+	require.NotContains(t, publicRun, "river_job_id")
+	require.Len(t, item["results"], 1)
 }
 
 func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {

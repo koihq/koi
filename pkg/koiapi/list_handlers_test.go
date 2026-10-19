@@ -101,9 +101,11 @@ func TestPromptHandlerCreateMalformedAndUnowned(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	commander := NewMockPromptCommander(t)
 	querier := NewMockPromptQuerier(t)
-	querier.EXPECT().List(mock.Anything, brandID,
-		koidomain.PageParams{Page: 1, PageSize: 10}, "", (*bool)(nil),
-	).Return(nil, koidomain.ErrNotFound)
+	querier.EXPECT().List(mock.Anything, brandID, koidomain.PromptListParams{
+		Page: koidomain.PageParams{Page: 1, PageSize: 10},
+		Sort: koidomain.PromptSortOriginal,
+		Days: 30,
+	}).Return(nil, koidomain.ErrNotFound)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
@@ -179,11 +181,11 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	querier := NewMockPromptQuerier(t)
-	querier.EXPECT().List(mock.Anything, brandID,
-		koidomain.PageParams{Page: 2, PageSize: 5}, "best tools", mock.MatchedBy(func(confirmed *bool) bool {
-			return confirmed != nil && !*confirmed
-		}),
-	).Return(&koidomain.Page[koidomain.Prompt]{
+	querier.EXPECT().List(mock.Anything, brandID, mock.MatchedBy(func(params koidomain.PromptListParams) bool {
+		return params.Page == (koidomain.PageParams{Page: 2, PageSize: 5}) &&
+			params.Query == "best tools" && params.Confirmed != nil && !*params.Confirmed &&
+			params.Sort == koidomain.PromptSortOriginal && params.Days == 30
+	})).Return(&koidomain.Page[koidomain.Prompt]{
 		Items:       []koidomain.Prompt{},
 		TotalItems:  6,
 		TotalPages:  2,

@@ -11,10 +11,12 @@ import type {
   GenerationsApi,
   HealthApi,
   PromptsApi,
+  VisibilityApi,
 } from "@/api/generated";
 import { createGenerationsApi } from "@/api/generations.api";
 import { createHealthApi } from "@/api/health.api";
 import { createPromptsApi } from "@/api/prompts.api";
+import { createRunsApi } from "@/api/runs.api";
 
 const page: BrandPage = {
   items: [],
@@ -142,12 +144,75 @@ describe("entity API wrappers", () => {
       pageSize: 10,
       q: "best tools",
       confirmed: false,
+      sort: "rate",
+      descending: true,
+      scope: { days: 30, engines: ["chatgpt"] },
     });
 
     await api.confirmAll("brand");
     expect(result.items[0]).toMatchObject({ brandId: "brand", text: "What is Koi?" });
-    expect(client.listPrompts).toHaveBeenCalledWith("brand", 3, 10, "best tools", false, undefined);
+    expect(client.listPrompts).toHaveBeenCalledWith(
+      "brand",
+      3,
+      10,
+      "best tools",
+      false,
+      "rate",
+      true,
+      30,
+      "chatgpt",
+      undefined,
+    );
     expect(client.confirmAllPrompts).toHaveBeenCalledWith("brand");
+  });
+
+  it("uses generated visibility methods with the selected scope", async () => {
+    const client = {
+      getVisibilitySummary: vi.fn().mockResolvedValue({ metric: { rate: null } }),
+      getPromptVisibility: vi.fn().mockResolvedValue({ metric: { rate: null } }),
+      listHistoricalPrompts: vi.fn().mockResolvedValue({ items: [] }),
+    } as unknown as VisibilityApi;
+    const api = createRunsApi(client);
+    const scope = { days: 7, engines: ["chatgpt", "gemini"] } as const;
+
+    await api.summary("brand", { days: scope.days, engines: [...scope.engines] });
+    await api.promptVisibility("brand", "prompt", {
+      days: scope.days,
+      engines: [...scope.engines],
+    });
+    await api.historicalPrompts("brand", {
+      page: 2,
+      pageSize: 50,
+      q: "saved",
+      sort: "change",
+      descending: true,
+      scope: { days: scope.days, engines: [...scope.engines] },
+    });
+
+    expect(client.getVisibilitySummary).toHaveBeenCalledWith(
+      "brand",
+      7,
+      "chatgpt,gemini",
+      undefined,
+    );
+    expect(client.getPromptVisibility).toHaveBeenCalledWith(
+      "brand",
+      "prompt",
+      7,
+      "chatgpt,gemini",
+      undefined,
+    );
+    expect(client.listHistoricalPrompts).toHaveBeenCalledWith(
+      "brand",
+      2,
+      50,
+      "saved",
+      "change",
+      true,
+      7,
+      "chatgpt,gemini",
+      undefined,
+    );
   });
 
   it("keeps generated competitor names behind the wrapper", async () => {

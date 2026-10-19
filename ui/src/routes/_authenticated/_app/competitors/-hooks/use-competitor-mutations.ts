@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { CreateCompetitor, UpdateCompetitor } from "@/api/competitors.api";
-import { competitorKey, runKey, trackingKey } from "@/lib/query-keys";
+import { competitorKey, promptKey, runKey, trackingKey } from "@/lib/query-keys";
 
 export function useCompetitorMutations(brandID: string) {
   const api = useApi();
@@ -9,6 +9,7 @@ export function useCompetitorMutations(brandID: string) {
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: competitorKey(brandID) }),
+      queryClient.invalidateQueries({ queryKey: promptKey(brandID) }),
       queryClient.invalidateQueries({ queryKey: trackingKey(brandID) }),
       queryClient.invalidateQueries({ queryKey: runKey(brandID) }),
     ]);

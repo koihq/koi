@@ -9,10 +9,12 @@ export function GenerationControls({
   brandID,
   mode,
   setupStartFailed = false,
+  hideSuccessMessage = false,
 }: {
   brandID: string;
   mode: "prompts" | "competitors";
   setupStartFailed?: boolean;
+  hideSuccessMessage?: boolean;
 }) {
   const { t } = useTranslation("management");
   const { capabilities, runs, run, create } = useGeneration(brandID);
@@ -21,6 +23,9 @@ export function GenerationControls({
 
   const showStatus =
     !create.isPending && run && (busy || run.mode === "initial" || run.mode === mode);
+  const hasNewItems = run && run.promptCount + run.competitorCount > 0;
+  const showStatusMessage =
+    showStatus && !(hideSuccessMessage && run.state === "succeeded" && hasNewItems);
 
   const retryMode: GenerationMode | undefined =
     run?.state === "failed" && (run.mode === "initial" || run.mode === mode) ? run.mode : undefined;
@@ -58,15 +63,11 @@ export function GenerationControls({
             {t("draftStarting", { subject: t(`draftSubject.${create.variables ?? mode}`) })}
           </span>
         ) : null}
-        {showStatus ? (
-          <>
-            <span className="block">{statusCopy()}</span>
-            {run.mode === "initial" && run.state === "succeeded" && mode === "prompts" ? (
-              <Link to="/competitors" className="text-sm underline underline-offset-4">
-                {t("reviewCompetitors")}
-              </Link>
-            ) : null}
-          </>
+        {showStatusMessage ? <span className="block">{statusCopy()}</span> : null}
+        {showStatus && run.mode === "initial" && run.state === "succeeded" && mode === "prompts" ? (
+          <Link to="/competitors" className="text-sm underline underline-offset-4">
+            {t("reviewCompetitors")}
+          </Link>
         ) : null}
       </output>
       {runs.isError ? (
@@ -125,7 +126,7 @@ export function GenerationControls({
             </Button>
           ) : null}
           {!run && mode === "competitors" ? (
-            <Link to="/prompts" className="underline underline-offset-4">
+            <Link to="/" hash="prompts" className="underline underline-offset-4">
               {t("startDraftOnPrompts")}
             </Link>
           ) : null}

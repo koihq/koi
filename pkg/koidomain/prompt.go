@@ -16,11 +16,12 @@ const (
 
 type Prompt struct {
 	BaseEntity
-	BrandID   uuid.UUID    `json:"brand_id" gorm:"type:uuid;not null;index;uniqueIndex:idx_prompts_brand_text,priority:1"`
-	Text      string       `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:lower(text)"`
-	Source    PromptSource `json:"source" gorm:"not null;type:varchar(16)"`
-	Confirmed bool         `json:"confirmed" gorm:"not null;default:false"`
-	Brand     *Brand       `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	BrandID    uuid.UUID         `json:"brand_id" gorm:"type:uuid;not null;index;uniqueIndex:idx_prompts_brand_text,priority:1"`
+	Text       string            `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:lower(text)"`
+	Source     PromptSource      `json:"source" gorm:"not null;type:varchar(16)"`
+	Confirmed  bool              `json:"confirmed" gorm:"not null;default:false"`
+	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
+	Brand      *Brand            `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
 
 func (Prompt) TableName() string { return "prompts" }
@@ -62,11 +63,34 @@ type PromptRepository interface {
 }
 
 type PromptFilter struct {
-	ID        uuid.UUID
-	BrandID   uuid.UUID
-	Query     string
-	Confirmed *bool
-	Page      PageParams
+	ID         uuid.UUID
+	BrandID    uuid.UUID
+	Query      string
+	Confirmed  *bool
+	Page       PageParams
+	Sort       PromptSort
+	Descending bool
+	Days       int
+	Engines    []EngineID
+}
+
+type PromptSort string
+
+const (
+	PromptSortOriginal PromptSort = "original"
+	PromptSortText     PromptSort = "prompt"
+	PromptSortRate     PromptSort = "rate"
+	PromptSortChange   PromptSort = "change"
+)
+
+type PromptListParams struct {
+	Page       PageParams
+	Query      string
+	Confirmed  *bool
+	Sort       PromptSort
+	Descending bool
+	Days       int
+	Engines    []EngineID
 }
 
 type PromptUpdate struct {
@@ -86,7 +110,7 @@ type PromptCommander interface {
 }
 
 type PromptQuerier interface {
-	List(context.Context, uuid.UUID, PageParams, string, *bool) (*Page[Prompt], error)
+	List(context.Context, uuid.UUID, PromptListParams) (*Page[Prompt], error)
 	Get(context.Context, uuid.UUID, uuid.UUID) (*Prompt, error)
 }
 
@@ -185,16 +209,20 @@ func (s *promptService) ConfirmAll(ctx context.Context, brandID uuid.UUID) error
 	return s.store.VisibilityRepo().FinishReview(ctx, brandID, "prompts")
 }
 
-func (s *promptService) List(ctx context.Context, brandID uuid.UUID, page PageParams, query string, confirmed *bool) (*Page[Prompt], error) {
+func (s *promptService) List(ctx context.Context, brandID uuid.UUID, params PromptListParams) (*Page[Prompt], error) {
 	if err := ownedBrand(ctx, s.store, brandID); err != nil {
 		return nil, err
 	}
 
 	return s.store.PromptRepo().List(ctx, PromptFilter{
-		BrandID:   brandID,
-		Query:     query,
-		Confirmed: confirmed,
-		Page:      page,
+		BrandID:    brandID,
+		Query:      params.Query,
+		Confirmed:  params.Confirmed,
+		Page:       params.Page,
+		Sort:       params.Sort,
+		Descending: params.Descending,
+		Days:       params.Days,
+		Engines:    params.Engines,
 	})
 }
 

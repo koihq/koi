@@ -33,18 +33,28 @@ export function CompetitorDialog({
   label,
   pending,
   onSave,
+  open: controlledOpen,
+  onOpenChange,
+  hideTrigger = false,
+  triggerVariant = "default",
 }: {
   brandID: string;
   competitor?: Competitor;
   label: string;
   pending: boolean;
   onSave: (request: CreateCompetitor) => Promise<void>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+  triggerVariant?: "default" | "ghost";
 }) {
   const { t } = useTranslation("management");
   const api = useApi();
   const fieldID = useId();
   const allowNameOnly = competitor?.source === "observed" && !competitor.confirmed;
   const [open, setOpen] = useState(false);
+  const visible = controlledOpen ?? open;
+  const changeOpen = onOpenChange ?? setOpen;
   const [manual, setManual] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
@@ -61,7 +71,7 @@ export function CompetitorDialog({
   const capabilities = useQuery({
     queryKey: ["capabilities"],
     queryFn: api.capabilities.get,
-    enabled: open && !competitor,
+    enabled: visible && !competitor,
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
@@ -77,7 +87,7 @@ export function CompetitorDialog({
   const search = useQuery({
     queryKey: ["competitor-search", brandID, debouncedQuery],
     queryFn: ({ signal }) => api.competitors.search(brandID, debouncedQuery, { signal }),
-    enabled: open && searchEnabled && !showManual && debouncedQuery.length >= 3,
+    enabled: visible && searchEnabled && !showManual && debouncedQuery.length >= 3,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: false,
@@ -106,7 +116,7 @@ export function CompetitorDialog({
 
     try {
       await onSave(request);
-      setOpen(false);
+      changeOpen(false);
       reset();
     } catch (error) {
       const domainField =
@@ -170,24 +180,26 @@ export function CompetitorDialog({
 
   return (
     <Dialog
-      open={open}
+      open={visible}
       onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
+        changeOpen(nextOpen);
         reset();
       }}
     >
-      <DialogTrigger
-        render={
-          <Button
-            type="button"
-            size={competitor ? "xs" : "sm"}
-            variant={competitor ? "ghost" : "default"}
-            disabled={pending}
-          />
-        }
-      >
-        {label}
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger
+          render={
+            <Button
+              type="button"
+              size={competitor ? "xs" : "sm"}
+              variant={competitor ? "ghost" : triggerVariant}
+              disabled={pending}
+            />
+          }
+        >
+          {label}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t(competitor ? "editCompetitor" : "addCompetitor")}</DialogTitle>
