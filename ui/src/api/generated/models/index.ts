@@ -2,6 +2,12 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AppearanceEvidence';
+export * from './BillingAllowanceRequest';
+export * from './BillingChange';
+export * from './BillingQuote';
+export * from './BillingRedirect';
+export * from './BillingStatus';
+export * from './BillingSubscription';
 export * from './BrandPage';
 export * from './BrandPatchRequest';
 export * from './BrandRequest';

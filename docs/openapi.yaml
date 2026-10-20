@@ -269,6 +269,110 @@ paths:
                 $ref: "#/components/schemas/MeRes"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/billing/quote:
+    get:
+      tags: [billing]
+      operationId: billingQuote
+      parameters:
+        - name: prompts
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 1000
+      responses:
+        "200":
+          description: Monthly price for the exact prompt allowance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingQuote"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/v1/billing/subscription:
+    get:
+      tags: [billing]
+      operationId: billingSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Organization billing state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+  /api/v1/billing/checkout:
+    post:
+      tags: [billing]
+      operationId: billingCheckout
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingAllowanceRequest"
+      responses:
+        "200":
+          description: Hosted Stripe Checkout redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/billing/change-allowance:
+    post:
+      tags: [billing]
+      operationId: billingChangeAllowance
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingAllowanceRequest"
+      responses:
+        "202":
+          description: Change submitted to Stripe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+  /api/v1/billing/portal:
+    post:
+      tags: [billing]
+      operationId: billingPortal
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Stripe Customer Portal redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/webhooks/stripe:
+    post:
+      tags: [billing]
+      operationId: stripeWebhook
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Verified Stripe event processed or already processed
   /api/v1/brands:
     get:
       tags: [brands]
@@ -381,6 +485,30 @@ paths:
                 $ref: "#/components/schemas/BrandRes"
         "400":
           $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{id}/activate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [brands]
+      operationId: activateBrand
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Active brand saved in the cookie session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
         "401":
           $ref: "#/components/responses/Error"
         "404":
@@ -1259,12 +1387,12 @@ components:
           description: Briefly describe what this brand offers.
     BrandRes:
       type: object
-      required: [id, user_id, name, domain, github_repo, country, description]
+      required: [id, organization_id, name, domain, github_repo, country, description]
       properties:
         id:
           type: string
           format: uuid
-        user_id:
+        organization_id:
           type: string
           format: uuid
         name:
@@ -1359,9 +1487,11 @@ components:
       properties:
         text:
           type: string
+        inactive:
+          type: boolean
     PromptRes:
       type: object
-      required: [id, brand_id, text, source, confirmed]
+      required: [id, brand_id, text, source, confirmed, inactive]
       properties:
         id:
           type: string
@@ -1375,6 +1505,8 @@ components:
           type: string
           enum: [manual, drafted]
         confirmed:
+          type: boolean
+        inactive:
           type: boolean
         visibility:
           $ref: "#/components/schemas/VisibilityReport"
@@ -1482,6 +1614,9 @@ components:
           type: string
         organization:
           $ref: "#/components/schemas/OrgRes"
+        active_brand_id:
+          type: string
+          format: uuid
     OrgRes:
       type: object
       required: [id, name, role]
@@ -1502,14 +1637,90 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting, liveCollection]
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling]
       properties:
+        cloudBilling:
+          type: boolean
         liveCollection:
           type: boolean
         competitorSearch:
           type: boolean
         aiDrafting:
           type: boolean
+    BillingAllowanceRequest:
+      type: object
+      required: [prompts]
+      properties:
+        prompts:
+          type: integer
+          minimum: 5
+          maximum: 1000
+    BillingQuote:
+      type: object
+      required: [prompts, amount_cents, currency, interval, price_version]
+      properties:
+        prompts:
+          type: integer
+        amount_cents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        interval:
+          type: string
+        price_version:
+          type: string
+    BillingSubscription:
+      type: object
+      required: [organization_id, quantity, status, price_version, cancel_at_period_end]
+      properties:
+        organization_id:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        status:
+          type: string
+        price_version:
+          type: string
+        current_period_end:
+          type: string
+          format: date-time
+          nullable: true
+        trial_end:
+          type: string
+          format: date-time
+          nullable: true
+        pending_quantity:
+          type: integer
+          nullable: true
+        cancel_at_period_end:
+          type: boolean
+    BillingStatus:
+      type: object
+      required: [subscription, prompt_limit]
+      properties:
+        subscription:
+          allOf:
+            - $ref: "#/components/schemas/BillingSubscription"
+          nullable: true
+        prompt_limit:
+          type: integer
+    BillingRedirect:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    BillingChange:
+      type: object
+      required: [quantity, effective]
+      properties:
+        quantity:
+          type: integer
+        effective:
+          type: string
     GenerationRequest:
       type: object
       required: [mode]

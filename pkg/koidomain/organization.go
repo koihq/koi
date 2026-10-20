@@ -2,13 +2,16 @@ package koidomain
 
 import (
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Organization struct {
 	BaseEntity
-	Name string `json:"name" gorm:"not null"`
+	Name             string     `json:"name" gorm:"not null"`
+	StripeCustomerID *string    `json:"-" gorm:"uniqueIndex"`
+	TrialUsedAt      *time.Time `json:"-"`
 }
 
 func (Organization) TableName() string { return "organizations" }

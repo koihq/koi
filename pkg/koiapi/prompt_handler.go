@@ -17,7 +17,8 @@ type PromptRequest struct {
 }
 
 type PromptPatchRequest struct {
-	Text *string `json:"text"`
+	Text     *string `json:"text"`
+	Inactive *bool   `json:"inactive"`
 }
 
 type PromptHandler struct {
@@ -209,8 +210,10 @@ func (h *PromptHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req := middlewares.Body[PromptPatchRequest](r)
 	prompt, err := h.commander.Update(r.Context(), brandID, promptID, koidomain.PromptPatch{
-		Text: middlewares.Body[PromptPatchRequest](r).Text,
+		Text:     req.Text,
+		Inactive: req.Inactive,
 	})
 	if err != nil {
 		api.WriteDomainError(w, r, err)

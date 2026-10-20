@@ -21,6 +21,9 @@ func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&koidomain.User{},
 		&koidomain.Organization{},
+		&koidomain.BillingSubscription{},
+		&koidomain.BillingCheckoutSession{},
+		&koidomain.StripeWebhookEvent{},
 		&koidomain.Membership{},
 		&koidomain.Brand{},
 		&koidomain.Prompt{},

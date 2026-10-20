@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import auth from "@/locales/en/auth.json";
+import billing from "@/locales/en/billing.json";
 import brand from "@/locales/en/brand.json";
 import common from "@/locales/en/common.json";
 import dev from "@/locales/en/dev.json";
@@ -13,7 +14,7 @@ import visibility from "@/locales/en/visibility.json";
 export const defaultNS = "common";
 
 export const resources = {
-  en: { common, auth, brand, errors, home, dev, management, visibility },
+  en: { common, auth, billing, brand, errors, home, dev, management, visibility },
 } as const;
 
 i18n.use(initReactI18next).init({
@@ -21,7 +22,7 @@ i18n.use(initReactI18next).init({
   lng: "en",
   fallbackLng: "en",
   defaultNS,
-  ns: ["common", "auth", "brand", "errors", "home", "dev", "management", "visibility"],
+  ns: ["common", "auth", "billing", "brand", "errors", "home", "dev", "management", "visibility"],
   interpolation: {
     escapeValue: false,
     prefix: "{",

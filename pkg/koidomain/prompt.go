@@ -20,6 +20,7 @@ type Prompt struct {
 	Text       string            `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:lower(text)"`
 	Source     PromptSource      `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed  bool              `json:"confirmed" gorm:"not null;default:false"`
+	Inactive   bool              `json:"inactive" gorm:"not null;default:false"`
 	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
 	Brand      *Brand            `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
@@ -96,10 +97,14 @@ type PromptListParams struct {
 type PromptUpdate struct {
 	Text      *string
 	Confirmed *bool
+	Inactive  *bool
 }
 
 type PromptParams struct{ Text string }
-type PromptPatch struct{ Text *string }
+type PromptPatch struct {
+	Text     *string
+	Inactive *bool
+}
 
 type PromptCommander interface {
 	Create(context.Context, uuid.UUID, PromptParams) (*Prompt, error)
@@ -163,13 +168,20 @@ func (s *promptService) Update(ctx context.Context, brandID, promptID uuid.UUID,
 	if patch.Text != nil {
 		prompt.Text = *patch.Text
 	}
+	if patch.Inactive != nil {
+		prompt.Inactive = *patch.Inactive
+	}
 
 	prompt.Normalize()
 	if err := prompt.Validate(); err != nil {
 		return nil, err
 	}
 
-	if err := s.store.PromptRepo().Update(ctx, filter, PromptUpdate{Text: &prompt.Text}); err != nil {
+	text := patch.Text
+	if text != nil {
+		text = &prompt.Text
+	}
+	if err := s.store.PromptRepo().Update(ctx, filter, PromptUpdate{Text: text, Inactive: patch.Inactive}); err != nil {
 		return nil, err
 	}
 

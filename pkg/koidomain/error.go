@@ -3,19 +3,24 @@ package koidomain
 import "github.com/google/uuid"
 
 const (
-	CodeValidation              = "validation"
-	CodeEmailTaken              = "email_taken"
-	CodeBrandLimitReached       = "brand_limit_reached"
-	CodeInvalidCredentials      = "invalid_credentials"
-	CodeNotFound                = "not_found"
-	CodeUnauthorized            = "unauthorized"
-	CodeInvalidJSON             = "invalid_json"
-	CodeInternal                = "internal"
-	CodeFeatureUnavailable      = "feature_unavailable"
-	CodeGenerationConflict      = "generation_conflict"
-	CodeIdempotencyConflict     = "idempotency_conflict"
-	CodeInitialAlreadyCompleted = "initial_already_completed"
-	CodeRunNotReady             = "run_not_ready"
+	CodeValidation                = "validation"
+	CodeEmailTaken                = "email_taken"
+	CodeBrandLimitReached         = "brand_limit_reached"
+	CodeInvalidCredentials        = "invalid_credentials"
+	CodeNotFound                  = "not_found"
+	CodeUnauthorized              = "unauthorized"
+	CodeInvalidJSON               = "invalid_json"
+	CodeInternal                  = "internal"
+	CodeFeatureUnavailable        = "feature_unavailable"
+	CodeGenerationConflict        = "generation_conflict"
+	CodeIdempotencyConflict       = "idempotency_conflict"
+	CodeInitialAlreadyCompleted   = "initial_already_completed"
+	CodeRunNotReady               = "run_not_ready"
+	CodePromptLimitReached        = "prompt_limit_reached"
+	CodeBillingConflict           = "billing_conflict"
+	CodeBillingCheckoutPending    = "billing_checkout_pending"
+	CodeBillingSubscriptionExists = "billing_subscription_exists"
+	CodeBillingLegacyPrice        = "billing_legacy_price"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"
@@ -44,6 +49,8 @@ var (
 	ErrGenerationConflict      = &Error{Code: CodeGenerationConflict, Message: "generation conflict"}
 	ErrIdempotencyConflict     = &Error{Code: CodeIdempotencyConflict, Message: "idempotency conflict"}
 	ErrInitialAlreadyCompleted = &Error{Code: CodeInitialAlreadyCompleted, Message: "initial already completed"}
+	ErrPromptLimitReached      = &Error{Code: CodePromptLimitReached, Message: "prompt limit reached"}
+	ErrBillingConflict         = &Error{Code: CodeBillingConflict, Message: "billing conflict"}
 )
 
 type FieldError struct {

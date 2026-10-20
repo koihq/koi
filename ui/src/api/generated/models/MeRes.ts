@@ -46,6 +46,12 @@ export interface MeRes {
      * @memberof MeRes
      */
     organization: OrgRes;
+    /**
+     * 
+     * @type {string}
+     * @memberof MeRes
+     */
+    activeBrandId?: string;
 }
 
 /**
@@ -71,6 +77,7 @@ export function MeResFromJSONTyped(json: any, ignoreDiscriminator: boolean): MeR
         'id': json['id'],
         'email': json['email'],
         'organization': OrgResFromJSON(json['organization']),
+        'activeBrandId': json['active_brand_id'] == null ? undefined : json['active_brand_id'],
     };
 }
 
@@ -88,6 +95,7 @@ export function MeResToJSONTyped(value?: MeRes | null, ignoreDiscriminator: bool
         'id': value['id'],
         'email': value['email'],
         'organization': OrgResToJSON(value['organization']),
+        'active_brand_id': value['activeBrandId'],
     };
 }
 

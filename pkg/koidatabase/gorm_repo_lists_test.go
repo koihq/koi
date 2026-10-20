@@ -104,7 +104,7 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	require.Len(t, queries, 4)
 	for _, query := range queries {
 		require.Contains(t, query, "brand_id =")
-		require.Contains(t, query, "brands.user_id =")
+		require.Contains(t, query, "memberships.user_id =")
 	}
 	require.Contains(t, queries[0], "confirmed =")
 	require.Contains(t, queries[0], "text ILIKE")

@@ -167,7 +167,8 @@ func TestVisibilityMatrixSnapshotsRetryOwnershipAndReconciliation(t *testing.T) 
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 	_, err = querier.ListResults(otherCtx, brand.ID, run.ID, pageParams)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
-	otherBrand := &koidomain.Brand{Name: "Other", Domain: "other.example", Country: "US"}
+	otherOrganizationID := testOrganizationForUser(t, store, other.ID)
+	otherBrand := &koidomain.Brand{OrganizationID: otherOrganizationID, Name: "Other", Domain: "other.example", Country: "US"}
 	require.NoError(t, store.BrandRepo().Create(otherCtx, otherBrand))
 	_, err = querier.ListResults(otherCtx, otherBrand.ID, run.ID, pageParams)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)

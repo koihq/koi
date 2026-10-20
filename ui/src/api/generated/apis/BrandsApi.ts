@@ -45,6 +45,10 @@ import {
     EnvelopeToJSON,
 } from '../models/Envelope';
 
+export interface ActivateBrandRequest {
+    id: string;
+}
+
 export interface CreateBrandRequest {
     brandRequest: BrandRequest;
 }
@@ -74,6 +78,27 @@ export interface UpdateBrandRequest {
  * @interface BrandsApiInterface
  */
 export interface BrandsApiInterface {
+    /**
+     * Creates request options for activateBrand without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    activateBrandRequestOpts(requestParameters: ActivateBrandRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    activateBrandRaw(requestParameters: ActivateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandRes>>;
+
+    /**
+     */
+    activateBrand(id: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
+
     /**
      * Creates request options for createBrand without sending the request
      * @param {BrandRequest} brandRequest 
@@ -190,6 +215,49 @@ export interface BrandsApiInterface {
  * 
  */
 export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
+
+    /**
+     * Creates request options for activateBrand without sending the request
+     */
+    async activateBrandRequestOpts(requestParameters: ActivateBrandRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling activateBrand().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{id}/activate`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async activateBrandRaw(requestParameters: ActivateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandRes>> {
+        const requestOptions = await this.activateBrandRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BrandResFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async activateBrand(id: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
+        const response = await this.activateBrandRaw({ id: id }, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for createBrand without sending the request

@@ -169,17 +169,18 @@ func TestBrandHandlerCountries(t *testing.T) {
 	}
 }
 
-func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
+func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
 	userA, userB, brandID := uuid.New(), uuid.New(), uuid.New()
+	organizationID := uuid.New()
 
 	brand := &koidomain.Brand{
 		BaseEntity: koidomain.BaseEntity{
 			ID: brandID,
 		},
-		UserID:  userA,
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
+		OrganizationID: organizationID,
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
 	}
 
 	q := NewMockBrandQuerier(t)
@@ -203,7 +204,12 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	c.EXPECT().Create(mock.Anything, mock.MatchedBy(func(p koidomain.BrandParams) bool {
 		return p.Name == "Koi" && p.Domain == "koi.dev" && p.Country == "IT"
 	})).Return(brand, nil)
-	c.EXPECT().Create(mock.Anything, mock.Anything).Return(nil, koidomain.ErrBrandLimitReached)
+	second := *brand
+	second.ID = uuid.New()
+	second.Name = "Second"
+	c.EXPECT().Create(mock.Anything, mock.MatchedBy(func(p koidomain.BrandParams) bool {
+		return p.Name == "Second" && p.Domain == "second.dev"
+	})).Return(&second, nil)
 	c.EXPECT().Update(identityIs(userB), brandID, mock.Anything).Return(nil, koidomain.ErrNotFound)
 	c.EXPECT().Update(identityIs(userA), brandID, mock.MatchedBy(func(p koidomain.BrandPatch) bool {
 		return p.Description != nil && *p.Description == "AI visibility"
@@ -240,14 +246,14 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	var created koidomain.Brand
 	readJSON(t, resp, &created)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
-	require.Equal(t, userA, created.UserID)
+	require.Equal(t, organizationID, created.OrganizationID)
 
 	resp = doJSON(t, clientA, http.MethodGet, base, "")
 	var listA koidomain.Page[koidomain.Brand]
 	readJSON(t, resp, &listA)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Len(t, listA.Items, 1)
-	require.Equal(t, userA, listA.Items[0].UserID)
+	require.Equal(t, organizationID, listA.Items[0].OrganizationID)
 	require.EqualValues(t, 1, listA.TotalItems)
 
 	resp = doJSON(t, clientB, http.MethodGet, base, "")
@@ -284,11 +290,11 @@ func TestBrandHandlerOwnershipAndLimit(t *testing.T) {
 	var updated koidomain.Brand
 	readJSON(t, resp, &updated)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, userA, updated.UserID)
+	require.Equal(t, organizationID, updated.OrganizationID)
 
 	resp = doJSON(t, clientA, http.MethodPost, base, `{"name":"Second","domain":"second.dev","country":"IT"}`)
-	var limit api.Envelope
-	readJSON(t, resp, &limit)
-	require.Equal(t, http.StatusConflict, resp.StatusCode)
-	require.Equal(t, koidomain.CodeBrandLimitReached, limit.Error.Code)
+	var secondCreated koidomain.Brand
+	readJSON(t, resp, &secondCreated)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, "Second", secondCreated.Name)
 }

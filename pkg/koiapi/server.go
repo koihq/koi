@@ -23,6 +23,14 @@ func NewServer(store koidomain.Store, sess *scs.SessionManager, searcher koidoma
 
 func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool, collection ...bool) http.Handler {
 	liveCollection := len(collection) > 0 && collection[0]
+	return buildHTTPServerWithBilling(store, sess, searcher, aiDrafting, liveCollection, nil)
+}
+
+func NewCloudServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting, liveCollection bool, billing *BillingHandler) http.Handler {
+	return buildHTTPServerWithBilling(store, sess, searcher, aiDrafting, liveCollection, billing)
+}
+
+func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting, liveCollection bool, billing *BillingHandler) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middlewares.RequestLogger)
@@ -38,8 +46,12 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 
 	r.Get("/health", NewHealthHandler(store).Get)
 	r.Route("/api/v1", func(r chi.Router) {
+		if billing != nil {
+			r.Route("/billing", billing.Routes())
+			r.Post("/webhooks/stripe", billing.Webhook)
+		}
 		r.With(Authorizer(sess)).Get("/capabilities", func(w http.ResponseWriter, req *http.Request) {
-			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting, "liveCollection": liveCollection})
+			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting, "liveCollection": liveCollection, "cloudBilling": billing != nil})
 		})
 		r.Route("/auth", NewAuthHandler(
 			koidomain.NewAuthQuerier(store),

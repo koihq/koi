@@ -7,14 +7,14 @@ export const Route = createFileRoute("/_authenticated/_app")({
   beforeLoad: ({ context }) => {
     if (!context.brand) throw redirect({ to: "/setup" });
 
-    return { brand: context.brand };
+    return { brand: context.brand, brands: context.brands };
   },
   component: AppLayout,
 });
 
 function AppLayout() {
   const { t } = useTranslation("home");
-  const { brand } = Route.useRouteContext();
+  const { brand, brands } = Route.useRouteContext();
 
   return (
     <div className="font-sans text-sm font-medium leading-normal min-h-svh bg-background text-foreground">
@@ -24,7 +24,7 @@ function AppLayout() {
       >
         {t("skip")}
       </a>
-      <AppHeader brand={brand} />
+      <AppHeader brand={brand} brands={brands} />
       <main
         id="main-content"
         tabIndex={-1}

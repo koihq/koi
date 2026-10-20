@@ -31,8 +31,9 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	store := NewStore(db, client)
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
+	organizationID := testOrganizationForUser(t, store, user.ID)
 	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
-	brand := &koidomain.Brand{Name: "Koi", Domain: "koi.dev", Country: "IT"}
+	brand := &koidomain.Brand{OrganizationID: organizationID, Name: "Koi", Domain: "koi.dev", Country: "IT"}
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))
 	key := "setup-1"
 

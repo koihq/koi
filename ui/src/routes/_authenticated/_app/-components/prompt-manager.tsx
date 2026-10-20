@@ -293,9 +293,13 @@ export function PromptManager({
           {row.text}
         </Link>
       )}
-      {(row.past || !row.prompt?.confirmed) && (
+      {(row.past || !row.prompt?.confirmed || row.prompt.inactive) && (
         <small className="mt-1.5 block text-xs text-muted-foreground">
-          {row.past ? t("home:dashboard.pastPrompt") : t("home:dashboard.draft")}
+          {row.past
+            ? t("home:dashboard.pastPrompt")
+            : row.prompt?.inactive
+              ? t("inactivePrompt")
+              : t("home:dashboard.draft")}
         </small>
       )}
     </div>
@@ -389,6 +393,17 @@ export function PromptManager({
               {t("edit")}
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={pending || !row.prompt.confirmed}
+              onClick={() =>
+                mutations.update.mutate({
+                  id: row.id,
+                  request: { inactive: !row.prompt?.inactive },
+                })
+              }
+            >
+              {row.prompt.inactive ? t("resumePrompt") : t("pausePrompt")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
               variant="destructive"
               disabled={pending}
               onClick={() => {
@@ -424,6 +439,11 @@ export function PromptManager({
         <TrackingReview brandID={brandID} kind="prompts" disabled={pending} />
       </div>
       {mutations.confirm.isError && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          {t("mutationError")}
+        </p>
+      )}
+      {mutations.update.isError && (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {t("mutationError")}
         </p>

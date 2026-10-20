@@ -43,7 +43,12 @@ func TestMaintenanceRunsWithoutCloro(t *testing.T) {
 
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, db.Create(user).Error)
-	brand := &koidomain.Brand{UserID: user.ID, Name: "Koi", Domain: "koi.dev", Country: "IT"}
+	organization := &koidomain.Organization{Name: "Koi"}
+	require.NoError(t, db.Create(organization).Error)
+	require.NoError(t, db.Create(&koidomain.Membership{
+		UserID: user.ID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
+	}).Error)
+	brand := &koidomain.Brand{OrganizationID: organization.ID, Name: "Koi", Domain: "koi.dev", Country: "IT"}
 	require.NoError(t, db.Create(brand).Error)
 	run := &koidomain.GenerationRun{
 		BrandID:       brand.ID,

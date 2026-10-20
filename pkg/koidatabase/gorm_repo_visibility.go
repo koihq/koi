@@ -21,15 +21,18 @@ func (VisibilityJobArgs) Kind() string { return "koi_visibility" }
 
 type GormVisibilityRepository struct {
 	*Repository[koidomain.VisibilityRun]
-	client  *river.Client[*sql.Tx]
-	enabled bool
+	client    *river.Client[*sql.Tx]
+	enabled   bool
+	cloudMode bool
 }
 
-func NewGormVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx], enabled bool) *GormVisibilityRepository {
+func NewGormVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx], enabled bool, cloud ...bool) *GormVisibilityRepository {
+	cloudMode := len(cloud) > 0 && cloud[0]
 	return &GormVisibilityRepository{
 		Repository: newScopedRepository[koidomain.VisibilityRun](db, childOwnerScope("visibility_runs")),
 		client:     client,
 		enabled:    enabled,
+		cloudMode:  cloudMode,
 	}
 }
 
@@ -65,7 +68,8 @@ func (r *GormVisibilityRepository) Inputs(ctx context.Context, brandID uuid.UUID
 		return inputs, err
 	}
 
-	if err := prompts.Where("brand_id = ?", brandID).Order("created_at ASC, id ASC").Find(&inputs.Prompts).Error; err != nil {
+	if err := prompts.Where("brand_id = ? AND confirmed AND NOT inactive", brandID).
+		Order("created_at ASC, id ASC").Find(&inputs.Prompts).Error; err != nil {
 		return inputs, mapDBError(err)
 	}
 
@@ -123,7 +127,8 @@ func (r *GormVisibilityRepository) CreateAndEnqueue(ctx context.Context, run *ko
 func (r *GormVisibilityRepository) ListResults(ctx context.Context, brandID, runID uuid.UUID, page koidomain.PageParams) (*koidomain.Page[koidomain.VisibilityResult], error) {
 	results := newScopedRepository[koidomain.VisibilityResult](r.db, func(identity koiauth.Identity, db *gorm.DB) *gorm.DB {
 		return db.Where(`EXISTS (SELECT 1 FROM visibility_runs JOIN brands ON brands.id = visibility_runs.brand_id
-			WHERE visibility_runs.id = visibility_results.run_id AND visibility_runs.brand_id = ? AND brands.user_id = ?)`, brandID, identity.UserID)
+			JOIN memberships ON memberships.organization_id = brands.organization_id
+			WHERE visibility_runs.id = visibility_results.run_id AND visibility_runs.brand_id = ? AND memberships.user_id = ?)`, brandID, identity.UserID)
 	})
 
 	response, err := results.listBy(ctx, func(db *gorm.DB) *gorm.DB { return db.Where("run_id = ?", runID) }, page, "prompt_position ASC, engine ASC")

@@ -48,8 +48,30 @@ func (h *BrandHandler) Routes() func(chi.Router) {
 		r.Get("/", h.List)
 		r.Get("/countries", h.Countries)
 		r.Get("/{id}", h.Get)
+		r.Post("/{id}/activate", h.Activate)
 		r.With(middlewares.DecodeBody[BrandPatchRequest]()).Patch("/{id}", h.Update)
 	}
+}
+
+func (h *BrandHandler) Activate(w http.ResponseWriter, r *http.Request) {
+	_, ok := authenticatedUserID(w, r)
+	if !ok {
+		return
+	}
+
+	id, ok := brandID(w, r)
+	if !ok {
+		return
+	}
+
+	brand, err := h.querier.Get(r.Context(), id)
+	if err != nil {
+		api.WriteDomainError(w, r, err)
+		return
+	}
+
+	h.sess.Put(r.Context(), "active_brand_id", brand.ID.String())
+	api.JSON(w, r, http.StatusOK, brand)
 }
 
 func brandID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {

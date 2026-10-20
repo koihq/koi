@@ -38,13 +38,25 @@ func liveVisibilityFixture(t *testing.T, riverTables bool) (*gorm.DB, *Store, co
 	store := NewStore(db, client).WithLiveCollection(true)
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
+	organizationID := testOrganizationForUser(t, store, user.ID)
 	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
-	brand := &koidomain.Brand{Name: "Koi", Domain: "koi.dev", Country: "US"}
+	brand := &koidomain.Brand{OrganizationID: organizationID, Name: "Koi", Domain: "koi.dev", Country: "US"}
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))
 	_, err = koidomain.NewPromptCommander(store).Create(ctx, brand.ID, koidomain.PromptParams{Text: "Best analytics tools?"})
 	require.NoError(t, err)
 
 	return db, store, ctx, brand
+}
+
+func testOrganizationForUser(t *testing.T, store *Store, userID uuid.UUID) uuid.UUID {
+	t.Helper()
+	organization := &koidomain.Organization{Name: "Test"}
+	require.NoError(t, store.OrganizationRepo().Create(t.Context(), organization))
+	require.NoError(t, store.MembershipRepo().Create(t.Context(), &koidomain.Membership{
+		UserID: userID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
+	}))
+
+	return organization.ID
 }
 
 func finishVisibilityReviews(t *testing.T, store *Store, ctx context.Context, brandID uuid.UUID) *koidomain.VisibilityRun {

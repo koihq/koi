@@ -15,10 +15,10 @@ import (
 
 func TestBrandValidate(t *testing.T) {
 	valid := Brand{
-		UserID:  uuid.New(),
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
+		OrganizationID: uuid.New(),
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
 	}
 	require.NoError(t, valid.Validate())
 
@@ -36,7 +36,7 @@ func TestBrandValidate(t *testing.T) {
 		edit  func(*Brand)
 		field string
 	}{
-		{"owner", func(b *Brand) { b.UserID = uuid.Nil }, "user_id"},
+		{"organization", func(b *Brand) { b.OrganizationID = uuid.Nil }, "organization_id"},
 		{"name", func(b *Brand) { b.Name = "  " }, "name"},
 		{"identifiers", func(b *Brand) { b.Domain = "" }, "domain"},
 		{"domain URL", func(b *Brand) { b.Domain = "https://koi.dev" }, "domain"},
@@ -73,10 +73,10 @@ func TestBrandValidateGitHubRepo(t *testing.T) {
 	} {
 		t.Run(raw, func(t *testing.T) {
 			b := Brand{
-				UserID:     uuid.New(),
-				Name:       "Koi",
-				GitHubRepo: raw,
-				Country:    "IT",
+				OrganizationID: uuid.New(),
+				Name:           "Koi",
+				GitHubRepo:     raw,
+				Country:        "IT",
 			}
 			var domainErr *Error
 			require.ErrorAs(t, b.Validate(), &domainErr)
@@ -87,18 +87,15 @@ func TestBrandValidateGitHubRepo(t *testing.T) {
 
 func TestBrandCommanderCreate(t *testing.T) {
 	store := NewMockStore(t)
-	users := NewMockUserRepository(t)
+	memberships := NewMockMembershipRepository(t)
 	brands := NewMockBrandRepository(t)
-	store.EXPECT().Atomic(mock.Anything, mock.Anything).RunAndReturn(
-		func(_ context.Context, fn func(Store) error) error { return fn(store) },
-	)
-	store.EXPECT().UserRepo().Return(users)
+	store.EXPECT().MembershipRepo().Return(memberships)
 	store.EXPECT().BrandRepo().Return(brands)
 	userID := uuid.New()
-	users.EXPECT().LockForUpdate(mock.Anything, userID).Return(nil)
-	brands.EXPECT().Count(mock.Anything).Return(0, nil)
+	organizationID := uuid.New()
+	memberships.EXPECT().GetByUserID(mock.Anything, userID).Return(&Membership{OrganizationID: organizationID}, nil)
 	brands.EXPECT().Create(mock.Anything, mock.MatchedBy(func(b *Brand) bool {
-		return b.UserID == userID && b.Name == "Koi" && b.Domain == "koi.dev" &&
+		return b.OrganizationID == organizationID && b.Name == "Koi" && b.Domain == "koi.dev" &&
 			b.Country == "IT" && b.Description == "AI visibility"
 	})).RunAndReturn(func(_ context.Context, b *Brand) error {
 		b.ID = uuid.New()
@@ -115,30 +112,7 @@ func TestBrandCommanderCreate(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, brand.ID)
-	require.Equal(t, userID, brand.UserID)
-}
-
-func TestBrandCommanderLimit(t *testing.T) {
-	store := NewMockStore(t)
-	users := NewMockUserRepository(t)
-	brands := NewMockBrandRepository(t)
-	store.EXPECT().Atomic(mock.Anything, mock.Anything).RunAndReturn(
-		func(_ context.Context, fn func(Store) error) error { return fn(store) },
-	)
-	store.EXPECT().UserRepo().Return(users)
-	store.EXPECT().BrandRepo().Return(brands)
-	userID := uuid.New()
-	users.EXPECT().LockForUpdate(mock.Anything, userID).Return(nil)
-	brands.EXPECT().Count(mock.Anything).Return(1, nil)
-
-	brand, err := NewBrandCommander(store).Create(identityCtx(t, userID), BrandParams{
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
-	})
-
-	require.Nil(t, brand)
-	require.ErrorIs(t, err, ErrBrandLimitReached)
+	require.Equal(t, organizationID, brand.OrganizationID)
 }
 
 func TestBrandCommanderUpdate(t *testing.T) {
@@ -150,14 +124,14 @@ func TestBrandCommanderUpdate(t *testing.T) {
 		BaseEntity: BaseEntity{
 			ID: id,
 		},
-		UserID:  userID,
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
+		OrganizationID: userID,
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
 	}
 	repo.EXPECT().Get(mock.Anything, id).Return(brand, nil)
 	repo.EXPECT().Update(mock.Anything, mock.MatchedBy(func(b *Brand) bool {
-		return b.ID == id && b.UserID == userID && b.Name == "Koi" && b.Domain == "" &&
+		return b.ID == id && b.OrganizationID == userID && b.Name == "Koi" && b.Domain == "" &&
 			b.GitHubRepo == "https://github.com/koihq/koi" && b.Description == "AI visibility"
 	})).Return(nil)
 	empty, repoURL, description := "", " https://github.com/koihq/koi ", " AI visibility "
@@ -169,7 +143,7 @@ func TestBrandCommanderUpdate(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, userID, updated.UserID)
+	require.Equal(t, userID, updated.OrganizationID)
 	require.Equal(t, "AI visibility", updated.Description)
 }
 
@@ -190,10 +164,10 @@ func TestBrandCommanderUpdateRejectsInvalidAndOtherOwner(t *testing.T) {
 		BaseEntity: BaseEntity{
 			ID: id,
 		},
-		UserID:  userID,
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
+		OrganizationID: userID,
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
 	}, nil)
 	invalid := "ZZ"
 	_, err = NewBrandCommander(store2).Update(identityCtx(t, userID), id, BrandPatch{Country: &invalid})
@@ -210,7 +184,7 @@ func TestBrandQuerierPages(t *testing.T) {
 	repo.EXPECT().List(mock.Anything, PageParams{Page: 2, PageSize: 10}).Return(&Page[Brand]{
 		Items: []Brand{
 			{
-				UserID: userID,
+				OrganizationID: userID,
 			},
 		},
 		TotalItems:  21,
@@ -224,7 +198,7 @@ func TestBrandQuerierPages(t *testing.T) {
 	require.Equal(t, &Page[Brand]{
 		Items: []Brand{
 			{
-				UserID: userID,
+				OrganizationID: userID,
 			},
 		},
 		TotalItems:  21,
@@ -279,20 +253,20 @@ func TestSupportedCountriesMatchBrandValidation(t *testing.T) {
 
 	for _, code := range codes {
 		require.NoError(t, (Brand{
-			UserID:  uuid.New(),
-			Name:    "Koi",
-			Domain:  "koi.dev",
-			Country: code,
+			OrganizationID: uuid.New(),
+			Name:           "Koi",
+			Domain:         "koi.dev",
+			Country:        code,
 		}).Validate())
 	}
 
 	for _, code := range []string{"AC", "ZZ"} {
 		var domainErr *Error
 		require.ErrorAs(t, (Brand{
-			UserID:  uuid.New(),
-			Name:    "Koi",
-			Domain:  "koi.dev",
-			Country: code,
+			OrganizationID: uuid.New(),
+			Name:           "Koi",
+			Domain:         "koi.dev",
+			Country:        code,
 		}).Validate(), &domainErr)
 		require.Equal(t, "country", domainErr.Fields[0].Field)
 	}

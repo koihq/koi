@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
-import type { CreatePrompt } from "@/api/prompts.api";
+import type { CreatePrompt, UpdatePrompt } from "@/api/prompts.api";
 import { promptKey, runKey, trackingKey } from "@/lib/query-keys";
 
 export function usePromptMutations(brandID: string) {
@@ -18,7 +18,7 @@ export function usePromptMutations(brandID: string) {
   });
 
   const update = useMutation({
-    mutationFn: ({ id, request }: { id: string; request: CreatePrompt }) =>
+    mutationFn: ({ id, request }: { id: string; request: UpdatePrompt }) =>
       api.prompts.update(brandID, id, request),
     onSuccess: invalidate,
   });

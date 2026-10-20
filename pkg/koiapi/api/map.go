@@ -16,7 +16,9 @@ func MapError(err error) (int, Envelope) {
 		switch de.Code {
 		case koidomain.CodeValidation, koidomain.CodeInvalidJSON:
 			return http.StatusBadRequest, envelope(de)
-		case koidomain.CodeEmailTaken, koidomain.CodeBrandLimitReached,
+		case koidomain.CodeEmailTaken, koidomain.CodeBrandLimitReached, koidomain.CodePromptLimitReached,
+			koidomain.CodeBillingConflict, koidomain.CodeBillingCheckoutPending,
+			koidomain.CodeBillingSubscriptionExists, koidomain.CodeBillingLegacyPrice,
 			koidomain.CodeGenerationConflict, koidomain.CodeIdempotencyConflict,
 			koidomain.CodeInitialAlreadyCompleted, koidomain.CodeRunNotReady:
 			return http.StatusConflict, envelope(de)

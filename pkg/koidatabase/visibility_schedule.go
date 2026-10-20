@@ -22,6 +22,22 @@ func (r *GormVisibilityRepository) FinishReview(ctx context.Context, brandID uui
 		if err != nil {
 			return err
 		}
+		if kind == "prompts" && r.cloudMode {
+			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
+				return err
+			}
+			var unconfirmed int64
+			if err := tx.Model(&koidomain.Prompt{}).
+				Where("brand_id = ? AND NOT confirmed AND NOT inactive", brandID).
+				Count(&unconfirmed).Error; err != nil {
+				return err
+			}
+			if unconfirmed > 0 {
+				if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, unconfirmed); err != nil {
+					return err
+				}
+			}
+		}
 
 		if _, err := NewGormGenerationRepository(tx, r.client).Active(ctx, brandID); err == nil {
 			return koidomain.Validation(koidomain.FieldError{Field: "generation", Code: "active"})
@@ -63,7 +79,7 @@ func (r *GormVisibilityRepository) FinishReview(ctx context.Context, brandID uui
 			return nil
 		}
 
-		return NewGormVisibilityRepository(tx, r.client, r.enabled).schedule(ctx, brand, now)
+		return NewGormVisibilityRepository(tx, r.client, r.enabled, r.cloudMode).schedule(ctx, brand, now)
 	})
 }
 
@@ -100,8 +116,17 @@ func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *koi
 	if !readiness.CollectionEnabled || !readiness.PromptsReviewed || !readiness.CompetitorsReviewed {
 		return koidomain.TrackingBlockedReason(readiness), nil
 	}
+	if r.cloudMode {
+		allowed, err := cloudTrackingAllowed(ctx, r.db, brand.OrganizationID)
+		if err != nil {
+			return "", err
+		}
+		if !allowed {
+			return "billing_inactive_or_over_limit", nil
+		}
+	}
 
-	if err := r.db.WithContext(ctx).Raw("SELECT EXISTS (SELECT 1 FROM prompts WHERE brand_id = ?)", brand.ID).Scan(&readiness.HasPrompts).Error; err != nil {
+	if err := r.db.WithContext(ctx).Raw("SELECT EXISTS (SELECT 1 FROM prompts WHERE brand_id = ? AND confirmed AND NOT inactive)", brand.ID).Scan(&readiness.HasPrompts).Error; err != nil {
 		return "", err
 	}
 	if !readiness.HasPrompts {
@@ -131,7 +156,16 @@ func (s *Store) DispatchVisibility(ctx context.Context, now time.Time) error {
 	}
 
 	for _, candidate := range brands {
-		ownerCtx := koiauth.WithIdentity(ctx, koiauth.Identity{UserID: candidate.UserID})
+		var owner koidomain.Membership
+		if err := s.db.WithContext(ctx).
+			Where("organization_id = ? AND role = ?", candidate.OrganizationID, koidomain.RoleOwner).
+			Take(&owner).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return err
+		}
+		ownerCtx := koiauth.WithIdentity(ctx, koiauth.Identity{UserID: owner.UserID})
 		if err := s.Atomic(ownerCtx, func(tx koidomain.Store) error {
 			brand, err := tx.BrandRepo().LockForUpdate(ownerCtx, candidate.ID)
 			if err != nil {

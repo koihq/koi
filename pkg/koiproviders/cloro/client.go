@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,10 +42,11 @@ type taskResponse struct {
 }
 
 type Answer struct {
-	Text     string
-	Markdown string
-	Entities []koidomain.NamedEntity
-	Sources  []string
+	Text           string
+	Markdown       string
+	Entities       []koidomain.NamedEntity
+	Sources        []string
+	CreditsCharged *int
 }
 
 func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
@@ -113,7 +115,14 @@ func (c *Client) Poll(ctx context.Context, id string, engine koidomain.EngineID)
 	case "FAILED":
 		return nil, &Error{Code: "cloro_task_failed"}
 	case "COMPLETED":
-		return normalize(engine, result.Response)
+		answer, err := normalize(engine, result.Response)
+		if err != nil || answer == nil {
+			return answer, err
+		}
+		if credits, err := strconv.Atoi(resp.Header().Get("X-Credits-Charged")); err == nil && credits >= 0 {
+			answer.CreditsCharged = &credits
+		}
+		return answer, nil
 	default:
 		return nil, &Error{Code: "cloro_invalid_response"}
 	}

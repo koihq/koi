@@ -21,15 +21,20 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	store := NewStore(db)
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
+	organization := &koidomain.Organization{Name: "Koi"}
+	require.NoError(t, store.OrganizationRepo().Create(t.Context(), organization))
+	require.NoError(t, store.MembershipRepo().Create(t.Context(), &koidomain.Membership{
+		UserID: user.ID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
+	}))
 	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
 	brand := &koidomain.Brand{
-		UserID:  uuid.New(),
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
+		OrganizationID: organization.ID,
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
 	}
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))
-	require.Equal(t, user.ID, brand.UserID)
+	require.Equal(t, organization.ID, brand.OrganizationID)
 
 	errors := make(chan error, 2)
 
@@ -99,8 +104,9 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 
 	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), otherUser))
+	otherOrganizationID := testOrganizationForUser(t, store, otherUser.ID)
 	otherCtx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: otherUser.ID})
-	otherBrand := &koidomain.Brand{Name: "Other", Domain: "other.dev", Country: "IT"}
+	otherBrand := &koidomain.Brand{OrganizationID: otherOrganizationID, Name: "Other", Domain: "other.dev", Country: "IT"}
 	require.NoError(t, store.BrandRepo().Create(otherCtx, otherBrand))
 
 	_, err = koidomain.NewCompetitorCommander(store).Create(otherCtx, otherBrand.ID, koidomain.CompetitorParams{

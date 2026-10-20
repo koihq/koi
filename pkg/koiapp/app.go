@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -28,17 +29,23 @@ import (
 	"github.com/koihq/koi/pkg/koiproviders/cloro"
 	"github.com/koihq/koi/pkg/koiproviders/logodev"
 	"github.com/koihq/koi/pkg/koiproviders/openrouter"
+	"github.com/koihq/koi/pkg/koistripe"
 )
 
 type Config struct {
-	HTTPAddr          string
-	DatabaseURL       string
-	SessionSecret     string
-	OpenRouterAPIKey  string
-	CloroAPIKey       string
-	WorkerConcurrency int
-	ProviderTimeout   time.Duration
-	DBMaxOpenConns    int
+	DeploymentMode      string
+	HTTPAddr            string
+	DatabaseURL         string
+	SessionSecret       string
+	OpenRouterAPIKey    string
+	CloroAPIKey         string
+	WorkerConcurrency   int
+	ProviderTimeout     time.Duration
+	DBMaxOpenConns      int
+	StripeSecretKey     string
+	StripeWebhookSecret string
+	StripePriceID       string
+	PublicURL           string
 }
 
 func LoadConfig() (Config, error) {
@@ -56,6 +63,28 @@ func LoadConfig() (Config, error) {
 	sessionSecret, err := requireEnv("KOI_SESSION_SECRET")
 	if err != nil {
 		return Config{}, err
+	}
+	mode := strings.TrimSpace(os.Getenv("KOI_DEPLOYMENT_MODE"))
+	if mode == "" {
+		mode = "selfhosted"
+	}
+	if mode != "selfhosted" && mode != "cloud" {
+		return Config{}, fmt.Errorf("KOI_DEPLOYMENT_MODE must be selfhosted or cloud")
+	}
+	stripeSecretKey := strings.TrimSpace(os.Getenv("KOI_STRIPE_SECRET_KEY"))
+	stripeWebhookSecret := strings.TrimSpace(os.Getenv("KOI_STRIPE_WEBHOOK_SECRET"))
+	stripePriceID := strings.TrimSpace(os.Getenv("KOI_STRIPE_PRICE_ID"))
+	publicURL := strings.TrimSpace(os.Getenv("KOI_PUBLIC_URL"))
+	if mode == "cloud" && (stripeSecretKey == "" || stripeWebhookSecret == "" || stripePriceID == "" || publicURL == "") {
+		return Config{}, fmt.Errorf("cloud mode requires KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID and KOI_PUBLIC_URL")
+	}
+	if mode == "cloud" {
+		publicURL = strings.TrimRight(publicURL, "/")
+		parsed, err := url.Parse(publicURL)
+		if err != nil || parsed.Host == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+			(parsed.Scheme != "https" && !(parsed.Scheme == "http" && (parsed.Hostname() == "localhost" || parsed.Hostname() == "127.0.0.1"))) {
+			return Config{}, fmt.Errorf("KOI_PUBLIC_URL must be an HTTPS origin (HTTP is allowed for localhost)")
+		}
 	}
 
 	workerConcurrency, err := positiveIntEnv("KOI_WORKER_CONCURRENCY", 4)
@@ -81,14 +110,19 @@ func LoadConfig() (Config, error) {
 	}
 
 	return Config{
-		HTTPAddr:          httpAddr,
-		DatabaseURL:       databaseURL,
-		SessionSecret:     sessionSecret,
-		OpenRouterAPIKey:  strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
-		CloroAPIKey:       strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY")),
-		WorkerConcurrency: workerConcurrency,
-		ProviderTimeout:   providerTimeout,
-		DBMaxOpenConns:    dbMaxOpenConns,
+		DeploymentMode:      mode,
+		HTTPAddr:            httpAddr,
+		DatabaseURL:         databaseURL,
+		SessionSecret:       sessionSecret,
+		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
+		CloroAPIKey:         strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY")),
+		WorkerConcurrency:   workerConcurrency,
+		ProviderTimeout:     providerTimeout,
+		DBMaxOpenConns:      dbMaxOpenConns,
+		StripeSecretKey:     stripeSecretKey,
+		StripeWebhookSecret: stripeWebhookSecret,
+		StripePriceID:       stripePriceID,
+		PublicURL:           publicURL,
 	}, nil
 }
 
@@ -189,11 +223,11 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 			return fmt.Errorf("migrate river: %w", err)
 		}
 
-		if err := koidatabase.NewStore(db).ReconcileGenerationRuns(ctx); err != nil {
+		if err := koidatabase.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud").ReconcileGenerationRuns(ctx); err != nil {
 			return fmt.Errorf("reconcile generation runs: %w", err)
 		}
 
-		if err := koidatabase.NewStore(db).ReconcileVisibilityRuns(ctx); err != nil {
+		if err := koidatabase.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud").ReconcileVisibilityRuns(ctx); err != nil {
 			return fmt.Errorf("reconcile visibility runs: %w", err)
 		}
 	}
@@ -204,7 +238,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	sess.Cookie.HttpOnly = true
 	sess.Cookie.SameSite = http.SameSiteLaxMode
 	sess.Cookie.Path = "/"
-	sess.Cookie.Secure = false
+	sess.Cookie.Secure = a.cfg.DeploymentMode == "cloud" && strings.HasPrefix(a.cfg.PublicURL, "https://")
 	sess.Cookie.Persist = true
 	if sqlDB != nil {
 		sess.Store = postgresstore.New(sqlDB)
@@ -225,7 +259,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
 				}
 				river.AddWorker(workers, &generationWorker{
-					store:    koidatabase.NewStore(db),
+					store:    koidatabase.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud"),
 					provider: a.provider,
 					timeout:  2*a.cfg.ProviderTimeout + 30*time.Second,
 				})
@@ -235,7 +269,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey)
 				}
 				river.AddWorker(workers, &visibilityWorker{
-					store:    koidatabase.NewStore(db),
+					store:    koidatabase.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud"),
 					provider: a.cloroProvider,
 				})
 			}
@@ -263,14 +297,30 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
-		maintenance.store = koidatabase.NewStore(db, riverClient).WithLiveCollection(a.cfg.CloroAPIKey != "")
+		maintenance.store = koidatabase.NewStore(db, riverClient).
+			WithLiveCollection(a.cfg.CloroAPIKey != "").WithCloudMode(a.cfg.DeploymentMode == "cloud")
 		if err := riverClient.Start(context.Background()); err != nil {
 			return fmt.Errorf("start river client: %w", err)
 		}
 	}
 	liveCollection := a.cfg.CloroAPIKey != "" && riverClient != nil
-	store := koidatabase.NewStore(db, riverClient).WithLiveCollection(liveCollection)
-	server := &http.Server{Handler: koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil, liveCollection)}
+	store := koidatabase.NewStore(db, riverClient).
+		WithLiveCollection(liveCollection).WithCloudMode(a.cfg.DeploymentMode == "cloud")
+	var handler http.Handler
+	if a.cfg.DeploymentMode == "cloud" {
+		billing := koiapi.NewBillingHandler(
+			koidatabase.NewBillingRepository(db),
+			koistripe.New(a.cfg.StripeSecretKey),
+			sess,
+			a.cfg.StripePriceID,
+			a.cfg.PublicURL,
+			a.cfg.StripeWebhookSecret,
+		)
+		handler = koiapi.NewCloudServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil, liveCollection, billing)
+	} else {
+		handler = koiapi.NewServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil, liveCollection)
+	}
+	server := &http.Server{Handler: handler}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- server.Serve(listener) }()
 

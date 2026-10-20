@@ -1,6 +1,7 @@
 import { apiErrorFromResponse } from "@/api/errors";
 import {
   AuthApi,
+  BillingApi,
   BrandsApi,
   CapabilitiesApi,
   CompetitorsApi,
@@ -19,6 +20,7 @@ export function createApiClient() {
 
   return {
     auth: new AuthApi(configuration),
+    billing: new BillingApi(configuration),
     brands: new BrandsApi(configuration),
     capabilities: new CapabilitiesApi(configuration),
     competitors: new CompetitorsApi(configuration),

@@ -10,8 +10,8 @@ const RoleOwner = "owner"
 
 type Membership struct {
 	BaseEntity
-	UserID         uuid.UUID `gorm:"uniqueIndex:idx_memberships_user_org;not null"`
-	OrganizationID uuid.UUID `gorm:"uniqueIndex:idx_memberships_user_org;not null"`
+	UserID         uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_memberships_user_org;not null"`
+	OrganizationID uuid.UUID `gorm:"type:uuid;uniqueIndex:idx_memberships_user_org;not null"`
 	Role           string    `gorm:"not null"`
 }
 

@@ -17,9 +17,10 @@ type CredentialsReq struct {
 }
 
 type MeRes struct {
-	ID           string `json:"id"`
-	Email        string `json:"email"`
-	Organization OrgRes `json:"organization"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Organization  OrgRes `json:"organization"`
+	ActiveBrandID string `json:"active_brand_id,omitempty"`
 }
 
 type OrgRes struct {
@@ -96,7 +97,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, MeToRes(me))
+	res := MeToRes(me)
+	res.ActiveBrandID = h.sess.GetString(r.Context(), "active_brand_id")
+	api.JSON(w, r, http.StatusOK, res)
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +125,9 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, MeToRes(me))
+	res := MeToRes(me)
+	res.ActiveBrandID = h.sess.GetString(r.Context(), "active_brand_id")
+	api.JSON(w, r, http.StatusOK, res)
 }
 
 func (h *AuthHandler) saveUser(r *http.Request, me *koidomain.Me) error {
@@ -131,6 +136,7 @@ func (h *AuthHandler) saveUser(r *http.Request, me *koidomain.Me) error {
 	}
 
 	h.sess.Put(r.Context(), "user_id", me.User.ID.String())
+	h.sess.Remove(r.Context(), "active_brand_id")
 
 	return nil
 }

@@ -41,12 +41,18 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	}
 
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
+	organization := &koidomain.Organization{Name: "Koi"}
+	require.NoError(t, store.OrganizationRepo().Create(t.Context(), organization))
+	require.NoError(t, store.MembershipRepo().Create(t.Context(), &koidomain.Membership{
+		UserID: user.ID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
+	}))
 	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
 
 	brand := &koidomain.Brand{
-		Name:    "Koi",
-		Domain:  "koi.dev",
-		Country: "IT",
+		OrganizationID: organization.ID,
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
 	}
 
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))

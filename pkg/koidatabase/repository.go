@@ -43,12 +43,12 @@ func (r *Repository[T]) query(ctx context.Context) (*gorm.DB, error) {
 }
 
 func brandOwnerScope(identity koiauth.Identity, db *gorm.DB) *gorm.DB {
-	return db.Where("user_id = ?", identity.UserID)
+	return db.Where("EXISTS (SELECT 1 FROM memberships WHERE memberships.organization_id = brands.organization_id AND memberships.user_id = ?)", identity.UserID)
 }
 
 func childOwnerScope(table string) func(koiauth.Identity, *gorm.DB) *gorm.DB {
 	return func(identity koiauth.Identity, db *gorm.DB) *gorm.DB {
-		return db.Where("EXISTS (SELECT 1 FROM brands WHERE brands.id = "+table+".brand_id AND brands.user_id = ?)", identity.UserID)
+		return db.Where("EXISTS (SELECT 1 FROM brands JOIN memberships ON memberships.organization_id = brands.organization_id WHERE brands.id = "+table+".brand_id AND memberships.user_id = ?)", identity.UserID)
 	}
 }
 

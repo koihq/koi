@@ -12,11 +12,13 @@ import (
 
 type GormPromptRepository struct {
 	*Repository[koidomain.Prompt]
+	cloudMode bool
 }
 
-func NewGormPromptRepository(db *gorm.DB) *GormPromptRepository {
+func NewGormPromptRepository(db *gorm.DB, cloud ...bool) *GormPromptRepository {
 	return &GormPromptRepository{
 		Repository: newScopedRepository[koidomain.Prompt](db, childOwnerScope("prompts")),
+		cloudMode:  len(cloud) > 0 && cloud[0],
 	}
 }
 
@@ -26,8 +28,17 @@ func (r *GormPromptRepository) Create(ctx context.Context, prompt *koidomain.Pro
 	}
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, prompt.BrandID); err != nil {
+		brand, err := NewGormBrandRepository(tx).LockForUpdate(ctx, prompt.BrandID)
+		if err != nil {
 			return err
+		}
+		if r.cloudMode && prompt.Confirmed && !prompt.Inactive {
+			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
+				return err
+			}
+			if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, 1); err != nil {
+				return err
+			}
 		}
 		if err := NewGormPromptRepository(tx).Repository.Create(ctx, prompt); err != nil {
 			return err
@@ -75,7 +86,7 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 	}
 
 	values := &koidomain.Prompt{}
-	columns := make([]string, 0, 2)
+	columns := make([]string, 0, 3)
 	if update.Text != nil {
 		values.Text = *update.Text
 		columns = append(columns, "text")
@@ -85,14 +96,40 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 		values.Confirmed = *update.Confirmed
 		columns = append(columns, "confirmed")
 	}
+	if update.Inactive != nil {
+		values.Inactive = *update.Inactive
+		columns = append(columns, "inactive")
+	}
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
+		brand, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID)
+		if err != nil {
 			return err
+		}
+		if r.cloudMode && filter.ID != uuid.Nil && (update.Confirmed != nil || update.Inactive != nil) {
+			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
+				return err
+			}
+			current, err := NewGormPromptRepository(tx).Get(ctx, filter)
+			if err != nil {
+				return err
+			}
+			wasActive := current.Confirmed && !current.Inactive
+			if update.Confirmed != nil {
+				current.Confirmed = *update.Confirmed
+			}
+			if update.Inactive != nil {
+				current.Inactive = *update.Inactive
+			}
+			if !wasActive && current.Confirmed && !current.Inactive {
+				if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, 1); err != nil {
+					return err
+				}
+			}
 		}
 		if err := NewGormPromptRepository(tx).updateBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) }, values, columns, filter.ID != uuid.Nil); err != nil {
 			return err
 		}
-		if update.Text != nil || update.Confirmed != nil && !*update.Confirmed {
+		if update.Text != nil || update.Confirmed != nil && !*update.Confirmed || update.Inactive != nil {
 			return invalidateReview(tx, filter.BrandID, "prompts")
 		}
 		return nil

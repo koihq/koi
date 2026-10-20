@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import type { Api } from "@/api/apiProvider";
 import { ApiError } from "@/api/errors";
+import { collectPages } from "@/lib/collect-pages";
 
 export async function requireAccount(api: Api) {
   try {
@@ -16,7 +17,8 @@ export async function requireAccount(api: Api) {
 
 export async function loadAccountBrand(api: Api) {
   const me = await requireAccount(api);
-  const page = await api.brands.list({ page: 1, pageSize: 1 });
+  const brands = await collectPages((page) => api.brands.list({ page, pageSize: 100 }));
+  const brand = brands.find((candidate) => candidate.id === me.activeBrandId) ?? brands[0];
 
-  return { me, brand: page.items[0] };
+  return { me, brand, brands };
 }

@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { createAuthApi } from "@/api/auth.api";
+import { createBillingApi } from "@/api/billing.api";
 import { createBrandsApi } from "@/api/brands.api";
 import { createCapabilitiesApi } from "@/api/capabilities.api";
 import { createCompetitorsApi } from "@/api/competitors.api";
@@ -15,6 +16,7 @@ export function createApi() {
   return {
     auth: createAuthApi(client.auth),
     brands: createBrandsApi(client.brands),
+    billing: createBillingApi(client.billing),
     capabilities: createCapabilitiesApi(client.capabilities),
     prompts: createPromptsApi(client.prompts),
     runs: createRunsApi(client.runs),

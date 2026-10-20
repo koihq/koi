@@ -21,12 +21,12 @@ type Brand struct {
 	VisibilityStartedAt   *time.Time `json:"-"`
 	NextVisibilityAt      *time.Time `json:"-"`
 	BaseEntity
-	UserID      uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
-	Name        string    `json:"name" gorm:"not null"`
-	Domain      string    `json:"domain"`
-	GitHubRepo  string    `json:"github_repo" gorm:"column:github_repo"`
-	Country     string    `json:"country" gorm:"not null;type:varchar(2)"`
-	Description string    `json:"description"`
+	OrganizationID uuid.UUID `json:"organization_id" gorm:"type:uuid;not null;index"`
+	Name           string    `json:"name" gorm:"not null"`
+	Domain         string    `json:"domain"`
+	GitHubRepo     string    `json:"github_repo" gorm:"column:github_repo"`
+	Country        string    `json:"country" gorm:"not null;type:varchar(2)"`
+	Description    string    `json:"description"`
 }
 
 func (Brand) TableName() string { return "brands" }
@@ -50,8 +50,8 @@ func (b *Brand) Normalize() {
 }
 
 func (b Brand) Validate() error {
-	if b.UserID == uuid.Nil {
-		return Validation(FieldError{Field: "user_id", Code: FieldInvalid})
+	if b.OrganizationID == uuid.Nil {
+		return Validation(FieldError{Field: "organization_id", Code: FieldInvalid})
 	}
 
 	if strings.TrimSpace(b.Name) == "" {
@@ -248,14 +248,18 @@ func (c *brandCommander) Create(ctx context.Context, p BrandParams) (*Brand, err
 	if !ok {
 		return nil, ErrUnauthorized
 	}
+	membership, err := c.store.MembershipRepo().GetByUserID(ctx, identity.UserID)
+	if err != nil {
+		return nil, err
+	}
 
 	brand := &Brand{
-		UserID:      identity.UserID,
-		Name:        p.Name,
-		Domain:      p.Domain,
-		GitHubRepo:  p.GitHubRepo,
-		Country:     p.Country,
-		Description: p.Description,
+		OrganizationID: membership.OrganizationID,
+		Name:           p.Name,
+		Domain:         p.Domain,
+		GitHubRepo:     p.GitHubRepo,
+		Country:        p.Country,
+		Description:    p.Description,
 	}
 
 	brand.Normalize()
@@ -263,23 +267,7 @@ func (c *brandCommander) Create(ctx context.Context, p BrandParams) (*Brand, err
 		return nil, err
 	}
 
-	err := c.store.Atomic(ctx, func(s Store) error {
-		if err := s.UserRepo().LockForUpdate(ctx, identity.UserID); err != nil {
-			return err
-		}
-
-		count, err := s.BrandRepo().Count(ctx)
-		if err != nil {
-			return err
-		}
-
-		if count != 0 {
-			return ErrBrandLimitReached
-		}
-
-		return s.BrandRepo().Create(ctx, brand)
-	})
-	if err != nil {
+	if err := c.store.BrandRepo().Create(ctx, brand); err != nil {
 		return nil, err
 	}
 

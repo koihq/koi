@@ -32,7 +32,7 @@ describe("generated list deserialization", () => {
       configuration([
         {
           id: "b",
-          user_id: "u",
+          organization_id: "o",
           name: "Koi",
           domain: "koi.dev",
           github_repo: "",
@@ -41,11 +41,18 @@ describe("generated list deserialization", () => {
         },
       ]),
     ).listBrands();
-    expect(brands.items[0]).toMatchObject({ userId: "u", githubRepo: "" });
+    expect(brands.items[0]).toMatchObject({ organizationId: "o", githubRepo: "" });
 
     const prompts = await new PromptsApi(
       configuration([
-        { id: "p", brand_id: "b", text: "Best tools?", source: "manual", confirmed: true },
+        {
+          id: "p",
+          brand_id: "b",
+          text: "Best tools?",
+          source: "manual",
+          confirmed: true,
+          inactive: false,
+        },
       ]),
     ).listPrompts("b");
     expect(prompts.items[0]).toMatchObject({ brandId: "b", text: "Best tools?" });

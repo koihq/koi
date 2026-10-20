@@ -129,6 +129,7 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 			cell.RawAnswer = answer.Text
 			cell.AnswerMarkdown = answer.Markdown
 			cell.NamedEntities = answer.Entities
+			cell.ProviderCredits = answer.CreditsCharged
 			if answer.Sources != nil {
 				cell.Sources = answer.Sources
 			}
