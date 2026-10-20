@@ -15,12 +15,11 @@ type Point struct {
 }
 
 type Catalog struct {
-	Version  string  `json:"version"`
 	Currency string  `json:"currency"`
-	Anchors  []Point `json:"anchors"`
+	Options  []Point `json:"options"`
 }
 
-var ErrPromptRange = errors.New("prompt allowance must be between 5 and 1000")
+var ErrPromptRange = errors.New("unsupported prompt allowance")
 
 func Current() Catalog {
 	var catalog Catalog
@@ -30,25 +29,12 @@ func Current() Catalog {
 	return catalog
 }
 
-// Quote interpolates in integer euros, rounding a half euro upward.
+// Quote returns the monthly amount for a selectable prompt allowance.
 func (c Catalog) Quote(prompts int) (int64, error) {
-	if len(c.Anchors) < 2 || prompts < c.Anchors[0].Prompts || prompts > c.Anchors[len(c.Anchors)-1].Prompts {
-		return 0, ErrPromptRange
-	}
-
-	for i := 1; i < len(c.Anchors); i++ {
-		low, high := c.Anchors[i-1], c.Anchors[i]
-		if prompts > high.Prompts {
-			continue
+	for _, option := range c.Options {
+		if prompts == option.Prompts {
+			return int64(option.Euros) * 100, nil
 		}
-
-		width := int64(high.Prompts - low.Prompts)
-		rise := int64(high.Euros - low.Euros)
-		offset := int64(prompts - low.Prompts)
-		euros := int64(low.Euros) + (2*rise*offset+width)/(2*width)
-
-		return euros * 100, nil
 	}
-
-	panic("unreachable price interval")
+	return 0, ErrPromptRange
 }

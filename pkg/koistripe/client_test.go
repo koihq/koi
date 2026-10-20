@@ -28,30 +28,31 @@ func TestStripeVolumePriceMatchesEverySelectablePromptCount(t *testing.T) {
 		Currency:      "eur",
 		BillingScheme: "tiered",
 		TiersMode:     "volume",
-		Metadata:      map[string]string{"pricing_version": catalog.Version},
 	}
 	price.Recurring.Interval = "month"
 	price.Recurring.UsageType = "licensed"
 
-	for quantity := 5; quantity <= 1000; quantity++ {
-		amount, _ := catalog.Quote(quantity)
-		if len(price.Tiers) > 0 && price.Tiers[len(price.Tiers)-1].FlatAmount == amount {
-			continue
+	for i, option := range catalog.Options {
+		tier := Tier{FlatAmount: int64(option.Euros) * 100}
+		if i < len(catalog.Options)-1 {
+			upper := option.Prompts
+			tier.UpTo = &upper
 		}
-		if len(price.Tiers) > 0 {
-			previous := quantity - 1
-			price.Tiers[len(price.Tiers)-1].UpTo = &previous
-		}
-		price.Tiers = append(price.Tiers, Tier{FlatAmount: amount})
+		price.Tiers = append(price.Tiers, tier)
 	}
 
 	if err := price.ValidateCatalog(catalog); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := price.MonthlyAmount(6); err != nil || got != 1000 {
-		t.Fatalf("six prompts: %d, %v", got, err)
+	price.Tiers[1].FlatAmount++
+	if err := price.ValidateCatalog(catalog); err == nil {
+		t.Fatal("mismatched Stripe tier was accepted")
 	}
-	for _, quantity := range []int{4, 1001} {
+	price.Tiers[1].FlatAmount--
+	if got, err := price.MonthlyAmount(10); err != nil || got != 1500 {
+		t.Fatalf("ten prompts: %d, %v", got, err)
+	}
+	for _, quantity := range []int{4, 6, 501} {
 		if _, err := price.MonthlyAmount(quantity); err == nil {
 			t.Fatalf("quantity %d was accepted", quantity)
 		}
@@ -64,7 +65,7 @@ func TestGetPriceUsesExpandedTiers(t *testing.T) {
 			t.Errorf("unexpected Stripe request: %s", r.URL.String())
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"price_test","active":true,"currency":"eur","billing_scheme":"tiered","tiers_mode":"volume","recurring":{"interval":"month","usage_type":"licensed"},"tiers":[{"up_to":5,"flat_amount":900},{"up_to":null,"flat_amount":1000}]}`))
+		_, _ = w.Write([]byte(`{"id":"price_test","active":true,"currency":"eur","billing_scheme":"tiered","tiers_mode":"volume","recurring":{"interval":"month","usage_type":"licensed"},"tiers":[{"up_to":5,"flat_amount":900},{"up_to":null,"flat_amount":1500}]}`))
 	}))
 	defer server.Close()
 
@@ -72,8 +73,8 @@ func TestGetPriceUsesExpandedTiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := price.MonthlyAmount(6); err != nil || got != 1000 {
-		t.Fatalf("six prompts: %d, %v", got, err)
+	if got, err := price.MonthlyAmount(10); err != nil || got != 1500 {
+		t.Fatalf("ten prompts: %d, %v", got, err)
 	}
 }
 
@@ -88,9 +89,8 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 			"customer":                "cus_org",
 			"client_reference_id":     "org_uuid",
 			"line_items[0][price]":    "price_v1",
-			"line_items[0][quantity]": "6",
+			"line_items[0][quantity]": "10",
 			"subscription_data[metadata][organization_id]": "org_uuid",
-			"subscription_data[metadata][price_version]":   "v1",
 		} {
 			if got := r.Form.Get(key); got != want {
 				t.Errorf("%s = %q, want %q", key, got, want)
@@ -110,7 +110,7 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 	}))
 	defer server.Close()
 
-	session, err := testClient(server).CreateCheckout(t.Context(), "cus_org", "org_uuid", "price_v1", "v1", "reservation_uuid", 6, "https://koi.example", false)
+	session, err := testClient(server).CreateCheckout(t.Context(), "cus_org", "org_uuid", "price_v1", "reservation_uuid", 10, "https://koi.example", false)
 	if err != nil || session.URL == "" {
 		t.Fatalf("checkout failed: %+v, %v", session, err)
 	}

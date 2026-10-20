@@ -40,12 +40,6 @@ export interface BillingSubscription {
     status: string;
     /**
      * 
-     * @type {string}
-     * @memberof BillingSubscription
-     */
-    priceVersion: string;
-    /**
-     * 
      * @type {Date}
      * @memberof BillingSubscription
      */
@@ -77,7 +71,6 @@ export function instanceOfBillingSubscription(value: object): value is BillingSu
     if (!('organizationId' in value) || value['organizationId'] === undefined) return false;
     if (!('quantity' in value) || value['quantity'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
-    if (!('priceVersion' in value) || value['priceVersion'] === undefined) return false;
     if (!('cancelAtPeriodEnd' in value) || value['cancelAtPeriodEnd'] === undefined) return false;
     return true;
 }
@@ -95,7 +88,6 @@ export function BillingSubscriptionFromJSONTyped(json: any, ignoreDiscriminator:
         'organizationId': json['organization_id'],
         'quantity': json['quantity'],
         'status': json['status'],
-        'priceVersion': json['price_version'],
         'currentPeriodEnd': json['current_period_end'] == null ? undefined : (new Date(json['current_period_end'])),
         'trialEnd': json['trial_end'] == null ? undefined : (new Date(json['trial_end'])),
         'pendingQuantity': json['pending_quantity'] == null ? undefined : json['pending_quantity'],
@@ -117,7 +109,6 @@ export function BillingSubscriptionToJSONTyped(value?: BillingSubscription | nul
         'organization_id': value['organizationId'],
         'quantity': value['quantity'],
         'status': value['status'],
-        'price_version': value['priceVersion'],
         'current_period_end': value['currentPeriodEnd'] == null ? value['currentPeriodEnd'] : value['currentPeriodEnd'].toISOString(),
         'trial_end': value['trialEnd'] == null ? value['trialEnd'] : value['trialEnd'].toISOString(),
         'pending_quantity': value['pendingQuantity'],

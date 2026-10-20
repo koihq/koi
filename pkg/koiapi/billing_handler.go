@@ -24,10 +24,10 @@ type BillingRepository interface {
 	OrganizationForUser(context.Context) (*koidomain.Organization, error)
 	SaveCustomer(context.Context, uuid.UUID, string) (string, error)
 	Subscription(context.Context, uuid.UUID) (*koidomain.BillingSubscription, error)
-	ReserveCheckout(context.Context, uuid.UUID, string, string, string, int) (*koidomain.BillingCheckoutSession, error)
+	ReserveCheckout(context.Context, uuid.UUID, string, string, int) (*koidomain.BillingCheckoutSession, error)
 	FinalizeCheckout(context.Context, uuid.UUID, string, string, time.Time) error
 	CompleteCheckout(context.Context, string, string, string, string, string) error
-	SyncSubscription(context.Context, string, string, string, string, string, string, string, int, *time.Time, *time.Time, bool) error
+	SyncSubscription(context.Context, string, string, string, string, string, string, int, *time.Time, *time.Time, bool) error
 	PendingDowngrade(context.Context, uuid.UUID, string, int) error
 }
 
@@ -109,7 +109,6 @@ func (h *BillingHandler) syncSubscription(ctx context.Context, eventID string, s
 		subscription.ID,
 		item.Price.ID,
 		subscription.Status,
-		subscription.Metadata["price_version"],
 		item.Quantity,
 		currentPeriodEnd,
 		trialEnd,
@@ -150,8 +149,8 @@ func (h *BillingHandler) ChangeAllowance(w http.ResponseWriter, r *http.Request)
 		api.WriteDomainError(w, r, koidomain.ErrBillingConflict)
 		return
 	}
-	if local.StripePriceID != h.priceID || local.PriceVersion != koipricing.Current().Version {
-		api.WriteDomainError(w, r, koidomain.ErrBillingLegacyPrice)
+	if local.StripePriceID != h.priceID {
+		api.WriteDomainError(w, r, koidomain.ErrBillingPriceMismatch)
 		return
 	}
 	if quantity == local.Quantity {
@@ -237,7 +236,7 @@ func (h *BillingHandler) price(r *http.Request, quantity int) (int64, error) {
 		return 0, err
 	}
 	if amount != want {
-		return 0, errors.New("Stripe price does not match the configured pricing version")
+		return 0, errors.New("Stripe price does not match the configured catalog")
 	}
 
 	return amount, nil
@@ -257,11 +256,10 @@ func (h *BillingHandler) Quote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.JSON(w, r, http.StatusOK, map[string]any{
-		"prompts":       quantity,
-		"amount_cents":  amount,
-		"currency":      "eur",
-		"interval":      "month",
-		"price_version": koipricing.Current().Version,
+		"prompts":      quantity,
+		"amount_cents": amount,
+		"currency":     "eur",
+		"interval":     "month",
 	})
 }
 
@@ -293,8 +291,7 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	priceVersion := koipricing.Current().Version
-	reservation, err := h.repo.ReserveCheckout(r.Context(), organization.ID, customerID, h.priceID, priceVersion, quantity)
+	reservation, err := h.repo.ReserveCheckout(r.Context(), organization.ID, customerID, h.priceID, quantity)
 	if errors.Is(err, koidomain.ErrBillingSubscriptionExists) || errors.Is(err, koidomain.ErrBillingCheckoutPending) {
 		api.WriteDomainError(w, r, err)
 		return
@@ -308,7 +305,7 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.stripe.CreateCheckout(r.Context(), customerID, organization.ID.String(), h.priceID, priceVersion, reservation.ID.String(), quantity, h.publicURL, false)
+	session, err := h.stripe.CreateCheckout(r.Context(), customerID, organization.ID.String(), h.priceID, reservation.ID.String(), quantity, h.publicURL, false)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return

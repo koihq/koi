@@ -11,6 +11,7 @@ import (
 
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
+	"github.com/koihq/koi/pkg/koipricing"
 )
 
 type BillingRepository struct{ db *gorm.DB }
@@ -68,7 +69,7 @@ func (r *BillingRepository) Subscription(ctx context.Context, orgID uuid.UUID) (
 	return &subscription, nil
 }
 
-func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID, customerID, priceID, priceVersion string, quantity int) (*koidomain.BillingCheckoutSession, error) {
+func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID, customerID, priceID string, quantity int) (*koidomain.BillingCheckoutSession, error) {
 	var checkout koidomain.BillingCheckoutSession
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var organization koidomain.Organization
@@ -92,7 +93,7 @@ func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID
 		err = tx.Where("organization_id = ? AND ((url = '' AND created_at > ?) OR expires_at > ?)", orgID, now.Add(-24*time.Hour), now).
 			Order("created_at DESC").Take(&checkout).Error
 		if err == nil {
-			if checkout.CustomerID != customerID || checkout.PriceID != priceID || checkout.PriceVersion != priceVersion || checkout.Quantity != quantity || checkout.Completed {
+			if checkout.CustomerID != customerID || checkout.PriceID != priceID || checkout.Quantity != quantity || checkout.Completed {
 				return koidomain.ErrBillingCheckoutPending
 			}
 			return nil
@@ -106,7 +107,6 @@ func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID
 			SessionID:      "pending:" + uuid.NewString(),
 			CustomerID:     customerID,
 			PriceID:        priceID,
-			PriceVersion:   priceVersion,
 			Quantity:       quantity,
 		}
 		return tx.Create(&checkout).Error
@@ -161,9 +161,10 @@ func (r *BillingRepository) CompleteCheckout(ctx context.Context, eventID, sessi
 	})
 }
 
-func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organizationID, customerID, subscriptionID, priceID, status, priceVersion string, quantity int, currentPeriodEnd, trialEnd *time.Time, cancelAtPeriodEnd bool) error {
+func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organizationID, customerID, subscriptionID, priceID, status string, quantity int, currentPeriodEnd, trialEnd *time.Time, cancelAtPeriodEnd bool) error {
 	orgID, err := uuid.Parse(organizationID)
-	if err != nil || quantity < 5 || quantity > 1000 || subscriptionID == "" || priceID == "" || priceVersion == "" {
+	_, priceErr := koipricing.Current().Quote(quantity)
+	if err != nil || priceErr != nil || subscriptionID == "" || priceID == "" {
 		return errors.New("invalid Stripe subscription identity or quantity")
 	}
 
@@ -186,7 +187,7 @@ func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organ
 			Take(&checkout).Error; err != nil {
 			return mapDBError(err)
 		}
-		if checkout.PriceID != priceID || checkout.PriceVersion != priceVersion {
+		if checkout.PriceID != priceID {
 			return errors.New("Stripe subscription price mismatch")
 		}
 
@@ -205,7 +206,6 @@ func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organ
 		subscription.OrganizationID = orgID
 		subscription.StripeSubscriptionID = subscriptionID
 		subscription.StripePriceID = priceID
-		subscription.PriceVersion = priceVersion
 		subscription.Quantity = quantity
 		subscription.Status = status
 		subscription.CurrentPeriodEnd = currentPeriodEnd

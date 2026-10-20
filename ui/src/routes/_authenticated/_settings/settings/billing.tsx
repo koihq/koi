@@ -5,8 +5,20 @@ import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const allowances = [5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500];
+const allowanceItems = allowances.map((quantity) => ({
+  value: String(quantity),
+  label: String(quantity),
+}));
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/billing")({
   beforeLoad: async ({ context }) => {
@@ -23,7 +35,7 @@ function BillingSettings() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const quantity = Number(prompts);
-  const valid = Number.isInteger(quantity) && quantity >= 5 && quantity <= 1000;
+  const valid = allowances.includes(quantity);
   const subscription = useQuery({
     queryKey: ["billing", "subscription"],
     queryFn: api.billing.subscription,
@@ -108,16 +120,24 @@ function BillingSettings() {
       <div className="mt-10 border-t border-border pt-7">
         <Label htmlFor="billing-prompts">{t("trackedPrompts")}</Label>
         <p className="mt-1 text-sm text-muted-foreground">{t("rangeDescription")}</p>
-        <Input
-          id="billing-prompts"
-          type="number"
-          min={5}
-          max={1000}
-          step={1}
+        <Select
           value={prompts}
-          onChange={(event) => setPrompts(event.target.value)}
-          className="mt-4 w-28"
-        />
+          items={allowanceItems}
+          onValueChange={(next) => {
+            if (next !== null) setPrompts(next);
+          }}
+        >
+          <SelectTrigger id="billing-prompts" className="mt-4 w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {allowanceItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="mt-5 text-2xl font-semibold tabular-nums">
           {valid
             ? quote.isLoading

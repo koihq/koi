@@ -36,7 +36,6 @@ type Price struct {
 	BillingScheme string
 	TiersMode     string
 	Tiers         []Tier
-	Metadata      map[string]string
 	Recurring     struct {
 		Interval  string
 		UsageType string
@@ -50,7 +49,10 @@ type Tier struct {
 }
 
 func (p Price) MonthlyAmount(quantity int) (int64, error) {
-	if quantity < 5 || quantity > 1000 || !p.Active || p.Currency != "eur" ||
+	if _, err := koipricing.Current().Quote(quantity); err != nil {
+		return 0, err
+	}
+	if !p.Active || p.Currency != "eur" ||
 		p.BillingScheme != "tiered" || p.TiersMode != "volume" ||
 		p.Recurring.Interval != "month" || p.Recurring.UsageType != "licensed" {
 		return 0, errors.New("invalid cloud price or quantity")
@@ -66,18 +68,24 @@ func (p Price) MonthlyAmount(quantity int) (int64, error) {
 }
 
 func (p Price) ValidateCatalog(catalog koipricing.Catalog) error {
-	if len(catalog.Anchors) < 2 || p.Metadata["pricing_version"] != catalog.Version || p.Currency != catalog.Currency {
-		return errors.New("Stripe price version or currency mismatch")
+	if len(catalog.Options) == 0 || len(p.Tiers) != len(catalog.Options) || p.Currency != catalog.Currency {
+		return errors.New("Stripe price tiers or currency mismatch")
 	}
-	for quantity := catalog.Anchors[0].Prompts; quantity <= catalog.Anchors[len(catalog.Anchors)-1].Prompts; quantity++ {
-		want, err := catalog.Quote(quantity)
-		if err != nil {
-			return err
+	for i, option := range catalog.Options {
+		tier := p.Tiers[i]
+		if i == len(catalog.Options)-1 {
+			if tier.UpTo != nil {
+				return errors.New("last Stripe price tier must be unbounded")
+			}
+		} else if tier.UpTo == nil || *tier.UpTo != option.Prompts {
+			return fmt.Errorf("Stripe price tier %d has wrong upper bound", i)
 		}
-		got, err := p.MonthlyAmount(quantity)
-		if err != nil || got != want {
-			return fmt.Errorf("Stripe price differs from catalog at %d prompts", quantity)
+		if tier.FlatAmount != int64(option.Euros)*100 || tier.UnitAmount != 0 {
+			return fmt.Errorf("Stripe price differs from catalog at %d prompts", option.Prompts)
 		}
+	}
+	if _, err := p.MonthlyAmount(catalog.Options[0].Prompts); err != nil {
+		return err
 	}
 
 	return nil
@@ -100,7 +108,6 @@ func (c *Client) GetPrice(ctx context.Context, id string) (Price, error) {
 		Currency:      string(got.Currency),
 		BillingScheme: string(got.BillingScheme),
 		TiersMode:     string(got.TiersMode),
-		Metadata:      got.Metadata,
 	}
 	if got.Recurring != nil {
 		price.Recurring.Interval = string(got.Recurring.Interval)
@@ -146,7 +153,7 @@ type CheckoutSession struct {
 	ExpiresAt    int64  `json:"expires_at"`
 }
 
-func (c *Client) CreateCheckout(ctx context.Context, customerID, organizationID, priceID, priceVersion, reservationID string, quantity int, publicURL string, trial bool) (CheckoutSession, error) {
+func (c *Client) CreateCheckout(ctx context.Context, customerID, organizationID, priceID, reservationID string, quantity int, publicURL string, trial bool) (CheckoutSession, error) {
 	params := &stripe.CheckoutSessionCreateParams{
 		Mode:              stripe.String("subscription"),
 		UIMode:            stripe.String("hosted_page"),
@@ -156,10 +163,7 @@ func (c *Client) CreateCheckout(ctx context.Context, customerID, organizationID,
 			{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(quantity))},
 		},
 		SubscriptionData: &stripe.CheckoutSessionCreateSubscriptionDataParams{
-			Metadata: map[string]string{
-				"organization_id": organizationID,
-				"price_version":   priceVersion,
-			},
+			Metadata: map[string]string{"organization_id": organizationID},
 		},
 		SuccessURL: stripe.String(publicURL + "/settings/billing?checkout=success"),
 		CancelURL:  stripe.String(publicURL + "/settings/billing?checkout=cancel"),

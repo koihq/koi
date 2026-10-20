@@ -20,7 +20,7 @@ const (
 	CodeBillingConflict           = "billing_conflict"
 	CodeBillingCheckoutPending    = "billing_checkout_pending"
 	CodeBillingSubscriptionExists = "billing_subscription_exists"
-	CodeBillingLegacyPrice        = "billing_legacy_price"
+	CodeBillingPriceMismatch      = "billing_price_mismatch"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"

@@ -9,7 +9,7 @@ import (
 var (
 	ErrBillingSubscriptionExists = &Error{Code: CodeBillingSubscriptionExists, Message: "organization already has a subscription"}
 	ErrBillingCheckoutPending    = &Error{Code: CodeBillingCheckoutPending, Message: "another checkout is pending"}
-	ErrBillingLegacyPrice        = &Error{Code: CodeBillingLegacyPrice, Message: "subscription uses a previous pricing version"}
+	ErrBillingPriceMismatch      = &Error{Code: CodeBillingPriceMismatch, Message: "subscription uses a different Stripe price"}
 )
 
 type BillingSubscription struct {
@@ -17,7 +17,6 @@ type BillingSubscription struct {
 	OrganizationID       uuid.UUID  `json:"organization_id" gorm:"type:uuid;not null;uniqueIndex"`
 	StripeSubscriptionID string     `json:"-" gorm:"not null;uniqueIndex"`
 	StripePriceID        string     `json:"-" gorm:"not null"`
-	PriceVersion         string     `json:"price_version" gorm:"not null"`
 	Quantity             int        `json:"quantity" gorm:"not null"`
 	Status               string     `json:"status" gorm:"not null"`
 	CurrentPeriodEnd     *time.Time `json:"current_period_end"`
@@ -37,7 +36,6 @@ type BillingCheckoutSession struct {
 	ExpiresAt            *time.Time
 	CustomerID           string  `gorm:"not null"`
 	PriceID              string  `gorm:"not null"`
-	PriceVersion         string  `gorm:"not null"`
 	Quantity             int     `gorm:"not null"`
 	Completed            bool    `gorm:"not null;default:false"`
 	StripeSubscriptionID *string `gorm:"uniqueIndex"`

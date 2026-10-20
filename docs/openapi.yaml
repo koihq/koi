@@ -280,7 +280,8 @@ paths:
           schema:
             type: integer
             minimum: 5
-            maximum: 1000
+            maximum: 500
+            description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
       responses:
         "200":
           description: Monthly price for the exact prompt allowance
@@ -1654,10 +1655,11 @@ components:
         prompts:
           type: integer
           minimum: 5
-          maximum: 1000
+          maximum: 500
+          description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
     BillingQuote:
       type: object
-      required: [prompts, amount_cents, currency, interval, price_version]
+      required: [prompts, amount_cents, currency, interval]
       properties:
         prompts:
           type: integer
@@ -1668,11 +1670,9 @@ components:
           type: string
         interval:
           type: string
-        price_version:
-          type: string
     BillingSubscription:
       type: object
-      required: [organization_id, quantity, status, price_version, cancel_at_period_end]
+      required: [organization_id, quantity, status, cancel_at_period_end]
       properties:
         organization_id:
           type: string
@@ -1680,8 +1680,6 @@ components:
         quantity:
           type: integer
         status:
-          type: string
-        price_version:
           type: string
         current_period_end:
           type: string

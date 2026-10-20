@@ -44,12 +44,6 @@ export interface BillingQuote {
      * @memberof BillingQuote
      */
     interval: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof BillingQuote
-     */
-    priceVersion: string;
 }
 
 /**
@@ -60,7 +54,6 @@ export function instanceOfBillingQuote(value: object): value is BillingQuote {
     if (!('amountCents' in value) || value['amountCents'] === undefined) return false;
     if (!('currency' in value) || value['currency'] === undefined) return false;
     if (!('interval' in value) || value['interval'] === undefined) return false;
-    if (!('priceVersion' in value) || value['priceVersion'] === undefined) return false;
     return true;
 }
 
@@ -78,7 +71,6 @@ export function BillingQuoteFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'amountCents': json['amount_cents'],
         'currency': json['currency'],
         'interval': json['interval'],
-        'priceVersion': json['price_version'],
     };
 }
 
@@ -97,7 +89,6 @@ export function BillingQuoteToJSONTyped(value?: BillingQuote | null, ignoreDiscr
         'amount_cents': value['amountCents'],
         'currency': value['currency'],
         'interval': value['interval'],
-        'price_version': value['priceVersion'],
     };
 }
 

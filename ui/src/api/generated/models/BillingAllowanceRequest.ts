@@ -21,7 +21,7 @@ import { mapValues } from '../runtime';
  */
 export interface BillingAllowanceRequest {
     /**
-     * 
+     * Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500.
      * @type {number}
      * @memberof BillingAllowanceRequest
      */

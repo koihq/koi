@@ -7,19 +7,13 @@ need their own Cloro key for live collection.
 
 ## Pricing
 
-`pkg/koipricing/catalog.json` contains **interpolation anchors**, not selectable bands.
-Every whole prompt count from 5 through 1000 is valid. For example, 6 prompts cost
-€10/month. The server interpolates in integer cents, rounds to the nearest whole euro
-(half up), and rejects quantities outside the range. The Stripe CLI commands below
-create one licensed, monthly, volume-tiered Price; they group
-equal totals into 540 tiers. This is one Price per catalog version, not hundreds of
-separate Prices or subscriptions. Stripe is queried for each quote and its tier totals
-and version are checked against the local catalog before Checkout.
-
-The final Stripe tier uses `up_to=inf` because Stripe supports a fallback tier. Koi's
-API still enforces the 1000 maximum. Do not enable customer-adjustable quantities in
-Checkout or Portal. Updating the catalog requires a **new version and Price ID**;
-existing subscriptions retain their original Stripe Price.
+`pkg/koipricing/catalog.json` contains the 12 selectable monthly allowances:
+5 (€9), 10 (€15), 15 (€20), 25 (€29), 50 (€49), 75 (€69), 100 (€89),
+150 (€119), 200 (€149), 250 (€179), 350 (€235), and 500 (€319).
+The server quotes in integer cents and rejects other quantities, including 6.
+There is no catalog version. The Stripe Price ID stored with each subscription
+identifies its price; changing the list requires a new Stripe Price and an explicit
+decision for existing subscriptions.
 
 ## Sandbox setup
 
@@ -27,65 +21,50 @@ Do these steps in a Stripe **sandbox** before enabling Cloud mode. The local cod
 not create or modify objects in the account automatically at startup.
 
 1. Log in with the installed CLI: `stripe login`.
-2. Create one Koi Cloud Product and copy its `prod_...` ID:
+2. Use the existing sandbox Product `prod_VTTHrgW2E8Lgny`. Managed Payments requires
+   an eligible product tax code; this Product uses `txcd_10103001` (SaaS for business
+   use). In a new account, create the Product with the code already set:
 
    ```sh
-   stripe products create --name "Koi Cloud"
+   stripe products create --name "Koi Cloud" --tax-code txcd_10103001
    ```
 
-3. Set `KOI_STRIPE_PRODUCT_ID=prod_...` in your shell. From the repository root,
-   run this one-time terminal command. It reads the versioned anchor catalog,
-   groups equal monthly totals, and invokes the Stripe CLI to create one Price.
-   There is no account provisioning command in the Koi binary.
+   Choose the live Product's tax code according to the actual offering and tax setup.
+
+3. Create one EUR monthly **licensed, volume-tiered** Price with `flat_amount` in
+   cents for each allowance and `unit_amount=0`. Use tier upper bounds
+   5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, and `inf` for the final
+   500-prompt amount. The last tier must be unbounded because Stripe requires a
+   final tier; Koi rejects quantities above 500. Set `KOI_STRIPE_PRICE_ID` to
+   the returned `price_...` ID. The sandbox Price is
+   `price_1USWnrGf1728FFn1oYJGoqeZ` (created in account
+   `acct_1URAU0Gf1728FFn1`); its 12 expanded tiers were verified against
+   this catalog. Reuse it rather than running the creation command again.
+
+   The command used to create the sandbox Price is recorded below for reference.
+   It includes `--dry-run` so copying it cannot create a duplicate:
 
    ```sh
-   export KOI_STRIPE_PRODUCT_ID=prod_...
-   python3 - <<'PY'
-   import json
-   import os
-   import subprocess
-
-   with open("pkg/koipricing/catalog.json", encoding="utf-8") as source:
-       catalog = json.load(source)
-   anchors = catalog["anchors"]
-   prices = {}
-   for low, high in zip(anchors, anchors[1:]):
-       width = high["prompts"] - low["prompts"]
-       rise = high["euros"] - low["euros"]
-       for prompts in range(low["prompts"], high["prompts"] + 1):
-           offset = prompts - low["prompts"]
-           prices[prompts] = 100 * (low["euros"] + (2 * rise * offset + width) // (2 * width))
-
-   tiers = []
-   for prompts, cents in sorted(prices.items()):
-       if tiers and tiers[-1][1] == cents:
-           tiers[-1] = (prompts, cents)
-       else:
-           tiers.append((prompts, cents))
-   assert len(tiers) == 540 and prices[6] == 1000 and prices[1000] == 54900
-
-   command = [
-       "stripe", "prices", "create",
-       "-d", f"product={os.environ['KOI_STRIPE_PRODUCT_ID']}",
-       "-d", f"currency={catalog['currency']}",
-       "-d", "recurring[interval]=month",
-       "-d", "recurring[usage_type]=licensed",
-       "-d", "billing_scheme=tiered",
-       "-d", "tiers_mode=volume",
-       "-d", f"metadata[pricing_version]={catalog['version']}",
-       "-d", f"nickname={catalog['version']}",
-   ]
-   for index, (up_to, cents) in enumerate(tiers):
-       command += ["-d", f"tiers[{index}][up_to]={'inf' if index == len(tiers) - 1 else up_to}"]
-       command += ["-d", f"tiers[{index}][flat_amount]={cents}"]
-   subprocess.run(command, check=True)
-   PY
+   stripe prices create --dry-run \
+     --product prod_VTTHrgW2E8Lgny --currency eur \
+     --billing-scheme tiered --tiers-mode volume \
+     -d 'recurring[interval]=month' -d 'recurring[usage_type]=licensed' \
+     -d 'tiers[0][up_to]=5' -d 'tiers[0][flat_amount]=900' -d 'tiers[0][unit_amount]=0' \
+     -d 'tiers[1][up_to]=10' -d 'tiers[1][flat_amount]=1500' -d 'tiers[1][unit_amount]=0' \
+     -d 'tiers[2][up_to]=15' -d 'tiers[2][flat_amount]=2000' -d 'tiers[2][unit_amount]=0' \
+     -d 'tiers[3][up_to]=25' -d 'tiers[3][flat_amount]=2900' -d 'tiers[3][unit_amount]=0' \
+     -d 'tiers[4][up_to]=50' -d 'tiers[4][flat_amount]=4900' -d 'tiers[4][unit_amount]=0' \
+     -d 'tiers[5][up_to]=75' -d 'tiers[5][flat_amount]=6900' -d 'tiers[5][unit_amount]=0' \
+     -d 'tiers[6][up_to]=100' -d 'tiers[6][flat_amount]=8900' -d 'tiers[6][unit_amount]=0' \
+     -d 'tiers[7][up_to]=150' -d 'tiers[7][flat_amount]=11900' -d 'tiers[7][unit_amount]=0' \
+     -d 'tiers[8][up_to]=200' -d 'tiers[8][flat_amount]=14900' -d 'tiers[8][unit_amount]=0' \
+     -d 'tiers[9][up_to]=250' -d 'tiers[9][flat_amount]=17900' -d 'tiers[9][unit_amount]=0' \
+     -d 'tiers[10][up_to]=350' -d 'tiers[10][flat_amount]=23500' -d 'tiers[10][unit_amount]=0' \
+     -d 'tiers[11][up_to]=inf' -d 'tiers[11][flat_amount]=31900' -d 'tiers[11][unit_amount]=0'
    ```
 
-   Copy the returned `price_...` as `KOI_STRIPE_PRICE_ID`. The application
-   checks all 996 selectable quantities against Stripe before quoting or Checkout.
-   If Stripe rejects the tier count, stop here and revisit the Price model before
-   accepting purchases.
+After creating and validating the Price:
+
 4. Configure a Customer Portal in the Stripe Dashboard for payment methods and invoices.
    Keep plan/quantity changes in Koi. If cancellation is enabled, select cancellation
    at the end of the paid period.
@@ -157,7 +136,8 @@ GROUP BY b.organization_id, vr.engine;
 
 ## Sandbox acceptance checks
 
-- Quote and Checkout for 5, **6**, 25 and 1000 prompts match the same Stripe amounts.
+- Quote and Checkout for all 12 allowances match the same Stripe amounts. Other
+  quantities, including 6 and 501, are rejected.
 - Two browser tabs requesting Checkout for one organization reuse one session.
 - The webhook ignores a replay and rejects a Customer or organization mismatch.
 - Upgrade gains entitlement only after Stripe confirms payment; downgrade changes it
@@ -166,7 +146,5 @@ GROUP BY b.organization_id, vr.engine;
   to Cloro after deactivation.
 - A self-hosted install starts and tracks with its own Cloro key and no Stripe keys.
 
-The tier count, Checkout totals, pending upgrades, schedule changes and Portal
-cancellation behavior still require sandbox validation before production use.
-The Stripe CLI is not available in this local shell, so the provisioning command
-above has not been executed or verified against the sandbox account.
+Checkout totals, pending upgrades, schedule changes and Portal cancellation behavior
+still require sandbox validation before production use.

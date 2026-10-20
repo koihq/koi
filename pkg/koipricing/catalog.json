@@ -1,7 +1,6 @@
 {
-  "version": "cloud-eur-monthly-v1",
   "currency": "eur",
-  "anchors": [
+  "options": [
     { "prompts": 5, "euros": 9 },
     { "prompts": 10, "euros": 15 },
     { "prompts": 15, "euros": 20 },
@@ -12,8 +11,7 @@
     { "prompts": 150, "euros": 119 },
     { "prompts": 200, "euros": 149 },
     { "prompts": 250, "euros": 179 },
-    { "prompts": 500, "euros": 319 },
-    { "prompts": 750, "euros": 449 },
-    { "prompts": 1000, "euros": 549 }
+    { "prompts": 350, "euros": 235 },
+    { "prompts": 500, "euros": 319 }
   ]
 }
