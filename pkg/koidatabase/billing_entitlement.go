@@ -42,12 +42,21 @@ func activePromptCount(ctx context.Context, db *gorm.DB, organizationID uuid.UUI
 	return count, err
 }
 
+func storedPromptCount(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (int64, error) {
+	var count int64
+	err := db.WithContext(ctx).Model(&koidomain.Prompt{}).
+		Joins("JOIN brands ON brands.id = prompts.brand_id").
+		Where("brands.organization_id = ? AND NOT prompts.inactive", organizationID).
+		Count(&count).Error
+	return count, err
+}
+
 func requirePromptCapacity(ctx context.Context, db *gorm.DB, organizationID uuid.UUID, additional int64) error {
 	limit, err := cloudPromptLimit(ctx, db, organizationID)
 	if err != nil {
 		return err
 	}
-	count, err := activePromptCount(ctx, db, organizationID)
+	count, err := storedPromptCount(ctx, db, organizationID)
 	if err != nil {
 		return err
 	}

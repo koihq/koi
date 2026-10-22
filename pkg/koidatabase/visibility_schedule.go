@@ -23,19 +23,8 @@ func (r *GormVisibilityRepository) FinishReview(ctx context.Context, brandID uui
 			return err
 		}
 		if kind == "prompts" && r.cloudMode {
-			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
+			if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, 0); err != nil {
 				return err
-			}
-			var unconfirmed int64
-			if err := tx.Model(&koidomain.Prompt{}).
-				Where("brand_id = ? AND NOT confirmed AND NOT inactive", brandID).
-				Count(&unconfirmed).Error; err != nil {
-				return err
-			}
-			if unconfirmed > 0 {
-				if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, unconfirmed); err != nil {
-					return err
-				}
 			}
 		}
 

@@ -77,7 +77,7 @@ func (s *Store) CompetitorRepo() koidomain.CompetitorRepository {
 }
 
 func (s *Store) GenerationRepo() koidomain.GenerationRepository {
-	return NewGormGenerationRepository(s.db, s.enqueueClient)
+	return NewGormGenerationRepository(s.db, s.enqueueClient, s.cloudMode)
 }
 
 // WithLiveCollection enables paid collection only when the operator configured Cloro.

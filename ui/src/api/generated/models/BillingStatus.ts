@@ -40,6 +40,7 @@ export interface BillingStatus {
      * @memberof BillingStatus
      */
     promptLimit: number;
+    trialAvailable: boolean;
 }
 
 /**
@@ -48,6 +49,7 @@ export interface BillingStatus {
 export function instanceOfBillingStatus(value: object): value is BillingStatus {
     if (!('subscription' in value) || value['subscription'] === undefined) return false;
     if (!('promptLimit' in value) || value['promptLimit'] === undefined) return false;
+    if (!('trialAvailable' in value) || value['trialAvailable'] === undefined) return false;
     return true;
 }
 
@@ -63,6 +65,7 @@ export function BillingStatusFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'subscription': BillingSubscriptionFromJSON(json['subscription']),
         'promptLimit': json['prompt_limit'],
+        'trialAvailable': json['trial_available'],
     };
 }
 
@@ -79,6 +82,7 @@ export function BillingStatusToJSONTyped(value?: BillingStatus | null, ignoreDis
         
         'subscription': BillingSubscriptionToJSON(value['subscription']),
         'prompt_limit': value['promptLimit'],
+        'trial_available': value['trialAvailable'],
     };
 }
 

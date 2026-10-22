@@ -26,6 +26,8 @@ paths:
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Visibility across saved answers for the selected period
           content:
@@ -43,6 +45,8 @@ paths:
       security:
         - cookieAuth: []
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Review and daily collection schedule
           content:
@@ -73,6 +77,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/prompt-history:
@@ -93,6 +99,8 @@ paths:
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Page of historical prompts
           content:
@@ -115,6 +123,8 @@ paths:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Page of runs with this prompt's results
           content:
@@ -136,6 +146,8 @@ paths:
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Visibility for a live or deleted prompt
           content:
@@ -162,6 +174,8 @@ paths:
                 $ref: "#/components/schemas/VisibilityRunStatus"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/runs/{runID}/results:
@@ -187,6 +201,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -284,7 +300,7 @@ paths:
             description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
       responses:
         "200":
-          description: Monthly price for the exact prompt allowance
+          description: Tax-inclusive monthly price for the exact prompt allowance
           content:
             application/json:
               schema:
@@ -488,6 +504,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{id}/activate:
@@ -511,6 +529,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/BrandRes"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -542,6 +562,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     post:
@@ -566,6 +588,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/prompts/{promptID}:
@@ -585,6 +609,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/PromptRes"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -610,6 +636,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     delete:
@@ -621,6 +649,8 @@ paths:
         "204":
           description: Deleted
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -642,6 +672,8 @@ paths:
                 $ref: "#/components/schemas/PromptRes"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/prompts/confirm:
@@ -656,6 +688,8 @@ paths:
         "204":
           description: All prompts confirmed
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -683,6 +717,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     post:
@@ -706,6 +742,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -743,6 +781,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
         "503":
@@ -769,6 +809,8 @@ paths:
                 $ref: "#/components/schemas/CompetitorRes"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     patch:
@@ -793,6 +835,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     delete:
@@ -804,6 +848,8 @@ paths:
         "204":
           description: Deleted
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -828,6 +874,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/competitors/confirm:
@@ -843,6 +891,8 @@ paths:
         "204":
           description: Review finished; observed suggestions remain unchanged
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -887,6 +937,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
         "409":
@@ -916,6 +968,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /api/v1/brands/{brandID}/generations/{generationID}:
@@ -944,6 +998,8 @@ paths:
                 created_at: "2026-09-28T10:00:00Z"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
   /health:
@@ -951,6 +1007,8 @@ paths:
       tags: [health]
       operationId: get
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: OK
           content:
@@ -1696,7 +1754,7 @@ components:
           type: boolean
     BillingStatus:
       type: object
-      required: [subscription, prompt_limit]
+      required: [subscription, prompt_limit, trial_available]
       properties:
         subscription:
           allOf:
@@ -1704,6 +1762,8 @@ components:
           nullable: true
         prompt_limit:
           type: integer
+        trial_available:
+          type: boolean
     BillingRedirect:
       type: object
       required: [url]
@@ -1841,6 +1901,8 @@ components:
         - generation_conflict
         - idempotency_conflict
         - initial_already_completed
+        - billing_required
+        - prompt_limit_reached
     FieldCode:
       type: string
       enum:

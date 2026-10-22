@@ -12,7 +12,13 @@
     "generation_conflict": "Another draft is in progress. Check its status and try again when it finishes.",
     "idempotency_conflict": "This draft request could not be repeated. Try again.",
     "initial_already_completed": "The first draft is complete. Use a single-list draft action instead.",
-    "run_not_ready": "Add at least one prompt and confirm your tracking lists before starting a run."
+    "run_not_ready": "Add at least one prompt and confirm your tracking lists before starting a run.",
+    "prompt_limit_reached": "Your prompt allowance is full. Remove or deactivate a prompt to continue.",
+    "billing_required": "Start a trial or update billing to continue.",
+    "billing_conflict": "Open billing management to resolve your subscription before changing it.",
+    "billing_checkout_pending": "A checkout is already in progress. Return to it or try again later.",
+    "billing_subscription_exists": "This organization already has a subscription.",
+    "billing_price_mismatch": "The current subscription price could not be changed. Contact support."
   },
   "fields": {
     "email": {

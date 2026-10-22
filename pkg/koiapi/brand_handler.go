@@ -35,10 +35,15 @@ type BrandHandler struct {
 	querier   koidomain.BrandQuerier
 	commander koidomain.BrandCommander
 	sess      *scs.SessionManager
+	billing   func(http.Handler) http.Handler
 }
 
-func NewBrandHandler(q koidomain.BrandQuerier, c koidomain.BrandCommander, sess *scs.SessionManager) *BrandHandler {
-	return &BrandHandler{querier: q, commander: c, sess: sess}
+func NewBrandHandler(q koidomain.BrandQuerier, c koidomain.BrandCommander, sess *scs.SessionManager, billing ...func(http.Handler) http.Handler) *BrandHandler {
+	h := &BrandHandler{querier: q, commander: c, sess: sess}
+	if len(billing) > 0 {
+		h.billing = billing[0]
+	}
+	return h
 }
 
 func (h *BrandHandler) Routes() func(chi.Router) {
@@ -48,8 +53,13 @@ func (h *BrandHandler) Routes() func(chi.Router) {
 		r.Get("/", h.List)
 		r.Get("/countries", h.Countries)
 		r.Get("/{id}", h.Get)
-		r.Post("/{id}/activate", h.Activate)
-		r.With(middlewares.DecodeBody[BrandPatchRequest]()).Patch("/{id}", h.Update)
+		if h.billing != nil {
+			r.With(h.billing).Post("/{id}/activate", h.Activate)
+			r.With(h.billing, middlewares.DecodeBody[BrandPatchRequest]()).Patch("/{id}", h.Update)
+		} else {
+			r.Post("/{id}/activate", h.Activate)
+			r.With(middlewares.DecodeBody[BrandPatchRequest]()).Patch("/{id}", h.Update)
+		}
 	}
 }
 

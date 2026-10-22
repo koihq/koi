@@ -4,8 +4,12 @@ import { useTranslation } from "react-i18next";
 import { AppHeader } from "@/components/blocks/app-header";
 
 export const Route = createFileRoute("/_authenticated/_app")({
-  beforeLoad: ({ context }) => {
+  beforeLoad: async ({ context }) => {
     if (!context.brand) throw redirect({ to: "/setup" });
+    if ((await context.api.capabilities.get()).cloudBilling) {
+      const billing = await context.api.billing.subscription();
+      if (billing.promptLimit === 0) throw redirect({ to: "/settings/billing" });
+    }
 
     return { brand: context.brand, brands: context.brands };
   },

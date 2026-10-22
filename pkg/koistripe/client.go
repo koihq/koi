@@ -2,6 +2,7 @@ package koistripe
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -34,61 +35,50 @@ type Price struct {
 	Active        bool
 	Currency      string
 	BillingScheme string
+	TaxBehavior   string
 	TiersMode     string
 	Tiers         []Tier
 	Recurring     struct {
-		Interval  string
-		UsageType string
+		Interval      string
+		IntervalCount int64
+		UsageType     string
 	}
 }
 
 type Tier struct {
 	UpTo       *int
 	FlatAmount int64
-	UnitAmount int64
-}
-
-func (p Price) MonthlyAmount(quantity int) (int64, error) {
-	if _, err := koipricing.Current().Quote(quantity); err != nil {
-		return 0, err
-	}
-	if !p.Active || p.Currency != "eur" ||
-		p.BillingScheme != "tiered" || p.TiersMode != "volume" ||
-		p.Recurring.Interval != "month" || p.Recurring.UsageType != "licensed" {
-		return 0, errors.New("invalid cloud price or quantity")
-	}
-
-	for _, tier := range p.Tiers {
-		if tier.UpTo == nil || quantity <= *tier.UpTo {
-			return tier.FlatAmount + tier.UnitAmount*int64(quantity), nil
-		}
-	}
-
-	return 0, errors.New("quantity outside Stripe price tiers")
+	UnitAmount *int64
 }
 
 func (p Price) ValidateCatalog(catalog koipricing.Catalog) error {
-	if len(catalog.Options) == 0 || len(p.Tiers) != len(catalog.Options) || p.Currency != catalog.Currency {
-		return errors.New("Stripe price tiers or currency mismatch")
+	if !p.Active || p.Currency != catalog.Currency || p.BillingScheme != "tiered" ||
+		p.TiersMode != "volume" || p.TaxBehavior != "inclusive" ||
+		p.Recurring.Interval != "month" || p.Recurring.IntervalCount != 1 ||
+		p.Recurring.UsageType != "licensed" || len(p.Tiers) != len(catalog.Options) {
+		return fmt.Errorf("Stripe price %s does not match the monthly catalog", p.ID)
 	}
-	for i, option := range catalog.Options {
-		tier := p.Tiers[i]
-		if i == len(catalog.Options)-1 {
-			if tier.UpTo != nil {
-				return errors.New("last Stripe price tier must be unbounded")
-			}
-		} else if tier.UpTo == nil || *tier.UpTo != option.Prompts {
-			return fmt.Errorf("Stripe price tier %d has wrong upper bound", i)
-		}
-		if tier.FlatAmount != int64(option.Euros)*100 || tier.UnitAmount != 0 {
-			return fmt.Errorf("Stripe price differs from catalog at %d prompts", option.Prompts)
+	for index, option := range catalog.Options {
+		tier := p.Tiers[index]
+		if tier.FlatAmount != int64(option.Euros)*100 || tier.UnitAmount != nil ||
+			(index == len(catalog.Options)-1 && tier.UpTo != nil) ||
+			(index < len(catalog.Options)-1 && (tier.UpTo == nil || *tier.UpTo != option.Prompts)) {
+			return fmt.Errorf("Stripe price %s has an invalid tier for %d prompts", p.ID, option.Prompts)
 		}
 	}
-	if _, err := p.MonthlyAmount(catalog.Options[0].Prompts); err != nil {
-		return err
-	}
-
 	return nil
+}
+
+func (p Price) MonthlyAmount(prompts int) (int64, error) {
+	if _, err := koipricing.Current().Quote(prompts); err != nil {
+		return 0, err
+	}
+	for _, tier := range p.Tiers {
+		if tier.UpTo == nil || prompts <= *tier.UpTo {
+			return tier.FlatAmount, nil
+		}
+	}
+	return 0, errors.New("Stripe price has no matching tier")
 }
 
 func (c *Client) GetPrice(ctx context.Context, id string) (Price, error) {
@@ -107,24 +97,36 @@ func (c *Client) GetPrice(ctx context.Context, id string) (Price, error) {
 		Active:        got.Active,
 		Currency:      string(got.Currency),
 		BillingScheme: string(got.BillingScheme),
+		TaxBehavior:   string(got.TaxBehavior),
 		TiersMode:     string(got.TiersMode),
 	}
 	if got.Recurring != nil {
 		price.Recurring.Interval = string(got.Recurring.Interval)
+		price.Recurring.IntervalCount = got.Recurring.IntervalCount
 		price.Recurring.UsageType = string(got.Recurring.UsageType)
 	}
-	for _, tier := range got.Tiers {
+	if got.LastResponse == nil {
+		return Price{}, errors.New("Stripe price response is missing")
+	}
+	var raw struct {
+		Tiers []struct {
+			UnitAmount *int64 `json:"unit_amount"`
+		} `json:"tiers"`
+	}
+	if err := json.Unmarshal(got.LastResponse.RawJSON, &raw); err != nil || len(raw.Tiers) != len(got.Tiers) {
+		return Price{}, errors.New("Stripe price tiers are incomplete")
+	}
+	for index, tier := range got.Tiers {
 		if tier == nil {
 			return Price{}, errors.New("Stripe returned an empty price tier")
 		}
-		item := Tier{FlatAmount: tier.FlatAmount, UnitAmount: tier.UnitAmount}
+		item := Tier{FlatAmount: tier.FlatAmount, UnitAmount: raw.Tiers[index].UnitAmount}
 		if tier.UpTo > 0 {
 			upTo := int(tier.UpTo)
 			item.UpTo = &upTo
 		}
 		price.Tiers = append(price.Tiers, item)
 	}
-
 	return price, nil
 }
 
@@ -155,10 +157,11 @@ type CheckoutSession struct {
 
 func (c *Client) CreateCheckout(ctx context.Context, customerID, organizationID, priceID, reservationID string, quantity int, publicURL string, trial bool) (CheckoutSession, error) {
 	params := &stripe.CheckoutSessionCreateParams{
-		Mode:              stripe.String("subscription"),
-		UIMode:            stripe.String("hosted_page"),
-		Customer:          stripe.String(customerID),
-		ClientReferenceID: stripe.String(organizationID),
+		Mode:                    stripe.String("subscription"),
+		UIMode:                  stripe.String("hosted_page"),
+		Customer:                stripe.String(customerID),
+		PaymentMethodCollection: stripe.String("always"),
+		ClientReferenceID:       stripe.String(organizationID),
 		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
 			{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(quantity))},
 		},
@@ -376,7 +379,7 @@ func (c *Client) GetSchedule(ctx context.Context, id string) (Schedule, error) {
 	return result, nil
 }
 
-func (c *Client) ScheduleDowngrade(ctx context.Context, schedule Schedule, currentPriceID string, currentQuantity, nextQuantity int, periodEnd int64) error {
+func (c *Client) ScheduleDowngrade(ctx context.Context, schedule Schedule, priceID string, currentQuantity, nextQuantity int, periodEnd int64) error {
 	startDate := int64(0)
 	if schedule.CurrentPhase != nil {
 		startDate = schedule.CurrentPhase.StartDate
@@ -400,7 +403,7 @@ func (c *Client) ScheduleDowngrade(ctx context.Context, schedule Schedule, curre
 				StartDate: stripe.Int64(startDate),
 				EndDate:   stripe.Int64(periodEnd),
 				Items: []*stripe.SubscriptionScheduleUpdatePhaseItemParams{
-					{Price: stripe.String(currentPriceID), Quantity: stripe.Int64(int64(currentQuantity))},
+					{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(currentQuantity))},
 				},
 			},
 			{
@@ -410,7 +413,7 @@ func (c *Client) ScheduleDowngrade(ctx context.Context, schedule Schedule, curre
 					IntervalCount: stripe.Int64(1),
 				},
 				Items: []*stripe.SubscriptionScheduleUpdatePhaseItemParams{
-					{Price: stripe.String(currentPriceID), Quantity: stripe.Int64(int64(nextQuantity))},
+					{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(nextQuantity))},
 				},
 			},
 		},

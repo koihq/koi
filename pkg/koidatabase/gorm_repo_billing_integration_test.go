@@ -22,11 +22,23 @@ func TestBillingWebhookIdentityAndReplay(t *testing.T) {
 	repo := NewBillingRepository(db)
 	organization := &koidomain.Organization{Name: "Koi"}
 	require.NoError(t, db.Create(organization).Error)
+	user := &koidomain.User{Email: "billing@example.com", PasswordHash: "hash"}
+	require.NoError(t, db.Create(user).Error)
+	require.NoError(t, db.Create(&koidomain.Membership{
+		UserID:         user.ID,
+		OrganizationID: organization.ID,
+		Role:           koidomain.RoleOwner,
+	}).Error)
+	allowed, err := repo.ProductAccess(t.Context(), user.ID)
+	require.NoError(t, err)
+	require.False(t, allowed)
+
 	customerID, err := repo.SaveCustomer(t.Context(), organization.ID, "cus_123")
 	require.NoError(t, err)
 	require.Equal(t, "cus_123", customerID)
 	reservation, err := repo.ReserveCheckout(t.Context(), organization.ID, "cus_123", "price_123", 10)
 	require.NoError(t, err)
+	require.True(t, reservation.Trial)
 	_, err = repo.ReserveCheckout(t.Context(), organization.ID, "cus_123", "price_123", 15)
 	require.ErrorIs(t, err, koidomain.ErrBillingCheckoutPending)
 	require.NoError(t, repo.FinalizeCheckout(t.Context(), reservation.ID, "cs_123", "https://checkout.stripe.com/example", time.Now().Add(24*time.Hour)))
@@ -41,16 +53,28 @@ func TestBillingWebhookIdentityAndReplay(t *testing.T) {
 	periodEnd := time.Now().Add(30 * 24 * time.Hour)
 	require.Error(t, repo.SyncSubscription(t.Context(), "evt_bad_quantity", organization.ID.String(), "cus_123", "sub_123", "price_123", "active", 6, &periodEnd, nil, false))
 	require.Error(t, repo.SyncSubscription(t.Context(), "evt_bad_sub", organization.ID.String(), "cus_other", "sub_123", "price_123", "active", 10, &periodEnd, nil, false))
+	trialEnd := time.Now().Add(7 * 24 * time.Hour)
+	require.NoError(t, repo.SyncSubscription(t.Context(), "evt_trial", organization.ID.String(), "cus_123", "sub_123", "price_123", "trialing", 10, &periodEnd, &trialEnd, false))
+	allowed, err = repo.ProductAccess(t.Context(), user.ID)
+	require.NoError(t, err)
+	require.True(t, allowed)
+	trial, err := repo.Subscription(t.Context(), organization.ID)
+	require.NoError(t, err)
+	require.Equal(t, 5, trial.PromptLimit(time.Now()))
 	require.NoError(t, repo.SyncSubscription(t.Context(), "evt_sub", organization.ID.String(), "cus_123", "sub_123", "price_123", "active", 10, &periodEnd, nil, false))
 	require.NoError(t, repo.SyncSubscription(t.Context(), "evt_sub", organization.ID.String(), "cus_123", "sub_123", "price_123", "active", 10, &periodEnd, nil, false))
+	require.NoError(t, repo.SyncSubscription(t.Context(), "evt_upgrade", organization.ID.String(), "cus_123", "sub_123", "price_123", "active", 15, &periodEnd, nil, false))
 
 	subscription, err := repo.Subscription(t.Context(), organization.ID)
 	require.NoError(t, err)
-	require.Equal(t, 10, subscription.PromptLimit(time.Now()))
+	require.Equal(t, 15, subscription.PromptLimit(time.Now()))
+	require.Equal(t, "price_123", subscription.StripePriceID)
+	require.NoError(t, db.First(organization, "id = ?", organization.ID).Error)
+	require.NotNil(t, organization.TrialUsedAt)
 
 	var eventCount int64
 	require.NoError(t, db.Model(&koidomain.StripeWebhookEvent{}).Count(&eventCount).Error)
-	require.EqualValues(t, 2, eventCount)
+	require.EqualValues(t, 4, eventCount)
 }
 
 func TestBillingConcurrentCheckoutReservationReusesOneSession(t *testing.T) {

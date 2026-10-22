@@ -37,6 +37,7 @@ type BillingCheckoutSession struct {
 	CustomerID           string  `gorm:"not null"`
 	PriceID              string  `gorm:"not null"`
 	Quantity             int     `gorm:"not null"`
+	Trial                bool    `gorm:"not null;default:false"`
 	Completed            bool    `gorm:"not null;default:false"`
 	StripeSubscriptionID *string `gorm:"uniqueIndex"`
 }

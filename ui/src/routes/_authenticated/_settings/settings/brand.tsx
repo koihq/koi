@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +7,12 @@ import type { CreateBrand } from "@/api/brands.api";
 import { BrandForm } from "@/components/blocks/brand-form";
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/brand")({
+  beforeLoad: async ({ context }) => {
+    if ((await context.api.capabilities.get()).cloudBilling) {
+      const billing = await context.api.billing.subscription();
+      if (billing.promptLimit === 0) throw redirect({ to: "/settings/billing" });
+    }
+  },
   component: BrandSettings,
 });
 

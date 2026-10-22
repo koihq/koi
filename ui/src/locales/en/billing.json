@@ -1,6 +1,10 @@
 {
   "title": "Billing",
   "description": "One monthly subscription for your organization. Every feature is included.",
+  "trialDescription": "Your first 7 days include up to 5 prompts. The selected monthly allowance begins after the trial.",
+  "awaitingConfirmation": "Stripe is confirming your trial or payment. This page will update when access is ready.",
+  "continueToApp": "Continue to prompts",
+  "resolvePayment": "Your subscription needs attention. Open payment methods and invoices to restore access.",
   "currentSubscription": "Current subscription",
   "loading": "Loading…",
   "none": "No Cloud subscription",
@@ -13,12 +17,13 @@
   "priceUnavailable": "Price unavailable",
   "invalidQuantity": "Choose a prompt allowance",
   "perMonth": "{price} / month",
-  "taxNote": "The exact amount is confirmed in Stripe Checkout or on your next invoice. Taxes may apply.",
+  "taxNote": "Taxes are included. Changes during a billing cycle can create prorated charges.",
   "changeAllowance": "Change allowance",
   "checkout": "Continue to checkout",
   "portal": "Payment methods and invoices",
   "nextCycle": "The new allowance will start with your next billing cycle.",
   "afterPayment": "The upgrade will take effect after payment succeeds.",
   "updateError": "We couldn't update billing. Please try again.",
-  "portalError": "We couldn't open billing management. Please try again."
+  "portalError": "We couldn't open billing management. Please try again.",
+  "retry": "Retry"
 }

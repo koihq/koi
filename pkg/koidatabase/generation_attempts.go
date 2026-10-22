@@ -25,6 +25,17 @@ func (s *Store) BeginGenerationAttempt(ctx context.Context, runID uuid.UUID, job
 		if run.State == koidomain.GenerationSucceeded || run.State == koidomain.GenerationFailed {
 			return nil
 		}
+		promptTarget := 15
+		if s.cloudMode {
+			available, err := cloudGenerationBudget(ctx, tx, run.BrandID)
+			if err != nil {
+				return err
+			}
+			promptTarget = min(promptTarget, available)
+			if promptTarget == 0 && run.Mode == koidomain.GenerationPrompts {
+				return koidomain.ErrPromptLimitReached
+			}
+		}
 
 		now := time.Now().UTC()
 		if err := tx.Model(&run).Updates(map[string]any{
@@ -40,6 +51,7 @@ func (s *Store) BeginGenerationAttempt(ctx context.Context, runID uuid.UUID, job
 		input = koidomain.GenerationInput{
 			Brand:               run.BrandSnapshot,
 			Mode:                run.Mode,
+			PromptTarget:        promptTarget,
 			ExistingPrompts:     []string{},
 			ExistingCompetitors: []koidomain.CompetitorIdentity{},
 		}
@@ -97,12 +109,24 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 		}
 
 		// This lock also serializes competing generation commits for the brand.
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&koidomain.Brand{}, "id = ?", run.BrandID).Error; err != nil {
+		var brand koidomain.Brand
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&brand, "id = ?", run.BrandID).Error; err != nil {
 			return err
+		}
+		promptBudget := min(15, len(result.Prompts))
+		if s.cloudMode {
+			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
+				return err
+			}
+			available, err := cloudGenerationBudget(ctx, tx, run.BrandID)
+			if err != nil {
+				return err
+			}
+			promptBudget = min(promptBudget, available)
 		}
 
 		if run.Mode != koidomain.GenerationCompetitors {
-			count, err := insertGeneratedPrompts(tx, run.BrandID, result.Prompts)
+			count, err := insertGeneratedPrompts(tx, run.BrandID, result.Prompts, promptBudget)
 			if err != nil {
 				return err
 			}
@@ -141,7 +165,26 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 	return promptCount, competitorCount, err
 }
 
-func insertGeneratedPrompts(tx *gorm.DB, brandID uuid.UUID, suggestions []string) (int, error) {
+func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID) (int, error) {
+	var brand koidomain.Brand
+	if err := db.WithContext(ctx).Select("organization_id").Where("id = ?", brandID).Take(&brand).Error; err != nil {
+		return 0, err
+	}
+	limit, err := cloudPromptLimit(ctx, db, brand.OrganizationID)
+	if err != nil {
+		return 0, err
+	}
+	if limit == 0 {
+		return 0, koidomain.ErrBillingRequired
+	}
+	count, err := storedPromptCount(ctx, db, brand.OrganizationID)
+	if err != nil {
+		return 0, err
+	}
+	return max(0, limit-int(count)), nil
+}
+
+func insertGeneratedPrompts(tx *gorm.DB, brandID uuid.UUID, suggestions []string, budget int) (int, error) {
 	var existing []string
 	if err := tx.Model(&koidomain.Prompt{}).Where("brand_id = ?", brandID).Pluck("text", &existing).Error; err != nil {
 		return 0, err
@@ -156,6 +199,9 @@ func insertGeneratedPrompts(tx *gorm.DB, brandID uuid.UUID, suggestions []string
 	count := 0
 
 	for _, value := range suggestions {
+		if count >= budget {
+			break
+		}
 		prompt := koidomain.Prompt{BrandID: brandID, Text: value, Source: koidomain.PromptSourceDrafted}
 		prompt.Normalize()
 		key := strings.ToLower(prompt.Text)

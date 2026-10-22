@@ -49,6 +49,12 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	started := time.Now()
 	run, input, err := w.store.BeginGenerationAttempt(ctx, job.Args.RunID, job.ID, job.Attempt)
 	if err != nil {
+		if errors.Is(err, koidomain.ErrBillingRequired) {
+			return w.fail(ctx, job, "billing_required", false, err)
+		}
+		if errors.Is(err, koidomain.ErrPromptLimitReached) {
+			return w.fail(ctx, job, "prompt_limit_reached", false, err)
+		}
 		return w.fail(ctx, job, "storage_error", true, fmt.Errorf("begin generation: %w", err))
 	}
 
@@ -80,6 +86,9 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 
 	prompts, competitors, err := w.store.FinishGenerationAttempt(ctx, run.ID, job.Attempt, result)
 	if err != nil {
+		if errors.Is(err, koidomain.ErrBillingRequired) {
+			return w.fail(ctx, job, "billing_required", false, err)
+		}
 		return w.fail(ctx, job, "storage_error", true, err)
 	}
 

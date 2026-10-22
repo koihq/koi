@@ -30,13 +30,15 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 		UserID: user.ID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
 	}))
 	periodEnd := time.Now().Add(30 * 24 * time.Hour)
+	trialEnd := time.Now().Add(7 * 24 * time.Hour)
 	require.NoError(t, db.Create(&koidomain.BillingSubscription{
 		OrganizationID:       organization.ID,
 		StripeSubscriptionID: "sub_123",
 		StripePriceID:        "price_123",
-		Quantity:             5,
-		Status:               "active",
+		Quantity:             15,
+		Status:               "trialing",
 		CurrentPeriodEnd:     &periodEnd,
+		TrialEnd:             &trialEnd,
 	}).Error)
 
 	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
@@ -61,7 +63,36 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 	require.NoError(t, err)
 	inactive := true
 	require.NoError(t, store.PromptRepo().Update(ctx, koidomain.PromptFilter{ID: first.ID, BrandID: brands[0].ID}, koidomain.PromptUpdate{Inactive: &inactive}))
+	draft := &koidomain.Prompt{BrandID: brands[0].ID, Text: "Drafted prompt", Source: koidomain.PromptSourceDrafted}
+	require.NoError(t, db.Create(draft).Error)
+	require.ErrorIs(t, store.PromptRepo().Update(ctx,
+		koidomain.PromptFilter{ID: extra.ID, BrandID: brands[1].ID},
+		koidomain.PromptUpdate{Inactive: &active}), koidomain.ErrPromptLimitReached)
+	require.NoError(t, db.Delete(draft).Error)
 	require.NoError(t, store.PromptRepo().Update(ctx, koidomain.PromptFilter{ID: extra.ID, BrandID: brands[1].ID}, koidomain.PromptUpdate{Inactive: &active}))
+	require.NoError(t, db.Where("brand_id = ? AND text IN ?", brands[0].ID,
+		[]string{"Prompt 0", "Prompt 2", "Prompt 4"}).Delete(&koidomain.Prompt{}).Error)
+	require.NoError(t, db.Where("brand_id = ? AND text = ?", brands[1].ID, "Prompt 1").Delete(&koidomain.Prompt{}).Error)
+	run := &koidomain.GenerationRun{
+		BrandID:       brands[0].ID,
+		Mode:          koidomain.GenerationPrompts,
+		State:         koidomain.GenerationRunning,
+		Attempt:       1,
+		ModelSlug:     koidomain.GenerationModelSlug,
+		BrandSnapshot: brands[0].Snapshot(),
+	}
+	require.NoError(t, db.Create(run).Error)
+	suggestions := make([]string, 15)
+	for i := range suggestions {
+		suggestions[i] = fmt.Sprintf("Generated prompt %d?", i)
+	}
+	inserted, _, err := store.FinishGenerationAttempt(ctx, run.ID, 1,
+		koidomain.GenerationResult{Prompts: suggestions})
+	require.NoError(t, err)
+	require.Equal(t, 3, inserted)
+	count, err := storedPromptCount(ctx, db, organization.ID)
+	require.NoError(t, err)
+	require.EqualValues(t, 5, count)
 }
 
 func TestCloudWorkerStopsQueuedPromptAfterDeactivation(t *testing.T) {

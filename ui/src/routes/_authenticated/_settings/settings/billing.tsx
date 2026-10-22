@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -36,9 +36,13 @@ function BillingSettings() {
   const [message, setMessage] = useState("");
   const quantity = Number(prompts);
   const valid = allowances.includes(quantity);
+  const checkoutReturned =
+    new URLSearchParams(window.location.search).get("checkout") === "success";
   const subscription = useQuery({
     queryKey: ["billing", "subscription"],
     queryFn: api.billing.subscription,
+    refetchInterval: (query) =>
+      checkoutReturned && (query.state.data?.promptLimit ?? 0) === 0 ? 2000 : false,
   });
   const quote = useQuery({
     queryKey: ["billing", "quote", quantity],
@@ -46,10 +50,15 @@ function BillingSettings() {
     enabled: valid,
   });
   const subscriptionRecord = subscription.data?.subscription;
-  const current = subscriptionRecord?.status === "canceled" ? null : subscriptionRecord;
+  const current =
+    (subscription.data?.promptLimit ?? 0) > 0 &&
+    (subscriptionRecord?.status === "active" || subscriptionRecord?.status === "trialing")
+      ? subscriptionRecord
+      : null;
+  const canCheckout = !subscriptionRecord || subscriptionRecord.status === "canceled";
 
   async function submit() {
-    if (!valid || !quote.data) return;
+    if (!valid || !quote.data || (!current && !canCheckout)) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -93,16 +102,37 @@ function BillingSettings() {
     <div className="max-w-2xl pb-24">
       <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("title")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{t("description")}</p>
+      {checkoutReturned && (subscription.data?.promptLimit ?? 0) === 0 && (
+        <output className="mt-4 block text-sm text-muted-foreground">
+          {t("awaitingConfirmation")}
+        </output>
+      )}
+      {checkoutReturned && (subscription.data?.promptLimit ?? 0) > 0 && (
+        <Button render={<Link to="/" />} className="mt-4">
+          {t("continueToApp")}
+        </Button>
+      )}
 
       <div className="mt-10 border-t border-border pt-7">
+        {subscription.isError && (
+          <p role="alert" className="mb-4 text-sm text-destructive">
+            {t("updateError")}{" "}
+            <Button variant="link" onClick={() => void subscription.refetch()}>
+              {t("retry")}
+            </Button>
+          </p>
+        )}
         <p className="text-xs uppercase tracking-widest text-muted-foreground">
           {t("currentSubscription")}
         </p>
         <p className="mt-3 text-lg font-medium">
           {subscription.isLoading
             ? t("loading")
-            : current
-              ? t("current", { quantity: current.quantity, status: current.status })
+            : subscriptionRecord
+              ? t("current", {
+                  quantity: subscriptionRecord.quantity,
+                  status: subscriptionRecord.status,
+                })
               : t("none")}
         </p>
         {current?.pendingQuantity && (
@@ -115,11 +145,17 @@ function BillingSettings() {
             {t("allowance", { quantity: subscription.data?.promptLimit ?? 0 })}
           </p>
         )}
+        {subscriptionRecord && !current && subscriptionRecord.status !== "canceled" && (
+          <p className="mt-3 text-sm text-muted-foreground">{t("resolvePayment")}</p>
+        )}
       </div>
 
       <div className="mt-10 border-t border-border pt-7">
         <Label htmlFor="billing-prompts">{t("trackedPrompts")}</Label>
         <p className="mt-1 text-sm text-muted-foreground">{t("rangeDescription")}</p>
+        {subscription.data?.trialAvailable && !subscriptionRecord && (
+          <p className="mt-2 text-sm text-muted-foreground">{t("trialDescription")}</p>
+        )}
         <Select
           value={prompts}
           items={allowanceItems}
@@ -149,13 +185,17 @@ function BillingSettings() {
         </p>
         <p className="mt-1 text-xs text-muted-foreground">{t("taxNote")}</p>
         <div className="mt-6 flex flex-wrap gap-2">
-          <Button
-            size="lg"
-            disabled={!valid || !quote.data || busy || subscription.isLoading}
-            onClick={() => void submit()}
-          >
-            {current ? t("changeAllowance") : t("checkout")}
-          </Button>
+          {(current || canCheckout) && (
+            <Button
+              size="lg"
+              disabled={
+                !valid || !quote.data || busy || subscription.isLoading || subscription.isError
+              }
+              onClick={() => void submit()}
+            >
+              {current ? t("changeAllowance") : t("checkout")}
+            </Button>
+          )}
           {subscriptionRecord && (
             <Button size="lg" variant="outline" disabled={busy} onClick={() => void openPortal()}>
               {t("portal")}

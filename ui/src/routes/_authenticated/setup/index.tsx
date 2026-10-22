@@ -34,7 +34,13 @@ function Setup() {
     let draftStartFailed = false;
     if (brand) {
       try {
-        if ((await api.capabilities.get()).aiDrafting) {
+        const capabilities = await api.capabilities.get();
+        if (capabilities.cloudBilling) {
+          await router.invalidate();
+          await router.navigate({ to: "/settings/billing" });
+          return;
+        }
+        if (capabilities.aiDrafting) {
           await api.generations.create(brand.id, "initial", `setup-${brand.id}`);
         }
       } catch {

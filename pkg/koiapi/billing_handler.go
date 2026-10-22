@@ -21,6 +21,7 @@ import (
 )
 
 type BillingRepository interface {
+	ProductAccess(context.Context, uuid.UUID) (bool, error)
 	OrganizationForUser(context.Context) (*koidomain.Organization, error)
 	SaveCustomer(context.Context, uuid.UUID, string) (string, error)
 	Subscription(context.Context, uuid.UUID) (*koidomain.BillingSubscription, error)
@@ -63,6 +64,13 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			err = h.repo.CompleteCheckout(r.Context(), event.ID, session.ID, session.Customer, session.Reference, session.Subscription)
 		}
+		if err == nil {
+			var subscription koistripe.Subscription
+			subscription, err = h.stripe.GetSubscription(r.Context(), session.Subscription)
+			if err == nil {
+				err = h.syncSubscription(r.Context(), event.ID+":subscription", subscription)
+			}
+		}
 	case "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted":
 		var subscription koistripe.Subscription
 		err = json.Unmarshal(event.Data.Object, &subscription)
@@ -86,6 +94,9 @@ func (h *BillingHandler) syncSubscription(ctx context.Context, eventID string, s
 		return errors.New("Stripe subscription must have one price item")
 	}
 	item := subscription.Items.Data[0]
+	if item.Price.ID != h.priceID {
+		return errors.New("Stripe subscription has an unknown Price")
+	}
 	periodEnd := subscription.CurrentPeriodEnd
 	if periodEnd == 0 {
 		periodEnd = item.CurrentPeriodEnd
@@ -145,7 +156,7 @@ func (h *BillingHandler) ChangeAllowance(w http.ResponseWriter, r *http.Request)
 		api.WriteDomainError(w, r, err)
 		return
 	}
-	if local == nil || local.Status != "active" && local.Status != "trialing" || local.CancelAtPeriodEnd {
+	if local == nil || local.PromptLimit(time.Now().UTC()) == 0 || local.CancelAtPeriodEnd {
 		api.WriteDomainError(w, r, koidomain.ErrBillingConflict)
 		return
 	}
@@ -232,10 +243,7 @@ func (h *BillingHandler) price(r *http.Request, quantity int) (int64, error) {
 		return 0, err
 	}
 	amount, err := price.MonthlyAmount(quantity)
-	if err != nil {
-		return 0, err
-	}
-	if amount != want {
+	if err != nil || amount != want {
 		return 0, errors.New("Stripe price does not match the configured catalog")
 	}
 
@@ -305,7 +313,7 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.stripe.CreateCheckout(r.Context(), customerID, organization.ID.String(), h.priceID, reservation.ID.String(), quantity, h.publicURL, false)
+	session, err := h.stripe.CreateCheckout(r.Context(), customerID, organization.ID.String(), h.priceID, reservation.ID.String(), quantity, h.publicURL, reservation.Trial)
 	if err != nil {
 		api.WriteDomainError(w, r, err)
 		return
@@ -334,7 +342,7 @@ func (h *BillingHandler) Subscription(w http.ResponseWriter, r *http.Request) {
 	if subscription != nil {
 		limit = subscription.PromptLimit(time.Now().UTC())
 	}
-	api.JSON(w, r, http.StatusOK, map[string]any{"subscription": subscription, "prompt_limit": limit})
+	api.JSON(w, r, http.StatusOK, map[string]any{"subscription": subscription, "prompt_limit": limit, "trial_available": organization.TrialUsedAt == nil})
 }
 
 func (h *BillingHandler) Portal(w http.ResponseWriter, r *http.Request) {

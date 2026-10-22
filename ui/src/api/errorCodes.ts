@@ -14,6 +14,12 @@ export const errorCodes = [
   "idempotency_conflict",
   "initial_already_completed",
   "run_not_ready",
+  "prompt_limit_reached",
+  "billing_required",
+  "billing_conflict",
+  "billing_checkout_pending",
+  "billing_subscription_exists",
+  "billing_price_mismatch",
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

@@ -20,52 +20,58 @@ func testClient(server *httptest.Server) *Client {
 	})
 }
 
-func TestStripeVolumePriceMatchesEverySelectablePromptCount(t *testing.T) {
+func TestStripePriceRequiresInclusiveFlatOnlyTiers(t *testing.T) {
 	catalog := koipricing.Current()
 	price := Price{
 		ID:            "price_test",
 		Active:        true,
 		Currency:      "eur",
 		BillingScheme: "tiered",
+		TaxBehavior:   "inclusive",
 		TiersMode:     "volume",
 	}
 	price.Recurring.Interval = "month"
+	price.Recurring.IntervalCount = 1
 	price.Recurring.UsageType = "licensed"
-
-	for i, option := range catalog.Options {
+	for index, option := range catalog.Options {
 		tier := Tier{FlatAmount: int64(option.Euros) * 100}
-		if i < len(catalog.Options)-1 {
+		if index < len(catalog.Options)-1 {
 			upper := option.Prompts
 			tier.UpTo = &upper
 		}
 		price.Tiers = append(price.Tiers, tier)
 	}
-
 	if err := price.ValidateCatalog(catalog); err != nil {
 		t.Fatal(err)
 	}
-	price.Tiers[1].FlatAmount++
+	price.TaxBehavior = "exclusive"
 	if err := price.ValidateCatalog(catalog); err == nil {
-		t.Fatal("mismatched Stripe tier was accepted")
+		t.Fatal("tax-exclusive Stripe price was accepted")
 	}
-	price.Tiers[1].FlatAmount--
-	if got, err := price.MonthlyAmount(10); err != nil || got != 1500 {
-		t.Fatalf("ten prompts: %d, %v", got, err)
+	price.TaxBehavior = "inclusive"
+	zero := int64(0)
+	price.Tiers[0].UnitAmount = &zero
+	if err := price.ValidateCatalog(catalog); err == nil {
+		t.Fatal("explicit zero unit amount was accepted")
 	}
-	for _, quantity := range []int{4, 6, 501} {
-		if _, err := price.MonthlyAmount(quantity); err == nil {
-			t.Fatalf("quantity %d was accepted", quantity)
-		}
+	price.Tiers[0].UnitAmount = nil
+	price.Tiers[0].FlatAmount++
+	if err := price.ValidateCatalog(catalog); err == nil {
+		t.Fatal("wrong tier amount was accepted")
+	}
+	price.Tiers[0].FlatAmount--
+	if amount, err := price.MonthlyAmount(5); err != nil || amount != 900 {
+		t.Fatalf("five prompts: %d, %v", amount, err)
 	}
 }
 
-func TestGetPriceUsesExpandedTiers(t *testing.T) {
+func TestGetPricePreservesAbsentUnitAmount(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/prices/price_test" || r.URL.Query().Get("expand[0]") != "tiers" {
 			t.Errorf("unexpected Stripe request: %s", r.URL.String())
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"price_test","active":true,"currency":"eur","billing_scheme":"tiered","tiers_mode":"volume","recurring":{"interval":"month","usage_type":"licensed"},"tiers":[{"up_to":5,"flat_amount":900},{"up_to":null,"flat_amount":1500}]}`))
+		_, _ = w.Write([]byte(`{"id":"price_test","active":true,"currency":"eur","billing_scheme":"tiered","tiers_mode":"volume","tax_behavior":"inclusive","recurring":{"interval":"month","interval_count":1,"usage_type":"licensed"},"tiers":[{"up_to":5,"flat_amount":900,"unit_amount":null},{"up_to":null,"flat_amount":1500,"unit_amount":null}]}`))
 	}))
 	defer server.Close()
 
@@ -73,8 +79,8 @@ func TestGetPriceUsesExpandedTiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := price.MonthlyAmount(10); err != nil || got != 1500 {
-		t.Fatalf("ten prompts: %d, %v", got, err)
+	if len(price.Tiers) != 2 || price.Tiers[0].UnitAmount != nil || price.Tiers[1].UnitAmount != nil {
+		t.Fatalf("unit amounts should be absent: %+v", price.Tiers)
 	}
 }
 
@@ -116,6 +122,34 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 	}
 }
 
+func TestHostedCheckoutTrialRequiresPaymentMethod(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		if got := r.Form.Get("subscription_data[trial_period_days]"); got != "7" {
+			t.Errorf("trial days = %q, want 7", got)
+		}
+		if got := r.Form.Get("payment_method_collection"); got != "always" {
+			t.Errorf("payment method collection = %q, want always", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(CheckoutSession{
+			ID:        "cs_trial",
+			URL:       "https://checkout.stripe.com/test",
+			Customer:  "cus_org",
+			Reference: "org_uuid",
+			ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		})
+	}))
+	defer server.Close()
+
+	_, err := testClient(server).CreateCheckout(t.Context(), "cus_org", "org_uuid", "price_v1", "reservation_uuid", 15, "https://koi.example", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestUpgradeRequestsPaidPendingProration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
@@ -154,7 +188,7 @@ func TestDowngradeSchedulesNextPeriodWithoutProration(t *testing.T) {
 			"phases[0][items][0][quantity]": "25",
 			"phases[1][start_date]":         "200",
 			"phases[1][items][0][price]":    "price_v1",
-			"phases[1][items][0][quantity]": "6",
+			"phases[1][items][0][quantity]": "5",
 		} {
 			if got := r.Form.Get(key); got != want {
 				t.Errorf("%s = %q, want %q", key, got, want)
@@ -170,7 +204,7 @@ func TestDowngradeSchedulesNextPeriodWithoutProration(t *testing.T) {
 		StartDate int64
 		EndDate   int64
 	}{StartDate: 100, EndDate: 200})
-	if err := testClient(server).ScheduleDowngrade(t.Context(), schedule, "price_v1", 25, 6, 200); err != nil {
+	if err := testClient(server).ScheduleDowngrade(t.Context(), schedule, "price_v1", 25, 5, 200); err != nil {
 		t.Fatal(err)
 	}
 }

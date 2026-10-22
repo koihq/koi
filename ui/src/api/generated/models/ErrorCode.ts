@@ -30,7 +30,9 @@ export const ErrorCode = {
     FEATURE_UNAVAILABLE: 'feature_unavailable',
     GENERATION_CONFLICT: 'generation_conflict',
     IDEMPOTENCY_CONFLICT: 'idempotency_conflict',
-    INITIAL_ALREADY_COMPLETED: 'initial_already_completed'
+    INITIAL_ALREADY_COMPLETED: 'initial_already_completed',
+    BILLING_REQUIRED: 'billing_required',
+    PROMPT_LIMIT_REACHED: 'prompt_limit_reached'
 } as const;
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
 

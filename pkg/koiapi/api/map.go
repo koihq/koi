@@ -24,6 +24,8 @@ func MapError(err error) (int, Envelope) {
 			return http.StatusConflict, envelope(de)
 		case koidomain.CodeInvalidCredentials, koidomain.CodeUnauthorized:
 			return http.StatusUnauthorized, envelope(de)
+		case koidomain.CodeBillingRequired:
+			return http.StatusPaymentRequired, envelope(de)
 		case koidomain.CodeNotFound:
 			return http.StatusNotFound, envelope(de)
 		case koidomain.CodeFeatureUnavailable:

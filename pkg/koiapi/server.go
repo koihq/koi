@@ -59,30 +59,39 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 			sess,
 		).Routes())
 		r.Route("/brands", func(r chi.Router) {
+			var billingGuard func(http.Handler) http.Handler
+			if billing != nil {
+				billingGuard = RequireBilling(sess, billing.repo)
+			}
 			NewBrandHandler(
 				koidomain.NewBrandQuerier(store),
 				koidomain.NewBrandCommander(store),
 				sess,
+				billingGuard,
 			).Routes()(r)
-			r.Route("/{brandID}/prompts", NewPromptHandler(
+			product := r
+			if billingGuard != nil {
+				product = r.With(billingGuard)
+			}
+			product.Route("/{brandID}/prompts", NewPromptHandler(
 				koidomain.NewPromptQuerier(store),
 				koidomain.NewPromptCommander(store),
 				sess,
 				koidomain.NewVisibilityAnalyticsQuerier(store),
 			).Routes())
-			r.Route("/{brandID}/competitors", NewCompetitorHandler(
+			product.Route("/{brandID}/competitors", NewCompetitorHandler(
 				koidomain.NewCompetitorQuerier(store, searcher),
 				koidomain.NewCompetitorCommander(store),
 				sess,
 			).Routes())
 			visibility := NewVisibilityHandler(koidomain.NewVisibilityQuerier(store), sess, koidomain.NewVisibilityAnalyticsQuerier(store))
-			r.With(Authorizer(sess)).Get("/{brandID}/tracking", visibility.Tracking)
-			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history", visibility.ListHistoricalPrompts)
-			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/runs", visibility.ListPromptRuns)
-			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/visibility", visibility.PromptVisibility)
-			r.With(Authorizer(sess)).Get("/{brandID}/visibility/summary", visibility.Summary)
-			r.Route("/{brandID}/runs", visibility.Routes())
-			r.Route("/{brandID}/generations", NewGenerationHandler(
+			product.With(Authorizer(sess)).Get("/{brandID}/tracking", visibility.Tracking)
+			product.With(Authorizer(sess)).Get("/{brandID}/prompt-history", visibility.ListHistoricalPrompts)
+			product.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/runs", visibility.ListPromptRuns)
+			product.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/visibility", visibility.PromptVisibility)
+			product.With(Authorizer(sess)).Get("/{brandID}/visibility/summary", visibility.Summary)
+			product.Route("/{brandID}/runs", visibility.Routes())
+			product.Route("/{brandID}/generations", NewGenerationHandler(
 				koidomain.NewGenerationQuerier(store),
 				koidomain.NewGenerationCommander(store, aiDrafting),
 				sess,

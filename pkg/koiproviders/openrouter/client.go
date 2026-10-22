@@ -38,6 +38,7 @@ func BoundInput(input koidomain.GenerationInput, model string, maxBytes int) (ko
 	bounded := koidomain.GenerationInput{
 		Brand:               input.Brand,
 		Mode:                input.Mode,
+		PromptTarget:        input.PromptTarget,
 		ExistingPrompts:     []string{},
 		ExistingCompetitors: []koidomain.CompetitorIdentity{},
 	}
@@ -68,7 +69,7 @@ func requestSize(model string, input koidomain.GenerationInput) int {
 	return len(mustJSON(map[string]any{
 		"model":  model,
 		"input":  input,
-		"prompt": draftPrompt,
+		"prompt": draftInstructions(input.PromptTarget),
 		"schema": responseSchema,
 	}))
 }

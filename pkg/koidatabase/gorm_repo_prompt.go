@@ -32,7 +32,7 @@ func (r *GormPromptRepository) Create(ctx context.Context, prompt *koidomain.Pro
 		if err != nil {
 			return err
 		}
-		if r.cloudMode && prompt.Confirmed && !prompt.Inactive {
+		if r.cloudMode && !prompt.Inactive {
 			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
 				return err
 			}
@@ -113,14 +113,11 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 			if err != nil {
 				return err
 			}
-			wasActive := current.Confirmed && !current.Inactive
-			if update.Confirmed != nil {
-				current.Confirmed = *update.Confirmed
-			}
+			wasInactive := current.Inactive
 			if update.Inactive != nil {
 				current.Inactive = *update.Inactive
 			}
-			if !wasActive && current.Confirmed && !current.Inactive {
+			if wasInactive && !current.Inactive {
 				if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, 1); err != nil {
 					return err
 				}

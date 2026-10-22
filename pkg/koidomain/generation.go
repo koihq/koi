@@ -44,6 +44,7 @@ type CompetitorIdentity struct {
 type GenerationInput struct {
 	Brand               BrandSnapshot        `json:"brand"`
 	Mode                GenerationMode       `json:"mode"`
+	PromptTarget        int                  `json:"prompt_target"`
 	ExistingPrompts     []string             `json:"existing_prompts"`
 	ExistingCompetitors []CompetitorIdentity `json:"existing_competitors"`
 }

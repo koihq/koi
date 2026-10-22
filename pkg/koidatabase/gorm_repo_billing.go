@@ -34,6 +34,24 @@ func (r *BillingRepository) OrganizationForUser(ctx context.Context) (*koidomain
 	return &organization, nil
 }
 
+func (r *BillingRepository) ProductAccess(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var membership koidomain.Membership
+	err := r.db.WithContext(ctx).Select("organization_id").
+		Where("user_id = ?", userID).Take(&membership).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, koidomain.ErrUnauthorized
+	}
+	if err != nil {
+		return false, err
+	}
+	if membership.OrganizationID == uuid.Nil {
+		return false, koidomain.ErrUnauthorized
+	}
+
+	limit, err := cloudPromptLimit(ctx, r.db, membership.OrganizationID)
+	return limit > 0, err
+}
+
 func (r *BillingRepository) SaveCustomer(ctx context.Context, orgID uuid.UUID, customerID string) (string, error) {
 	result := r.db.WithContext(ctx).Model(&koidomain.Organization{}).
 		Where("id = ? AND stripe_customer_id IS NULL", orgID).
@@ -108,6 +126,7 @@ func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID
 			CustomerID:     customerID,
 			PriceID:        priceID,
 			Quantity:       quantity,
+			Trial:          organization.TrialUsedAt == nil,
 		}
 		return tx.Create(&checkout).Error
 	})
@@ -185,12 +204,12 @@ func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organ
 		var checkout koidomain.BillingCheckoutSession
 		if err := tx.Where("organization_id = ? AND customer_id = ? AND stripe_subscription_id = ? AND completed", orgID, customerID, subscriptionID).
 			Take(&checkout).Error; err != nil {
-			return mapDBError(err)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Checkout's webhook will read the current subscription and finish the sync.
+				return nil
+			}
+			return err
 		}
-		if checkout.PriceID != priceID {
-			return errors.New("Stripe subscription price mismatch")
-		}
-
 		var subscription koidomain.BillingSubscription
 		err = tx.Where("organization_id = ?", orgID).Take(&subscription).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -199,8 +218,10 @@ func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organ
 		if err == nil && subscription.StripeSubscriptionID != subscriptionID && subscription.Status != "canceled" {
 			return errors.New("organization already has a subscription")
 		}
-		if (errors.Is(err, gorm.ErrRecordNotFound) || subscription.StripeSubscriptionID != subscriptionID) && checkout.Quantity != quantity {
-			return errors.New("Stripe subscription quantity differs from Checkout")
+		if errors.Is(err, gorm.ErrRecordNotFound) || subscription.StripeSubscriptionID != subscriptionID {
+			if checkout.PriceID != priceID || checkout.Quantity != quantity {
+				return errors.New("Stripe subscription differs from Checkout")
+			}
 		}
 
 		subscription.OrganizationID = orgID
@@ -211,6 +232,12 @@ func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organ
 		subscription.CurrentPeriodEnd = currentPeriodEnd
 		subscription.TrialEnd = trialEnd
 		subscription.CancelAtPeriodEnd = cancelAtPeriodEnd
+		if checkout.Trial && (status == "trialing" || status == "active") && organization.TrialUsedAt == nil {
+			now := time.Now().UTC()
+			if err := tx.Model(&organization).Update("trial_used_at", now).Error; err != nil {
+				return err
+			}
+		}
 		if subscription.PendingQuantity != nil && quantity == *subscription.PendingQuantity {
 			subscription.PendingQuantity = nil
 			subscription.StripeScheduleID = nil
