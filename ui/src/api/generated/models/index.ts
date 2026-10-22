@@ -3,6 +3,7 @@
 /* eslint-disable */
 export * from './AppearanceEvidence';
 export * from './BillingAllowanceRequest';
+export * from './BillingCatalog';
 export * from './BillingChange';
 export * from './BillingQuote';
 export * from './BillingRedirect';

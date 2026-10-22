@@ -10,6 +10,7 @@ import (
 
 	"github.com/stripe/stripe-go/v87"
 
+	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koipricing"
 )
 
@@ -23,7 +24,11 @@ func New(secret string) *Client {
 
 func newClient(secret string, backend *stripe.BackendConfig) *Client {
 	if backend == nil {
-		backend = &stripe.BackendConfig{HTTPClient: &http.Client{Timeout: 15 * time.Second}}
+		backend = &stripe.BackendConfig{
+			HTTPClient: &http.Client{
+				Timeout: 15 * time.Second,
+			},
+		}
 	}
 	return &Client{
 		stripe: stripe.NewClient(secret, stripe.WithBackends(stripe.NewBackendsWithConfig(backend))),
@@ -46,9 +51,10 @@ type Price struct {
 }
 
 type Tier struct {
-	UpTo       *int
-	FlatAmount int64
-	UnitAmount *int64
+	UpTo              *int
+	FlatAmount        int64
+	UnitAmount        *int64
+	UnitAmountDecimal *string
 }
 
 func (p Price) ValidateCatalog(catalog koipricing.Catalog) error {
@@ -60,25 +66,13 @@ func (p Price) ValidateCatalog(catalog koipricing.Catalog) error {
 	}
 	for index, option := range catalog.Options {
 		tier := p.Tiers[index]
-		if tier.FlatAmount != int64(option.Euros)*100 || tier.UnitAmount != nil ||
+		if tier.FlatAmount != int64(option.Euros)*100 || tier.UnitAmount != nil || tier.UnitAmountDecimal != nil ||
 			(index == len(catalog.Options)-1 && tier.UpTo != nil) ||
 			(index < len(catalog.Options)-1 && (tier.UpTo == nil || *tier.UpTo != option.Prompts)) {
 			return fmt.Errorf("Stripe price %s has an invalid tier for %d prompts", p.ID, option.Prompts)
 		}
 	}
 	return nil
-}
-
-func (p Price) MonthlyAmount(prompts int) (int64, error) {
-	if _, err := koipricing.Current().Quote(prompts); err != nil {
-		return 0, err
-	}
-	for _, tier := range p.Tiers {
-		if tier.UpTo == nil || prompts <= *tier.UpTo {
-			return tier.FlatAmount, nil
-		}
-	}
-	return 0, errors.New("Stripe price has no matching tier")
 }
 
 func (c *Client) GetPrice(ctx context.Context, id string) (Price, error) {
@@ -110,7 +104,8 @@ func (c *Client) GetPrice(ctx context.Context, id string) (Price, error) {
 	}
 	var raw struct {
 		Tiers []struct {
-			UnitAmount *int64 `json:"unit_amount"`
+			UnitAmount        *int64  `json:"unit_amount"`
+			UnitAmountDecimal *string `json:"unit_amount_decimal"`
 		} `json:"tiers"`
 	}
 	if err := json.Unmarshal(got.LastResponse.RawJSON, &raw); err != nil || len(raw.Tiers) != len(got.Tiers) {
@@ -120,7 +115,11 @@ func (c *Client) GetPrice(ctx context.Context, id string) (Price, error) {
 		if tier == nil {
 			return Price{}, errors.New("Stripe returned an empty price tier")
 		}
-		item := Tier{FlatAmount: tier.FlatAmount, UnitAmount: raw.Tiers[index].UnitAmount}
+		item := Tier{
+			FlatAmount:        tier.FlatAmount,
+			UnitAmount:        raw.Tiers[index].UnitAmount,
+			UnitAmountDecimal: raw.Tiers[index].UnitAmountDecimal,
+		}
 		if tier.UpTo > 0 {
 			upTo := int(tier.UpTo)
 			item.UpTo = &upTo
@@ -146,53 +145,93 @@ func (c *Client) CreateCustomer(ctx context.Context, organizationID string) (str
 	return got.ID, nil
 }
 
-type CheckoutSession struct {
-	ID           string `json:"id"`
-	URL          string `json:"url"`
-	Customer     string `json:"customer"`
-	Subscription string `json:"subscription"`
-	Reference    string `json:"client_reference_id"`
-	ExpiresAt    int64  `json:"expires_at"`
+func (c *Client) ValidatePrice(ctx context.Context, id string) error {
+	price, err := c.GetPrice(ctx, id)
+	if err != nil {
+		return err
+	}
+	return price.ValidateCatalog(koipricing.Current())
 }
 
-func (c *Client) CreateCheckout(ctx context.Context, customerID, organizationID, priceID, reservationID string, quantity int, publicURL string, trial bool) (CheckoutSession, error) {
+func (c *Client) CreateCheckout(ctx context.Context, input koidomain.BillingCheckoutInput) (koidomain.BillingCheckout, error) {
 	params := &stripe.CheckoutSessionCreateParams{
 		Mode:                    stripe.String("subscription"),
 		UIMode:                  stripe.String("hosted_page"),
-		Customer:                stripe.String(customerID),
+		Customer:                stripe.String(input.CustomerID),
 		PaymentMethodCollection: stripe.String("always"),
-		ClientReferenceID:       stripe.String(organizationID),
+		ClientReferenceID:       stripe.String(input.OrganizationID),
 		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
-			{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(quantity))},
+			{
+				Price:    stripe.String(input.PriceID),
+				Quantity: stripe.Int64(int64(input.Quantity)),
+			},
 		},
 		SubscriptionData: &stripe.CheckoutSessionCreateSubscriptionDataParams{
-			Metadata: map[string]string{"organization_id": organizationID},
+			Metadata: map[string]string{
+				"organization_id": input.OrganizationID,
+			},
 		},
-		SuccessURL: stripe.String(publicURL + "/settings/billing?checkout=success"),
-		CancelURL:  stripe.String(publicURL + "/settings/billing?checkout=cancel"),
+		SuccessURL: stripe.String(input.PublicURL + "/settings/billing?checkout=success"),
+		CancelURL:  stripe.String(input.PublicURL + "/settings/billing?checkout=cancel"),
 	}
-	if trial {
+	if input.Trial {
 		params.SubscriptionData.TrialPeriodDays = stripe.Int64(7)
 	}
-	params.SetIdempotencyKey("koi-checkout-" + reservationID)
+	params.SetIdempotencyKey("koi-checkout-" + input.ReservationID)
 
 	got, err := c.stripe.V1CheckoutSessions.Create(ctx, params)
 	if err != nil {
-		return CheckoutSession{}, err
+		return koidomain.BillingCheckout{}, err
 	}
-	if got == nil || got.Customer == nil || got.ID == "" || got.URL == "" ||
-		got.Customer.ID != customerID || got.ClientReferenceID != organizationID ||
-		got.ExpiresAt <= time.Now().Unix() {
-		return CheckoutSession{}, errors.New("Stripe returned an invalid Checkout Session")
+	result, err := checkoutFromStripe(got)
+	if err != nil {
+		return koidomain.BillingCheckout{}, err
 	}
+	if result.URL == "" || result.CustomerID != input.CustomerID ||
+		result.OrganizationID != input.OrganizationID || !result.ExpiresAt.After(time.Now()) {
+		return koidomain.BillingCheckout{}, errors.New("Stripe returned an invalid Checkout Session")
+	}
+	return result, nil
+}
 
-	return CheckoutSession{
-		ID:        got.ID,
-		URL:       got.URL,
-		Customer:  got.Customer.ID,
-		Reference: got.ClientReferenceID,
-		ExpiresAt: got.ExpiresAt,
-	}, nil
+func checkoutFromStripe(got *stripe.CheckoutSession) (koidomain.BillingCheckout, error) {
+	if got == nil || got.ID == "" || got.Customer == nil {
+		return koidomain.BillingCheckout{}, errors.New("Stripe returned an incomplete Checkout Session")
+	}
+	result := koidomain.BillingCheckout{
+		ID:             got.ID,
+		URL:            got.URL,
+		CustomerID:     got.Customer.ID,
+		OrganizationID: got.ClientReferenceID,
+		Status:         string(got.Status),
+		ExpiresAt:      time.Unix(got.ExpiresAt, 0).UTC(),
+	}
+	if got.Subscription != nil {
+		result.SubscriptionID = got.Subscription.ID
+	}
+	return result, nil
+}
+
+func (c *Client) ExpireCheckout(ctx context.Context, id string) (koidomain.BillingCheckout, error) {
+	params := &stripe.CheckoutSessionExpireParams{}
+	params.SetIdempotencyKey("koi-expire-" + id)
+	got, err := c.stripe.V1CheckoutSessions.Expire(ctx, id, params)
+	if err != nil {
+		// Expiration races payment completion; retrieve the resulting state before replacing it.
+		var stripeError *stripe.Error
+		if !errors.As(err, &stripeError) || stripeError.HTTPStatusCode != http.StatusBadRequest {
+			return koidomain.BillingCheckout{}, err
+		}
+		got, err = c.stripe.V1CheckoutSessions.Retrieve(ctx, id, nil)
+	}
+	if err != nil {
+		return koidomain.BillingCheckout{}, err
+	}
+	result, err := checkoutFromStripe(got)
+	if err == nil && result.ID != id {
+		return koidomain.BillingCheckout{}, errors.New("Stripe returned unexpected checkout")
+	}
+	return result, err
 }
 
 func (c *Client) CreatePortal(ctx context.Context, customerID, publicURL string) (string, error) {
@@ -206,218 +245,146 @@ func (c *Client) CreatePortal(ctx context.Context, customerID, publicURL string)
 	if got == nil || got.URL == "" {
 		return "", errors.New("Stripe returned an empty portal URL")
 	}
-
 	return got.URL, nil
 }
 
-type Subscription struct {
-	ID                string            `json:"id"`
-	Customer          string            `json:"customer"`
-	Status            string            `json:"status"`
-	Metadata          map[string]string `json:"metadata"`
-	CurrentPeriodEnd  int64             `json:"current_period_end"`
-	TrialEnd          *int64            `json:"trial_end"`
-	CancelAtPeriodEnd bool              `json:"cancel_at_period_end"`
-	Schedule          *string           `json:"schedule"`
-	Items             struct {
-		Data []struct {
-			ID               string `json:"id"`
-			Quantity         int    `json:"quantity"`
-			CurrentPeriodEnd int64  `json:"current_period_end"`
-			Price            struct {
-				ID string `json:"id"`
-			} `json:"price"`
-		} `json:"data"`
-	} `json:"items"`
+func timestamp(value int64) *time.Time {
+	if value <= 0 {
+		return nil
+	}
+	result := time.Unix(value, 0).UTC()
+	return &result
 }
 
-func subscriptionFromStripe(got *stripe.Subscription) (Subscription, error) {
-	if got == nil || got.Customer == nil || got.Items == nil {
-		return Subscription{}, errors.New("Stripe returned an incomplete subscription")
+func subscriptionFromStripe(got *stripe.Subscription) (koidomain.BillingSnapshot, error) {
+	if got == nil || got.ID == "" || got.Customer == nil || got.Items == nil || len(got.Items.Data) != 1 {
+		return koidomain.BillingSnapshot{}, errors.New("Stripe subscription must have one price item")
 	}
-	result := Subscription{
+	item := got.Items.Data[0]
+	if item == nil || item.Price == nil || item.ID == "" {
+		return koidomain.BillingSnapshot{}, errors.New("Stripe returned an incomplete subscription item")
+	}
+	result := koidomain.BillingSnapshot{
 		ID:                got.ID,
-		Customer:          got.Customer.ID,
+		CustomerID:        got.Customer.ID,
+		OrganizationID:    got.Metadata["organization_id"],
+		ItemID:            item.ID,
+		PriceID:           item.Price.ID,
+		Quantity:          int(item.Quantity),
 		Status:            string(got.Status),
-		Metadata:          got.Metadata,
 		CancelAtPeriodEnd: got.CancelAtPeriodEnd,
+		CurrentPeriodEnd:  timestamp(item.CurrentPeriodEnd),
+		TrialEnd:          timestamp(got.TrialEnd),
 	}
-	if got.TrialEnd > 0 {
-		result.TrialEnd = &got.TrialEnd
+	if got.Schedule != nil && got.Schedule.ID != "" {
+		result.ScheduleID = &got.Schedule.ID
 	}
-	if got.Schedule != nil {
-		result.Schedule = &got.Schedule.ID
-	}
-	for _, item := range got.Items.Data {
-		if item == nil || item.Price == nil {
-			return Subscription{}, errors.New("Stripe returned an incomplete subscription item")
-		}
-		result.Items.Data = append(result.Items.Data, struct {
-			ID               string `json:"id"`
-			Quantity         int    `json:"quantity"`
-			CurrentPeriodEnd int64  `json:"current_period_end"`
-			Price            struct {
-				ID string `json:"id"`
-			} `json:"price"`
-		}{
-			ID:               item.ID,
-			Quantity:         int(item.Quantity),
-			CurrentPeriodEnd: item.CurrentPeriodEnd,
-			Price: struct {
-				ID string `json:"id"`
-			}{ID: item.Price.ID},
-		})
-		if item.CurrentPeriodEnd > result.CurrentPeriodEnd {
-			result.CurrentPeriodEnd = item.CurrentPeriodEnd
+	if got.PendingUpdate != nil {
+		for _, pending := range got.PendingUpdate.SubscriptionItems {
+			if pending != nil && pending.ID == item.ID {
+				quantity := int(pending.Quantity)
+				result.PendingUpgradeQuantity = &quantity
+				result.PendingUpgradeExpiresAt = timestamp(got.PendingUpdate.ExpiresAt)
+			}
 		}
 	}
-
+	if got.LatestInvoice != nil && (result.PendingUpgradeQuantity != nil ||
+		got.Status == stripe.SubscriptionStatusPastDue || got.Status == stripe.SubscriptionStatusUnpaid ||
+		got.Status == stripe.SubscriptionStatusIncomplete) {
+		result.PaymentURL = got.LatestInvoice.HostedInvoiceURL
+	}
 	return result, nil
 }
 
-func (c *Client) GetSubscription(ctx context.Context, id string) (Subscription, error) {
-	got, err := c.stripe.V1Subscriptions.Retrieve(ctx, id, nil)
+func (c *Client) GetSubscription(ctx context.Context, id string) (koidomain.BillingSnapshot, error) {
+	params := &stripe.SubscriptionRetrieveParams{}
+	params.AddExpand("latest_invoice")
+	got, err := c.stripe.V1Subscriptions.Retrieve(ctx, id, params)
 	if err != nil {
-		return Subscription{}, err
+		return koidomain.BillingSnapshot{}, err
 	}
 	result, err := subscriptionFromStripe(got)
 	if err != nil {
-		return Subscription{}, err
+		return koidomain.BillingSnapshot{}, err
 	}
 	if result.ID != id {
-		return Subscription{}, errors.New("Stripe returned unexpected subscription")
+		return koidomain.BillingSnapshot{}, errors.New("Stripe returned unexpected subscription")
 	}
-
+	if result.ScheduleID != nil {
+		schedule, err := c.stripe.V1SubscriptionSchedules.Retrieve(ctx, *result.ScheduleID, nil)
+		if err != nil {
+			return koidomain.BillingSnapshot{}, err
+		}
+		if schedule == nil || schedule.ID != *result.ScheduleID || schedule.Subscription == nil || schedule.Subscription.ID != result.ID {
+			return koidomain.BillingSnapshot{}, errors.New("Stripe returned unexpected subscription schedule")
+		}
+		if schedule.CurrentPhase != nil {
+			for _, phase := range schedule.Phases {
+				if phase != nil && phase.StartDate >= schedule.CurrentPhase.EndDate &&
+					len(phase.Items) == 1 && phase.Items[0] != nil &&
+					phase.Items[0].Price != nil && phase.Items[0].Price.ID == result.PriceID {
+					quantity := int(phase.Items[0].Quantity)
+					if quantity != result.Quantity {
+						result.PendingQuantity = &quantity
+					}
+					break
+				}
+			}
+		}
+	}
 	return result, nil
 }
 
-func (c *Client) Upgrade(ctx context.Context, subscriptionID, itemID string, quantity int) (Subscription, error) {
+func (c *Client) updateQuantity(ctx context.Context, current koidomain.BillingSnapshot, quantity int, key string, trial bool) (koidomain.BillingSnapshot, error) {
 	params := &stripe.SubscriptionUpdateParams{
 		Items: []*stripe.SubscriptionUpdateItemParams{
-			{ID: stripe.String(itemID), Quantity: stripe.Int64(int64(quantity))},
+			{
+				ID:       stripe.String(current.ItemID),
+				Quantity: stripe.Int64(int64(quantity)),
+			},
 		},
 		PaymentBehavior:   stripe.String("pending_if_incomplete"),
 		ProrationBehavior: stripe.String("always_invoice"),
 	}
-	got, err := c.stripe.V1Subscriptions.Update(ctx, subscriptionID, params)
+	if trial {
+		if current.TrialEnd == nil || !current.TrialEnd.After(time.Now()) {
+			return koidomain.BillingSnapshot{}, koidomain.ErrBillingConflict
+		}
+		params.PaymentBehavior = stripe.String("allow_incomplete")
+		params.ProrationBehavior = stripe.String("none")
+		params.TrialEnd = stripe.Int64(current.TrialEnd.Unix())
+	}
+	params.SetIdempotencyKey(key)
+	params.AddExpand("latest_invoice")
+	got, err := c.stripe.V1Subscriptions.Update(ctx, current.ID, params)
 	if err != nil {
-		return Subscription{}, err
+		return koidomain.BillingSnapshot{}, err
 	}
 	result, err := subscriptionFromStripe(got)
-	if err != nil {
-		return Subscription{}, err
+	if err == nil && result.ID != current.ID {
+		return koidomain.BillingSnapshot{}, errors.New("Stripe returned unexpected subscription")
 	}
-	if result.ID != subscriptionID {
-		return Subscription{}, errors.New("Stripe returned unexpected subscription")
-	}
-
-	return result, nil
+	return result, err
 }
 
-type Schedule struct {
-	ID           string
-	CurrentPhase *struct {
-		StartDate int64
-		EndDate   int64
-	}
-	Phases []struct {
-		StartDate int64
-		EndDate   int64
-	}
+func (c *Client) Upgrade(ctx context.Context, current koidomain.BillingSnapshot, quantity int, key string) (koidomain.BillingSnapshot, error) {
+	return c.updateQuantity(ctx, current, quantity, key, false)
 }
 
-func scheduleFromStripe(got *stripe.SubscriptionSchedule) (Schedule, error) {
-	if got == nil || got.ID == "" {
-		return Schedule{}, errors.New("Stripe returned an empty schedule")
-	}
-	result := Schedule{ID: got.ID}
-	if got.CurrentPhase != nil {
-		result.CurrentPhase = &struct {
-			StartDate int64
-			EndDate   int64
-		}{
-			StartDate: got.CurrentPhase.StartDate,
-			EndDate:   got.CurrentPhase.EndDate,
-		}
-	}
-	for _, phase := range got.Phases {
-		if phase != nil {
-			result.Phases = append(result.Phases, struct {
-				StartDate int64
-				EndDate   int64
-			}{StartDate: phase.StartDate, EndDate: phase.EndDate})
-		}
-	}
-
-	return result, nil
+func (c *Client) ChangeTrial(ctx context.Context, current koidomain.BillingSnapshot, quantity int, key string) (koidomain.BillingSnapshot, error) {
+	return c.updateQuantity(ctx, current, quantity, key, true)
 }
 
-func (c *Client) CreateSchedule(ctx context.Context, subscriptionID string) (Schedule, error) {
-	got, err := c.stripe.V1SubscriptionSchedules.Create(ctx, &stripe.SubscriptionScheduleCreateParams{
-		FromSubscription: stripe.String(subscriptionID),
-	})
-	if err != nil {
-		return Schedule{}, err
+func (c *Client) ReleaseSchedule(ctx context.Context, current koidomain.BillingSnapshot, key string) (koidomain.BillingSnapshot, error) {
+	if current.ScheduleID == nil {
+		return current, nil
 	}
-
-	return scheduleFromStripe(got)
+	params := &stripe.SubscriptionScheduleReleaseParams{}
+	params.SetIdempotencyKey(key)
+	if _, err := c.stripe.V1SubscriptionSchedules.Release(ctx, *current.ScheduleID, params); err != nil {
+		return koidomain.BillingSnapshot{}, err
+	}
+	return c.GetSubscription(ctx, current.ID)
 }
 
-func (c *Client) GetSchedule(ctx context.Context, id string) (Schedule, error) {
-	got, err := c.stripe.V1SubscriptionSchedules.Retrieve(ctx, id, nil)
-	if err != nil {
-		return Schedule{}, err
-	}
-	result, err := scheduleFromStripe(got)
-	if err != nil {
-		return Schedule{}, err
-	}
-	if result.ID != id {
-		return Schedule{}, errors.New("Stripe returned unexpected schedule")
-	}
-
-	return result, nil
-}
-
-func (c *Client) ScheduleDowngrade(ctx context.Context, schedule Schedule, priceID string, currentQuantity, nextQuantity int, periodEnd int64) error {
-	startDate := int64(0)
-	if schedule.CurrentPhase != nil {
-		startDate = schedule.CurrentPhase.StartDate
-	} else {
-		for _, phase := range schedule.Phases {
-			if phase.EndDate == periodEnd {
-				startDate = phase.StartDate
-				break
-			}
-		}
-	}
-	if startDate == 0 || periodEnd == 0 || startDate >= periodEnd {
-		return errors.New("Stripe schedule has no current phase")
-	}
-
-	params := &stripe.SubscriptionScheduleUpdateParams{
-		EndBehavior:       stripe.String("release"),
-		ProrationBehavior: stripe.String("none"),
-		Phases: []*stripe.SubscriptionScheduleUpdatePhaseParams{
-			{
-				StartDate: stripe.Int64(startDate),
-				EndDate:   stripe.Int64(periodEnd),
-				Items: []*stripe.SubscriptionScheduleUpdatePhaseItemParams{
-					{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(currentQuantity))},
-				},
-			},
-			{
-				StartDate: stripe.Int64(periodEnd),
-				Duration: &stripe.SubscriptionScheduleUpdatePhaseDurationParams{
-					Interval:      stripe.String("month"),
-					IntervalCount: stripe.Int64(1),
-				},
-				Items: []*stripe.SubscriptionScheduleUpdatePhaseItemParams{
-					{Price: stripe.String(priceID), Quantity: stripe.Int64(int64(nextQuantity))},
-				},
-			},
-		},
-	}
-	_, err := c.stripe.V1SubscriptionSchedules.Update(ctx, schedule.ID, params)
-	return err
-}
+var _ koidomain.BillingGateway = (*Client)(nil)

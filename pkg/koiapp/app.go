@@ -308,12 +308,11 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		WithLiveCollection(liveCollection).WithCloudMode(a.cfg.DeploymentMode == "cloud")
 	var handler http.Handler
 	if a.cfg.DeploymentMode == "cloud" {
+		stripeClient := koistripe.New(a.cfg.StripeSecretKey)
 		billing := koiapi.NewBillingHandler(
-			koidatabase.NewBillingRepository(db),
-			koistripe.New(a.cfg.StripeSecretKey),
+			koidomain.NewBillingQuerier(store, stripeClient, a.cfg.StripePriceID),
+			koidomain.NewBillingCommander(store, stripeClient, a.cfg.StripePriceID, a.cfg.PublicURL),
 			sess,
-			a.cfg.StripePriceID,
-			a.cfg.PublicURL,
 			a.cfg.StripeWebhookSecret,
 		)
 		handler = koiapi.NewCloudServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil, liveCollection, billing)

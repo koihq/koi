@@ -28,11 +28,36 @@ export interface BillingChange {
     quantity: number;
     /**
      * 
+     * @type {BillingChangeEffectiveEnum}
+     * @memberof BillingChange
+     */
+    effective: BillingChangeEffectiveEnum;
+    /**
+     * 
      * @type {string}
      * @memberof BillingChange
      */
-    effective: string;
+    paymentUrl?: string;
+    /**
+     * 
+     * @type {Date}
+     * @memberof BillingChange
+     */
+    expiresAt?: Date;
 }
+
+
+/**
+ * @export
+ */
+export const BillingChangeEffectiveEnum = {
+    CURRENT: 'current',
+    TRIAL_END: 'trial_end',
+    NEXT_CYCLE: 'next_cycle',
+    AFTER_PAYMENT: 'after_payment'
+} as const;
+export type BillingChangeEffectiveEnum = typeof BillingChangeEffectiveEnum[keyof typeof BillingChangeEffectiveEnum];
+
 
 /**
  * Check if a given object implements the BillingChange interface.
@@ -55,6 +80,8 @@ export function BillingChangeFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'quantity': json['quantity'],
         'effective': json['effective'],
+        'paymentUrl': json['payment_url'] == null ? undefined : json['payment_url'],
+        'expiresAt': json['expires_at'] == null ? undefined : (new Date(json['expires_at'])),
     };
 }
 
@@ -71,6 +98,8 @@ export function BillingChangeToJSONTyped(value?: BillingChange | null, ignoreDis
         
         'quantity': value['quantity'],
         'effective': value['effective'],
+        'payment_url': value['paymentUrl'],
+        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : value['expiresAt'].toISOString(),
     };
 }
 

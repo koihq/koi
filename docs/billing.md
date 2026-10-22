@@ -97,26 +97,62 @@ Koi creates one Stripe Customer per organization and stores its ID before Checko
 It creates a **hosted** Checkout Session with `customer`,
 `client_reference_id=organization_id`, one Price and the selected prompt quantity.
 The browser receives only the Stripe-hosted redirect URL. It never constructs a
-Checkout URL or supplies a price or entitlement. A database reservation serializes
-Checkout requests for the organization; retries reuse the same session.
+Checkout URL or supplies a price or entitlement. A durable database reservation serializes Checkout requests for the organization;
+retries reuse the same session and finalization accepts the same session repeatedly.
+Choosing a different allowance expires the open session before replacing it. If payment
+wins the race with expiration, Koi reconciles that subscription and prevents a second purchase.
 
 `checkout.session.completed` records the subscription ID only when the signed event's
 session ID, customer ID and organization ID match the reserved session and organization.
 Subscription events are reconciled only against that completed Checkout and the
-organization's stored Customer. Each event ID is recorded in the same transaction as
-its state change, so replay is harmless. Premature subscription events are ignored;
-the Checkout event fetches the current subscription to complete synchronization.
+organization's stored Customer. The organization is locked before retrieving the current subscription from Stripe,
+including for deletion events. Each event ID, Checkout association and subscription update
+is committed in the same transaction, so replay is harmless and concurrent reads cannot
+overwrite a newer local state. Premature subscription events are ignored; the Checkout
+event fetches the current subscription to complete synchronization. Delayed subscription
+events from a previous subscription cannot replace its successor.
 Email is never used as an identity key.
 
 The database holds the application entitlement. `active` subscriptions grant their
 selected allowance until the current period ends. `trialing` grants five prompts
 until trial end, with a payment method collected in Checkout. Other statuses grant zero;
-data is preserved after payment failure or cancellation. An immediate upgrade uses
-Stripe proration and a pending update, so the larger entitlement arrives only after
-Stripe applies the paid change. A downgrade is scheduled for the next cycle. If the
+data is preserved after payment failure or cancellation. An immediate upgrade uses Stripe proration and a pending update, so the larger
+entitlement arrives only after Stripe applies the paid change. A pending upgrade includes
+the hosted invoice URL and expiration time so the customer can recover a declined payment
+or complete authentication. Subscription updates and pending-update applied/expired events
+reconcile these fields. A downgrade is scheduled for the next cycle. It can be replaced or
+canceled by choosing the current allowance; upgrading releases an existing schedule first.
+During a trial, changing the future allowance updates quantity without proration and
+preserves the trial end date and five-prompt entitlement. If the
 new limit is below the active prompt count, tracking stops until enough prompts are
 paused. All prompts remain stored. Cancellation via Portal retains access until the
 period end when Stripe reports `cancel_at_period_end` and `active`.
+
+## Application boundaries and API
+
+`BillingCommander` owns checkout, allowance changes, Portal access and webhook reconciliation.
+`BillingQuerier` exposes the catalog, quote, subscription status and product access. Both use
+`Store.BillingRepo()`; `koistripe.Client` implements the domain's `BillingGateway` and owns SDK
+mapping. HTTP handlers decode requests, verify signatures and return typed DTOs.
+
+- `GET /api/v1/billing/catalog` returns `{currency, interval, options}`. Each option contains
+  `prompts`, `amount_cents`, `currency` and `interval`. It validates the configured Stripe Price
+  before exposing the embedded catalog. The UI derives its choices and displayed prices here.
+- `POST /api/v1/billing/change-allowance` requires `Idempotency-Key` and `{prompts}`. Koi stores
+  the operation before calling Stripe, serializes changes per organization and uses separate
+  Stripe idempotency keys for each remote step. Repeating a key returns its original result;
+  changing its quantity returns `idempotency_conflict`. Unfinished operations are recovered in
+  creation order, each in its own transaction, before a later change is applied.
+- The change response has `quantity`, `effective` (`current`, `trial_end`, `next_cycle` or
+  `after_payment`), and optional `payment_url` and `expires_at`. A no-op or canceled downgrade
+  returns 200; submitted changes return 202.
+- Subscription status includes `pending_quantity`, `pending_upgrade_quantity`,
+  `pending_upgrade_expires_at` and `payment_url`. The UI polls for checkout/upgrade confirmation
+  for up to 60 seconds, then offers a manual refresh and payment recovery.
+
+Billing uses organization-scoped query keys. Self-hosted mode constructs no Stripe client or
+billing service. The schema is initialized on a fresh database, including checkout reservations,
+change requests and processed events; there are no historical schema migrations.
 
 ## Internal collection cost
 
@@ -156,5 +192,27 @@ GROUP BY b.organization_id, vr.engine;
 Checkout was visually checked in the sandbox at five prompts with an Italian
 billing address: €9 after trial, including €1.62 IVA. The invoice preview was
 checked at the same quantity and total; it still splits the zero-priced unit
-and €9 flat-fee lines. Pending upgrades, schedule changes and Portal
-cancellation behavior still require sandbox validation before production use.
+and €9 flat-fee lines. Repeatable sandbox validation is available with:
+
+```sh
+KOI_STRIPE_SANDBOX_TEST=1 go test ./pkg/koistripe -run TestStripeSandbox -v
+```
+
+The opt-in suite reads the sandbox key and Price from `.env`, refuses a live key, creates
+isolated test clocks/customers and deletes those clocks after each scenario. It checks trial
+changes, downgrade renewal and release, successful/declined/authentication-required upgrades,
+and cancellation at period end. This exercises the same cancellation API behavior expected
+from the Portal; Dashboard configuration and the hosted Portal UI must still be checked when
+configuring a new Stripe account.
+
+Local checks:
+
+```sh
+go test ./...
+pnpm --dir ui test
+pnpm --dir ui check-types
+pnpm --dir ui test:e2e
+```
+
+The browser suite mocks API responses and covers existing and pending allowances, payment
+recovery, bounded polling, error recovery with the same idempotency key, and a 320px viewport.

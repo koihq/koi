@@ -11,7 +11,7 @@ import (
 
 func TestVerifyEventRejectsTamperingAndReplayOutsideTolerance(t *testing.T) {
 	now := time.Now()
-	payload := []byte(`{"id":"evt_1","type":"checkout.session.completed","data":{"object":{"id":"cs_1"}}}`)
+	payload := []byte(`{"id":"evt_1","type":"checkout.session.completed","data":{"object":{"id":"cs_1","customer":"cus_1","subscription":"sub_1","client_reference_id":"org_1"}}}`)
 	mac := hmac.New(sha256.New, []byte("whsec_test"))
 	_, _ = fmt.Fprintf(mac, "%d.%s", now.Unix(), payload)
 	header := fmt.Sprintf("t=%d,v1=%s", now.Unix(), hex.EncodeToString(mac.Sum(nil)))

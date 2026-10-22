@@ -285,6 +285,19 @@ paths:
                 $ref: "#/components/schemas/MeRes"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/billing/catalog:
+    get:
+      tags: [billing]
+      operationId: billingCatalog
+      responses:
+        "200":
+          description: Available tax-inclusive monthly allowances validated against Stripe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCatalog"
+        "500":
+          $ref: "#/components/responses/Error"
   /api/v1/billing/quote:
     get:
       tags: [billing]
@@ -345,6 +358,14 @@ paths:
       operationId: billingChangeAllowance
       security:
         - cookieAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -352,6 +373,16 @@ paths:
             schema:
               $ref: "#/components/schemas/BillingAllowanceRequest"
       responses:
+        "200":
+          description: Allowance already current or scheduled change removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
         "202":
           description: Change submitted to Stripe
           content:
@@ -1408,7 +1439,7 @@ components:
         blocked_reason:
           type: string
           nullable: true
-          enum: [collection_unavailable, reviews_required, prompts_required, generation_active]
+          enum: [collection_unavailable, reviews_required, prompts_required, generation_active, billing_inactive_or_over_limit]
     BrandRequest:
       type: object
       description: At least one of domain or github_repo is required.
@@ -1728,6 +1759,18 @@ components:
           type: string
         interval:
           type: string
+    BillingCatalog:
+      type: object
+      required: [currency, interval, options]
+      properties:
+        currency:
+          type: string
+        interval:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingQuote"
     BillingSubscription:
       type: object
       required: [organization_id, quantity, status, cancel_at_period_end]
@@ -1750,6 +1793,15 @@ components:
         pending_quantity:
           type: integer
           nullable: true
+        pending_upgrade_quantity:
+          type: integer
+          nullable: true
+        pending_upgrade_expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_url:
+          type: string
         cancel_at_period_end:
           type: boolean
     BillingStatus:
@@ -1779,6 +1831,13 @@ components:
           type: integer
         effective:
           type: string
+          enum: [current, trial_end, next_cycle, after_payment]
+        payment_url:
+          type: string
+          format: uri
+        expires_at:
+          type: string
+          format: date-time
     GenerationRequest:
       type: object
       required: [mode]

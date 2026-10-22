@@ -60,7 +60,8 @@ export const TrackingStatusBlockedReasonEnum = {
     COLLECTION_UNAVAILABLE: 'collection_unavailable',
     REVIEWS_REQUIRED: 'reviews_required',
     PROMPTS_REQUIRED: 'prompts_required',
-    GENERATION_ACTIVE: 'generation_active'
+    GENERATION_ACTIVE: 'generation_active',
+    BILLING_INACTIVE_OR_OVER_LIMIT: 'billing_inactive_or_over_limit'
 } as const;
 export type TrackingStatusBlockedReasonEnum = typeof TrackingStatusBlockedReasonEnum[keyof typeof TrackingStatusBlockedReasonEnum];
 

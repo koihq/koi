@@ -93,6 +93,11 @@ export function TrackingSummary({ brandID }: { brandID: string }) {
       ) : null}
       {state.blockedReason ? <p>{t(`blocked.${state.blockedReason}`)}</p> : null}
       <div className="flex flex-wrap gap-4">
+        {state.blockedReason === "billing_inactive_or_over_limit" ? (
+          <Link to="/settings/billing" className="underline underline-offset-4">
+            {t("reviewBilling")}
+          </Link>
+        ) : null}
         {!state.promptsReviewed ? (
           <Link to="/" hash="prompts" className="underline underline-offset-4">
             {t("reviewPrompts")}

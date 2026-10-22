@@ -1,37 +1,43 @@
 package koiapi
 
 import (
-	"context"
-	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
-	"time"
 
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-chi/chi/v5"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/pkg/koistripe"
+	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	"github.com/koihq/koi/pkg/koidomain"
 )
 
-type recordingBillingSync struct {
-	BillingRepository
-	priceID string
-	prompts int
-}
+func TestBillingChangeRequiresIdempotencyKeyAndPreservesPaymentResult(t *testing.T) {
+	for _, effective := range []string{"current", "after_payment", "next_cycle", "trial_end"} {
+		t.Run(effective, func(t *testing.T) {
+			commander := NewMockBillingCommander(t)
+			handler := NewBillingHandler(NewMockBillingQuerier(t), commander, scs.New(), "secret")
+			router := chi.NewRouter()
+			router.With(middlewares.DecodeBody[allowanceRequest]()).Post("/change", handler.ChangeAllowance)
 
-func (r *recordingBillingSync) SyncSubscription(_ context.Context, _, _, _, _, priceID, _ string, prompts int, _, _ *time.Time, _ bool) error {
-	r.priceID = priceID
-	r.prompts = prompts
-	return nil
-}
+			missing := httptest.NewRecorder()
+			router.ServeHTTP(missing, httptest.NewRequest(http.MethodPost, "/change", strings.NewReader(`{"prompts":25}`)))
+			require.Equal(t, http.StatusBadRequest, missing.Code)
 
-func TestSubscriptionKeepsStripeQuantityAsPromptAllowance(t *testing.T) {
-	var subscription koistripe.Subscription
-	require.NoError(t, json.Unmarshal([]byte(`{"id":"sub_1","customer":"cus_1","metadata":{"organization_id":"org_1"},"items":{"data":[{"quantity":10,"price":{"id":"price_test"}}]}}`), &subscription))
-	repo := &recordingBillingSync{}
-	handler := &BillingHandler{repo: repo, priceID: "price_test"}
-	require.NoError(t, handler.syncSubscription(t.Context(), "evt_1", subscription))
-	require.Equal(t, "price_test", repo.priceID)
-	require.Equal(t, 10, repo.prompts)
-
-	subscription.Items.Data[0].Price.ID = "price_other"
-	require.Error(t, handler.syncSubscription(t.Context(), "evt_2", subscription))
+			commander.EXPECT().ChangeAllowance(mock.Anything, 25, "change-key").Return(koidomain.BillingChange{Quantity: 25, Effective: effective, PaymentURL: "https://invoice.stripe.com/test"}, nil)
+			request := httptest.NewRequest(http.MethodPost, "/change", strings.NewReader(`{"prompts":25}`))
+			request.Header.Set("Idempotency-Key", "change-key")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			want := http.StatusAccepted
+			if effective == "current" {
+				want = http.StatusOK
+			}
+			require.Equal(t, want, response.Code)
+			require.Contains(t, response.Body.String(), `"payment_url":"https://invoice.stripe.com/test"`)
+		})
+	}
 }

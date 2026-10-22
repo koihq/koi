@@ -22,7 +22,7 @@ type testProductAccess struct {
 }
 
 type accessOnlyBillingRepo struct {
-	BillingRepository
+	koidomain.BillingQuerier
 }
 
 func (accessOnlyBillingRepo) ProductAccess(context.Context, uuid.UUID) (bool, error) {
@@ -66,7 +66,7 @@ func TestBrandCreationPrecedesBillingButEditRequiresIt(t *testing.T) {
 func TestCloudServerBlocksNestedProductRoutesBeforeBilling(t *testing.T) {
 	sess := scs.New()
 	cloud := NewCloudServer(NewMockStore(t), sess, nil, true, true,
-		&BillingHandler{repo: accessOnlyBillingRepo{}, sess: sess})
+		&BillingHandler{querier: accessOnlyBillingRepo{}, sess: sess})
 	r := chi.NewRouter()
 	r.With(sess.LoadAndSave).Get("/session", func(w http.ResponseWriter, r *http.Request) {
 		sess.Put(r.Context(), "user_id", uuid.NewString())

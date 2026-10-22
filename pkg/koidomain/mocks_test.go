@@ -1992,6 +1992,52 @@ func (_c *MockStore_Atomic_Call) RunAndReturn(run func(context1 context.Context,
 	return _c
 }
 
+// BillingRepo provides a mock function for the type MockStore
+func (_mock *MockStore) BillingRepo() BillingRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for BillingRepo")
+	}
+
+	var r0 BillingRepository
+	if returnFunc, ok := ret.Get(0).(func() BillingRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(BillingRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_BillingRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BillingRepo'
+type MockStore_BillingRepo_Call struct {
+	*mock.Call
+}
+
+// BillingRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) BillingRepo() *MockStore_BillingRepo_Call {
+	return &MockStore_BillingRepo_Call{Call: _e.mock.On("BillingRepo")}
+}
+
+func (_c *MockStore_BillingRepo_Call) Run(run func()) *MockStore_BillingRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_BillingRepo_Call) Return(billingRepository BillingRepository) *MockStore_BillingRepo_Call {
+	_c.Call.Return(billingRepository)
+	return _c
+}
+
+func (_c *MockStore_BillingRepo_Call) RunAndReturn(run func() BillingRepository) *MockStore_BillingRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BrandRepo provides a mock function for the type MockStore
 func (_mock *MockStore) BrandRepo() BrandRepository {
 	ret := _mock.Called()

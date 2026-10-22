@@ -58,6 +58,24 @@ export interface BillingSubscription {
     pendingQuantity?: number | null;
     /**
      * 
+     * @type {number}
+     * @memberof BillingSubscription
+     */
+    pendingUpgradeQuantity?: number | null;
+    /**
+     * 
+     * @type {Date}
+     * @memberof BillingSubscription
+     */
+    pendingUpgradeExpiresAt?: Date | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof BillingSubscription
+     */
+    paymentUrl?: string;
+    /**
+     * 
      * @type {boolean}
      * @memberof BillingSubscription
      */
@@ -91,6 +109,9 @@ export function BillingSubscriptionFromJSONTyped(json: any, ignoreDiscriminator:
         'currentPeriodEnd': json['current_period_end'] == null ? undefined : (new Date(json['current_period_end'])),
         'trialEnd': json['trial_end'] == null ? undefined : (new Date(json['trial_end'])),
         'pendingQuantity': json['pending_quantity'] == null ? undefined : json['pending_quantity'],
+        'pendingUpgradeQuantity': json['pending_upgrade_quantity'] == null ? undefined : json['pending_upgrade_quantity'],
+        'pendingUpgradeExpiresAt': json['pending_upgrade_expires_at'] == null ? undefined : (new Date(json['pending_upgrade_expires_at'])),
+        'paymentUrl': json['payment_url'] == null ? undefined : json['payment_url'],
         'cancelAtPeriodEnd': json['cancel_at_period_end'],
     };
 }
@@ -112,6 +133,9 @@ export function BillingSubscriptionToJSONTyped(value?: BillingSubscription | nul
         'current_period_end': value['currentPeriodEnd'] == null ? value['currentPeriodEnd'] : value['currentPeriodEnd'].toISOString(),
         'trial_end': value['trialEnd'] == null ? value['trialEnd'] : value['trialEnd'].toISOString(),
         'pending_quantity': value['pendingQuantity'],
+        'pending_upgrade_quantity': value['pendingUpgradeQuantity'],
+        'pending_upgrade_expires_at': value['pendingUpgradeExpiresAt'] == null ? value['pendingUpgradeExpiresAt'] : value['pendingUpgradeExpiresAt'].toISOString(),
+        'payment_url': value['paymentUrl'],
         'cancel_at_period_end': value['cancelAtPeriodEnd'],
     };
 }

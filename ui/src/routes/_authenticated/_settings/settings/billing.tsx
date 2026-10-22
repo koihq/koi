@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { useApi } from "@/api/apiProvider";
+import { messageFromUnknown } from "@/api/errors";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,155 +12,167 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const allowances = [5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500];
-const allowanceItems = allowances.map((quantity) => ({
-  value: String(quantity),
-  label: String(quantity),
-}));
+import {
+  billingSelection,
+  useBilling,
+} from "@/routes/_authenticated/_settings/settings/-hooks/use-billing";
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/billing")({
   beforeLoad: async ({ context }) => {
     if (!(await context.api.capabilities.get()).cloudBilling) throw notFound();
   },
+  validateSearch: (search: Record<string, unknown>): { checkout?: "success" | "cancel" } => ({
+    checkout:
+      search.checkout === "success" || search.checkout === "cancel" ? search.checkout : undefined,
+  }),
   component: BillingSettings,
 });
 
 function BillingSettings() {
-  const { t } = useTranslation("billing");
-  const api = useApi();
-  const [prompts, setPrompts] = useState("5");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const quantity = Number(prompts);
-  const valid = allowances.includes(quantity);
-  const checkoutReturned =
-    new URLSearchParams(window.location.search).get("checkout") === "success";
-  const subscription = useQuery({
-    queryKey: ["billing", "subscription"],
-    queryFn: api.billing.subscription,
-    refetchInterval: (query) =>
-      checkoutReturned && (query.state.data?.promptLimit ?? 0) === 0 ? 2000 : false,
-  });
-  const quote = useQuery({
-    queryKey: ["billing", "quote", quantity],
-    queryFn: () => api.billing.quote(quantity),
-    enabled: valid,
-  });
-  const subscriptionRecord = subscription.data?.subscription;
-  const current =
-    (subscription.data?.promptLimit ?? 0) > 0 &&
-    (subscriptionRecord?.status === "active" || subscriptionRecord?.status === "trialing")
-      ? subscriptionRecord
-      : null;
-  const canCheckout = !subscriptionRecord || subscriptionRecord.status === "canceled";
-
-  async function submit() {
-    if (!valid || !quote.data || (!current && !canCheckout)) return;
-    setBusy(true);
-    setError("");
-    setMessage("");
-    try {
-      if (current) {
-        const result = await api.billing.changeAllowance(quantity);
-        setMessage(result.effective === "next_cycle" ? t("nextCycle") : t("afterPayment"));
-        await subscription.refetch();
-      } else {
-        const result = await api.billing.checkout(quantity);
-        window.location.assign(result.url);
-      }
-    } catch {
-      setError(t("updateError"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function openPortal() {
-    setBusy(true);
-    setError("");
-    try {
-      const result = await api.billing.portal();
-      window.location.assign(result.url);
-    } catch {
-      setError(t("portalError"));
-      setBusy(false);
-    }
-  }
-
-  const price = quote.data
-    ? new Intl.NumberFormat("en", {
+  const { t, i18n } = useTranslation("billing");
+  const search = Route.useSearch();
+  const { me } = Route.useRouteContext();
+  const billing = useBilling(search.checkout === "success", me.organization.id);
+  const [selected, setSelected] = useState<string | null>(null);
+  const { subscription, catalog, update, checkout, portal } = billing;
+  const record = subscription.data?.subscription;
+  const options = catalog.data?.options ?? [];
+  const quantity =
+    selected === null
+      ? billingSelection(subscription.data, options[0]?.prompts ?? 5)
+      : Number(selected);
+  const allowanceItems = options.map((option) => ({
+    value: String(option.prompts),
+    label: String(option.prompts),
+  }));
+  const quote = options.find((option) => option.prompts === quantity);
+  const current = (subscription.data?.promptLimit ?? 0) > 0 ? record : null;
+  const canCheckout =
+    !record || record.status === "canceled" || record.status === "incomplete_expired";
+  const canChange = current && !current.cancelAtPeriodEnd;
+  const busy = update.isPending || checkout.isPending || portal.isPending;
+  const unchanged = (record?.pendingQuantity ?? record?.quantity) === quantity;
+  const paymentURL =
+    !billing.paymentExpired &&
+    (record?.paymentUrl || (billing.awaitingConfirmation ? billing.change?.paymentUrl : undefined));
+  const error = update.error ?? checkout.error ?? portal.error;
+  const price = quote
+    ? new Intl.NumberFormat(i18n.language, {
         style: "currency",
-        currency: "EUR",
-        maximumFractionDigits: 0,
-      }).format(quote.data.amountCents / 100)
+        currency: catalog.data?.currency ?? "EUR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(quote.amountCents / 100)
     : null;
+
+  function changeAllowance(target: number) {
+    checkout.reset();
+    portal.reset();
+    update.mutate(target, { onSuccess: () => setSelected(null) });
+  }
+
+  function submit() {
+    if (!quote || busy) return;
+    if (canChange) changeAllowance(quantity);
+    else if (canCheckout) {
+      update.reset();
+      portal.reset();
+      checkout.mutate(quantity);
+    }
+  }
 
   return (
     <div className="max-w-2xl pb-24">
       <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("title")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{t("description")}</p>
-      {checkoutReturned && (subscription.data?.promptLimit ?? 0) === 0 && (
-        <output className="mt-4 block text-sm text-muted-foreground">
-          {t("awaitingConfirmation")}
-        </output>
+      {billing.awaitingConfirmation && (
+        <div className="mt-4 space-y-2 text-sm">
+          <output className="block text-muted-foreground">
+            {t(billing.pollExpired ? "confirmationDelayed" : "awaitingConfirmation")}
+          </output>
+          {billing.pollExpired && (
+            <Button variant="outline" onClick={billing.refresh}>
+              {t("refresh")}
+            </Button>
+          )}
+        </div>
       )}
-      {checkoutReturned && (subscription.data?.promptLimit ?? 0) > 0 && (
-        <Button render={<Link to="/" />} className="mt-4">
+      {search.checkout === "success" && current && (
+        <Button nativeButton={false} role="link" render={<Link to="/" />} className="mt-4">
           {t("continueToApp")}
         </Button>
       )}
 
-      <div className="mt-10 border-t border-border pt-7">
+      <div className="mt-10 space-y-3">
         {subscription.isError && (
-          <p role="alert" className="mb-4 text-sm text-destructive">
-            {t("updateError")}{" "}
-            <Button variant="link" onClick={() => void subscription.refetch()}>
+          <p role="alert" className="text-sm text-destructive">
+            {messageFromUnknown(subscription.error)}{" "}
+            <Button variant="link" onClick={billing.refresh}>
               {t("retry")}
             </Button>
           </p>
         )}
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-          {t("currentSubscription")}
-        </p>
-        <p className="mt-3 text-lg font-medium">
-          {subscription.isLoading
+        <h2 className="text-lg font-medium tracking-tight">{t("currentSubscription")}</h2>
+        <p>
+          {subscription.isPending
             ? t("loading")
-            : subscriptionRecord
+            : record
               ? t("current", {
-                  quantity: subscriptionRecord.quantity,
-                  status: subscriptionRecord.status,
+                  quantity: record.quantity,
+                  status: t(`status.${record.status}`, { defaultValue: record.status }),
                 })
               : t("none")}
         </p>
-        {current?.pendingQuantity && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("pending", { quantity: current.pendingQuantity })}
+        {record?.pendingQuantity && (
+          <p className="text-sm text-muted-foreground">
+            {t("pending", { quantity: record.pendingQuantity })}
           </p>
         )}
+        {record?.pendingUpgradeQuantity && !billing.paymentExpired && (
+          <p className="text-sm text-muted-foreground">
+            {t("pendingUpgrade", { quantity: record.pendingUpgradeQuantity })}
+          </p>
+        )}
+        {billing.paymentExpired && <output className="block text-sm">{t("upgradeExpired")}</output>}
         {current && (
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {t("allowance", { quantity: subscription.data?.promptLimit ?? 0 })}
           </p>
         )}
-        {subscriptionRecord && !current && subscriptionRecord.status !== "canceled" && (
-          <p className="mt-3 text-sm text-muted-foreground">{t("resolvePayment")}</p>
+        {record?.cancelAtPeriodEnd && (
+          <p className="text-sm text-muted-foreground">{t("cancellationScheduled")}</p>
+        )}
+        {record && !current && !canCheckout && (
+          <p className="text-sm text-muted-foreground">{t("resolvePayment")}</p>
+        )}
+        {paymentURL && (
+          <Button
+            nativeButton={false}
+            role="link"
+            render={<a href={paymentURL}>{t("completePayment")}</a>}
+          />
         )}
       </div>
 
-      <div className="mt-10 border-t border-border pt-7">
+      <div className="mt-10">
         <Label htmlFor="billing-prompts">{t("trackedPrompts")}</Label>
         <p className="mt-1 text-sm text-muted-foreground">{t("rangeDescription")}</p>
-        {subscription.data?.trialAvailable && !subscriptionRecord && (
+        {subscription.data?.trialAvailable && !record && (
           <p className="mt-2 text-sm text-muted-foreground">{t("trialDescription")}</p>
         )}
+        {catalog.isError && (
+          <p role="alert" className="mt-3 text-sm text-destructive">
+            {t("priceUnavailable")}{" "}
+            <Button variant="link" onClick={() => void catalog.refetch()}>
+              {t("retry")}
+            </Button>
+          </p>
+        )}
         <Select
-          value={prompts}
+          value={String(quantity)}
           items={allowanceItems}
-          onValueChange={(next) => {
-            if (next !== null) setPrompts(next);
-          }}
+          onValueChange={setSelected}
+          disabled={catalog.isPending || subscription.isPending || busy}
         >
           <SelectTrigger id="billing-prompts" className="mt-4 w-28">
             <SelectValue />
@@ -175,37 +186,65 @@ function BillingSettings() {
           </SelectContent>
         </Select>
         <p className="mt-5 text-2xl font-semibold tabular-nums">
-          {valid
-            ? quote.isLoading
-              ? t("calculating")
-              : price
-                ? t("perMonth", { price })
-                : t("priceUnavailable")
-            : t("invalidQuantity")}
+          {catalog.isPending
+            ? t("calculating")
+            : price
+              ? t("perMonth", { price })
+              : t("priceUnavailable")}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">{t("taxNote")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {current?.status === "trialing" ? t("trialChangeNotice") : t("taxNote")}
+        </p>
         <div className="mt-6 flex flex-wrap gap-2">
-          {(current || canCheckout) && (
+          {(canChange || canCheckout) && (
             <Button
               size="lg"
               disabled={
-                !valid || !quote.data || busy || subscription.isLoading || subscription.isError
+                !quote ||
+                busy ||
+                subscription.isPending ||
+                subscription.isError ||
+                Boolean(canChange && unchanged) ||
+                Boolean(record?.pendingUpgradeQuantity && !billing.paymentExpired)
               }
-              onClick={() => void submit()}
+              onClick={submit}
             >
-              {current ? t("changeAllowance") : t("checkout")}
+              {canChange ? t("changeAllowance") : t("checkout")}
             </Button>
           )}
-          {subscriptionRecord && (
-            <Button size="lg" variant="outline" disabled={busy} onClick={() => void openPortal()}>
+          {canChange && record?.pendingQuantity && (
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={busy}
+              onClick={() => changeAllowance(record.quantity)}
+            >
+              {t("cancelDowngrade")}
+            </Button>
+          )}
+          {record && (
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                update.reset();
+                checkout.reset();
+                portal.mutate();
+              }}
+            >
               {t("portal")}
             </Button>
           )}
         </div>
-        {message && <output className="mt-4 block text-sm">{message}</output>}
+        {billing.change && !billing.awaitingConfirmation && !billing.paymentExpired && (
+          <output className="mt-4 block text-sm">
+            {t(`effective.${billing.change.effective}`)}
+          </output>
+        )}
         {error && (
           <p role="alert" className="mt-4 text-sm text-destructive">
-            {error}
+            {messageFromUnknown(error)}
           </p>
         )}
       </div>

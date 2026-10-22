@@ -11,6 +11,7 @@ apis/index.ts
 index.ts
 models/AppearanceEvidence.ts
 models/BillingAllowanceRequest.ts
+models/BillingCatalog.ts
 models/BillingChange.ts
 models/BillingQuote.ts
 models/BillingRedirect.ts

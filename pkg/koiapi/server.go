@@ -61,7 +61,7 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 		r.Route("/brands", func(r chi.Router) {
 			var billingGuard func(http.Handler) http.Handler
 			if billing != nil {
-				billingGuard = RequireBilling(sess, billing.repo)
+				billingGuard = RequireBilling(sess, billing.querier)
 			}
 			NewBrandHandler(
 				koidomain.NewBrandQuerier(store),

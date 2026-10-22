@@ -2,6 +2,7 @@ package koistripe
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,8 +10,17 @@ import (
 
 	"github.com/stripe/stripe-go/v87"
 
+	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koipricing"
 )
+
+type checkoutResponse struct {
+	ID        string `json:"id"`
+	URL       string `json:"url"`
+	Customer  string `json:"customer"`
+	Reference string `json:"client_reference_id"`
+	ExpiresAt int64  `json:"expires_at"`
+}
 
 func testClient(server *httptest.Server) *Client {
 	return newClient("sk_test_unused", &stripe.BackendConfig{
@@ -55,14 +65,17 @@ func TestStripePriceRequiresInclusiveFlatOnlyTiers(t *testing.T) {
 		t.Fatal("explicit zero unit amount was accepted")
 	}
 	price.Tiers[0].UnitAmount = nil
+	decimal := "0.5"
+	price.Tiers[0].UnitAmountDecimal = &decimal
+	if err := price.ValidateCatalog(catalog); err == nil {
+		t.Fatal("decimal unit amount was accepted")
+	}
+	price.Tiers[0].UnitAmountDecimal = nil
 	price.Tiers[0].FlatAmount++
 	if err := price.ValidateCatalog(catalog); err == nil {
 		t.Fatal("wrong tier amount was accepted")
 	}
 	price.Tiers[0].FlatAmount--
-	if amount, err := price.MonthlyAmount(5); err != nil || amount != 900 {
-		t.Fatalf("five prompts: %d, %v", amount, err)
-	}
 }
 
 func TestGetPricePreservesAbsentUnitAmount(t *testing.T) {
@@ -106,7 +119,7 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 			t.Errorf("idempotency key = %q", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(CheckoutSession{
+		_ = json.NewEncoder(w).Encode(checkoutResponse{
 			ID:        "cs_123",
 			URL:       "https://checkout.stripe.com/test",
 			Customer:  "cus_org",
@@ -116,7 +129,7 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 	}))
 	defer server.Close()
 
-	session, err := testClient(server).CreateCheckout(t.Context(), "cus_org", "org_uuid", "price_v1", "reservation_uuid", 10, "https://koi.example", false)
+	session, err := testClient(server).CreateCheckout(t.Context(), koidomain.BillingCheckoutInput{CustomerID: "cus_org", OrganizationID: "org_uuid", PriceID: "price_v1", ReservationID: "reservation_uuid", Quantity: 10, PublicURL: "https://koi.example"})
 	if err != nil || session.URL == "" {
 		t.Fatalf("checkout failed: %+v, %v", session, err)
 	}
@@ -134,7 +147,7 @@ func TestHostedCheckoutTrialRequiresPaymentMethod(t *testing.T) {
 			t.Errorf("payment method collection = %q, want always", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(CheckoutSession{
+		_ = json.NewEncoder(w).Encode(checkoutResponse{
 			ID:        "cs_trial",
 			URL:       "https://checkout.stripe.com/test",
 			Customer:  "cus_org",
@@ -144,7 +157,7 @@ func TestHostedCheckoutTrialRequiresPaymentMethod(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := testClient(server).CreateCheckout(t.Context(), "cus_org", "org_uuid", "price_v1", "reservation_uuid", 15, "https://koi.example", true)
+	_, err := testClient(server).CreateCheckout(t.Context(), koidomain.BillingCheckoutInput{CustomerID: "cus_org", OrganizationID: "org_uuid", PriceID: "price_v1", ReservationID: "reservation_uuid", Quantity: 15, PublicURL: "https://koi.example", Trial: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,41 +183,67 @@ func TestUpgradeRequestsPaidPendingProration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := testClient(server).Upgrade(t.Context(), "sub_123", "si_123", 25); err != nil {
+	if _, err := testClient(server).Upgrade(t.Context(), koidomain.BillingSnapshot{ID: "sub_123", ItemID: "si_123"}, 25, "upgrade-key"); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestDowngradeSchedulesNextPeriodWithoutProration(t *testing.T) {
+func TestPhaseMappingPreservesTrialAndBillingSettings(t *testing.T) {
+	phase := &stripe.SubscriptionSchedulePhase{
+		TrialEnd:             200,
+		Metadata:             map[string]string{"organization_id": "org_1"},
+		DefaultPaymentMethod: &stripe.PaymentMethod{ID: "pm_1"},
+		AutomaticTax:         &stripe.SubscriptionAutomaticTax{Enabled: true},
+		Items: []*stripe.SubscriptionSchedulePhaseItem{
+			{Price: &stripe.Price{ID: "price_1"}, Quantity: 25},
+		},
+	}
+	mapped, err := phaseParams(phase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stripe.Int64Value(mapped.TrialEnd) != 200 || stripe.StringValue(mapped.DefaultPaymentMethod) != "pm_1" || !stripe.BoolValue(mapped.AutomaticTax.Enabled) || mapped.Metadata["organization_id"] != "org_1" {
+		t.Fatalf("lost phase settings: %+v", mapped)
+	}
+	phase.ApplicationFeePercent = 5
+	if _, err := phaseParams(phase); err == nil {
+		t.Fatal("unsupported fee would be silently dropped")
+	}
+}
+
+func TestTrialChangePreservesEndAndDoesNotInvoice(t *testing.T) {
+	end := time.Now().Add(24 * time.Hour)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {
 			t.Fatal(err)
 		}
-		for key, want := range map[string]string{
-			"proration_behavior":            "none",
-			"end_behavior":                  "release",
-			"phases[0][start_date]":         "100",
-			"phases[0][end_date]":           "200",
-			"phases[0][items][0][quantity]": "25",
-			"phases[1][start_date]":         "200",
-			"phases[1][items][0][price]":    "price_v1",
-			"phases[1][items][0][quantity]": "5",
-		} {
-			if got := r.Form.Get(key); got != want {
-				t.Errorf("%s = %q, want %q", key, got, want)
-			}
+		if r.Form.Get("proration_behavior") != "none" || r.Form.Get("trial_end") != fmt.Sprint(end.Unix()) || r.Header.Get("Idempotency-Key") != "trial-key" {
+			t.Errorf("invalid trial update: %v", r.Form)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"sub_sched_123"}`))
+		_, _ = fmt.Fprintf(w, `{"id":"sub_1","customer":"cus_1","status":"trialing","trial_end":%d,"items":{"data":[{"id":"si_1","quantity":10,"price":{"id":"price_1"}}]}}`, end.Unix())
 	}))
 	defer server.Close()
-
-	schedule := Schedule{ID: "sub_sched_123"}
-	schedule.Phases = append(schedule.Phases, struct {
-		StartDate int64
-		EndDate   int64
-	}{StartDate: 100, EndDate: 200})
-	if err := testClient(server).ScheduleDowngrade(t.Context(), schedule, "price_v1", 25, 5, 200); err != nil {
+	result, err := testClient(server).ChangeTrial(t.Context(), koidomain.BillingSnapshot{ID: "sub_1", ItemID: "si_1", TrialEnd: &end}, 10, "trial-key")
+	if err != nil {
 		t.Fatal(err)
+	}
+	if result.TrialEnd == nil || result.TrialEnd.Unix() != end.Unix() {
+		t.Fatal("trial end changed")
+	}
+}
+
+func TestSubscriptionPreservesPendingPayment(t *testing.T) {
+	var subscription stripe.Subscription
+	err := json.Unmarshal([]byte(`{"id":"sub_1","customer":"cus_1","status":"active","items":{"data":[{"id":"si_1","quantity":10,"price":{"id":"price_1"}}]},"pending_update":{"expires_at":200,"subscription_items":[{"id":"si_1","quantity":25}]},"latest_invoice":{"id":"in_1","hosted_invoice_url":"https://invoice.stripe.com/test"}}`), &subscription)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := subscriptionFromStripe(&subscription)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.PendingUpgradeQuantity == nil || *snapshot.PendingUpgradeQuantity != 25 || snapshot.PaymentURL == "" || snapshot.PendingUpgradeExpiresAt.Unix() != 200 {
+		t.Fatalf("lost payment details: %+v", snapshot)
 	}
 }

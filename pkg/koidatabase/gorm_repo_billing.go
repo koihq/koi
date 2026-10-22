@@ -11,7 +11,6 @@ import (
 
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
-	"github.com/koihq/koi/pkg/koipricing"
 )
 
 type BillingRepository struct{ db *gorm.DB }
@@ -103,15 +102,15 @@ func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		if err == nil && subscription.Status != "canceled" {
+		if err == nil && subscription.Status != "canceled" && subscription.Status != "incomplete_expired" {
 			return koidomain.ErrBillingSubscriptionExists
 		}
 
 		now := time.Now().UTC()
-		err = tx.Where("organization_id = ? AND ((url = '' AND created_at > ?) OR expires_at > ?)", orgID, now.Add(-24*time.Hour), now).
+		err = tx.Where("organization_id = ? AND NOT retired AND NOT completed AND ((url = '' AND created_at > ?) OR expires_at > ?)", orgID, now.Add(-24*time.Hour), now).
 			Order("created_at DESC").Take(&checkout).Error
 		if err == nil {
-			if checkout.CustomerID != customerID || checkout.PriceID != priceID || checkout.Quantity != quantity || checkout.Completed {
+			if checkout.CustomerID != customerID {
 				return koidomain.ErrBillingCheckoutPending
 			}
 			return nil
@@ -137,123 +136,118 @@ func (r *BillingRepository) ReserveCheckout(ctx context.Context, orgID uuid.UUID
 	return &checkout, nil
 }
 
+func (r *BillingRepository) OrganizationByCustomer(ctx context.Context, customerID string) (*koidomain.Organization, error) {
+	var organization koidomain.Organization
+	err := r.db.WithContext(ctx).Where("stripe_customer_id = ?", customerID).Take(&organization).Error
+	return &organization, mapDBError(err)
+}
+
+func (r *BillingRepository) LockOrganization(ctx context.Context, orgID uuid.UUID) (*koidomain.Organization, error) {
+	var organization koidomain.Organization
+	err := r.db.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", orgID).Take(&organization).Error
+	return &organization, mapDBError(err)
+}
+
+func (r *BillingRepository) Checkout(ctx context.Context, id uuid.UUID) (*koidomain.BillingCheckoutSession, error) {
+	var checkout koidomain.BillingCheckoutSession
+	err := r.db.WithContext(ctx).Where("id = ?", id).Take(&checkout).Error
+	return &checkout, mapDBError(err)
+}
+
+func (r *BillingRepository) CheckoutBySession(ctx context.Context, sessionID string) (*koidomain.BillingCheckoutSession, error) {
+	var checkout koidomain.BillingCheckoutSession
+	err := r.db.WithContext(ctx).Where("session_id = ?", sessionID).Take(&checkout).Error
+	return &checkout, mapDBError(err)
+}
+
+func (r *BillingRepository) CompletedCheckout(ctx context.Context, orgID uuid.UUID, subscriptionID string) (*koidomain.BillingCheckoutSession, error) {
+	var checkout koidomain.BillingCheckoutSession
+	err := r.db.WithContext(ctx).Where("organization_id = ? AND stripe_subscription_id = ? AND completed", orgID, subscriptionID).Take(&checkout).Error
+	return &checkout, mapDBError(err)
+}
+
+// Finalization accepts retries for the same session, including after its webhook completes.
 func (r *BillingRepository) FinalizeCheckout(ctx context.Context, reservationID uuid.UUID, sessionID, url string, expiresAt time.Time) error {
 	return updated(r.db.WithContext(ctx).Model(&koidomain.BillingCheckoutSession{}).
-		Where("id = ? AND session_id LIKE 'pending:%' AND NOT completed", reservationID).
+		Where("id = ? AND NOT retired AND (session_id LIKE 'pending:%' OR session_id = ?)", reservationID, sessionID).
 		Updates(map[string]any{"session_id": sessionID, "url": url, "expires_at": expiresAt}), true)
 }
 
-func (r *BillingRepository) PendingDowngrade(ctx context.Context, orgID uuid.UUID, scheduleID string, quantity int) error {
-	return r.db.WithContext(ctx).Model(&koidomain.BillingSubscription{}).
-		Where("organization_id = ?", orgID).
-		Updates(map[string]any{"stripe_schedule_id": scheduleID, "pending_quantity": quantity}).Error
+func (r *BillingRepository) RetireCheckout(ctx context.Context, id uuid.UUID) error {
+	return updated(r.db.WithContext(ctx).Model(&koidomain.BillingCheckoutSession{}).
+		Where("id = ? AND NOT completed", id).Update("retired", true), true)
 }
 
-func (r *BillingRepository) CompleteCheckout(ctx context.Context, eventID, sessionID, customerID, organizationID, subscriptionID string) error {
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		fresh, err := recordStripeEvent(tx, eventID)
-		if err != nil || !fresh {
-			return err
-		}
-
-		var checkout koidomain.BillingCheckoutSession
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("session_id = ?", sessionID).Take(&checkout).Error; err != nil {
-			return mapDBError(err)
-		}
-		if checkout.OrganizationID.String() != organizationID || checkout.CustomerID != customerID ||
-			(checkout.StripeSubscriptionID != nil && *checkout.StripeSubscriptionID != subscriptionID) || subscriptionID == "" {
-			return errors.New("Stripe checkout identity mismatch")
-		}
-
-		var organization koidomain.Organization
-		if err := tx.Where("id = ?", checkout.OrganizationID).Take(&organization).Error; err != nil {
-			return err
-		}
-		if organization.StripeCustomerID == nil || *organization.StripeCustomerID != customerID {
-			return errors.New("Stripe customer does not belong to organization")
-		}
-
-		return tx.Model(&checkout).Updates(map[string]any{
-			"completed":              true,
-			"stripe_subscription_id": subscriptionID,
-		}).Error
-	})
+func (r *BillingRepository) CompleteCheckout(ctx context.Context, checkout *koidomain.BillingCheckoutSession, subscriptionID string) error {
+	return updated(r.db.WithContext(ctx).Model(checkout).
+		Updates(map[string]any{"completed": true, "stripe_subscription_id": subscriptionID}), true)
 }
 
-func (r *BillingRepository) SyncSubscription(ctx context.Context, eventID, organizationID, customerID, subscriptionID, priceID, status string, quantity int, currentPeriodEnd, trialEnd *time.Time, cancelAtPeriodEnd bool) error {
-	orgID, err := uuid.Parse(organizationID)
-	_, priceErr := koipricing.Current().Quote(quantity)
-	if err != nil || priceErr != nil || subscriptionID == "" || priceID == "" {
-		return errors.New("invalid Stripe subscription identity or quantity")
-	}
-
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		fresh, err := recordStripeEvent(tx, eventID)
-		if err != nil || !fresh {
-			return err
-		}
-
-		var organization koidomain.Organization
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", orgID).Take(&organization).Error; err != nil {
-			return mapDBError(err)
-		}
-		if organization.StripeCustomerID == nil || *organization.StripeCustomerID != customerID {
-			return errors.New("Stripe subscription customer mismatch")
-		}
-
-		var checkout koidomain.BillingCheckoutSession
-		if err := tx.Where("organization_id = ? AND customer_id = ? AND stripe_subscription_id = ? AND completed", orgID, customerID, subscriptionID).
-			Take(&checkout).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				// Checkout's webhook will read the current subscription and finish the sync.
-				return nil
-			}
-			return err
-		}
-		var subscription koidomain.BillingSubscription
-		err = tx.Where("organization_id = ?", orgID).Take(&subscription).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		if err == nil && subscription.StripeSubscriptionID != subscriptionID && subscription.Status != "canceled" {
-			return errors.New("organization already has a subscription")
-		}
-		if errors.Is(err, gorm.ErrRecordNotFound) || subscription.StripeSubscriptionID != subscriptionID {
-			if checkout.PriceID != priceID || checkout.Quantity != quantity {
-				return errors.New("Stripe subscription differs from Checkout")
-			}
-		}
-
-		subscription.OrganizationID = orgID
-		subscription.StripeSubscriptionID = subscriptionID
-		subscription.StripePriceID = priceID
-		subscription.Quantity = quantity
-		subscription.Status = status
-		subscription.CurrentPeriodEnd = currentPeriodEnd
-		subscription.TrialEnd = trialEnd
-		subscription.CancelAtPeriodEnd = cancelAtPeriodEnd
-		if checkout.Trial && (status == "trialing" || status == "active") && organization.TrialUsedAt == nil {
-			now := time.Now().UTC()
-			if err := tx.Model(&organization).Update("trial_used_at", now).Error; err != nil {
-				return err
-			}
-		}
-		if subscription.PendingQuantity != nil && quantity == *subscription.PendingQuantity {
-			subscription.PendingQuantity = nil
-			subscription.StripeScheduleID = nil
-		}
-		if err == gorm.ErrRecordNotFound {
-			return tx.Create(&subscription).Error
-		}
-
-		return tx.Save(&subscription).Error
-	})
+func (r *BillingRepository) SaveSubscription(ctx context.Context, subscription *koidomain.BillingSubscription) error {
+	return r.db.WithContext(ctx).Save(subscription).Error
 }
 
-func recordStripeEvent(tx *gorm.DB, eventID string) (bool, error) {
+func (r *BillingRepository) RecordEvent(ctx context.Context, eventID string) (bool, error) {
 	if eventID == "" {
 		return false, errors.New("missing Stripe event ID")
 	}
-	result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&koidomain.StripeWebhookEvent{StripeEventID: eventID})
+	result := r.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).
+		Create(&koidomain.StripeWebhookEvent{StripeEventID: eventID})
 	return result.RowsAffected == 1, result.Error
 }
+
+func (r *BillingRepository) MarkTrialUsed(ctx context.Context, orgID uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&koidomain.Organization{}).
+		Where("id = ? AND trial_used_at IS NULL", orgID).Update("trial_used_at", time.Now().UTC()).Error
+}
+
+func (r *BillingRepository) ReserveChange(ctx context.Context, orgID uuid.UUID, key string, quantity int) (*koidomain.BillingChangeRequest, error) {
+	var request koidomain.BillingChangeRequest
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		repo := NewBillingRepository(tx)
+		if _, err := repo.LockOrganization(ctx, orgID); err != nil {
+			return err
+		}
+
+		err := tx.Where("organization_id = ? AND idempotency_key = ?", orgID, key).Take(&request).Error
+		if err == nil {
+			if request.Quantity != quantity {
+				return koidomain.ErrIdempotencyConflict
+			}
+			return nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		subscription, err := repo.Subscription(ctx, orgID)
+		if err != nil {
+			return err
+		}
+		if subscription == nil {
+			return koidomain.ErrBillingConflict
+		}
+
+		request = koidomain.BillingChangeRequest{
+			OrganizationID: orgID,
+			IdempotencyKey: key,
+			SubscriptionID: subscription.StripeSubscriptionID,
+			Quantity:       quantity,
+		}
+		return tx.Create(&request).Error
+	})
+	return &request, err
+}
+
+func (r *BillingRepository) PendingChanges(ctx context.Context, orgID uuid.UUID) ([]koidomain.BillingChangeRequest, error) {
+	var requests []koidomain.BillingChangeRequest
+	err := r.db.WithContext(ctx).Where("organization_id = ? AND result IS NULL AND error_code = ''", orgID).
+		Order("created_at ASC, id ASC").Find(&requests).Error
+	return requests, err
+}
+
+func (r *BillingRepository) SaveChange(ctx context.Context, request *koidomain.BillingChangeRequest) error {
+	return r.db.WithContext(ctx).Save(request).Error
+}
+
+var _ koidomain.BillingRepository = (*BillingRepository)(nil)

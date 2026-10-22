@@ -40,6 +40,11 @@ export interface BillingStatus {
      * @memberof BillingStatus
      */
     promptLimit: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof BillingStatus
+     */
     trialAvailable: boolean;
 }
 

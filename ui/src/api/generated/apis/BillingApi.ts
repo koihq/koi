@@ -20,6 +20,11 @@ import {
     BillingAllowanceRequestToJSON,
 } from '../models/BillingAllowanceRequest';
 import {
+    type BillingCatalog,
+    BillingCatalogFromJSON,
+    BillingCatalogToJSON,
+} from '../models/BillingCatalog';
+import {
     type BillingChange,
     BillingChangeFromJSON,
     BillingChangeToJSON,
@@ -46,6 +51,7 @@ import {
 } from '../models/Envelope';
 
 export interface BillingChangeAllowanceRequest {
+    idempotencyKey: string;
     billingAllowanceRequest: BillingAllowanceRequest;
 }
 
@@ -70,7 +76,27 @@ export interface StripeWebhookRequest {
  */
 export interface BillingApiInterface {
     /**
+     * Creates request options for billingCatalog without sending the request
+     * @throws {RequiredError}
+     * @memberof BillingApiInterface
+     */
+    billingCatalogRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillingApiInterface
+     */
+    billingCatalogRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillingCatalog>>;
+
+    /**
+     */
+    billingCatalog(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingCatalog>;
+
+    /**
      * Creates request options for billingChangeAllowance without sending the request
+     * @param {string} idempotencyKey 
      * @param {BillingAllowanceRequest} billingAllowanceRequest 
      * @throws {RequiredError}
      * @memberof BillingApiInterface
@@ -79,6 +105,7 @@ export interface BillingApiInterface {
 
     /**
      * 
+     * @param {string} idempotencyKey 
      * @param {BillingAllowanceRequest} billingAllowanceRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -88,7 +115,7 @@ export interface BillingApiInterface {
 
     /**
      */
-    billingChangeAllowance(billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange>;
+    billingChangeAllowance(idempotencyKey: string, billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange>;
 
     /**
      * Creates request options for billingCheckout without sending the request
@@ -201,9 +228,51 @@ export interface BillingApiInterface {
 export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
 
     /**
+     * Creates request options for billingCatalog without sending the request
+     */
+    async billingCatalogRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/billing/catalog`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async billingCatalogRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillingCatalog>> {
+        const requestOptions = await this.billingCatalogRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillingCatalogFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async billingCatalog(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingCatalog> {
+        const response = await this.billingCatalogRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for billingChangeAllowance without sending the request
      */
     async billingChangeAllowanceRequestOpts(requestParameters: BillingChangeAllowanceRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['idempotencyKey'] == null) {
+            throw new runtime.RequiredError(
+                'idempotencyKey',
+                'Required parameter "idempotencyKey" was null or undefined when calling billingChangeAllowance().'
+            );
+        }
+
         if (requestParameters['billingAllowanceRequest'] == null) {
             throw new runtime.RequiredError(
                 'billingAllowanceRequest',
@@ -216,6 +285,10 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
         const headerParameters: runtime.HTTPHeaders = {};
 
         headerParameters['Content-Type'] = 'application/json';
+
+        if (requestParameters['idempotencyKey'] != null) {
+            headerParameters['Idempotency-Key'] = String(requestParameters['idempotencyKey']);
+        }
 
 
         let urlPath = `/api/v1/billing/change-allowance`;
@@ -240,8 +313,8 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
 
     /**
      */
-    async billingChangeAllowance(billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange> {
-        const response = await this.billingChangeAllowanceRaw({ billingAllowanceRequest: billingAllowanceRequest }, initOverrides);
+    async billingChangeAllowance(idempotencyKey: string, billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange> {
+        const response = await this.billingChangeAllowanceRaw({ idempotencyKey: idempotencyKey, billingAllowanceRequest: billingAllowanceRequest }, initOverrides);
         return await response.value();
     }
 
