@@ -89,10 +89,10 @@ export function BrandResFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     return {
         
         'id': json['id'],
-        'organizationId': json['organization_id'],
+        'organizationId': json['organizationId'],
         'name': json['name'],
         'domain': json['domain'],
-        'githubRepo': json['github_repo'],
+        'githubRepo': json['githubRepo'],
         'country': json['country'],
         'description': json['description'],
     };
@@ -110,10 +110,10 @@ export function BrandResToJSONTyped(value?: BrandRes | null, ignoreDiscriminator
     return {
         
         'id': value['id'],
-        'organization_id': value['organizationId'],
+        'organizationId': value['organizationId'],
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'country': value['country'],
         'description': value['description'],
     };

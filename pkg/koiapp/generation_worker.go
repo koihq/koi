@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
+
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koiproviders/openrouter"
-	"github.com/riverqueue/river"
 )
 
 const maxGenerationContextBytes = 128 << 10
@@ -74,8 +75,9 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 			return w.fail(ctx, job, "job_timeout", true, ctx.Err())
 		}
 
-		var providerErr *openrouter.Error
-		if errors.As(err, &providerErr) {
+		var classified koidomain.ProviderError
+		if errors.As(err, &classified) {
+			providerErr := classified.Failure()
 			slog.Info("generation provider result", "run_id", run.ID, "attempt", job.Attempt, "status", providerErr.Status, "duration_ms", time.Since(started).Milliseconds())
 
 			return w.fail(ctx, job, providerErr.Code, providerErr.Retryable, err)

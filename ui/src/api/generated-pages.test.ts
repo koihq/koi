@@ -32,10 +32,10 @@ describe("generated list deserialization", () => {
       configuration([
         {
           id: "b",
-          organization_id: "o",
+          organizationId: "o",
           name: "Koi",
           domain: "koi.dev",
-          github_repo: "",
+          githubRepo: "",
           country: "IT",
           description: "",
         },
@@ -47,14 +47,14 @@ describe("generated list deserialization", () => {
       configuration([
         {
           id: "p",
-          brand_id: "b",
+          brandId: "b",
           text: "Best tools?",
           source: "manual",
           confirmed: true,
           inactive: false,
         },
       ]),
-    ).listPrompts("b");
+    ).listPrompts({ brandId: "b" });
     expect(prompts.items[0]).toMatchObject({ brandId: "b", text: "Best tools?" });
     expect(prompts).toMatchObject({ currentPage: 1, totalItems: 1, totalPages: 1 });
 
@@ -62,19 +62,21 @@ describe("generated list deserialization", () => {
       configuration([
         {
           id: "c",
-          brand_id: "b",
+          brandId: "b",
           name: "Other",
           domain: "other.dev",
-          github_repo: "",
+          githubRepo: "",
           source: "manual",
           confirmed: true,
         },
       ]),
-    ).listCompetitors("b");
+    ).listCompetitors({ brandId: "b" });
     expect(competitors.items[0]).toMatchObject({ brandId: "b", githubRepo: "" });
 
-    expect(await new PromptsApi(configuration([])).listPrompts("b")).toEqual(page);
+    expect(await new PromptsApi(configuration([])).listPrompts({ brandId: "b" })).toEqual(page);
     expect(await new BrandsApi(configuration([])).listBrands()).toEqual(page);
-    expect(await new CompetitorsApi(configuration([])).listCompetitors("b")).toEqual(page);
+    expect(await new CompetitorsApi(configuration([])).listCompetitors({ brandId: "b" })).toEqual(
+      page,
+    );
   });
 });

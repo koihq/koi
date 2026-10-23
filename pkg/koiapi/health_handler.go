@@ -3,7 +3,7 @@ package koiapi
 import (
 	"net/http"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -26,5 +26,5 @@ func (h *HealthHandler) Get(w http.ResponseWriter, r *http.Request) {
 		db = "down"
 	}
 
-	api.JSON(w, r, http.StatusOK, HealthResponse{Status: "ok", DB: db})
+	apiresponse.JSON(w, r, http.StatusOK, HealthResponse{Status: "ok", DB: db})
 }

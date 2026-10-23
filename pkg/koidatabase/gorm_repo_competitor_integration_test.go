@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -26,7 +25,7 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	require.NoError(t, store.MembershipRepo().Create(t.Context(), &koidomain.Membership{
 		UserID: user.ID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
 	}))
-	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
+	ctx := testIdentity(t, store, user.ID)
 	brand := &koidomain.Brand{
 		OrganizationID: organization.ID,
 		Name:           "Koi",
@@ -105,7 +104,7 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), otherUser))
 	otherOrganizationID := testOrganizationForUser(t, store, otherUser.ID)
-	otherCtx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: otherUser.ID})
+	otherCtx := testIdentity(t, store, otherUser.ID)
 	otherBrand := &koidomain.Brand{OrganizationID: otherOrganizationID, Name: "Other", Domain: "other.dev", Country: "IT"}
 	require.NoError(t, store.BrandRepo().Create(otherCtx, otherBrand))
 
@@ -115,15 +114,15 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	_, err = store.CompetitorRepo().Get(otherCtx, koidomain.CompetitorFilter{ID: page.Items[0].ID})
+	_, err = store.CompetitorRepo().Get(otherCtx, page.Items[0].ID)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 	_, err = store.BrandRepo().Get(otherCtx, brand.ID)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 	require.ErrorIs(t, store.BrandRepo().Update(otherCtx, brand), koidomain.ErrNotFound)
 	confirmed := false
 	filter := koidomain.CompetitorFilter{ID: page.Items[0].ID, BrandID: brand.ID}
-	require.ErrorIs(t, store.CompetitorRepo().Update(otherCtx, filter, koidomain.CompetitorUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
-	require.ErrorIs(t, store.CompetitorRepo().Delete(otherCtx, filter), koidomain.ErrNotFound)
+	require.ErrorIs(t, store.CompetitorRepo().Update(otherCtx, filter.ID, koidomain.CompetitorUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
+	require.ErrorIs(t, store.CompetitorRepo().Delete(otherCtx, filter.ID), koidomain.ErrNotFound)
 	require.ErrorIs(t, store.CompetitorRepo().Create(otherCtx, &koidomain.Competitor{BrandID: brand.ID}), koidomain.ErrNotFound)
 
 	prompt := &koidomain.Prompt{
@@ -134,9 +133,9 @@ func TestCompetitorUniqueDomainConcurrent(t *testing.T) {
 	}
 	require.NoError(t, store.PromptRepo().Create(ctx, prompt))
 	promptFilter := koidomain.PromptFilter{ID: prompt.ID, BrandID: brand.ID}
-	_, err = store.PromptRepo().Get(otherCtx, promptFilter)
+	_, err = store.PromptRepo().Get(otherCtx, promptFilter.ID)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
-	require.ErrorIs(t, store.PromptRepo().Update(otherCtx, promptFilter, koidomain.PromptUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
-	require.ErrorIs(t, store.PromptRepo().Delete(otherCtx, promptFilter), koidomain.ErrNotFound)
+	require.ErrorIs(t, store.PromptRepo().Update(otherCtx, promptFilter.ID, koidomain.PromptUpdate{Confirmed: &confirmed}), koidomain.ErrNotFound)
+	require.ErrorIs(t, store.PromptRepo().Delete(otherCtx, promptFilter.ID), koidomain.ErrNotFound)
 	require.ErrorIs(t, store.PromptRepo().Create(otherCtx, &koidomain.Prompt{BrandID: brand.ID}), koidomain.ErrNotFound)
 }

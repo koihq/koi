@@ -90,8 +90,12 @@ func (r *GormVisibilityRepository) ListPromptRuns(ctx context.Context, brandID, 
 		return nil, mapDBError(err)
 	}
 	if total == 0 {
-		if _, err := NewGormPromptRepository(r.db).Get(ctx, koidomain.PromptFilter{ID: promptID, BrandID: brandID}); err != nil {
+		prompt, err := NewGormPromptRepository(r.db).Get(ctx, promptID)
+		if err != nil {
 			return nil, err
+		}
+		if prompt.BrandID != brandID {
+			return nil, koidomain.ErrNotFound
 		}
 	}
 

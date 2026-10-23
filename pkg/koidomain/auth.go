@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/koihq/koi/pkg/koiauth"
 )
 
@@ -132,7 +134,7 @@ func (c *authCommander) Login(ctx context.Context, email, password string) (*Me,
 
 func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
 	identity, ok := koiauth.FromContext(ctx)
-	if !ok {
+	if !ok || identity.OrganizationID == uuid.Nil {
 		return nil, ErrUnauthorized
 	}
 
@@ -141,7 +143,12 @@ func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
 		return nil, err
 	}
 
-	return loadMe(ctx, q.store, user)
+	organization, err := q.store.OrganizationRepo().Get(ctx, identity.OrganizationID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Me{User: *user, Organization: *organization, Role: identity.Role}, nil
 }
 
 func loadMe(ctx context.Context, store Store, user *User) (*Me, error) {
@@ -156,4 +163,16 @@ func loadMe(ctx context.Context, store Store, user *User) (*Me, error) {
 	}
 
 	return &Me{User: *user, Organization: *org, Role: m.Role}, nil
+}
+
+// ResolveIdentity verifies the current membership for each authenticated request.
+func ResolveIdentity(ctx context.Context, store Store, userID uuid.UUID) (koiauth.Identity, error) {
+	membership, err := store.MembershipRepo().GetByUserID(ctx, userID)
+	if errors.Is(err, ErrNotFound) {
+		return koiauth.Identity{}, ErrUnauthorized
+	}
+	if err != nil {
+		return koiauth.Identity{}, err
+	}
+	return koiauth.Identity{UserID: userID, OrganizationID: membership.OrganizationID, Role: membership.Role}, nil
 }

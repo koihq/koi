@@ -74,9 +74,9 @@ export function HistoricalPromptFromJSONTyped(json: any, ignoreDiscriminator: bo
     }
     return {
         
-        'promptId': json['prompt_id'],
-        'promptText': json['prompt_text'],
-        'lastSeenAt': (new Date(json['last_seen_at'])),
+        'promptId': json['promptId'],
+        'promptText': json['promptText'],
+        'lastSeenAt': (new Date(json['lastSeenAt'])),
         'visibility': json['visibility'] == null ? undefined : VisibilityReportFromJSON(json['visibility']),
     };
 }
@@ -92,9 +92,9 @@ export function HistoricalPromptToJSONTyped(value?: HistoricalPrompt | null, ign
 
     return {
         
-        'prompt_id': value['promptId'],
-        'prompt_text': value['promptText'],
-        'last_seen_at': value['lastSeenAt'].toISOString(),
+        'promptId': value['promptId'],
+        'promptText': value['promptText'],
+        'lastSeenAt': value['lastSeenAt'].toISOString(),
         'visibility': VisibilityReportToJSON(value['visibility']),
     };
 }

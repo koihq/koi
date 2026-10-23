@@ -25,14 +25,8 @@ func (r *GormBrandRepository) Create(ctx context.Context, brand *koidomain.Brand
 		return koidomain.ErrUnauthorized
 	}
 
-	var membership koidomain.Membership
-	err := r.db.WithContext(ctx).Where("user_id = ? AND organization_id = ?", identity.UserID, brand.OrganizationID).
-		Take(&membership).Error
-	if err == gorm.ErrRecordNotFound {
+	if identity.OrganizationID == uuid.Nil || identity.OrganizationID != brand.OrganizationID {
 		return koidomain.ErrUnauthorized
-	}
-	if err != nil {
-		return err
 	}
 
 	return r.Repository.Create(ctx, brand)

@@ -25,6 +25,12 @@ export interface PromptRequest {
      * @type {string}
      * @memberof PromptRequest
      */
+    brandId: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof PromptRequest
+     */
     text: string;
 }
 
@@ -32,6 +38,7 @@ export interface PromptRequest {
  * Check if a given object implements the PromptRequest interface.
  */
 export function instanceOfPromptRequest(value: object): value is PromptRequest {
+    if (!('brandId' in value) || value['brandId'] === undefined) return false;
     if (!('text' in value) || value['text'] === undefined) return false;
     return true;
 }
@@ -46,6 +53,7 @@ export function PromptRequestFromJSONTyped(json: any, ignoreDiscriminator: boole
     }
     return {
         
+        'brandId': json['brandId'],
         'text': json['text'],
     };
 }
@@ -61,6 +69,7 @@ export function PromptRequestToJSONTyped(value?: PromptRequest | null, ignoreDis
 
     return {
         
+        'brandId': value['brandId'],
         'text': value['text'],
     };
 }

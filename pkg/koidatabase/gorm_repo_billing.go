@@ -19,13 +19,12 @@ func NewBillingRepository(db *gorm.DB) *BillingRepository { return &BillingRepos
 
 func (r *BillingRepository) OrganizationForUser(ctx context.Context) (*koidomain.Organization, error) {
 	identity, ok := koiauth.FromContext(ctx)
-	if !ok {
+	if !ok || identity.OrganizationID == uuid.Nil {
 		return nil, koidomain.ErrUnauthorized
 	}
 
 	var organization koidomain.Organization
-	err := r.db.WithContext(ctx).Joins("JOIN memberships ON memberships.organization_id = organizations.id").
-		Where("memberships.user_id = ?", identity.UserID).Take(&organization).Error
+	err := r.db.WithContext(ctx).Where("id = ?", identity.OrganizationID).Take(&organization).Error
 	if err != nil {
 		return nil, mapDBError(err)
 	}
@@ -33,21 +32,12 @@ func (r *BillingRepository) OrganizationForUser(ctx context.Context) (*koidomain
 	return &organization, nil
 }
 
-func (r *BillingRepository) ProductAccess(ctx context.Context, userID uuid.UUID) (bool, error) {
-	var membership koidomain.Membership
-	err := r.db.WithContext(ctx).Select("organization_id").
-		Where("user_id = ?", userID).Take(&membership).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+func (r *BillingRepository) ProductAccess(ctx context.Context, organizationID uuid.UUID) (bool, error) {
+	identity, ok := koiauth.FromContext(ctx)
+	if !ok || identity.OrganizationID == uuid.Nil || identity.OrganizationID != organizationID {
 		return false, koidomain.ErrUnauthorized
 	}
-	if err != nil {
-		return false, err
-	}
-	if membership.OrganizationID == uuid.Nil {
-		return false, koidomain.ErrUnauthorized
-	}
-
-	limit, err := cloudPromptLimit(ctx, r.db, membership.OrganizationID)
+	limit, err := cloudPromptLimit(ctx, r.db, organizationID)
 	return limit > 0, err
 }
 

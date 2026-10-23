@@ -41,7 +41,7 @@ function Setup() {
           return;
         }
         if (capabilities.aiDrafting) {
-          await api.generations.create(brand.id, "initial", `setup-${brand.id}`);
+          await api.generations.create({ brandId: brand.id, mode: "initial" }, `setup-${brand.id}`);
         }
       } catch {
         draftStartFailed = true;

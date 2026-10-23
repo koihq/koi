@@ -2,6 +2,7 @@ import errors from "@/locales/en/errors.json";
 
 export const errorCodes = [
   "validation",
+  "resource_conflict",
   "email_taken",
   "brand_limit_reached",
   "invalid_credentials",

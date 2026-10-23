@@ -89,8 +89,8 @@ func (s *billingService) Subscription(ctx context.Context) (BillingStatus, error
 	return status, nil
 }
 
-func (s *billingService) ProductAccess(ctx context.Context, userID uuid.UUID) (bool, error) {
-	return s.store.BillingRepo().ProductAccess(ctx, userID)
+func (s *billingService) ProductAccess(ctx context.Context, organizationID uuid.UUID) (bool, error) {
+	return s.store.BillingRepo().ProductAccess(ctx, organizationID)
 }
 
 func (s *billingService) Portal(ctx context.Context) (string, error) {

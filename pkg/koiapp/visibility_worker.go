@@ -10,7 +10,6 @@ import (
 
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
-	"github.com/koihq/koi/pkg/koiproviders/cloro"
 )
 
 type visibilityStore interface {
@@ -24,7 +23,7 @@ type visibilityStore interface {
 
 type visibilityProvider interface {
 	Submit(context.Context, koidomain.VisibilityResult, string) (string, error)
-	Poll(context.Context, string, koidomain.EngineID) (*cloro.Answer, error)
+	Poll(context.Context, string, koidomain.EngineID) (*koidomain.CollectedAnswer, error)
 }
 
 type visibilityWorker struct {
@@ -62,7 +61,7 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 
 		now := time.Now().UTC()
 		code := ""
-		var answer *cloro.Answer
+		var answer *koidomain.CollectedAnswer
 		switch {
 		case now.Sub(run.CreatedAt) >= 23*time.Hour:
 			code = "cloro_deadline"
@@ -85,7 +84,7 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 				if ctx.Err() != nil {
 					return w.fail(ctx, job, ctx.Err())
 				}
-				failure := cloro.Failure(err)
+				failure := collectionFailure(err)
 				if failure.Retryable {
 					continue
 				}
@@ -103,7 +102,7 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 					if ctx.Err() != nil {
 						return w.fail(ctx, job, ctx.Err())
 					}
-					failure := cloro.Failure(err)
+					failure := collectionFailure(err)
 					if failure.Retryable {
 						continue
 					}
@@ -177,4 +176,12 @@ func (w *visibilityWorker) fail(ctx context.Context, job *river.Job[koidatabase.
 	}
 
 	return cause
+}
+
+func collectionFailure(err error) koidomain.ProviderFailure {
+	var classified koidomain.ProviderError
+	if errors.As(err, &classified) {
+		return classified.Failure()
+	}
+	return koidomain.ProviderFailure{Code: "cloro_unavailable", Retryable: true}
 }

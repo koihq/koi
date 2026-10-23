@@ -312,7 +312,6 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		billing := koiapi.NewBillingHandler(
 			koidomain.NewBillingQuerier(store, stripeClient, a.cfg.StripePriceID),
 			koidomain.NewBillingCommander(store, stripeClient, a.cfg.StripePriceID, a.cfg.PublicURL),
-			sess,
 			a.cfg.StripeWebhookSecret,
 		)
 		handler = koiapi.NewCloudServer(store, sess, searcher, a.cfg.OpenRouterAPIKey != "" && riverClient != nil, liveCollection, billing)

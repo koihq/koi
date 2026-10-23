@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type BrandRequestScope,
+    BrandRequestScopeFromJSON,
+    BrandRequestScopeToJSON,
+} from '../models/BrandRequestScope';
+import {
     type CompetitorPage,
     CompetitorPageFromJSON,
     CompetitorPageToJSON,
@@ -46,31 +51,27 @@ import {
 } from '../models/SearchCompetitors200ResponseInner';
 
 export interface ConfirmAllCompetitorsRequest {
-    brandID: string;
+    brandRequestScope: BrandRequestScope;
 }
 
 export interface ConfirmCompetitorRequest {
-    brandID: string;
     competitorID: string;
 }
 
 export interface CreateCompetitorRequest {
-    brandID: string;
     competitorRequest: CompetitorRequest;
 }
 
 export interface DeleteCompetitorRequest {
-    brandID: string;
     competitorID: string;
 }
 
 export interface GetCompetitorRequest {
-    brandID: string;
     competitorID: string;
 }
 
 export interface ListCompetitorsRequest {
-    brandID: string;
+    brandId: string;
     page?: number;
     pageSize?: number;
     q?: string;
@@ -78,13 +79,12 @@ export interface ListCompetitorsRequest {
 }
 
 export interface PatchCompetitorRequest {
-    brandID: string;
     competitorID: string;
     competitorPatchRequest: CompetitorPatchRequest;
 }
 
 export interface SearchCompetitorsRequest {
-    brandID: string;
+    brandId: string;
     q: string;
 }
 
@@ -97,7 +97,7 @@ export interface SearchCompetitorsRequest {
 export interface CompetitorsApiInterface {
     /**
      * Creates request options for confirmAllCompetitors without sending the request
-     * @param {string} brandID 
+     * @param {BrandRequestScope} brandRequestScope 
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
      */
@@ -105,7 +105,7 @@ export interface CompetitorsApiInterface {
 
     /**
      * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-     * @param {string} brandID 
+     * @param {BrandRequestScope} brandRequestScope 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
@@ -115,11 +115,10 @@ export interface CompetitorsApiInterface {
     /**
      * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
      */
-    confirmAllCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    confirmAllCompetitors(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for confirmCompetitor without sending the request
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
@@ -128,7 +127,6 @@ export interface CompetitorsApiInterface {
 
     /**
      * Requires a primary domain or GitHub repository; name-only observed suggestions return validation errors.
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -139,11 +137,10 @@ export interface CompetitorsApiInterface {
     /**
      * Requires a primary domain or GitHub repository; name-only observed suggestions return validation errors.
      */
-    confirmCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
+    confirmCompetitor(requestParameters: ConfirmCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
 
     /**
      * Creates request options for createCompetitor without sending the request
-     * @param {string} brandID 
      * @param {CompetitorRequest} competitorRequest 
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
@@ -152,7 +149,6 @@ export interface CompetitorsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {CompetitorRequest} competitorRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -162,11 +158,10 @@ export interface CompetitorsApiInterface {
 
     /**
      */
-    createCompetitor(brandID: string, competitorRequest: CompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
+    createCompetitor(requestParameters: CreateCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
 
     /**
      * Creates request options for deleteCompetitor without sending the request
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
@@ -175,7 +170,6 @@ export interface CompetitorsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -185,11 +179,10 @@ export interface CompetitorsApiInterface {
 
     /**
      */
-    deleteCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    deleteCompetitor(requestParameters: DeleteCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for getCompetitor without sending the request
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
@@ -198,7 +191,6 @@ export interface CompetitorsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -208,11 +200,11 @@ export interface CompetitorsApiInterface {
 
     /**
      */
-    getCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
+    getCompetitor(requestParameters: GetCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
 
     /**
      * Creates request options for listCompetitors without sending the request
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {number} [page] 
      * @param {number} [pageSize] 
      * @param {string} [q] 
@@ -224,7 +216,7 @@ export interface CompetitorsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {number} [page] 
      * @param {number} [pageSize] 
      * @param {string} [q] 
@@ -237,11 +229,10 @@ export interface CompetitorsApiInterface {
 
     /**
      */
-    listCompetitors(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorPage>;
+    listCompetitors(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorPage>;
 
     /**
      * Creates request options for patchCompetitor without sending the request
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @param {CompetitorPatchRequest} competitorPatchRequest 
      * @throws {RequiredError}
@@ -251,7 +242,6 @@ export interface CompetitorsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} competitorID 
      * @param {CompetitorPatchRequest} competitorPatchRequest 
      * @param {*} [options] Override http request option.
@@ -262,11 +252,11 @@ export interface CompetitorsApiInterface {
 
     /**
      */
-    patchCompetitor(brandID: string, competitorID: string, competitorPatchRequest: CompetitorPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
+    patchCompetitor(requestParameters: PatchCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes>;
 
     /**
      * Creates request options for searchCompetitors without sending the request
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {string} q 
      * @throws {RequiredError}
      * @memberof CompetitorsApiInterface
@@ -275,7 +265,7 @@ export interface CompetitorsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {string} q 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -285,7 +275,7 @@ export interface CompetitorsApiInterface {
 
     /**
      */
-    searchCompetitors(brandID: string, q: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SearchCompetitors200ResponseInner>>;
+    searchCompetitors(requestParameters: SearchCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SearchCompetitors200ResponseInner>>;
 
 }
 
@@ -298,10 +288,10 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
      * Creates request options for confirmAllCompetitors without sending the request
      */
     async confirmAllCompetitorsRequestOpts(requestParameters: ConfirmAllCompetitorsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
+        if (requestParameters['brandRequestScope'] == null) {
             throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling confirmAllCompetitors().'
+                'brandRequestScope',
+                'Required parameter "brandRequestScope" was null or undefined when calling confirmAllCompetitors().'
             );
         }
 
@@ -309,15 +299,17 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors/confirm`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+
+        let urlPath = `/api/v1/competitors/confirm`;
 
         return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: BrandRequestScopeToJSON(requestParameters['brandRequestScope']),
         };
     }
 
@@ -334,21 +326,14 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
     /**
      * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
      */
-    async confirmAllCompetitors(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.confirmAllCompetitorsRaw({ brandID: brandID }, initOverrides);
+    async confirmAllCompetitors(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.confirmAllCompetitorsRaw(requestParameters, initOverrides);
     }
 
     /**
      * Creates request options for confirmCompetitor without sending the request
      */
     async confirmCompetitorRequestOpts(requestParameters: ConfirmCompetitorRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling confirmCompetitor().'
-            );
-        }
-
         if (requestParameters['competitorID'] == null) {
             throw new runtime.RequiredError(
                 'competitorID',
@@ -361,8 +346,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors/{competitorID}/confirm`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors/{competitorID}/confirm`;
         urlPath = urlPath.replace('{competitorID}', encodeURIComponent(String(requestParameters['competitorID'])));
 
         return {
@@ -386,8 +370,8 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
     /**
      * Requires a primary domain or GitHub repository; name-only observed suggestions return validation errors.
      */
-    async confirmCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
-        const response = await this.confirmCompetitorRaw({ brandID: brandID, competitorID: competitorID }, initOverrides);
+    async confirmCompetitor(requestParameters: ConfirmCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
+        const response = await this.confirmCompetitorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -395,13 +379,6 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
      * Creates request options for createCompetitor without sending the request
      */
     async createCompetitorRequestOpts(requestParameters: CreateCompetitorRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling createCompetitor().'
-            );
-        }
-
         if (requestParameters['competitorRequest'] == null) {
             throw new runtime.RequiredError(
                 'competitorRequest',
@@ -416,8 +393,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors`;
 
         return {
             path: urlPath,
@@ -439,8 +415,8 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async createCompetitor(brandID: string, competitorRequest: CompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
-        const response = await this.createCompetitorRaw({ brandID: brandID, competitorRequest: competitorRequest }, initOverrides);
+    async createCompetitor(requestParameters: CreateCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
+        const response = await this.createCompetitorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -448,13 +424,6 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
      * Creates request options for deleteCompetitor without sending the request
      */
     async deleteCompetitorRequestOpts(requestParameters: DeleteCompetitorRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling deleteCompetitor().'
-            );
-        }
-
         if (requestParameters['competitorID'] == null) {
             throw new runtime.RequiredError(
                 'competitorID',
@@ -467,8 +436,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors/{competitorID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors/{competitorID}`;
         urlPath = urlPath.replace('{competitorID}', encodeURIComponent(String(requestParameters['competitorID'])));
 
         return {
@@ -490,21 +458,14 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async deleteCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.deleteCompetitorRaw({ brandID: brandID, competitorID: competitorID }, initOverrides);
+    async deleteCompetitor(requestParameters: DeleteCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteCompetitorRaw(requestParameters, initOverrides);
     }
 
     /**
      * Creates request options for getCompetitor without sending the request
      */
     async getCompetitorRequestOpts(requestParameters: GetCompetitorRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling getCompetitor().'
-            );
-        }
-
         if (requestParameters['competitorID'] == null) {
             throw new runtime.RequiredError(
                 'competitorID',
@@ -517,8 +478,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors/{competitorID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors/{competitorID}`;
         urlPath = urlPath.replace('{competitorID}', encodeURIComponent(String(requestParameters['competitorID'])));
 
         return {
@@ -540,8 +500,8 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async getCompetitor(brandID: string, competitorID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
-        const response = await this.getCompetitorRaw({ brandID: brandID, competitorID: competitorID }, initOverrides);
+    async getCompetitor(requestParameters: GetCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
+        const response = await this.getCompetitorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -549,14 +509,18 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
      * Creates request options for listCompetitors without sending the request
      */
     async listCompetitorsRequestOpts(requestParameters: ListCompetitorsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
+        if (requestParameters['brandId'] == null) {
             throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling listCompetitors().'
+                'brandId',
+                'Required parameter "brandId" was null or undefined when calling listCompetitors().'
             );
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['brandId'] != null) {
+            queryParameters['brandId'] = requestParameters['brandId'];
+        }
 
         if (requestParameters['page'] != null) {
             queryParameters['page'] = requestParameters['page'];
@@ -577,8 +541,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors`;
 
         return {
             path: urlPath,
@@ -599,8 +562,8 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async listCompetitors(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorPage> {
-        const response = await this.listCompetitorsRaw({ brandID: brandID, page: page, pageSize: pageSize, q: q, confirmed: confirmed }, initOverrides);
+    async listCompetitors(requestParameters: ListCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorPage> {
+        const response = await this.listCompetitorsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -608,13 +571,6 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
      * Creates request options for patchCompetitor without sending the request
      */
     async patchCompetitorRequestOpts(requestParameters: PatchCompetitorRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling patchCompetitor().'
-            );
-        }
-
         if (requestParameters['competitorID'] == null) {
             throw new runtime.RequiredError(
                 'competitorID',
@@ -636,8 +592,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors/{competitorID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors/{competitorID}`;
         urlPath = urlPath.replace('{competitorID}', encodeURIComponent(String(requestParameters['competitorID'])));
 
         return {
@@ -660,8 +615,8 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async patchCompetitor(brandID: string, competitorID: string, competitorPatchRequest: CompetitorPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
-        const response = await this.patchCompetitorRaw({ brandID: brandID, competitorID: competitorID, competitorPatchRequest: competitorPatchRequest }, initOverrides);
+    async patchCompetitor(requestParameters: PatchCompetitorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CompetitorRes> {
+        const response = await this.patchCompetitorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -669,10 +624,10 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
      * Creates request options for searchCompetitors without sending the request
      */
     async searchCompetitorsRequestOpts(requestParameters: SearchCompetitorsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
+        if (requestParameters['brandId'] == null) {
             throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling searchCompetitors().'
+                'brandId',
+                'Required parameter "brandId" was null or undefined when calling searchCompetitors().'
             );
         }
 
@@ -685,6 +640,10 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
         const queryParameters: any = {};
 
+        if (requestParameters['brandId'] != null) {
+            queryParameters['brandId'] = requestParameters['brandId'];
+        }
+
         if (requestParameters['q'] != null) {
             queryParameters['q'] = requestParameters['q'];
         }
@@ -692,8 +651,7 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/competitors/search`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/competitors/search`;
 
         return {
             path: urlPath,
@@ -714,8 +672,8 @@ export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInt
 
     /**
      */
-    async searchCompetitors(brandID: string, q: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SearchCompetitors200ResponseInner>> {
-        const response = await this.searchCompetitorsRaw({ brandID: brandID, q: q }, initOverrides);
+    async searchCompetitors(requestParameters: SearchCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SearchCompetitors200ResponseInner>> {
+        const response = await this.searchCompetitorsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

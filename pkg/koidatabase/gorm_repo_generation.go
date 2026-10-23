@@ -32,9 +32,9 @@ func NewGormGenerationRepository(db *gorm.DB, client *river.Client[*sql.Tx], clo
 	}
 }
 
-func (r *GormGenerationRepository) Get(ctx context.Context, brandID, runID uuid.UUID) (*koidomain.GenerationRun, error) {
+func (r *GormGenerationRepository) Get(ctx context.Context, runID uuid.UUID) (*koidomain.GenerationRun, error) {
 	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB {
-		return db.Where("brand_id = ? AND id = ?", brandID, runID)
+		return db.Where("id = ?", runID)
 	})
 }
 

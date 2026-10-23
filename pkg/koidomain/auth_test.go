@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -180,6 +181,17 @@ func TestAuthQuerier_MeNotFound(t *testing.T) {
 	id := uuid.New()
 	d.users.EXPECT().Get(mock.Anything, id).Return(nil, ErrNotFound)
 
-	_, err := NewAuthQuerier(d.store).Me(identityCtx(t, id))
+	_, err := NewAuthQuerier(d.store).Me(koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: id, OrganizationID: uuid.New(), Role: RoleOwner}))
 	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestAuthQuerierRequiresTenantIdentity(t *testing.T) {
+	querier := NewAuthQuerier(NewMockStore(t))
+	for _, ctx := range []context.Context{
+		t.Context(),
+		koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: uuid.New()}),
+	} {
+		_, err := querier.Me(ctx)
+		require.ErrorIs(t, err, ErrUnauthorized)
+	}
 }

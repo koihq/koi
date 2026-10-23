@@ -19,6 +19,7 @@
  * @export
  */
 export const ErrorCode = {
+    RESOURCE_CONFLICT: 'resource_conflict',
     VALIDATION: 'validation',
     EMAIL_TAKEN: 'email_taken',
     BRAND_LIMIT_REACHED: 'brand_limit_reached',

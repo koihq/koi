@@ -41,13 +41,7 @@ type taskResponse struct {
 	Response json.RawMessage `json:"response"`
 }
 
-type Answer struct {
-	Text           string
-	Markdown       string
-	Entities       []koidomain.NamedEntity
-	Sources        []string
-	CreditsCharged *int
-}
+type Answer = koidomain.CollectedAnswer
 
 func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
 	payload := map[string]any{"prompt": cell.PromptText, "country": country, "include": map[string]any{"markdown": true}}
@@ -215,4 +209,8 @@ func Failure(err error) *Error {
 	}
 
 	return &Error{Code: "cloro_unavailable", Retryable: true}
+}
+
+func (e *Error) Failure() koidomain.ProviderFailure {
+	return koidomain.ProviderFailure{Code: e.Code, Retryable: e.Retryable, AccountWide: e.AccountWide}
 }

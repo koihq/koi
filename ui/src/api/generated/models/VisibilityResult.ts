@@ -168,17 +168,17 @@ export function VisibilityResultFromJSONTyped(json: any, ignoreDiscriminator: bo
     return {
         
         'id': json['id'],
-        'runId': json['run_id'],
-        'promptId': json['prompt_id'],
-        'promptText': json['prompt_text'],
-        'promptPosition': json['prompt_position'],
+        'runId': json['runId'],
+        'promptId': json['promptId'],
+        'promptText': json['promptText'],
+        'promptPosition': json['promptPosition'],
         'engine': VisibilityEngineFromJSON(json['engine']),
         'collector': json['collector'],
-        'fetchedAt': (json['fetched_at'] == null ? null : new Date(json['fetched_at'])),
+        'fetchedAt': (json['fetchedAt'] == null ? null : new Date(json['fetchedAt'])),
         'outcome': json['outcome'],
-        'rawAnswer': json['raw_answer'],
+        'rawAnswer': json['rawAnswer'],
         'sources': json['sources'],
-        'errorCode': json['error_code'],
+        'errorCode': json['errorCode'],
         'appearances': ((json['appearances'] as Array<any>).map(CompetitorAppearanceFromJSON)),
     };
 }
@@ -195,17 +195,17 @@ export function VisibilityResultToJSONTyped(value?: VisibilityResult | null, ign
     return {
         
         'id': value['id'],
-        'run_id': value['runId'],
-        'prompt_id': value['promptId'],
-        'prompt_text': value['promptText'],
-        'prompt_position': value['promptPosition'],
+        'runId': value['runId'],
+        'promptId': value['promptId'],
+        'promptText': value['promptText'],
+        'promptPosition': value['promptPosition'],
         'engine': VisibilityEngineToJSON(value['engine']),
         'collector': value['collector'],
-        'fetched_at': value['fetchedAt'] == null ? value['fetchedAt'] : value['fetchedAt'].toISOString(),
+        'fetchedAt': value['fetchedAt'] == null ? value['fetchedAt'] : value['fetchedAt'].toISOString(),
         'outcome': value['outcome'],
-        'raw_answer': value['rawAnswer'],
+        'rawAnswer': value['rawAnswer'],
         'sources': value['sources'],
-        'error_code': value['errorCode'],
+        'errorCode': value['errorCode'],
         'appearances': ((value['appearances'] as Array<any>).map(CompetitorAppearanceToJSON)),
     };
 }

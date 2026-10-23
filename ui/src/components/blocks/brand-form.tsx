@@ -75,14 +75,15 @@ export function BrandForm({
         const next: Partial<Record<BrandField, string>> = {};
 
         for (const item of err.fields) {
+          const field = item.field === "githubRepo" ? "github_repo" : item.field;
           if (
-            item.field === "name" ||
-            item.field === "domain" ||
-            item.field === "github_repo" ||
-            item.field === "country" ||
-            item.field === "description"
+            field === "name" ||
+            field === "domain" ||
+            field === "github_repo" ||
+            field === "country" ||
+            field === "description"
           ) {
-            next[item.field] = validationMessage(item.field);
+            next[field] = validationMessage(field);
           }
         }
 

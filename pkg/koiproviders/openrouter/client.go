@@ -9,6 +9,7 @@ import (
 	sdk "github.com/OpenRouterTeam/go-sdk"
 	"github.com/OpenRouterTeam/go-sdk/models/sdkerrors"
 	"github.com/OpenRouterTeam/go-sdk/retry"
+
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -171,4 +172,8 @@ func statusCode(status int) string {
 	}
 
 	return "provider_rejected"
+}
+
+func (e *Error) Failure() koidomain.ProviderFailure {
+	return koidomain.ProviderFailure{Code: e.Code, Retryable: e.Retryable, Status: e.Status}
 }

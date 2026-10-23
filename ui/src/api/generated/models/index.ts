@@ -12,6 +12,7 @@ export * from './BillingSubscription';
 export * from './BrandPage';
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
+export * from './BrandRequestScope';
 export * from './BrandRes';
 export * from './CapabilitiesResponse';
 export * from './CompetitorAppearance';

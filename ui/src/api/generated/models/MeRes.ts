@@ -77,7 +77,7 @@ export function MeResFromJSONTyped(json: any, ignoreDiscriminator: boolean): MeR
         'id': json['id'],
         'email': json['email'],
         'organization': OrgResFromJSON(json['organization']),
-        'activeBrandId': json['active_brand_id'] == null ? undefined : json['active_brand_id'],
+        'activeBrandId': json['activeBrandId'] == null ? undefined : json['activeBrandId'],
     };
 }
 
@@ -95,7 +95,7 @@ export function MeResToJSONTyped(value?: MeRes | null, ignoreDiscriminator: bool
         'id': value['id'],
         'email': value['email'],
         'organization': OrgResToJSON(value['organization']),
-        'active_brand_id': value['activeBrandId'],
+        'activeBrandId': value['activeBrandId'],
     };
 }
 

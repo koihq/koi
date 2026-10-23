@@ -7,7 +7,7 @@ import (
 
 	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -39,9 +39,16 @@ func Recoverer(next http.Handler) http.Handler {
 					"panic", rec,
 					"request_id", chimw.GetReqID(r.Context()),
 				)
-				api.Error(w, r, http.StatusInternalServerError, koidomain.ErrInternal)
+				apiresponse.Error(w, r, http.StatusInternalServerError, koidomain.ErrInternal)
 			}
 		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func RequestIDHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Request-ID", chimw.GetReqID(r.Context()))
 		next.ServeHTTP(w, r)
 	})
 }

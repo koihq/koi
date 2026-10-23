@@ -7,7 +7,9 @@ import (
 )
 
 type Identity struct {
-	UserID uuid.UUID
+	UserID         uuid.UUID
+	OrganizationID uuid.UUID
+	Role           string
 }
 
 type identityKey struct{}

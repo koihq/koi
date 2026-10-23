@@ -1,10 +1,12 @@
 package koiapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -14,7 +16,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
+	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -42,7 +46,7 @@ func newAuthTestServer(t *testing.T, q koidomain.AuthQuerier, c koidomain.AuthCo
 	sess.Cookie.Name = "koi_session"
 	r := chi.NewRouter()
 	r.Use(sess.LoadAndSave)
-	r.Route("/api/v1/auth", NewAuthHandler(q, c, sess).Routes())
+	r.Route("/api/v1/auth", NewAuthHandler(q, c, sess, Authorizer(sess)).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 
@@ -57,9 +61,26 @@ func newCookieClient(t *testing.T) *http.Client {
 	return &http.Client{Jar: jar}
 }
 
-func doJSON(t *testing.T, client *http.Client, method, url, body string) *http.Response {
+func doJSON(t *testing.T, client *http.Client, method, address, body string, brands ...uuid.UUID) *http.Response {
 	t.Helper()
-	req, err := http.NewRequest(method, url, strings.NewReader(body))
+	if len(brands) > 0 {
+		parsed, err := url.Parse(address)
+		require.NoError(t, err)
+		query := parsed.Query()
+		query.Set("brandId", brands[0].String())
+		parsed.RawQuery = query.Encode()
+		address = parsed.String()
+		if method == http.MethodPost && (strings.HasSuffix(parsed.Path, "/prompts") || strings.HasSuffix(parsed.Path, "/competitors") || strings.HasSuffix(parsed.Path, "/generations") || strings.HasSuffix(parsed.Path, "/confirm") && strings.Count(parsed.Path, "/") == 4) {
+			values := map[string]any{}
+			if body == "" || json.Unmarshal([]byte(body), &values) == nil {
+				values["brandId"] = brands[0].String()
+				encoded, err := json.Marshal(values)
+				require.NoError(t, err)
+				body = string(encoded)
+			}
+		}
+	}
+	req, err := http.NewRequest(method, address, strings.NewReader(body))
 	require.NoError(t, err)
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
@@ -116,7 +137,7 @@ func TestAuthHandler_LoginInvalidCredentials(t *testing.T) {
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/login",
 		`{"email":"you@example.com","password":"wrongpass"}`)
 
-	var body api.Envelope
+	var body apiresponse.Envelope
 	readJSON(t, resp, &body)
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -128,7 +149,7 @@ func TestAuthHandler_MeUnauthorized(t *testing.T) {
 	ts := newAuthTestServer(t, NewMockAuthQuerier(t), NewMockAuthCommander(t))
 	resp, err := http.Get(ts.URL + "/api/v1/auth/me")
 	require.NoError(t, err)
-	var body api.Envelope
+	var body apiresponse.Envelope
 	readJSON(t, resp, &body)
 
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -140,7 +161,7 @@ func TestAuthHandler_InvalidJSON(t *testing.T) {
 	client := newCookieClient(t)
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/signup", "not-json")
-	var body api.Envelope
+	var body apiresponse.Envelope
 	readJSON(t, resp, &body)
 
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -176,8 +197,25 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 
 	resp, err = client.Get(ts.URL + "/api/v1/auth/me")
 	require.NoError(t, err)
-	var after api.Envelope
+	var after apiresponse.Envelope
 	readJSON(t, resp, &after)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Equal(t, koidomain.CodeUnauthorized, after.Error.Code)
+}
+
+func Authorizer(sess *scs.SessionManager) func(http.Handler) http.Handler {
+	return middlewares.Authenticate(sess, func(_ context.Context, userID uuid.UUID) (koiauth.Identity, error) {
+		return koiauth.Identity{UserID: userID, OrganizationID: sampleMe().Organization.ID, Role: koidomain.RoleOwner}, nil
+	})
+}
+
+type sessionMembershipRepository struct{ koidomain.MembershipRepository }
+
+func (sessionMembershipRepository) GetByUserID(_ context.Context, userID uuid.UUID) (*koidomain.Membership, error) {
+	return &koidomain.Membership{UserID: userID, OrganizationID: sampleMe().Organization.ID, Role: koidomain.RoleOwner}, nil
+}
+func sessionStore(t *testing.T) *MockStore {
+	store := NewMockStore(t)
+	store.EXPECT().MembershipRepo().Return(sessionMembershipRepository{})
+	return store
 }

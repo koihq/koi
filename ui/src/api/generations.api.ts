@@ -5,7 +5,6 @@ import type {
   GenerationStatus,
   GenerationsApi,
 } from "@/api/generated";
-import { callApi } from "@/api/shared/apiClient";
 
 export type GenerationMode = GenerationRequest["mode"];
 
@@ -13,19 +12,11 @@ export type Generation = GenerationStatus;
 
 export function createGenerationsApi(api: GenerationsApi) {
   return {
-    create: (
-      brandID: string,
-      mode: GenerationMode,
-      idempotencyKey?: string,
-    ): Promise<GenerationAccepted> =>
-      callApi(() => api.createGeneration(brandID, { mode }, idempotencyKey)),
-    list: (brandID: string, initOverrides?: RequestInit): Promise<GenerationPage> =>
-      callApi(() => api.listGenerations(brandID, 1, 1, initOverrides)),
-    getById: (
-      brandID: string,
-      generationID: string,
-      initOverrides?: RequestInit,
-    ): Promise<Generation> =>
-      callApi(() => api.getGeneration(brandID, generationID, initOverrides)),
+    create: (request: GenerationRequest, idempotencyKey?: string): Promise<GenerationAccepted> =>
+      api.createGeneration({ generationRequest: request, idempotencyKey }),
+    list: (brandId: string, init?: RequestInit): Promise<GenerationPage> =>
+      api.listGenerations({ brandId, page: 1, pageSize: 1 }, init),
+    getById: (generationID: string, init?: RequestInit): Promise<Generation> =>
+      api.getGeneration({ generationID }, init),
   };
 }

@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-
 import { useApi } from "@/api/apiProvider";
 import type { Generation, GenerationMode } from "@/api/generations.api";
-import { competitorKey, generationKey, promptKey, trackingKey } from "@/lib/query-keys";
+import { capabilitiesOptions, invalidateProduct } from "@/lib/queries";
+import { generationKey, trackingKey } from "@/lib/query-keys";
 
 export function generationPollDelay(
   state: Generation["state"] | undefined,
@@ -21,12 +21,7 @@ export function useGeneration(brandID: string) {
   const [jitter] = useState(() => Math.floor(Math.random() * 3000));
   const lastTerminal = useRef<string | undefined>(undefined);
 
-  const capabilities = useQuery({
-    queryKey: ["capabilities"],
-    queryFn: api.capabilities.get,
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
-  });
+  const capabilities = useQuery(capabilitiesOptions(api));
 
   const runs = useQuery({
     queryKey: generationKey(brandID),
@@ -47,13 +42,12 @@ export function useGeneration(brandID: string) {
     lastTerminal.current = run.id;
     void queryClient.invalidateQueries({ queryKey: trackingKey(brandID) });
     if (run.state === "succeeded") {
-      void queryClient.invalidateQueries({ queryKey: promptKey(brandID) });
-      void queryClient.invalidateQueries({ queryKey: competitorKey(brandID) });
+      void invalidateProduct(queryClient, brandID, "competitors");
     }
   }, [brandID, queryClient, run]);
 
   const create = useMutation({
-    mutationFn: (mode: GenerationMode) => api.generations.create(brandID, mode),
+    mutationFn: (mode: GenerationMode) => api.generations.create({ brandId: brandID, mode }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: generationKey(brandID), exact: true }),
   });

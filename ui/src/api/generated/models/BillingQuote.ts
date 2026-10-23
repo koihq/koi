@@ -68,7 +68,7 @@ export function BillingQuoteFromJSONTyped(json: any, ignoreDiscriminator: boolea
     return {
         
         'prompts': json['prompts'],
-        'amountCents': json['amount_cents'],
+        'amountCents': json['amountCents'],
         'currency': json['currency'],
         'interval': json['interval'],
     };
@@ -86,7 +86,7 @@ export function BillingQuoteToJSONTyped(value?: BillingQuote | null, ignoreDiscr
     return {
         
         'prompts': value['prompts'],
-        'amount_cents': value['amountCents'],
+        'amountCents': value['amountCents'],
         'currency': value['currency'],
         'interval': value['interval'],
     };

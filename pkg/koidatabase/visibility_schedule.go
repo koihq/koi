@@ -154,7 +154,7 @@ func (s *Store) DispatchVisibility(ctx context.Context, now time.Time) error {
 			}
 			return err
 		}
-		ownerCtx := koiauth.WithIdentity(ctx, koiauth.Identity{UserID: owner.UserID})
+		ownerCtx := koiauth.WithIdentity(ctx, koiauth.Identity{UserID: owner.UserID, OrganizationID: owner.OrganizationID, Role: owner.Role})
 		if err := s.Atomic(ownerCtx, func(tx koidomain.Store) error {
 			brand, err := tx.BrandRepo().LockForUpdate(ownerCtx, candidate.ID)
 			if err != nil {

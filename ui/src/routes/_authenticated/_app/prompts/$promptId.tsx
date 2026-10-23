@@ -73,7 +73,7 @@ function PromptDetail() {
 
   const prompt = useQuery({
     queryKey: [...promptKey(brand.id), promptId],
-    queryFn: () => api.prompts.getById(brand.id, promptId),
+    queryFn: ({ signal }) => api.prompts.getById(promptId, { signal }),
   });
   const history = useQuery({
     queryKey: [...runKey(brand.id), "prompt", promptId, search.page],
@@ -84,7 +84,7 @@ function PromptDetail() {
     queryKey: [...competitorKey(brand.id), "detail-comparison"],
     queryFn: async ({ signal }) => {
       const items = await collectPages<Competitor>((page) =>
-        api.competitors.list(brand.id, { page, pageSize: 50 }, { signal }),
+        api.competitors.list({ brandId: brand.id, page, pageSize: 50 }, { signal }),
       );
 
       return items.filter((item) => item.confirmed);

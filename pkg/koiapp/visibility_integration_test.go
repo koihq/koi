@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/koihq/koi/internal/testdb"
+	"github.com/koihq/koi/pkg/koiapi"
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
@@ -46,7 +47,9 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	require.NoError(t, store.MembershipRepo().Create(t.Context(), &koidomain.Membership{
 		UserID: user.ID, OrganizationID: organization.ID, Role: koidomain.RoleOwner,
 	}))
-	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
+	identity, err := koidomain.ResolveIdentity(t.Context(), store, user.ID)
+	require.NoError(t, err)
+	ctx := koiauth.WithIdentity(t.Context(), identity)
 
 	brand := &koidomain.Brand{
 		OrganizationID: organization.ID,
@@ -90,7 +93,7 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	defer cancel()
 	require.ErrorIs(t, worker.Work(workCtx, job), context.DeadlineExceeded)
 
-	failed, err := koidomain.NewVisibilityQuerier(store).Get(ctx, brand.ID, run.ID)
+	failed, err := koidomain.NewVisibilityQuerier(store).Get(ctx, run.ID)
 	require.NoError(t, err)
 	require.Equal(t, koidomain.VisibilityFailed, failed.State)
 	require.NotNil(t, failed.ErrorCode)
@@ -152,24 +155,24 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	var capabilities map[string]bool
 	visibilityHTTP(t, client, http.MethodGet, base+"/capabilities", "", 200, &capabilities)
 	require.False(t, capabilities["aiDrafting"])
-	var brand koidomain.Brand
+	var brand koiapi.BrandRes
 	visibilityHTTP(t, client, http.MethodPost, base+"/brands",
 		`{"name":"Koi","domain":"koi.dev","country":"IT"}`, 201, &brand)
-	brandURL := base + "/brands/" + brand.ID.String()
+	scopeBody := `{"brandId":"` + brand.ID.String() + `"}`
 	for _, text := range []string{"Best analytics for startups?", "Alternatives to Example Analytics?"} {
-		body, err := json.Marshal(map[string]string{"text": text})
+		body, err := json.Marshal(map[string]string{"brandId": brand.ID.String(), "text": text})
 		require.NoError(t, err)
-		visibilityHTTP(t, client, http.MethodPost, brandURL+"/prompts", string(body), 201, nil)
+		visibilityHTTP(t, client, http.MethodPost, base+"/prompts", string(body), 201, nil)
 	}
-	visibilityHTTP(t, client, http.MethodPost, brandURL+"/prompts/confirm", "", 204, nil)
-	visibilityHTTP(t, client, http.MethodPost, brandURL+"/competitors/confirm", "", 204, nil)
-	var status koidomain.TrackingStatus
-	visibilityHTTP(t, client, http.MethodGet, brandURL+"/tracking", "", 200, &status)
+	visibilityHTTP(t, client, http.MethodPost, base+"/prompts/confirm", scopeBody, 204, nil)
+	visibilityHTTP(t, client, http.MethodPost, base+"/competitors/confirm", scopeBody, 204, nil)
+	var status koiapi.TrackingStatusRes
+	visibilityHTTP(t, client, http.MethodGet, base+"/tracking?brandId="+brand.ID.String(), "", 200, &status)
 	require.True(t, status.PromptsReviewed && status.CompetitorsReviewed)
 	require.Equal(t, "collection_unavailable", *status.BlockedReason)
 	require.Nil(t, status.StartedAt)
 	var runs koidomain.Page[koidomain.VisibilityRun]
-	visibilityHTTP(t, client, http.MethodGet, brandURL+"/runs", "", 200, &runs)
+	visibilityHTTP(t, client, http.MethodGet, base+"/runs?brandId="+brand.ID.String(), "", 200, &runs)
 	require.Empty(t, runs.Items)
 	require.False(t, capabilities["liveCollection"])
 
@@ -177,8 +180,8 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	require.NoError(t, waitApp(t, done))
 	cancel, done, address = startTestApp(t, &App{cfg: cfg}, client)
 	t.Cleanup(cancel)
-	var reloaded koidomain.TrackingStatus
-	visibilityHTTP(t, client, http.MethodGet, "http://"+address+"/api/v1/brands/"+brand.ID.String()+"/tracking", "", 200, &reloaded)
+	var reloaded koiapi.TrackingStatusRes
+	visibilityHTTP(t, client, http.MethodGet, "http://"+address+"/api/v1/tracking?brandId="+brand.ID.String(), "", 200, &reloaded)
 	require.Equal(t, status, reloaded)
 	cancel()
 	require.NoError(t, waitApp(t, done))

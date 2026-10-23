@@ -75,7 +75,7 @@ export function CompetitorAppearanceFromJSONTyped(json: any, ignoreDiscriminator
     }
     return {
         
-        'competitorId': json['competitor_id'],
+        'competitorId': json['competitorId'],
         'name': json['name'],
         'confirmed': json['confirmed'],
         'evidence': ((json['evidence'] as Array<any>).map(AppearanceEvidenceFromJSON)),
@@ -93,7 +93,7 @@ export function CompetitorAppearanceToJSONTyped(value?: CompetitorAppearance | n
 
     return {
         
-        'competitor_id': value['competitorId'],
+        'competitorId': value['competitorId'],
         'name': value['name'],
         'confirmed': value['confirmed'],
         'evidence': ((value['evidence'] as Array<any>).map(AppearanceEvidenceToJSON)),

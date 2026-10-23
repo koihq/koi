@@ -32,7 +32,7 @@ function SettingsLayout() {
         tabIndex={-1}
         className="mx-auto w-full max-w-[1320px] px-4 pb-10 sm:px-7"
       >
-        <Outlet />
+        <Outlet key={brand.id} />
       </main>
     </div>
   );

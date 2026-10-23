@@ -41,18 +41,16 @@ import {
 } from '../models/GenerationStatus';
 
 export interface CreateGenerationRequest {
-    brandID: string;
     generationRequest: GenerationRequest;
     idempotencyKey?: string;
 }
 
 export interface GetGenerationRequest {
-    brandID: string;
     generationID: string;
 }
 
 export interface ListGenerationsRequest {
-    brandID: string;
+    brandId: string;
     page?: number;
     pageSize?: number;
 }
@@ -66,7 +64,6 @@ export interface ListGenerationsRequest {
 export interface GenerationsApiInterface {
     /**
      * Creates request options for createGeneration without sending the request
-     * @param {string} brandID 
      * @param {GenerationRequest} generationRequest 
      * @param {string} [idempotencyKey] 
      * @throws {RequiredError}
@@ -76,7 +73,6 @@ export interface GenerationsApiInterface {
 
     /**
      * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
-     * @param {string} brandID 
      * @param {GenerationRequest} generationRequest 
      * @param {string} [idempotencyKey] 
      * @param {*} [options] Override http request option.
@@ -88,11 +84,10 @@ export interface GenerationsApiInterface {
     /**
      * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
      */
-    createGeneration(brandID: string, generationRequest: GenerationRequest, idempotencyKey?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationAccepted>;
+    createGeneration(requestParameters: CreateGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationAccepted>;
 
     /**
      * Creates request options for getGeneration without sending the request
-     * @param {string} brandID 
      * @param {string} generationID 
      * @throws {RequiredError}
      * @memberof GenerationsApiInterface
@@ -101,7 +96,6 @@ export interface GenerationsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} generationID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -111,11 +105,11 @@ export interface GenerationsApiInterface {
 
     /**
      */
-    getGeneration(brandID: string, generationID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationStatus>;
+    getGeneration(requestParameters: GetGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationStatus>;
 
     /**
      * Creates request options for listGenerations without sending the request
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {number} [page] 
      * @param {number} [pageSize] 
      * @throws {RequiredError}
@@ -125,7 +119,7 @@ export interface GenerationsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {number} [page] 
      * @param {number} [pageSize] 
      * @param {*} [options] Override http request option.
@@ -136,7 +130,7 @@ export interface GenerationsApiInterface {
 
     /**
      */
-    listGenerations(brandID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationPage>;
+    listGenerations(requestParameters: ListGenerationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationPage>;
 
 }
 
@@ -149,13 +143,6 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
      * Creates request options for createGeneration without sending the request
      */
     async createGenerationRequestOpts(requestParameters: CreateGenerationRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling createGeneration().'
-            );
-        }
-
         if (requestParameters['generationRequest'] == null) {
             throw new runtime.RequiredError(
                 'generationRequest',
@@ -174,8 +161,7 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
         }
 
 
-        let urlPath = `/api/v1/brands/{brandID}/generations`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/generations`;
 
         return {
             path: urlPath,
@@ -199,8 +185,8 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
     /**
      * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
      */
-    async createGeneration(brandID: string, generationRequest: GenerationRequest, idempotencyKey?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationAccepted> {
-        const response = await this.createGenerationRaw({ brandID: brandID, generationRequest: generationRequest, idempotencyKey: idempotencyKey }, initOverrides);
+    async createGeneration(requestParameters: CreateGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationAccepted> {
+        const response = await this.createGenerationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -208,13 +194,6 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
      * Creates request options for getGeneration without sending the request
      */
     async getGenerationRequestOpts(requestParameters: GetGenerationRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling getGeneration().'
-            );
-        }
-
         if (requestParameters['generationID'] == null) {
             throw new runtime.RequiredError(
                 'generationID',
@@ -227,8 +206,7 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/generations/{generationID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/generations/{generationID}`;
         urlPath = urlPath.replace('{generationID}', encodeURIComponent(String(requestParameters['generationID'])));
 
         return {
@@ -250,8 +228,8 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
 
     /**
      */
-    async getGeneration(brandID: string, generationID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationStatus> {
-        const response = await this.getGenerationRaw({ brandID: brandID, generationID: generationID }, initOverrides);
+    async getGeneration(requestParameters: GetGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationStatus> {
+        const response = await this.getGenerationRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -259,14 +237,18 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
      * Creates request options for listGenerations without sending the request
      */
     async listGenerationsRequestOpts(requestParameters: ListGenerationsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
+        if (requestParameters['brandId'] == null) {
             throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling listGenerations().'
+                'brandId',
+                'Required parameter "brandId" was null or undefined when calling listGenerations().'
             );
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['brandId'] != null) {
+            queryParameters['brandId'] = requestParameters['brandId'];
+        }
 
         if (requestParameters['page'] != null) {
             queryParameters['page'] = requestParameters['page'];
@@ -279,8 +261,7 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/generations`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/generations`;
 
         return {
             path: urlPath,
@@ -301,8 +282,8 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
 
     /**
      */
-    async listGenerations(brandID: string, page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationPage> {
-        const response = await this.listGenerationsRaw({ brandID: brandID, page: page, pageSize: pageSize }, initOverrides);
+    async listGenerations(requestParameters: ListGenerationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationPage> {
+        const response = await this.listGenerationsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

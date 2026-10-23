@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,7 +18,7 @@ func TestBillingChangeRequiresIdempotencyKeyAndPreservesPaymentResult(t *testing
 	for _, effective := range []string{"current", "after_payment", "next_cycle", "trial_end"} {
 		t.Run(effective, func(t *testing.T) {
 			commander := NewMockBillingCommander(t)
-			handler := NewBillingHandler(NewMockBillingQuerier(t), commander, scs.New(), "secret")
+			handler := NewBillingHandler(NewMockBillingQuerier(t), commander, "secret")
 			router := chi.NewRouter()
 			router.With(middlewares.DecodeBody[allowanceRequest]()).Post("/change", handler.ChangeAllowance)
 
@@ -37,7 +36,7 @@ func TestBillingChangeRequiresIdempotencyKeyAndPreservesPaymentResult(t *testing
 				want = http.StatusOK
 			}
 			require.Equal(t, want, response.Code)
-			require.Contains(t, response.Body.String(), `"payment_url":"https://invoice.stripe.com/test"`)
+			require.Contains(t, response.Body.String(), `"paymentUrl":"https://invoice.stripe.com/test"`)
 		})
 	}
 }

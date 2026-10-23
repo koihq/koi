@@ -1,18 +1,23 @@
 package koiapi
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
+type BrandRequestScope struct {
+	BrandID uuid.UUID `json:"brandId"`
+}
+
 type PromptRequest struct {
+	BrandRequestScope
 	Text string `json:"text"`
 }
 
@@ -25,11 +30,10 @@ type PromptHandler struct {
 	querier   koidomain.PromptQuerier
 	commander koidomain.PromptCommander
 	analytics *koidomain.VisibilityAnalyticsQuerier
-	sess      *scs.SessionManager
 }
 
-func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, sess *scs.SessionManager, analytics ...*koidomain.VisibilityAnalyticsQuerier) *PromptHandler {
-	h := &PromptHandler{querier: q, commander: c, sess: sess}
+func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, analytics ...*koidomain.VisibilityAnalyticsQuerier) *PromptHandler {
+	h := &PromptHandler{querier: q, commander: c}
 	if len(analytics) > 0 {
 		h.analytics = analytics[0]
 	}
@@ -38,13 +42,12 @@ func NewPromptHandler(q koidomain.PromptQuerier, c koidomain.PromptCommander, se
 
 func (h *PromptHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
-		r.Use(Authorizer(h.sess))
 		r.Get("/", h.List)
-		r.With(middlewares.DecodeBody[PromptRequest]()).Post("/", h.Create)
-		r.Post("/confirm", h.ConfirmAll)
-		r.Get("/{promptID}", h.Get)
-		r.With(middlewares.DecodeBody[PromptPatchRequest]()).Patch("/{promptID}", h.Update)
-		r.Delete("/{promptID}", h.Delete)
+		r.With(middlewares.DecodeBody[PromptRequest]()).Post("/", Create(h.create, PromptToResponse))
+		r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/confirm", h.ConfirmAll)
+		r.Get("/{promptID}", Get("promptID", h.querier.Get, PromptToResponse))
+		r.With(middlewares.DecodeBody[PromptPatchRequest]()).Patch("/{promptID}", Update("promptID", h.update, PromptToResponse))
+		r.Delete("/{promptID}", Delete("promptID", h.commander.Delete))
 		r.Post("/{promptID}/confirm", h.Confirm)
 	}
 }
@@ -52,7 +55,7 @@ func (h *PromptHandler) Routes() func(chi.Router) {
 func pathID(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(chi.URLParam(r, name))
 	if err != nil {
-		api.WriteDomainError(w, r, koidomain.ErrNotFound)
+		apiresponse.WriteDomainError(w, r, koidomain.ErrNotFound)
 
 		return uuid.Nil, false
 	}
@@ -66,7 +69,12 @@ func requestOwnerAndBrand(w http.ResponseWriter, r *http.Request) (uuid.UUID, uu
 		return uuid.Nil, uuid.Nil, false
 	}
 
-	brandID, ok := pathID(w, r, "brandID")
+	value, err := optionalStringQuery(r, "brandId")
+	brandID, parseErr := uuid.Parse(value)
+	ok = err == nil && parseErr == nil && brandID != uuid.Nil
+	if !ok {
+		apiresponse.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "brandId", Code: koidomain.FieldInvalid}))
+	}
 
 	return userID, brandID, ok
 }
@@ -131,14 +139,14 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	params, err := promptListQuery(r, true)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
 	prompts, err := h.querier.List(r.Context(), brandID, params)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
@@ -149,7 +157,7 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 		byPrompt, _, err := h.analytics.Aggregate(r.Context(), brandID, ids, params.Days, params.Engines)
 		if err != nil {
-			api.WriteDomainError(w, r, err)
+			apiresponse.WriteDomainError(w, r, err)
 			return
 		}
 		for i := range prompts.Items {
@@ -157,122 +165,45 @@ func (h *PromptHandler) List(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	api.JSON(w, r, http.StatusOK, prompts)
+	apiresponse.JSON(w, r, http.StatusOK, mapPage(prompts, PromptToResponse))
 }
 
-func (h *PromptHandler) Get(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
-		return
+func (h *PromptHandler) create(ctx context.Context, req PromptRequest) (*koidomain.Prompt, error) {
+	if req.BrandID == uuid.Nil {
+		return nil, koidomain.Validation(koidomain.FieldError{Field: "brandId", Code: koidomain.FieldInvalid})
 	}
-
-	promptID, ok := pathID(w, r, "promptID")
-	if !ok {
-		return
-	}
-
-	prompt, err := h.querier.Get(r.Context(), brandID, promptID)
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	api.JSON(w, r, http.StatusOK, prompt)
+	return h.commander.Create(ctx, req.BrandID, koidomain.PromptParams{Text: req.Text})
 }
 
-func (h *PromptHandler) Create(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
-		return
-	}
-
-	prompt, err := h.commander.Create(r.Context(), brandID, koidomain.PromptParams{
-		Text: middlewares.Body[PromptRequest](r).Text,
-	})
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	api.JSON(w, r, http.StatusCreated, prompt)
-}
-
-func (h *PromptHandler) Update(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
-		return
-	}
-
-	promptID, ok := pathID(w, r, "promptID")
-	if !ok {
-		return
-	}
-
-	req := middlewares.Body[PromptPatchRequest](r)
-	prompt, err := h.commander.Update(r.Context(), brandID, promptID, koidomain.PromptPatch{
-		Text:     req.Text,
-		Inactive: req.Inactive,
-	})
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	api.JSON(w, r, http.StatusOK, prompt)
-}
-
-func (h *PromptHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
-		return
-	}
-
-	promptID, ok := pathID(w, r, "promptID")
-	if !ok {
-		return
-	}
-
-	if err := h.commander.Delete(r.Context(), brandID, promptID); err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
+func (h *PromptHandler) update(ctx context.Context, id uuid.UUID, req PromptPatchRequest) (*koidomain.Prompt, error) {
+	return h.commander.Update(ctx, id, koidomain.PromptPatch{Text: req.Text, Inactive: req.Inactive})
 }
 
 func (h *PromptHandler) Confirm(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
-		return
-	}
-
 	promptID, ok := pathID(w, r, "promptID")
 	if !ok {
 		return
 	}
 
-	prompt, err := h.commander.Confirm(r.Context(), brandID, promptID)
+	prompt, err := h.commander.Confirm(r.Context(), promptID)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, prompt)
+	apiresponse.JSON(w, r, http.StatusOK, PromptToResponse(prompt))
 }
 
 func (h *PromptHandler) ConfirmAll(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
+	brandID := middlewares.Body[BrandRequestScope](r).BrandID
+	if brandID == uuid.Nil {
+		apiresponse.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "brandId", Code: koidomain.FieldInvalid}))
 		return
 	}
 
 	if err := h.commander.ConfirmAll(r.Context(), brandID); err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}

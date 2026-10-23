@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
+
+	"github.com/koihq/koi/pkg/koiauth"
 )
 
 func TestBrandValidate(t *testing.T) {
@@ -87,13 +89,10 @@ func TestBrandValidateGitHubRepo(t *testing.T) {
 
 func TestBrandCommanderCreate(t *testing.T) {
 	store := NewMockStore(t)
-	memberships := NewMockMembershipRepository(t)
 	brands := NewMockBrandRepository(t)
-	store.EXPECT().MembershipRepo().Return(memberships)
 	store.EXPECT().BrandRepo().Return(brands)
 	userID := uuid.New()
 	organizationID := uuid.New()
-	memberships.EXPECT().GetByUserID(mock.Anything, userID).Return(&Membership{OrganizationID: organizationID}, nil)
 	brands.EXPECT().Create(mock.Anything, mock.MatchedBy(func(b *Brand) bool {
 		return b.OrganizationID == organizationID && b.Name == "Koi" && b.Domain == "koi.dev" &&
 			b.Country == "IT" && b.Description == "AI visibility"
@@ -103,7 +102,7 @@ func TestBrandCommanderCreate(t *testing.T) {
 		return nil
 	})
 
-	brand, err := NewBrandCommander(store).Create(identityCtx(t, userID), BrandParams{
+	brand, err := NewBrandCommander(store).Create(koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: userID, OrganizationID: organizationID}), BrandParams{
 		Name:        " Koi ",
 		Domain:      " koi.dev ",
 		Country:     " it ",

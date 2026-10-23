@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
@@ -35,7 +35,7 @@ func newBrandTestServer(t *testing.T, q koidomain.BrandQuerier, c koidomain.Bran
 		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.Route("/api/v1/brands", NewBrandHandler(q, c, sess).Routes())
+	r.With(Authorizer(sess)).Route("/api/v1/brands", NewBrandHandler(q, c, sess).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 
@@ -57,7 +57,7 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 
 	for _, path := range []string{"/brands", "/brands/countries", "/brands/" + id} {
 		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+path, "")
-		var body api.Envelope
+		var body apiresponse.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
@@ -70,7 +70,7 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 		}
 
 		resp := doJSON(t, client, method, ts.URL+"/api/v1"+path, `{}`)
-		var body api.Envelope
+		var body apiresponse.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
@@ -91,7 +91,7 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	require.NoError(t, err)
 	resp.Body.Close()
 	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands", "")
-	var denied api.Envelope
+	var denied apiresponse.Envelope
 	readJSON(t, resp, &denied)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Equal(t, koidomain.CodeUnauthorized, denied.Error.Code)
@@ -110,7 +110,7 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 		{"pageSize=", "pageSize"},
 	} {
 		resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?"+query.value, "")
-		var body api.Envelope
+		var body apiresponse.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, query.value)
 		require.Equal(t, koidomain.CodeValidation, body.Error.Code)
@@ -243,13 +243,13 @@ func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
 	resp = doJSON(t, clientA, http.MethodPost, base,
 		`{"user_id":"00000000-0000-0000-0000-000000000000","name":"Koi","domain":"koi.dev","country":"IT"}`)
 
-	var created koidomain.Brand
+	var created BrandRes
 	readJSON(t, resp, &created)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	require.Equal(t, organizationID, created.OrganizationID)
 
 	resp = doJSON(t, clientA, http.MethodGet, base, "")
-	var listA koidomain.Page[koidomain.Brand]
+	var listA koidomain.Page[BrandRes]
 	readJSON(t, resp, &listA)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Len(t, listA.Items, 1)
@@ -274,7 +274,7 @@ func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
 	require.Equal(t, brandID, own.ID)
 
 	resp = doJSON(t, clientB, http.MethodGet, base+"/"+brandID.String(), "")
-	var denied api.Envelope
+	var denied apiresponse.Envelope
 	readJSON(t, resp, &denied)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	require.Equal(t, koidomain.CodeNotFound, denied.Error.Code)
@@ -287,13 +287,13 @@ func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
 	resp = doJSON(t, clientA, http.MethodPatch, base+"/"+brandID.String(),
 		`{"description":"AI visibility","user_id":"00000000-0000-0000-0000-000000000000"}`)
 
-	var updated koidomain.Brand
+	var updated BrandRes
 	readJSON(t, resp, &updated)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, organizationID, updated.OrganizationID)
 
 	resp = doJSON(t, clientA, http.MethodPost, base, `{"name":"Second","domain":"second.dev","country":"IT"}`)
-	var secondCreated koidomain.Brand
+	var secondCreated BrandRes
 	readJSON(t, resp, &secondCreated)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	require.Equal(t, "Second", secondCreated.Name)

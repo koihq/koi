@@ -3,8 +3,6 @@ package koidomain
 import (
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Organization struct {
@@ -25,5 +23,5 @@ func (o Organization) Validate() error {
 }
 
 type OrganizationRepository interface {
-	BaseEntityRepository[Organization, uuid.UUID]
+	BaseEntityRepository[Organization]
 }

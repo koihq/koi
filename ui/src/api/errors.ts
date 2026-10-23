@@ -5,12 +5,14 @@ import i18n from "@/config/i18n";
 export class ApiError extends Error {
   readonly code: string;
   readonly fields?: FieldError[];
+  readonly requestId?: string;
 
-  constructor(code: string, fields?: FieldError[]) {
+  constructor(code: string, fields?: FieldError[], requestId?: string) {
     super(code);
     this.name = "ApiError";
     this.code = code;
     this.fields = fields;
+    this.requestId = requestId;
   }
 }
 
@@ -52,7 +54,7 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
     const body = (await response.json()) as Envelope;
     const code = body.error?.code ?? "internal";
 
-    return new ApiError(code, body.error?.fields);
+    return new ApiError(code, body.error?.fields, body.error?.requestId);
   } catch {
     return new ApiError("internal");
   }

@@ -57,13 +57,13 @@ export function useBilling(checkoutReturned: boolean, organizationID: string) {
 
   const catalog = useQuery({
     queryKey: billingCatalogKey,
-    queryFn: api.billing.catalog,
+    queryFn: ({ signal }) => api.billing.catalog({ signal }),
     staleTime: 60_000,
   });
 
   const subscription = useQuery({
     queryKey: subscriptionKey,
-    queryFn: api.billing.subscription,
+    queryFn: ({ signal }) => api.billing.subscription({ signal }),
     refetchInterval: (query) =>
       !pollExpired && billingNeedsConfirmation(query.state.data, change, checkoutReturned)
         ? 2000

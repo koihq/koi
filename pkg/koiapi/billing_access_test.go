@@ -12,7 +12,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -42,7 +43,7 @@ func TestBrandCreationPrecedesBillingButEditRequiresIt(t *testing.T) {
 		sess.Put(r.Context(), "user_id", uuid.NewString())
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.Route("/brands", NewBrandHandler(querier, commander, sess, RequireBilling(sess, access)).Routes())
+	r.With(Authorizer(sess)).Route("/brands", NewBrandHandler(querier, commander, sess, middlewares.RequireBilling(access)).Routes())
 	server := httptest.NewServer(r)
 	t.Cleanup(server.Close)
 	client := newCookieClient(t)
@@ -57,7 +58,7 @@ func TestBrandCreationPrecedesBillingButEditRequiresIt(t *testing.T) {
 
 	denied := doJSON(t, client, http.MethodPatch, server.URL+"/brands/"+brand.ID.String(),
 		`{"name":"New name"}`)
-	var body api.Envelope
+	var body apiresponse.Envelope
 	readJSON(t, denied, &body)
 	require.Equal(t, http.StatusPaymentRequired, denied.StatusCode)
 	require.Equal(t, koidomain.CodeBillingRequired, body.Error.Code)
@@ -65,8 +66,8 @@ func TestBrandCreationPrecedesBillingButEditRequiresIt(t *testing.T) {
 
 func TestCloudServerBlocksNestedProductRoutesBeforeBilling(t *testing.T) {
 	sess := scs.New()
-	cloud := NewCloudServer(NewMockStore(t), sess, nil, true, true,
-		&BillingHandler{querier: accessOnlyBillingRepo{}, sess: sess})
+	cloud := NewCloudServer(sessionStore(t), sess, nil, true, true,
+		&BillingHandler{querier: accessOnlyBillingRepo{}})
 	r := chi.NewRouter()
 	r.With(sess.LoadAndSave).Get("/session", func(w http.ResponseWriter, r *http.Request) {
 		sess.Put(r.Context(), "user_id", uuid.NewString())
@@ -80,15 +81,14 @@ func TestCloudServerBlocksNestedProductRoutesBeforeBilling(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, session.StatusCode)
 	require.NoError(t, session.Body.Close())
 
-	brandID := uuid.NewString()
 	for _, endpoint := range []string{
-		"/api/v1/brands/" + brandID + "/prompts",
-		"/api/v1/brands/" + brandID + "/competitors",
-		"/api/v1/brands/" + brandID + "/generations",
-		"/api/v1/brands/" + brandID + "/runs",
+		"/api/v1" + "/prompts",
+		"/api/v1" + "/competitors",
+		"/api/v1" + "/generations",
+		"/api/v1" + "/runs",
 	} {
 		response := doJSON(t, client, http.MethodGet, server.URL+endpoint, "")
-		var body api.Envelope
+		var body apiresponse.Envelope
 		readJSON(t, response, &body)
 		require.Equal(t, http.StatusPaymentRequired, response.StatusCode, endpoint)
 		require.Equal(t, koidomain.CodeBillingRequired, body.Error.Code, endpoint)
@@ -108,7 +108,7 @@ func TestRequireBilling(t *testing.T) {
 		sess.Put(r.Context(), "user_id", uuid.NewString())
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.With(RequireBilling(sess, access)).Get("/product", func(w http.ResponseWriter, _ *http.Request) {
+	r.With(Authorizer(sess), middlewares.RequireBilling(access)).Get("/product", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	server := httptest.NewServer(r)
@@ -116,7 +116,7 @@ func TestRequireBilling(t *testing.T) {
 	client := newCookieClient(t)
 
 	unauthorized := doJSON(t, client, http.MethodGet, server.URL+"/product", "")
-	var unauthorizedBody api.Envelope
+	var unauthorizedBody apiresponse.Envelope
 	readJSON(t, unauthorized, &unauthorizedBody)
 	require.Equal(t, http.StatusUnauthorized, unauthorized.StatusCode)
 	require.Equal(t, koidomain.CodeUnauthorized, unauthorizedBody.Error.Code)
@@ -126,7 +126,7 @@ func TestRequireBilling(t *testing.T) {
 	require.NoError(t, session.Body.Close())
 
 	denied := doJSON(t, client, http.MethodGet, server.URL+"/product", "")
-	var deniedBody api.Envelope
+	var deniedBody apiresponse.Envelope
 	readJSON(t, denied, &deniedBody)
 	require.Equal(t, http.StatusPaymentRequired, denied.StatusCode)
 	require.Equal(t, koidomain.CodeBillingRequired, deniedBody.Error.Code)

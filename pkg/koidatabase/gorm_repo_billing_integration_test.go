@@ -13,7 +13,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -162,7 +161,7 @@ func newBillingFixture(t *testing.T) *billingFixture {
 	return &billingFixture{
 		db: db, store: store, repo: repo, gateway: gateway, organization: organization, user: user,
 		commander: koidomain.NewBillingCommander(store, gateway, "price_test", "https://koi.example"),
-		ctx:       koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID}),
+		ctx:       testIdentity(t, store, user.ID),
 	}
 }
 
@@ -187,13 +186,13 @@ func (f *billingFixture) event(t *testing.T, id string) {
 
 func TestBillingWebhookIdentityReplayAndEntitlement(t *testing.T) {
 	f := newBillingFixture(t)
-	allowed, err := f.repo.ProductAccess(f.ctx, f.user.ID)
+	allowed, err := f.repo.ProductAccess(f.ctx, f.organization.ID)
 	require.NoError(t, err)
 	require.False(t, allowed)
 	// A premature subscription event cannot grant access without a completed checkout.
 	f.event(t, "evt_early")
 	f.complete(t)
-	allowed, err = f.repo.ProductAccess(f.ctx, f.user.ID)
+	allowed, err = f.repo.ProductAccess(f.ctx, f.organization.ID)
 	require.NoError(t, err)
 	require.True(t, allowed)
 
@@ -437,14 +436,14 @@ func TestBillingCatalogAndCancellation(t *testing.T) {
 	f.complete(t)
 	f.gateway.snapshot.CancelAtPeriodEnd = true
 	f.event(t, "evt_cancel_scheduled")
-	allowed, err := f.repo.ProductAccess(f.ctx, f.user.ID)
+	allowed, err := f.repo.ProductAccess(f.ctx, f.organization.ID)
 	require.NoError(t, err)
 	require.True(t, allowed)
 	_, err = f.commander.ChangeAllowance(f.ctx, 50, "cancelled-upgrade")
 	require.ErrorIs(t, err, koidomain.ErrBillingConflict)
 	f.gateway.snapshot.Status = "canceled"
 	f.event(t, "evt_cancelled")
-	allowed, err = f.repo.ProductAccess(f.ctx, f.user.ID)
+	allowed, err = f.repo.ProductAccess(f.ctx, f.organization.ID)
 	require.NoError(t, err)
 	require.False(t, allowed)
 }
@@ -490,7 +489,7 @@ func TestBillingDowngradePausesTrackingUntilPromptsFit(t *testing.T) {
 	require.NoError(t, f.db.First(&prompt).Error)
 	inactive := true
 	require.NoError(t, f.store.WithCloudMode(true).PromptRepo().Update(f.ctx,
-		koidomain.PromptFilter{ID: prompt.ID, BrandID: brand.ID},
+		prompt.ID,
 		koidomain.PromptUpdate{Inactive: &inactive},
 	))
 	allowed, err = cloudTrackingAllowed(f.ctx, f.db, f.organization.ID)

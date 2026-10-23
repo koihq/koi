@@ -3,6 +3,7 @@ package koidomain
 import "github.com/google/uuid"
 
 const (
+	CodeResourceConflict          = "resource_conflict"
 	CodeValidation                = "validation"
 	CodeEmailTaken                = "email_taken"
 	CodeBrandLimitReached         = "brand_limit_reached"
@@ -29,8 +30,9 @@ const (
 )
 
 var (
-	ErrNotFound   = &Error{Code: CodeNotFound, Message: "not found"}
-	ErrEmailTaken = &Error{
+	ErrResourceConflict = &Error{Code: CodeResourceConflict, Message: "resource has dependent records"}
+	ErrNotFound         = &Error{Code: CodeNotFound, Message: "not found"}
+	ErrEmailTaken       = &Error{
 		Code:    CodeEmailTaken,
 		Message: "email taken",
 		Fields: []FieldError{

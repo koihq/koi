@@ -83,7 +83,7 @@ func TestObservedCompetitorsCountDistinctCellsAndNeverAutoConfirm(t *testing.T) 
 	require.Equal(t, "acme.dev", suggestion.Domain)
 	require.False(t, suggestion.Confirmed)
 	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors"))
-	unchanged, err := store.CompetitorRepo().Get(ctx, koidomain.CompetitorFilter{BrandID: brand.ID, ID: suggestion.ID})
+	unchanged, err := store.CompetitorRepo().Get(ctx, suggestion.ID)
 	require.NoError(t, err)
 	require.False(t, unchanged.Confirmed)
 	tracking, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
@@ -91,7 +91,7 @@ func TestObservedCompetitorsCountDistinctCellsAndNeverAutoConfirm(t *testing.T) 
 	require.True(t, tracking.CompetitorsReviewed)
 	require.Nil(t, tracking.BlockedReason)
 
-	read, err := store.VisibilityRepo().ListResults(ctx, brand.ID, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	for _, cell := range read.Items {
 		if cell.Outcome != nil {
@@ -126,7 +126,7 @@ func TestNameOnlySuggestionNeedsIdentityAndHistoricalLinksFollowEdits(t *testing
 	require.Len(t, competitors.Items, 1)
 	suggestion := competitors.Items[0]
 	commander := koidomain.NewCompetitorCommander(store)
-	_, err = commander.Confirm(ctx, brand.ID, suggestion.ID)
+	_, err = commander.Confirm(ctx, suggestion.ID)
 	require.ErrorIs(t, err, koidomain.ErrValidation)
 
 	// This plain text has no discovery hints; an alias added later attaches it on read.
@@ -135,12 +135,12 @@ func TestNameOnlySuggestionNeedsIdentityAndHistoricalLinksFollowEdits(t *testing
 	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 1, cell))
 	name, domain := "Acme Analytics", "acme.dev"
 	aliases := []string{"Acme", "Alternate"}
-	updated, err := commander.Patch(ctx, brand.ID, suggestion.ID, koidomain.CompetitorUpdate{Name: &name, Domain: &domain, Aliases: &aliases})
+	updated, err := commander.Patch(ctx, suggestion.ID, koidomain.CompetitorUpdate{Name: &name, Domain: &domain, Aliases: &aliases})
 	require.NoError(t, err)
 	require.False(t, updated.Confirmed)
-	_, err = commander.Confirm(ctx, brand.ID, suggestion.ID)
+	_, err = commander.Confirm(ctx, suggestion.ID)
 	require.NoError(t, err)
-	read, err := store.VisibilityRepo().ListResults(ctx, brand.ID, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	for _, result := range read.Items {
 		if result.Outcome == nil {
@@ -155,12 +155,12 @@ func TestNameOnlySuggestionNeedsIdentityAndHistoricalLinksFollowEdits(t *testing
 		}
 	}
 
-	otherOwner := koiauth.WithIdentity(context.Background(), koiauth.Identity{UserID: uuid.New()})
-	_, err = commander.Patch(otherOwner, brand.ID, suggestion.ID, koidomain.CompetitorUpdate{Name: &name})
+	otherOwner := koiauth.WithIdentity(context.Background(), koiauth.Identity{UserID: uuid.New(), OrganizationID: uuid.New()})
+	_, err = commander.Patch(otherOwner, suggestion.ID, koidomain.CompetitorUpdate{Name: &name})
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
-	foreign, err := store.VisibilityRepo().ListResults(otherOwner, brand.ID, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
-	require.NoError(t, err)
-	require.Empty(t, foreign.Items) // The scoped list contains no rows for another owner.
+	foreign, err := store.VisibilityRepo().ListResults(otherOwner, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	require.ErrorIs(t, err, koidomain.ErrNotFound)
+	require.Nil(t, foreign) // The scoped list contains no rows for another owner.
 	_, err = commander.Create(ctx, brand.ID, koidomain.CompetitorParams{
 		Name: "Collision", Domain: "other.dev", AdditionalURLs: []string{"https://acme.dev"},
 	})
@@ -184,7 +184,7 @@ func TestObservedDismissalSurvivesRediscoveryAndAllowsManualIdentity(t *testing.
 	})
 	require.NoError(t, err)
 	commander := koidomain.NewCompetitorCommander(store)
-	require.NoError(t, commander.Delete(ctx, brand.ID, competitors.Items[0].ID))
+	require.NoError(t, commander.Delete(ctx, competitors.Items[0].ID))
 	tracking, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
 	require.True(t, tracking.CompetitorsReviewed)
@@ -203,7 +203,7 @@ func TestObservedDismissalSurvivesRediscoveryAndAllowsManualIdentity(t *testing.
 	manual, err := commander.Create(ctx, brand.ID, koidomain.CompetitorParams{Name: "Curated Acme", Domain: "acme.dev"})
 	require.NoError(t, err)
 	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 1, appearanceCell(cells[3], "Acme", "https://acme.dev")))
-	read, err := store.VisibilityRepo().ListResults(ctx, brand.ID, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	for _, cell := range read.Items {
 		require.Equal(t, manual.ID, *cell.Appearances[0].CompetitorID)

@@ -4,12 +4,11 @@ import type {
   CompetitorRes,
   CompetitorsApi,
 } from "@/api/generated";
-import { callApi } from "@/api/shared/apiClient";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Competitor = CompetitorRes;
 
-export type CreateCompetitor = CompetitorRequest;
+export type CreateCompetitor = Omit<CompetitorRequest, "brandId">;
 
 export type UpdateCompetitor = CompetitorPatchRequest;
 
@@ -27,37 +26,19 @@ export interface CompetitorListParams extends BaseListParams {
 export function createCompetitorsApi(api: CompetitorsApi) {
   return {
     list: (
-      brandID: string,
-      params: CompetitorListParams = {},
-      initOverrides?: RequestInit,
-    ): Promise<ApiListResponse<Competitor>> =>
-      callApi(() =>
-        api.listCompetitors(
-          brandID,
-          params.page,
-          params.pageSize,
-          params.q,
-          params.confirmed,
-          initOverrides,
-        ),
-      ),
-    getById: (brandID: string, id: string): Promise<Competitor> =>
-      callApi(() => api.getCompetitor(brandID, id)),
-    search: (
-      brandID: string,
-      query: string,
-      initOverrides?: RequestInit,
-    ): Promise<CompetitorSearchResult[]> =>
-      callApi(() => api.searchCompetitors(brandID, query, initOverrides)),
-    create: (brandID: string, request: CreateCompetitor): Promise<Competitor> =>
-      callApi(() => api.createCompetitor(brandID, request)),
-    update: (brandID: string, id: string, request: UpdateCompetitor): Promise<Competitor> =>
-      callApi(() => api.patchCompetitor(brandID, id, request)),
-    delete: (brandID: string, id: string): Promise<void> =>
-      callApi(() => api.deleteCompetitor(brandID, id)),
-    confirm: (brandID: string, id: string): Promise<Competitor> =>
-      callApi(() => api.confirmCompetitor(brandID, id)),
-    confirmAll: (brandID: string): Promise<void> =>
-      callApi(() => api.confirmAllCompetitors(brandID)),
+      params: CompetitorListParams & { brandId: string },
+      init?: RequestInit,
+    ): Promise<ApiListResponse<Competitor>> => api.listCompetitors(params, init),
+    getById: (id: string): Promise<Competitor> => api.getCompetitor({ competitorID: id }),
+    search: (brandId: string, q: string, init?: RequestInit): Promise<CompetitorSearchResult[]> =>
+      api.searchCompetitors({ brandId, q }, init),
+    create: (request: CreateCompetitor & { brandId: string }): Promise<Competitor> =>
+      api.createCompetitor({ competitorRequest: request }),
+    update: (id: string, request: UpdateCompetitor): Promise<Competitor> =>
+      api.patchCompetitor({ competitorID: id, competitorPatchRequest: request }),
+    delete: (id: string): Promise<void> => api.deleteCompetitor({ competitorID: id }),
+    confirm: (id: string): Promise<Competitor> => api.confirmCompetitor({ competitorID: id }),
+    confirmAll: (brandId: string): Promise<void> =>
+      api.confirmAllCompetitors({ brandRequestScope: { brandId } }),
   };
 }

@@ -1,3 +1,4 @@
+import { QueryClient } from "@tanstack/react-query";
 import { isRedirect } from "@tanstack/react-router";
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,7 +14,9 @@ describe("account route loading", () => {
       new Error("offline"),
     ]) {
       const api = { auth: { me: vi.fn().mockRejectedValue(error) } } as unknown as Api;
-      const caught = await requireAccount(api).catch((failure: unknown) => failure);
+      const caught = await requireAccount(api, new QueryClient()).catch(
+        (failure: unknown) => failure,
+      );
 
       if (error instanceof ApiError && error.code === "unauthorized") {
         expect(isRedirect(caught)).toBe(true);

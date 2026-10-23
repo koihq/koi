@@ -107,7 +107,7 @@ export function PromptResFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     return {
         
         'id': json['id'],
-        'brandId': json['brand_id'],
+        'brandId': json['brandId'],
         'text': json['text'],
         'source': json['source'],
         'confirmed': json['confirmed'],
@@ -128,7 +128,7 @@ export function PromptResToJSONTyped(value?: PromptRes | null, ignoreDiscriminat
     return {
         
         'id': value['id'],
-        'brand_id': value['brandId'],
+        'brandId': value['brandId'],
         'text': value['text'],
         'source': value['source'],
         'confirmed': value['confirmed'],

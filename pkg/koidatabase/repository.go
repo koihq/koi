@@ -35,7 +35,7 @@ func (r *Repository[T]) query(ctx context.Context) (*gorm.DB, error) {
 	}
 
 	identity, ok := koiauth.FromContext(ctx)
-	if !ok {
+	if !ok || identity.OrganizationID == uuid.Nil {
 		return nil, koidomain.ErrUnauthorized
 	}
 
@@ -43,12 +43,12 @@ func (r *Repository[T]) query(ctx context.Context) (*gorm.DB, error) {
 }
 
 func brandOwnerScope(identity koiauth.Identity, db *gorm.DB) *gorm.DB {
-	return db.Where("EXISTS (SELECT 1 FROM memberships WHERE memberships.organization_id = brands.organization_id AND memberships.user_id = ?)", identity.UserID)
+	return db.Where("brands.organization_id = ?", identity.OrganizationID)
 }
 
 func childOwnerScope(table string) func(koiauth.Identity, *gorm.DB) *gorm.DB {
 	return func(identity koiauth.Identity, db *gorm.DB) *gorm.DB {
-		return db.Where("EXISTS (SELECT 1 FROM brands JOIN memberships ON memberships.organization_id = brands.organization_id WHERE brands.id = "+table+".brand_id AND memberships.user_id = ?)", identity.UserID)
+		return db.Where("EXISTS (SELECT 1 FROM brands WHERE brands.id = "+table+".brand_id AND brands.organization_id = ?)", identity.OrganizationID)
 	}
 }
 
@@ -157,6 +157,15 @@ func mapDBError(err error) error {
 	}
 
 	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		switch pgErr.ConstraintName {
+		case "fk_brands_organization", "fk_memberships_user", "fk_memberships_organization", "fk_billing_subscriptions_organization", "fk_billing_checkout_sessions_organization", "fk_billing_change_requests_organization":
+			if strings.Contains(pgErr.Detail, "still referenced") {
+				return koidomain.ErrResourceConflict
+			}
+			return koidomain.ErrNotFound
+		}
+	}
 	if errors.As(err, &pgErr) && pgErr.Code == pgUniqueViolation {
 		if pgErr.ConstraintName == "idx_prompts_brand_text" {
 			return koidomain.Validation(koidomain.FieldError{Field: "text", Code: koidomain.FieldTaken})

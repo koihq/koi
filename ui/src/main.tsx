@@ -14,7 +14,7 @@ const queryClient = new QueryClient();
 
 const router = createRouter({
   routeTree,
-  context: { api },
+  context: { api, queryClient },
   defaultPreload: "intent",
   scrollRestoration: true,
 });

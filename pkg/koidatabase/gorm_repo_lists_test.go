@@ -84,7 +84,7 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	_, err = prompts.Get(ctx, koidomain.PromptFilter{ID: childID, BrandID: brandID})
+	_, err = prompts.Get(ctx, childID)
 	require.NoError(t, err)
 
 	competitors := NewGormCompetitorRepository(db)
@@ -99,12 +99,12 @@ func TestPromptAndCompetitorQueriesAreBrandScoped(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	_, err = competitors.Get(ctx, koidomain.CompetitorFilter{ID: childID, BrandID: brandID})
+	_, err = competitors.Get(ctx, childID)
 	require.NoError(t, err)
 	require.Len(t, queries, 4)
 	for _, query := range queries {
-		require.Contains(t, query, "brand_id =")
-		require.Contains(t, query, "memberships.user_id =")
+		require.Contains(t, query, "brand_id")
+		require.Contains(t, query, "brands.organization_id =")
 	}
 	require.Contains(t, queries[0], "confirmed =")
 	require.Contains(t, queries[0], "text ILIKE")
@@ -150,7 +150,7 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 	require.ErrorIs(t, brands.Create(ctx, &koidomain.Brand{}), koidomain.ErrUnauthorized)
 
 	prompts := NewGormPromptRepository(db)
-	_, err = prompts.Get(ctx, koidomain.PromptFilter{BrandID: brandID})
+	_, err = prompts.Get(ctx, brandID)
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	_, err = prompts.List(ctx, koidomain.PromptFilter{
 		BrandID: brandID,
@@ -160,12 +160,12 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 		},
 	})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
-	require.ErrorIs(t, prompts.Update(ctx, koidomain.PromptFilter{BrandID: brandID}, koidomain.PromptUpdate{}), koidomain.ErrUnauthorized)
-	require.ErrorIs(t, prompts.Delete(ctx, koidomain.PromptFilter{BrandID: brandID}), koidomain.ErrUnauthorized)
+	require.ErrorIs(t, prompts.Update(ctx, brandID, koidomain.PromptUpdate{}), koidomain.ErrUnauthorized)
+	require.ErrorIs(t, prompts.Delete(ctx, brandID), koidomain.ErrUnauthorized)
 	require.ErrorIs(t, prompts.Create(ctx, &koidomain.Prompt{BrandID: brandID}), koidomain.ErrUnauthorized)
 
 	competitors := NewGormCompetitorRepository(db)
-	_, err = competitors.Get(ctx, koidomain.CompetitorFilter{BrandID: brandID})
+	_, err = competitors.Get(ctx, brandID)
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	_, err = competitors.List(ctx, koidomain.CompetitorFilter{
 		BrandID: brandID,
@@ -175,7 +175,7 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 		},
 	})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
-	require.ErrorIs(t, competitors.Update(ctx, koidomain.CompetitorFilter{BrandID: brandID}, koidomain.CompetitorUpdate{}), koidomain.ErrUnauthorized)
-	require.ErrorIs(t, competitors.Delete(ctx, koidomain.CompetitorFilter{BrandID: brandID}), koidomain.ErrUnauthorized)
+	require.ErrorIs(t, competitors.Update(ctx, brandID, koidomain.CompetitorUpdate{}), koidomain.ErrUnauthorized)
+	require.ErrorIs(t, competitors.Delete(ctx, brandID), koidomain.ErrUnauthorized)
 	require.ErrorIs(t, competitors.Create(ctx, &koidomain.Competitor{BrandID: brandID}), koidomain.ErrUnauthorized)
 }

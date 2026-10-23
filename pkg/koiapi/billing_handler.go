@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koistripe"
 )
@@ -17,25 +16,21 @@ import (
 type BillingHandler struct {
 	querier       koidomain.BillingQuerier
 	commander     koidomain.BillingCommander
-	sess          *scs.SessionManager
 	webhookSecret string
 }
 
-func NewBillingHandler(q koidomain.BillingQuerier, c koidomain.BillingCommander, sess *scs.SessionManager, webhookSecret string) *BillingHandler {
-	return &BillingHandler{querier: q, commander: c, sess: sess, webhookSecret: webhookSecret}
+func NewBillingHandler(q koidomain.BillingQuerier, c koidomain.BillingCommander, webhookSecret string) *BillingHandler {
+	return &BillingHandler{querier: q, commander: c, webhookSecret: webhookSecret}
 }
 
 func (h *BillingHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/catalog", h.Catalog)
 		r.Get("/quote", h.Quote)
-		r.Group(func(r chi.Router) {
-			r.Use(Authorizer(h.sess))
-			r.Get("/subscription", h.Subscription)
-			r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/checkout", h.Checkout)
-			r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/change-allowance", h.ChangeAllowance)
-			r.Post("/portal", h.Portal)
-		})
+		r.Get("/subscription", h.Subscription)
+		r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/checkout", h.Checkout)
+		r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/change-allowance", h.ChangeAllowance)
+		r.Post("/portal", h.Portal)
 	}
 }
 
@@ -49,59 +44,59 @@ type billingRedirect struct {
 func (h *BillingHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 	catalog, err := h.querier.Catalog(r.Context())
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, catalog)
+	apiresponse.JSON(w, r, http.StatusOK, BillingCatalogToResponse(&catalog))
 }
 
 func (h *BillingHandler) Quote(w http.ResponseWriter, r *http.Request) {
 	quantity, err := strconv.Atoi(r.URL.Query().Get("prompts"))
 	if err != nil {
-		api.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "prompts", Code: koidomain.FieldInvalid}))
+		apiresponse.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "prompts", Code: koidomain.FieldInvalid}))
 		return
 	}
 
 	quote, err := h.querier.Quote(r.Context(), quantity)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, quote)
+	apiresponse.JSON(w, r, http.StatusOK, BillingQuoteToResponse(&quote))
 }
 
 func (h *BillingHandler) Subscription(w http.ResponseWriter, r *http.Request) {
 	status, err := h.querier.Subscription(r.Context())
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, status)
+	apiresponse.JSON(w, r, http.StatusOK, BillingStatusToResponse(&status))
 }
 
 func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	url, err := h.commander.Checkout(r.Context(), middlewares.Body[allowanceRequest](r).Prompts)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, billingRedirect{URL: url})
+	apiresponse.JSON(w, r, http.StatusOK, billingRedirect{URL: url})
 }
 
 func (h *BillingHandler) ChangeAllowance(w http.ResponseWriter, r *http.Request) {
 	values := r.Header.Values("Idempotency-Key")
 	if len(values) != 1 || !validIdempotencyKey(values[0]) {
-		api.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "idempotency_key", Code: koidomain.FieldInvalid}))
+		apiresponse.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "idempotency_key", Code: koidomain.FieldInvalid}))
 		return
 	}
 
 	change, err := h.commander.ChangeAllowance(r.Context(), middlewares.Body[allowanceRequest](r).Prompts, values[0])
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
@@ -110,17 +105,17 @@ func (h *BillingHandler) ChangeAllowance(w http.ResponseWriter, r *http.Request)
 		status = http.StatusOK
 	}
 
-	api.JSON(w, r, status, change)
+	apiresponse.JSON(w, r, status, BillingChangeToResponse(&change))
 }
 
 func (h *BillingHandler) Portal(w http.ResponseWriter, r *http.Request) {
 	url, err := h.commander.Portal(r.Context())
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, billingRedirect{URL: url})
+	apiresponse.JSON(w, r, http.StatusOK, billingRedirect{URL: url})
 }
 
 func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +133,7 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 
 	if event.SubscriptionID != "" {
 		if err := h.commander.ProcessEvent(r.Context(), event); err != nil {
-			api.WriteDomainError(w, r, err)
+			apiresponse.WriteDomainError(w, r, err)
 			return
 		}
 	}

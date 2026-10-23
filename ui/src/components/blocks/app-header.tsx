@@ -1,10 +1,9 @@
 import { UserIcon, UserMultipleIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { useApi } from "@/api/apiProvider";
 import type { Brand } from "@/api/brands.api";
 import { BrandIcon } from "@/components/blocks/brand-icon";
@@ -15,20 +14,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/hooks/use-theme";
+import { capabilitiesOptions, clearAccountCache } from "@/lib/queries";
 
 export function AppHeader({ brand, brands }: { brand: Brand; brands: Brand[] }) {
   const api = useApi();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { theme, changeTheme } = useTheme();
   const { t } = useTranslation("home");
   const [signOutFailed, setSignOutFailed] = useState(false);
-  const capabilities = useQuery({ queryKey: ["capabilities"], queryFn: api.capabilities.get });
+  const capabilities = useQuery(capabilitiesOptions(api));
 
   async function signOut() {
     setSignOutFailed(false);
 
     try {
       await api.auth.logout();
+      await clearAccountCache(queryClient);
       await router.invalidate();
       await router.navigate({ to: "/sign-in" });
     } catch {

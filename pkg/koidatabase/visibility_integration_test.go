@@ -39,7 +39,7 @@ func liveVisibilityFixture(t *testing.T, riverTables bool) (*gorm.DB, *Store, co
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
 	organizationID := testOrganizationForUser(t, store, user.ID)
-	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
+	ctx := testIdentity(t, store, user.ID)
 	brand := &koidomain.Brand{OrganizationID: organizationID, Name: "Koi", Domain: "koi.dev", Country: "US"}
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))
 	_, err = koidomain.NewPromptCommander(store).Create(ctx, brand.ID, koidomain.PromptParams{Text: "Best analytics tools?"})
@@ -50,6 +50,9 @@ func liveVisibilityFixture(t *testing.T, riverTables bool) (*gorm.DB, *Store, co
 
 func testOrganizationForUser(t *testing.T, store *Store, userID uuid.UUID) uuid.UUID {
 	t.Helper()
+	if membership, err := store.MembershipRepo().GetByUserID(t.Context(), userID); err == nil {
+		return membership.OrganizationID
+	}
 	organization := &koidomain.Organization{Name: "Test"}
 	require.NoError(t, store.OrganizationRepo().Create(t.Context(), organization))
 	require.NoError(t, store.MembershipRepo().Create(t.Context(), &koidomain.Membership{
@@ -126,7 +129,7 @@ func TestVisibilityScheduleAndReviewInvalidation(t *testing.T) {
 	prompts, err := store.PromptRepo().List(ctx, koidomain.PromptFilter{BrandID: brand.ID, Page: koidomain.PageParams{Page: 1, PageSize: 10}})
 	require.NoError(t, err)
 	text := "New question"
-	require.NoError(t, store.PromptRepo().Update(ctx, koidomain.PromptFilter{BrandID: brand.ID, ID: prompts.Items[0].ID}, koidomain.PromptUpdate{Text: &text}))
+	require.NoError(t, store.PromptRepo().Update(ctx, prompts.Items[0].ID, koidomain.PromptUpdate{Text: &text}))
 	status, err = store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
 	require.False(t, status.PromptsReviewed)
@@ -146,18 +149,18 @@ func TestVisibilityScheduleAndReviewInvalidation(t *testing.T) {
 	status, err = restarted.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
 	require.Equal(t, anchor.Add(7*24*time.Hour), *status.NextRunAt)
-	cells, err := restarted.VisibilityRepo().ListResults(ctx, brand.ID, latest.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	cells, err := restarted.VisibilityRepo().ListResults(ctx, latest.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	require.Equal(t, "New question", cells.Items[0].PromptText)
-	old, err := restarted.VisibilityRepo().ListResults(ctx, brand.ID, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	old, err := restarted.VisibilityRepo().ListResults(ctx, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	require.Equal(t, "Best analytics tools?", old.Items[0].PromptText)
 
 	// Mutations from another owner fail before touching reviews or list rows.
-	stranger := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: uuid.New()})
+	stranger := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: uuid.New(), OrganizationID: uuid.New()})
 	require.ErrorIs(t, store.VisibilityRepo().FinishReview(stranger, brand.ID, "prompts"), koidomain.ErrNotFound)
-	require.ErrorIs(t, store.PromptRepo().Delete(stranger, koidomain.PromptFilter{BrandID: brand.ID, ID: prompts.Items[0].ID}), koidomain.ErrNotFound)
-	_, err = store.VisibilityRepo().Get(stranger, brand.ID, run.ID)
+	require.ErrorIs(t, store.PromptRepo().Delete(stranger, prompts.Items[0].ID), koidomain.ErrNotFound)
+	_, err = store.VisibilityRepo().Get(stranger, run.ID)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 }
 
@@ -190,11 +193,11 @@ func TestVisibilityCellsResumeAndPreserveAnswers(t *testing.T) {
 	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 2, cell))
 	cell.RawAnswer = "overwrite"
 	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 2, cell))
-	read, err := store.VisibilityRepo().ListResults(ctx, brand.ID, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
+	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	require.Equal(t, "Koi is recommended.", read.Items[0].RawAnswer)
 	require.Error(t, store.FinishVisibilityAttempt(ctx, run.ID, 2))
-	progress, err := store.VisibilityRepo().Get(ctx, brand.ID, run.ID)
+	progress, err := store.VisibilityRepo().Get(ctx, run.ID)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), progress.CompletedResults)
 }
@@ -215,6 +218,6 @@ func TestVisibilityDisabledReviewsAndEmptyPrompts(t *testing.T) {
 	require.NoError(t, err)
 	prompts, err := store.PromptRepo().List(ctx, koidomain.PromptFilter{BrandID: brand.ID, Page: koidomain.PageParams{Page: 1, PageSize: 10}})
 	require.NoError(t, err)
-	require.NoError(t, store.PromptRepo().Delete(ctx, koidomain.PromptFilter{BrandID: brand.ID, ID: prompts.Items[0].ID}))
+	require.NoError(t, store.PromptRepo().Delete(ctx, prompts.Items[0].ID))
 	require.ErrorIs(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"), koidomain.ErrValidation)
 }

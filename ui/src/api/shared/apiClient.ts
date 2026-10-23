@@ -16,6 +16,14 @@ export function createApiClient() {
   const configuration = new Configuration({
     basePath: "",
     credentials: "include",
+    middleware: [
+      {
+        post: async ({ response }) => {
+          if (!response.ok) throw await apiErrorFromResponse(response);
+          return response;
+        },
+      },
+    ],
   });
 
   return {
@@ -29,17 +37,4 @@ export function createApiClient() {
     prompts: new PromptsApi(configuration),
     runs: new VisibilityApi(configuration),
   };
-}
-
-export async function callApi<T>(request: () => Promise<T>): Promise<T> {
-  try {
-    return await request();
-  } catch (error) {
-    if (error && typeof error === "object" && "response" in error) {
-      const response = (error as { response?: unknown }).response;
-      if (response instanceof Response) throw await apiErrorFromResponse(response);
-    }
-
-    throw error;
-  }
 }

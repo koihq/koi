@@ -155,14 +155,15 @@ type PromptHistoryRun struct {
 }
 
 type VisibilityRepository interface {
+	VisibilityAnalyticsRepository
 	FinishReview(context.Context, uuid.UUID, string) error
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
-	Get(context.Context, uuid.UUID, uuid.UUID) (*VisibilityRun, error)
+	Get(context.Context, uuid.UUID) (*VisibilityRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
 	Active(context.Context, uuid.UUID) (*VisibilityRun, error)
 	Inputs(context.Context, uuid.UUID) (VisibilityInputs, error)
 	CreateAndEnqueue(context.Context, *VisibilityRun, []VisibilityResult) error
-	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
+	ListResults(context.Context, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
@@ -176,9 +177,9 @@ type TrackingStatus struct {
 }
 
 type VisibilityQuerier interface {
-	Get(context.Context, uuid.UUID, uuid.UUID) (*VisibilityRun, error)
+	Get(context.Context, uuid.UUID) (*VisibilityRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
-	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
+	ListResults(context.Context, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
 	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
@@ -192,12 +193,8 @@ func (s *visibilityService) Tracking(ctx context.Context, brandID uuid.UUID) (*T
 	return s.store.VisibilityRepo().Tracking(ctx, brandID)
 }
 
-func (s *visibilityService) Get(ctx context.Context, brandID, runID uuid.UUID) (*VisibilityRun, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	return s.store.VisibilityRepo().Get(ctx, brandID, runID)
+func (s *visibilityService) Get(ctx context.Context, runID uuid.UUID) (*VisibilityRun, error) {
+	return s.store.VisibilityRepo().Get(ctx, runID)
 }
 
 func (s *visibilityService) List(ctx context.Context, brandID uuid.UUID, page PageParams) (*Page[VisibilityRun], error) {
@@ -208,12 +205,12 @@ func (s *visibilityService) List(ctx context.Context, brandID uuid.UUID, page Pa
 	return s.store.VisibilityRepo().List(ctx, brandID, page)
 }
 
-func (s *visibilityService) ListResults(ctx context.Context, brandID, runID uuid.UUID, page PageParams) (*Page[VisibilityResult], error) {
-	if _, err := s.Get(ctx, brandID, runID); err != nil {
+func (s *visibilityService) ListResults(ctx context.Context, runID uuid.UUID, page PageParams) (*Page[VisibilityResult], error) {
+	if _, err := s.Get(ctx, runID); err != nil {
 		return nil, err
 	}
 
-	return s.store.VisibilityRepo().ListResults(ctx, brandID, runID, page)
+	return s.store.VisibilityRepo().ListResults(ctx, runID, page)
 }
 
 func (s *visibilityService) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, params PromptListParams) (*Page[HistoricalPrompt], error) {

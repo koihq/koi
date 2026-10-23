@@ -6,8 +6,8 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -20,7 +20,7 @@ type MeRes struct {
 	ID            string `json:"id"`
 	Email         string `json:"email"`
 	Organization  OrgRes `json:"organization"`
-	ActiveBrandID string `json:"active_brand_id,omitempty"`
+	ActiveBrandID string `json:"activeBrandId,omitempty"`
 }
 
 type OrgRes struct {
@@ -45,10 +45,11 @@ type AuthHandler struct {
 	querier   koidomain.AuthQuerier
 	commander koidomain.AuthCommander
 	sess      *scs.SessionManager
+	auth      func(http.Handler) http.Handler
 }
 
-func NewAuthHandler(q koidomain.AuthQuerier, c koidomain.AuthCommander, sess *scs.SessionManager) *AuthHandler {
-	return &AuthHandler{querier: q, commander: c, sess: sess}
+func NewAuthHandler(q koidomain.AuthQuerier, c koidomain.AuthCommander, sess *scs.SessionManager, auth func(http.Handler) http.Handler) *AuthHandler {
+	return &AuthHandler{querier: q, commander: c, sess: sess, auth: auth}
 }
 
 func (h *AuthHandler) Routes() func(r chi.Router) {
@@ -56,7 +57,7 @@ func (h *AuthHandler) Routes() func(r chi.Router) {
 		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/signup", h.Signup)
 		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/login", h.Login)
 		r.Post("/logout", h.Logout)
-		r.With(Authorizer(h.sess)).Get("/me", h.Me)
+		r.With(h.auth).Get("/me", h.Me)
 	}
 }
 
@@ -68,43 +69,43 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
 	if err := h.saveUser(r, me); err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	api.JSON(w, r, http.StatusCreated, MeToRes(me))
+	apiresponse.JSON(w, r, http.StatusCreated, MeToRes(me))
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	req := middlewares.Body[CredentialsReq](r)
 	me, err := h.commander.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
 	if err := h.saveUser(r, me); err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
 	res := MeToRes(me)
 	res.ActiveBrandID = h.sess.GetString(r.Context(), "active_brand_id")
-	api.JSON(w, r, http.StatusOK, res)
+	apiresponse.JSON(w, r, http.StatusOK, res)
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if err := h.sess.Destroy(r.Context()); err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
@@ -120,14 +121,14 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	me, err := h.querier.Me(r.Context())
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
 	res := MeToRes(me)
 	res.ActiveBrandID = h.sess.GetString(r.Context(), "active_brand_id")
-	api.JSON(w, r, http.StatusOK, res)
+	apiresponse.JSON(w, r, http.StatusOK, res)
 }
 
 func (h *AuthHandler) saveUser(r *http.Request, me *koidomain.Me) error {

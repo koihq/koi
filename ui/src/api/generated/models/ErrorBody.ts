@@ -37,6 +37,12 @@ import {
 export interface ErrorBody {
     /**
      * 
+     * @type {string}
+     * @memberof ErrorBody
+     */
+    requestId?: string;
+    /**
+     * 
      * @type {ErrorCode}
      * @memberof ErrorBody
      */
@@ -82,10 +88,11 @@ export function ErrorBodyFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     }
     return {
         
+        'requestId': json['requestId'] == null ? undefined : json['requestId'],
         'code': ErrorCodeFromJSON(json['code']),
         'message': json['message'],
         'fields': json['fields'] == null ? undefined : ((json['fields'] as Array<any>).map(FieldErrorFromJSON)),
-        'statusUrl': json['status_url'] == null ? undefined : json['status_url'],
+        'statusUrl': json['statusUrl'] == null ? undefined : json['statusUrl'],
     };
 }
 
@@ -100,10 +107,11 @@ export function ErrorBodyToJSONTyped(value?: ErrorBody | null, ignoreDiscriminat
 
     return {
         
+        'requestId': value['requestId'],
         'code': ErrorCodeToJSON(value['code']),
         'message': value['message'],
         'fields': value['fields'] == null ? undefined : ((value['fields'] as Array<any>).map(FieldErrorToJSON)),
-        'status_url': value['statusUrl'],
+        'statusUrl': value['statusUrl'],
     };
 }
 

@@ -69,7 +69,7 @@ func TestPromptSortPaginatesAfterRanking(t *testing.T) {
 	require.Equal(t, []uuid.UUID{ids[3], ids[1]}, []uuid.UUID{second.Items[0].ID, second.Items[1].ID})
 
 	for _, id := range ids {
-		require.NoError(t, commander.Delete(ctx, brand.ID, id))
+		require.NoError(t, commander.Delete(ctx, id))
 	}
 	historyParams := koidomain.PromptListParams{
 		Page:       page,

@@ -1,36 +1,31 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { CreateCompetitor, UpdateCompetitor } from "@/api/competitors.api";
-import { competitorKey, promptKey, runKey, trackingKey } from "@/lib/query-keys";
+import { invalidateProduct } from "@/lib/queries";
 
 export function useCompetitorMutations(brandID: string) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: competitorKey(brandID) }),
-      queryClient.invalidateQueries({ queryKey: promptKey(brandID) }),
-      queryClient.invalidateQueries({ queryKey: trackingKey(brandID) }),
-      queryClient.invalidateQueries({ queryKey: runKey(brandID) }),
-    ]);
+  const invalidate = () => invalidateProduct(queryClient, brandID, "competitors");
   const create = useMutation({
-    mutationFn: (request: CreateCompetitor) => api.competitors.create(brandID, request),
+    mutationFn: (request: CreateCompetitor) =>
+      api.competitors.create({ brandId: brandID, ...request }),
     onSuccess: invalidate,
   });
 
   const update = useMutation({
     mutationFn: ({ id, request }: { id: string; request: UpdateCompetitor }) =>
-      api.competitors.update(brandID, id, request),
+      api.competitors.update(id, request),
     onSuccess: invalidate,
   });
 
   const remove = useMutation({
-    mutationFn: (id: string) => api.competitors.delete(brandID, id),
+    mutationFn: (id: string) => api.competitors.delete(id),
     onSuccess: invalidate,
   });
 
   const confirm = useMutation({
-    mutationFn: (id: string) => api.competitors.confirm(brandID, id),
+    mutationFn: (id: string) => api.competitors.confirm(id),
     onSuccess: invalidate,
   });
 

@@ -93,7 +93,7 @@ export function GenerationAcceptedFromJSONTyped(json: any, ignoreDiscriminator: 
         'id': json['id'],
         'mode': json['mode'],
         'state': json['state'],
-        'statusUrl': json['status_url'],
+        'statusUrl': json['statusUrl'],
     };
 }
 
@@ -111,7 +111,7 @@ export function GenerationAcceptedToJSONTyped(value?: GenerationAccepted | null,
         'id': value['id'],
         'mode': value['mode'],
         'state': value['state'],
-        'status_url': value['statusUrl'],
+        'statusUrl': value['statusUrl'],
     };
 }
 

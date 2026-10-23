@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -16,7 +16,7 @@ func DecodeBody[T any]() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var v T
 			if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
-				api.WriteDomainError(w, r, koidomain.ErrInvalidJSON)
+				apiresponse.WriteDomainError(w, r, koidomain.ErrInvalidJSON)
 
 				return
 			}

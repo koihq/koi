@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -41,7 +40,7 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 		TrialEnd:             &trialEnd,
 	}).Error)
 
-	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
+	ctx := testIdentity(t, store, user.ID)
 	brands := make([]*koidomain.Brand, 2)
 	for i := range brands {
 		brands[i] = &koidomain.Brand{OrganizationID: organization.ID, Name: fmt.Sprintf("Brand %d", i), Domain: fmt.Sprintf("brand%d.example", i), Country: "IT"}
@@ -57,19 +56,20 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 	extra.Inactive = true
 	require.NoError(t, store.PromptRepo().Create(ctx, extra))
 	active := false
-	require.ErrorIs(t, store.PromptRepo().Update(ctx, koidomain.PromptFilter{ID: extra.ID, BrandID: brands[1].ID}, koidomain.PromptUpdate{Inactive: &active}), koidomain.ErrPromptLimitReached)
+	require.ErrorIs(t, store.PromptRepo().Update(ctx, extra.ID, koidomain.PromptUpdate{Inactive: &active}), koidomain.ErrPromptLimitReached)
 
-	first, err := store.PromptRepo().Get(ctx, koidomain.PromptFilter{BrandID: brands[0].ID, Query: "Prompt 0"})
+	firstPage, err := store.PromptRepo().List(ctx, koidomain.PromptFilter{BrandID: brands[0].ID, Query: "Prompt 0", Page: koidomain.PageParams{Page: 1, PageSize: 10}})
+	first := &firstPage.Items[0]
 	require.NoError(t, err)
 	inactive := true
-	require.NoError(t, store.PromptRepo().Update(ctx, koidomain.PromptFilter{ID: first.ID, BrandID: brands[0].ID}, koidomain.PromptUpdate{Inactive: &inactive}))
+	require.NoError(t, store.PromptRepo().Update(ctx, first.ID, koidomain.PromptUpdate{Inactive: &inactive}))
 	draft := &koidomain.Prompt{BrandID: brands[0].ID, Text: "Drafted prompt", Source: koidomain.PromptSourceDrafted}
 	require.NoError(t, db.Create(draft).Error)
 	require.ErrorIs(t, store.PromptRepo().Update(ctx,
-		koidomain.PromptFilter{ID: extra.ID, BrandID: brands[1].ID},
+		extra.ID,
 		koidomain.PromptUpdate{Inactive: &active}), koidomain.ErrPromptLimitReached)
 	require.NoError(t, db.Delete(draft).Error)
-	require.NoError(t, store.PromptRepo().Update(ctx, koidomain.PromptFilter{ID: extra.ID, BrandID: brands[1].ID}, koidomain.PromptUpdate{Inactive: &active}))
+	require.NoError(t, store.PromptRepo().Update(ctx, extra.ID, koidomain.PromptUpdate{Inactive: &active}))
 	require.NoError(t, db.Where("brand_id = ? AND text IN ?", brands[0].ID,
 		[]string{"Prompt 0", "Prompt 2", "Prompt 4"}).Delete(&koidomain.Prompt{}).Error)
 	require.NoError(t, db.Where("brand_id = ? AND text = ?", brands[1].ID, "Prompt 1").Delete(&koidomain.Prompt{}).Error)
@@ -115,7 +115,7 @@ func TestCloudWorkerStopsQueuedPromptAfterDeactivation(t *testing.T) {
 
 	inactive := true
 	require.NoError(t, cloudStore.PromptRepo().Update(ctx,
-		koidomain.PromptFilter{ID: cells[0].PromptID, BrandID: brand.ID},
+		cells[0].PromptID,
 		koidomain.PromptUpdate{Inactive: &inactive},
 	))
 	require.ErrorIs(t,

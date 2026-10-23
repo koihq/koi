@@ -1,5 +1,6 @@
 {
   "codes": {
+    "resource_conflict": "This resource is still in use. Remove its dependencies before deleting it.",
     "validation": "Check the form and try again",
     "email_taken": "That email is already registered",
     "brand_limit_reached": "This account already has a brand",

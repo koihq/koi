@@ -60,5 +60,5 @@ func (q *VisibilityAnalyticsQuerier) Aggregate(ctx context.Context, brandID uuid
 		return nil, nil, err
 	}
 
-	return q.store.VisibilityRepo().(VisibilityAnalyticsRepository).AggregateVisibility(ctx, brandID, ids, days, engines, time.Now().UTC())
+	return q.store.VisibilityRepo().AggregateVisibility(ctx, brandID, ids, days, engines, time.Now().UTC())
 }

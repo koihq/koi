@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/koihq/koi/pkg/koiauth"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
+
+	"github.com/koihq/koi/pkg/koiauth"
 )
 
 type Brand struct {
@@ -21,12 +22,13 @@ type Brand struct {
 	VisibilityStartedAt   *time.Time `json:"-"`
 	NextVisibilityAt      *time.Time `json:"-"`
 	BaseEntity
-	OrganizationID uuid.UUID `json:"organization_id" gorm:"type:uuid;not null;index"`
-	Name           string    `json:"name" gorm:"not null"`
-	Domain         string    `json:"domain"`
-	GitHubRepo     string    `json:"github_repo" gorm:"column:github_repo"`
-	Country        string    `json:"country" gorm:"not null;type:varchar(2)"`
-	Description    string    `json:"description"`
+	OrganizationID uuid.UUID     `json:"organization_id" gorm:"type:uuid;not null;index"`
+	Organization   *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:RESTRICT"`
+	Name           string        `json:"name" gorm:"not null"`
+	Domain         string        `json:"domain"`
+	GitHubRepo     string        `json:"github_repo" gorm:"column:github_repo"`
+	Country        string        `json:"country" gorm:"not null;type:varchar(2)"`
+	Description    string        `json:"description"`
 }
 
 func (Brand) TableName() string { return "brands" }
@@ -206,7 +208,7 @@ func validGitHubRepo(raw string) bool {
 }
 
 type BrandRepository interface {
-	BaseEntityRepository[Brand, uuid.UUID]
+	BaseEntityRepository[Brand]
 	LockForUpdate(context.Context, uuid.UUID) (*Brand, error)
 	Count(context.Context) (int64, error)
 	List(context.Context, PageParams) (*Page[Brand], error)
@@ -245,16 +247,12 @@ func NewBrandCommander(store Store) BrandCommander { return &brandCommander{stor
 
 func (c *brandCommander) Create(ctx context.Context, p BrandParams) (*Brand, error) {
 	identity, ok := koiauth.FromContext(ctx)
-	if !ok {
+	if !ok || identity.OrganizationID == uuid.Nil {
 		return nil, ErrUnauthorized
-	}
-	membership, err := c.store.MembershipRepo().GetByUserID(ctx, identity.UserID)
-	if err != nil {
-		return nil, err
 	}
 
 	brand := &Brand{
-		OrganizationID: membership.OrganizationID,
+		OrganizationID: identity.OrganizationID,
 		Name:           p.Name,
 		Domain:         p.Domain,
 		GitHubRepo:     p.GitHubRepo,

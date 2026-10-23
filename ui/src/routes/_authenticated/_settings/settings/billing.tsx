@@ -19,7 +19,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/billing")({
   beforeLoad: async ({ context }) => {
-    if (!(await context.api.capabilities.get()).cloudBilling) throw notFound();
+    if (!context.capabilities.cloudBilling) throw notFound();
   },
   validateSearch: (search: Record<string, unknown>): { checkout?: "success" | "cancel" } => ({
     checkout:

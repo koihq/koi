@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type BrandRequestScope,
+    BrandRequestScopeFromJSON,
+    BrandRequestScopeToJSON,
+} from '../models/BrandRequestScope';
+import {
     type Envelope,
     EnvelopeFromJSON,
     EnvelopeToJSON,
@@ -41,31 +46,27 @@ import {
 } from '../models/PromptRes';
 
 export interface ConfirmAllPromptsRequest {
-    brandID: string;
+    brandRequestScope: BrandRequestScope;
 }
 
 export interface ConfirmPromptRequest {
-    brandID: string;
     promptID: string;
 }
 
 export interface CreatePromptRequest {
-    brandID: string;
     promptRequest: PromptRequest;
 }
 
 export interface DeletePromptRequest {
-    brandID: string;
     promptID: string;
 }
 
 export interface GetPromptRequest {
-    brandID: string;
     promptID: string;
 }
 
 export interface ListPromptsRequest {
-    brandID: string;
+    brandId: string;
     page?: number;
     pageSize?: number;
     q?: string;
@@ -77,7 +78,6 @@ export interface ListPromptsRequest {
 }
 
 export interface UpdatePromptRequest {
-    brandID: string;
     promptID: string;
     promptPatchRequest: PromptPatchRequest;
 }
@@ -91,7 +91,7 @@ export interface UpdatePromptRequest {
 export interface PromptsApiInterface {
     /**
      * Creates request options for confirmAllPrompts without sending the request
-     * @param {string} brandID 
+     * @param {BrandRequestScope} brandRequestScope 
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
      */
@@ -99,7 +99,7 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
+     * @param {BrandRequestScope} brandRequestScope 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
@@ -108,11 +108,10 @@ export interface PromptsApiInterface {
 
     /**
      */
-    confirmAllPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    confirmAllPrompts(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for confirmPrompt without sending the request
-     * @param {string} brandID 
      * @param {string} promptID 
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
@@ -121,7 +120,6 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} promptID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -131,11 +129,10 @@ export interface PromptsApiInterface {
 
     /**
      */
-    confirmPrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
+    confirmPrompt(requestParameters: ConfirmPromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
 
     /**
      * Creates request options for createPrompt without sending the request
-     * @param {string} brandID 
      * @param {PromptRequest} promptRequest 
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
@@ -144,7 +141,6 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {PromptRequest} promptRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -154,11 +150,10 @@ export interface PromptsApiInterface {
 
     /**
      */
-    createPrompt(brandID: string, promptRequest: PromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
+    createPrompt(requestParameters: CreatePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
 
     /**
      * Creates request options for deletePrompt without sending the request
-     * @param {string} brandID 
      * @param {string} promptID 
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
@@ -167,7 +162,6 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} promptID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -177,11 +171,10 @@ export interface PromptsApiInterface {
 
     /**
      */
-    deletePrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    deletePrompt(requestParameters: DeletePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for getPrompt without sending the request
-     * @param {string} brandID 
      * @param {string} promptID 
      * @throws {RequiredError}
      * @memberof PromptsApiInterface
@@ -190,7 +183,6 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} promptID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -200,11 +192,11 @@ export interface PromptsApiInterface {
 
     /**
      */
-    getPrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
+    getPrompt(requestParameters: GetPromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
 
     /**
      * Creates request options for listPrompts without sending the request
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {number} [page] 
      * @param {number} [pageSize] 
      * @param {string} [q] 
@@ -220,7 +212,7 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
+     * @param {string} brandId 
      * @param {number} [page] 
      * @param {number} [pageSize] 
      * @param {string} [q] 
@@ -237,11 +229,10 @@ export interface PromptsApiInterface {
 
     /**
      */
-    listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, sort?: ListPromptsSortEnum, descending?: boolean, days?: ListPromptsDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage>;
+    listPrompts(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage>;
 
     /**
      * Creates request options for updatePrompt without sending the request
-     * @param {string} brandID 
      * @param {string} promptID 
      * @param {PromptPatchRequest} promptPatchRequest 
      * @throws {RequiredError}
@@ -251,7 +242,6 @@ export interface PromptsApiInterface {
 
     /**
      * 
-     * @param {string} brandID 
      * @param {string} promptID 
      * @param {PromptPatchRequest} promptPatchRequest 
      * @param {*} [options] Override http request option.
@@ -262,7 +252,7 @@ export interface PromptsApiInterface {
 
     /**
      */
-    updatePrompt(brandID: string, promptID: string, promptPatchRequest: PromptPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
+    updatePrompt(requestParameters: UpdatePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes>;
 
 }
 
@@ -275,10 +265,10 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
      * Creates request options for confirmAllPrompts without sending the request
      */
     async confirmAllPromptsRequestOpts(requestParameters: ConfirmAllPromptsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
+        if (requestParameters['brandRequestScope'] == null) {
             throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling confirmAllPrompts().'
+                'brandRequestScope',
+                'Required parameter "brandRequestScope" was null or undefined when calling confirmAllPrompts().'
             );
         }
 
@@ -286,15 +276,17 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        headerParameters['Content-Type'] = 'application/json';
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts/confirm`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+
+        let urlPath = `/api/v1/prompts/confirm`;
 
         return {
             path: urlPath,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
+            body: BrandRequestScopeToJSON(requestParameters['brandRequestScope']),
         };
     }
 
@@ -309,21 +301,14 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async confirmAllPrompts(brandID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.confirmAllPromptsRaw({ brandID: brandID }, initOverrides);
+    async confirmAllPrompts(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.confirmAllPromptsRaw(requestParameters, initOverrides);
     }
 
     /**
      * Creates request options for confirmPrompt without sending the request
      */
     async confirmPromptRequestOpts(requestParameters: ConfirmPromptRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling confirmPrompt().'
-            );
-        }
-
         if (requestParameters['promptID'] == null) {
             throw new runtime.RequiredError(
                 'promptID',
@@ -336,8 +321,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts/{promptID}/confirm`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/prompts/{promptID}/confirm`;
         urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
 
         return {
@@ -359,8 +343,8 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async confirmPrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
-        const response = await this.confirmPromptRaw({ brandID: brandID, promptID: promptID }, initOverrides);
+    async confirmPrompt(requestParameters: ConfirmPromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
+        const response = await this.confirmPromptRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -368,13 +352,6 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
      * Creates request options for createPrompt without sending the request
      */
     async createPromptRequestOpts(requestParameters: CreatePromptRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling createPrompt().'
-            );
-        }
-
         if (requestParameters['promptRequest'] == null) {
             throw new runtime.RequiredError(
                 'promptRequest',
@@ -389,8 +366,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/prompts`;
 
         return {
             path: urlPath,
@@ -412,8 +388,8 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async createPrompt(brandID: string, promptRequest: PromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
-        const response = await this.createPromptRaw({ brandID: brandID, promptRequest: promptRequest }, initOverrides);
+    async createPrompt(requestParameters: CreatePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
+        const response = await this.createPromptRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -421,13 +397,6 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
      * Creates request options for deletePrompt without sending the request
      */
     async deletePromptRequestOpts(requestParameters: DeletePromptRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling deletePrompt().'
-            );
-        }
-
         if (requestParameters['promptID'] == null) {
             throw new runtime.RequiredError(
                 'promptID',
@@ -440,8 +409,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts/{promptID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/prompts/{promptID}`;
         urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
 
         return {
@@ -463,21 +431,14 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async deletePrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.deletePromptRaw({ brandID: brandID, promptID: promptID }, initOverrides);
+    async deletePrompt(requestParameters: DeletePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deletePromptRaw(requestParameters, initOverrides);
     }
 
     /**
      * Creates request options for getPrompt without sending the request
      */
     async getPromptRequestOpts(requestParameters: GetPromptRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling getPrompt().'
-            );
-        }
-
         if (requestParameters['promptID'] == null) {
             throw new runtime.RequiredError(
                 'promptID',
@@ -490,8 +451,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts/{promptID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/prompts/{promptID}`;
         urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
 
         return {
@@ -513,8 +473,8 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async getPrompt(brandID: string, promptID: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
-        const response = await this.getPromptRaw({ brandID: brandID, promptID: promptID }, initOverrides);
+    async getPrompt(requestParameters: GetPromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
+        const response = await this.getPromptRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -522,14 +482,18 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
      * Creates request options for listPrompts without sending the request
      */
     async listPromptsRequestOpts(requestParameters: ListPromptsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
+        if (requestParameters['brandId'] == null) {
             throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling listPrompts().'
+                'brandId',
+                'Required parameter "brandId" was null or undefined when calling listPrompts().'
             );
         }
 
         const queryParameters: any = {};
+
+        if (requestParameters['brandId'] != null) {
+            queryParameters['brandId'] = requestParameters['brandId'];
+        }
 
         if (requestParameters['page'] != null) {
             queryParameters['page'] = requestParameters['page'];
@@ -566,8 +530,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         const headerParameters: runtime.HTTPHeaders = {};
 
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/prompts`;
 
         return {
             path: urlPath,
@@ -588,8 +551,8 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async listPrompts(brandID: string, page?: number, pageSize?: number, q?: string, confirmed?: boolean, sort?: ListPromptsSortEnum, descending?: boolean, days?: ListPromptsDaysEnum, engines?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage> {
-        const response = await this.listPromptsRaw({ brandID: brandID, page: page, pageSize: pageSize, q: q, confirmed: confirmed, sort: sort, descending: descending, days: days, engines: engines }, initOverrides);
+    async listPrompts(requestParameters: ListPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptPage> {
+        const response = await this.listPromptsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -597,13 +560,6 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
      * Creates request options for updatePrompt without sending the request
      */
     async updatePromptRequestOpts(requestParameters: UpdatePromptRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandID'] == null) {
-            throw new runtime.RequiredError(
-                'brandID',
-                'Required parameter "brandID" was null or undefined when calling updatePrompt().'
-            );
-        }
-
         if (requestParameters['promptID'] == null) {
             throw new runtime.RequiredError(
                 'promptID',
@@ -625,8 +581,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/v1/brands/{brandID}/prompts/{promptID}`;
-        urlPath = urlPath.replace('{brandID}', encodeURIComponent(String(requestParameters['brandID'])));
+        let urlPath = `/api/v1/prompts/{promptID}`;
         urlPath = urlPath.replace('{promptID}', encodeURIComponent(String(requestParameters['promptID'])));
 
         return {
@@ -649,8 +604,8 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
     /**
      */
-    async updatePrompt(brandID: string, promptID: string, promptPatchRequest: PromptPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
-        const response = await this.updatePromptRaw({ brandID: brandID, promptID: promptID, promptPatchRequest: promptPatchRequest }, initOverrides);
+    async updatePrompt(requestParameters: UpdatePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PromptRes> {
+        const response = await this.updatePromptRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

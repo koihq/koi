@@ -15,28 +15,30 @@ var (
 
 type BillingSubscription struct {
 	BaseEntity
-	OrganizationID          uuid.UUID  `json:"organization_id" gorm:"type:uuid;not null;uniqueIndex"`
-	StripeSubscriptionID    string     `json:"-" gorm:"not null;uniqueIndex"`
-	StripePriceID           string     `json:"-" gorm:"not null"`
-	Quantity                int        `json:"quantity" gorm:"not null"`
-	Status                  string     `json:"status" gorm:"not null"`
-	CurrentPeriodEnd        *time.Time `json:"current_period_end"`
-	TrialEnd                *time.Time `json:"trial_end"`
-	CancelAtPeriodEnd       bool       `json:"cancel_at_period_end" gorm:"not null;default:false"`
-	PendingQuantity         *int       `json:"pending_quantity"`
-	StripeScheduleID        *string    `json:"-"`
-	PaymentURL              string     `json:"payment_url" gorm:"not null;default:''"`
-	PendingUpgradeQuantity  *int       `json:"pending_upgrade_quantity"`
-	PendingUpgradeExpiresAt *time.Time `json:"pending_upgrade_expires_at"`
+	OrganizationID          uuid.UUID     `json:"organization_id" gorm:"type:uuid;not null;uniqueIndex"`
+	Organization            *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:RESTRICT"`
+	StripeSubscriptionID    string        `json:"-" gorm:"not null;uniqueIndex"`
+	StripePriceID           string        `json:"-" gorm:"not null"`
+	Quantity                int           `json:"quantity" gorm:"not null"`
+	Status                  string        `json:"status" gorm:"not null"`
+	CurrentPeriodEnd        *time.Time    `json:"current_period_end"`
+	TrialEnd                *time.Time    `json:"trial_end"`
+	CancelAtPeriodEnd       bool          `json:"cancel_at_period_end" gorm:"not null;default:false"`
+	PendingQuantity         *int          `json:"pending_quantity"`
+	StripeScheduleID        *string       `json:"-"`
+	PaymentURL              string        `json:"payment_url" gorm:"not null;default:''"`
+	PendingUpgradeQuantity  *int          `json:"pending_upgrade_quantity"`
+	PendingUpgradeExpiresAt *time.Time    `json:"pending_upgrade_expires_at"`
 }
 
 func (BillingSubscription) TableName() string { return "billing_subscriptions" }
 
 type BillingCheckoutSession struct {
 	BaseEntity
-	OrganizationID       uuid.UUID `gorm:"type:uuid;not null;index"`
-	SessionID            string    `gorm:"not null;uniqueIndex"`
-	URL                  string    `gorm:"not null;default:''"`
+	OrganizationID       uuid.UUID     `gorm:"type:uuid;not null;index"`
+	Organization         *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:RESTRICT"`
+	SessionID            string        `gorm:"not null;uniqueIndex"`
+	URL                  string        `gorm:"not null;default:''"`
 	ExpiresAt            *time.Time
 	CustomerID           string  `gorm:"not null"`
 	PriceID              string  `gorm:"not null"`
@@ -66,6 +68,7 @@ type BillingChange struct {
 type BillingChangeRequest struct {
 	BaseEntity
 	OrganizationID uuid.UUID      `gorm:"type:uuid;not null;uniqueIndex:idx_billing_change_key,priority:1"`
+	Organization   *Organization  `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:RESTRICT"`
 	IdempotencyKey string         `gorm:"type:varchar(255);not null;uniqueIndex:idx_billing_change_key,priority:2"`
 	SubscriptionID string         `gorm:"not null"`
 	Quantity       int            `gorm:"not null"`

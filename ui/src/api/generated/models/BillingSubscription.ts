@@ -103,16 +103,16 @@ export function BillingSubscriptionFromJSONTyped(json: any, ignoreDiscriminator:
     }
     return {
         
-        'organizationId': json['organization_id'],
+        'organizationId': json['organizationId'],
         'quantity': json['quantity'],
         'status': json['status'],
-        'currentPeriodEnd': json['current_period_end'] == null ? undefined : (new Date(json['current_period_end'])),
-        'trialEnd': json['trial_end'] == null ? undefined : (new Date(json['trial_end'])),
-        'pendingQuantity': json['pending_quantity'] == null ? undefined : json['pending_quantity'],
-        'pendingUpgradeQuantity': json['pending_upgrade_quantity'] == null ? undefined : json['pending_upgrade_quantity'],
-        'pendingUpgradeExpiresAt': json['pending_upgrade_expires_at'] == null ? undefined : (new Date(json['pending_upgrade_expires_at'])),
-        'paymentUrl': json['payment_url'] == null ? undefined : json['payment_url'],
-        'cancelAtPeriodEnd': json['cancel_at_period_end'],
+        'currentPeriodEnd': json['currentPeriodEnd'] == null ? undefined : (new Date(json['currentPeriodEnd'])),
+        'trialEnd': json['trialEnd'] == null ? undefined : (new Date(json['trialEnd'])),
+        'pendingQuantity': json['pendingQuantity'] == null ? undefined : json['pendingQuantity'],
+        'pendingUpgradeQuantity': json['pendingUpgradeQuantity'] == null ? undefined : json['pendingUpgradeQuantity'],
+        'pendingUpgradeExpiresAt': json['pendingUpgradeExpiresAt'] == null ? undefined : (new Date(json['pendingUpgradeExpiresAt'])),
+        'paymentUrl': json['paymentUrl'] == null ? undefined : json['paymentUrl'],
+        'cancelAtPeriodEnd': json['cancelAtPeriodEnd'],
     };
 }
 
@@ -127,16 +127,16 @@ export function BillingSubscriptionToJSONTyped(value?: BillingSubscription | nul
 
     return {
         
-        'organization_id': value['organizationId'],
+        'organizationId': value['organizationId'],
         'quantity': value['quantity'],
         'status': value['status'],
-        'current_period_end': value['currentPeriodEnd'] == null ? value['currentPeriodEnd'] : value['currentPeriodEnd'].toISOString(),
-        'trial_end': value['trialEnd'] == null ? value['trialEnd'] : value['trialEnd'].toISOString(),
-        'pending_quantity': value['pendingQuantity'],
-        'pending_upgrade_quantity': value['pendingUpgradeQuantity'],
-        'pending_upgrade_expires_at': value['pendingUpgradeExpiresAt'] == null ? value['pendingUpgradeExpiresAt'] : value['pendingUpgradeExpiresAt'].toISOString(),
-        'payment_url': value['paymentUrl'],
-        'cancel_at_period_end': value['cancelAtPeriodEnd'],
+        'currentPeriodEnd': value['currentPeriodEnd'] == null ? value['currentPeriodEnd'] : value['currentPeriodEnd'].toISOString(),
+        'trialEnd': value['trialEnd'] == null ? value['trialEnd'] : value['trialEnd'].toISOString(),
+        'pendingQuantity': value['pendingQuantity'],
+        'pendingUpgradeQuantity': value['pendingUpgradeQuantity'],
+        'pendingUpgradeExpiresAt': value['pendingUpgradeExpiresAt'] == null ? value['pendingUpgradeExpiresAt'] : value['pendingUpgradeExpiresAt'].toISOString(),
+        'paymentUrl': value['paymentUrl'],
+        'cancelAtPeriodEnd': value['cancelAtPeriodEnd'],
     };
 }
 

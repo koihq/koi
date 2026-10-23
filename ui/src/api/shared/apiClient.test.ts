@@ -1,28 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createApi } from "@/api/apiProvider";
 
-import { ResponseError } from "@/api/generated";
-import { callApi, createApiClient } from "@/api/shared/apiClient";
+afterEach(() => vi.unstubAllGlobals());
 
-describe("shared API client", () => {
-  it("creates all generated resources from one composition boundary", () => {
-    const client = createApiClient();
-
-    expect(client.auth.login).toBeTypeOf("function");
-    expect(client.brands.listBrands).toBeTypeOf("function");
-    expect(client.competitors.listCompetitors).toBeTypeOf("function");
-    expect(client.generations.listGenerations).toBeTypeOf("function");
-    expect(client.health.get).toBeTypeOf("function");
-    expect(client.prompts.listPrompts).toBeTypeOf("function");
+describe("shared API errors", () => {
+  it("normalizes HTTP errors for every generated resource", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: { code: "not_found", message: "not found", requestId: "req-1" },
+            }),
+            { status: 404 },
+          ),
+      ),
+    );
+    const api = createApi();
+    await expect(api.prompts.getById("p")).rejects.toMatchObject({
+      name: "ApiError",
+      code: "not_found",
+      requestId: "req-1",
+    });
+    await expect(api.brands.getById("b")).rejects.toMatchObject({
+      name: "ApiError",
+      code: "not_found",
+    });
   });
 
-  it("converts generated response errors into ApiError", async () => {
-    const response = new Response(
-      JSON.stringify({ error: { code: "not_found", message: "not found" } }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    );
-
-    await expect(
-      callApi(() => Promise.reject(new ResponseError(response, "request failed"))),
-    ).rejects.toMatchObject({ name: "ApiError", code: "not_found" });
+  it("uses an internal error for unreadable error responses", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("bad gateway", { status: 502 })));
+    await expect(createApi().auth.me()).rejects.toMatchObject({ code: "internal" });
   });
 });

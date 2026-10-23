@@ -95,10 +95,10 @@ func (c Competitor) Validate() error {
 }
 
 type CompetitorRepository interface {
-	BaseEntityRepository[Competitor, CompetitorFilter]
+	BaseEntityRepository[Competitor]
 	List(context.Context, CompetitorFilter) (*Page[Competitor], error)
-	Update(context.Context, CompetitorFilter, CompetitorUpdate) error
-	Delete(context.Context, CompetitorFilter) error
+	Update(context.Context, uuid.UUID, CompetitorUpdate) error
+	Delete(context.Context, uuid.UUID) error
 }
 
 type CompetitorFilter struct {
@@ -138,15 +138,15 @@ type CompanySearcher interface {
 
 type CompetitorCommander interface {
 	Create(context.Context, uuid.UUID, CompetitorParams) (*Competitor, error)
-	Patch(context.Context, uuid.UUID, uuid.UUID, CompetitorUpdate) (*Competitor, error)
-	Delete(context.Context, uuid.UUID, uuid.UUID) error
-	Confirm(context.Context, uuid.UUID, uuid.UUID) (*Competitor, error)
+	Patch(context.Context, uuid.UUID, CompetitorUpdate) (*Competitor, error)
+	Delete(context.Context, uuid.UUID) error
+	Confirm(context.Context, uuid.UUID) (*Competitor, error)
 	ConfirmAll(context.Context, uuid.UUID) error
 }
 
 type CompetitorQuerier interface {
 	List(context.Context, uuid.UUID, PageParams, string, *bool) (*Page[Competitor], error)
-	Get(context.Context, uuid.UUID, uuid.UUID) (*Competitor, error)
+	Get(context.Context, uuid.UUID) (*Competitor, error)
 	Search(context.Context, uuid.UUID, string) ([]CompanySearchResult, error)
 }
 
@@ -189,41 +189,27 @@ func (s *competitorService) Create(ctx context.Context, brandID uuid.UUID, param
 	return competitor, nil
 }
 
-func (s *competitorService) Delete(ctx context.Context, brandID, competitorID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return err
-	}
-
-	return s.store.CompetitorRepo().Delete(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
+func (s *competitorService) Delete(ctx context.Context, competitorID uuid.UUID) error {
+	return s.store.CompetitorRepo().Delete(ctx, competitorID)
 }
 
-func (s *competitorService) Patch(ctx context.Context, brandID, competitorID uuid.UUID, update CompetitorUpdate) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
+func (s *competitorService) Patch(ctx context.Context, competitorID uuid.UUID, update CompetitorUpdate) (*Competitor, error) {
 	update.Confirmed = nil
-	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
-	if err := s.store.CompetitorRepo().Update(ctx, filter, update); err != nil {
+	if err := s.store.CompetitorRepo().Update(ctx, competitorID, update); err != nil {
 		return nil, err
 	}
 
-	return s.store.CompetitorRepo().Get(ctx, filter)
+	return s.store.CompetitorRepo().Get(ctx, competitorID)
 }
 
-func (s *competitorService) Confirm(ctx context.Context, brandID, competitorID uuid.UUID) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
-	competitor, err := s.store.CompetitorRepo().Get(ctx, filter)
+func (s *competitorService) Confirm(ctx context.Context, competitorID uuid.UUID) (*Competitor, error) {
+	competitor, err := s.store.CompetitorRepo().Get(ctx, competitorID)
 	if err != nil {
 		return nil, err
 	}
 
 	confirmed := true
-	if err := s.store.CompetitorRepo().Update(ctx, filter, CompetitorUpdate{Confirmed: &confirmed}); err != nil {
+	if err := s.store.CompetitorRepo().Update(ctx, competitorID, CompetitorUpdate{Confirmed: &confirmed}); err != nil {
 		return nil, err
 	}
 
@@ -249,12 +235,8 @@ func (s *competitorService) List(ctx context.Context, brandID uuid.UUID, page Pa
 	})
 }
 
-func (s *competitorService) Get(ctx context.Context, brandID, competitorID uuid.UUID) (*Competitor, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	return s.store.CompetitorRepo().Get(ctx, CompetitorFilter{ID: competitorID, BrandID: brandID})
+func (s *competitorService) Get(ctx context.Context, competitorID uuid.UUID) (*Competitor, error) {
+	return s.store.CompetitorRepo().Get(ctx, competitorID)
 }
 
 func (s *competitorService) Search(ctx context.Context, brandID uuid.UUID, query string) ([]CompanySearchResult, error) {

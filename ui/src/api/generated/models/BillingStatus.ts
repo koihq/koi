@@ -69,8 +69,8 @@ export function BillingStatusFromJSONTyped(json: any, ignoreDiscriminator: boole
     return {
         
         'subscription': BillingSubscriptionFromJSON(json['subscription']),
-        'promptLimit': json['prompt_limit'],
-        'trialAvailable': json['trial_available'],
+        'promptLimit': json['promptLimit'],
+        'trialAvailable': json['trialAvailable'],
     };
 }
 
@@ -86,8 +86,8 @@ export function BillingStatusToJSONTyped(value?: BillingStatus | null, ignoreDis
     return {
         
         'subscription': BillingSubscriptionToJSON(value['subscription']),
-        'prompt_limit': value['promptLimit'],
-        'trial_available': value['trialAvailable'],
+        'promptLimit': value['promptLimit'],
+        'trialAvailable': value['trialAvailable'],
     };
 }
 

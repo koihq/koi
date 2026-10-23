@@ -10,15 +10,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
 type BrandRequest struct {
 	Name        string `json:"name"`
 	Domain      string `json:"domain"`
-	GitHubRepo  string `json:"github_repo"`
+	GitHubRepo  string `json:"githubRepo"`
 	Country     string `json:"country"`
 	Description string `json:"description"`
 }
@@ -26,7 +26,7 @@ type BrandRequest struct {
 type BrandPatchRequest struct {
 	Name        *string `json:"name"`
 	Domain      *string `json:"domain"`
-	GitHubRepo  *string `json:"github_repo"`
+	GitHubRepo  *string `json:"githubRepo"`
 	Country     *string `json:"country"`
 	Description *string `json:"description"`
 }
@@ -48,11 +48,10 @@ func NewBrandHandler(q koidomain.BrandQuerier, c koidomain.BrandCommander, sess 
 
 func (h *BrandHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
-		r.Use(Authorizer(h.sess))
 		r.With(middlewares.DecodeBody[BrandRequest]()).Post("/", h.Create)
-		r.Get("/", h.List)
+		r.Get("/", List(pageParams, h.querier.List, BrandToResponse))
 		r.Get("/countries", h.Countries)
-		r.Get("/{id}", h.Get)
+		r.Get("/{id}", Get("id", h.querier.Get, BrandToResponse))
 		if h.billing != nil {
 			r.With(h.billing).Post("/{id}/activate", h.Activate)
 			r.With(h.billing, middlewares.DecodeBody[BrandPatchRequest]()).Patch("/{id}", h.Update)
@@ -76,18 +75,18 @@ func (h *BrandHandler) Activate(w http.ResponseWriter, r *http.Request) {
 
 	brand, err := h.querier.Get(r.Context(), id)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
 
 	h.sess.Put(r.Context(), "active_brand_id", brand.ID.String())
-	api.JSON(w, r, http.StatusOK, brand)
+	apiresponse.JSON(w, r, http.StatusOK, BrandToResponse(brand))
 }
 
 func brandID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
-		api.WriteDomainError(w, r, koidomain.ErrNotFound)
+		apiresponse.WriteDomainError(w, r, koidomain.ErrNotFound)
 
 		return uuid.Nil, false
 	}
@@ -111,35 +110,12 @@ func (h *BrandHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 	})
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	api.JSON(w, r, http.StatusCreated, brand)
-}
-
-func (h *BrandHandler) List(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticatedUserID(w, r)
-	if !ok {
-		return
-	}
-
-	page, err := pageParams(r)
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	brands, err := h.querier.List(r.Context(), page)
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	api.JSON(w, r, http.StatusOK, brands)
+	apiresponse.JSON(w, r, http.StatusCreated, BrandToResponse(brand))
 }
 
 func pageParams(r *http.Request) (koidomain.PageParams, error) {
@@ -227,27 +203,6 @@ func positiveQueryInt(r *http.Request, key string, defaultValue, maxValue int) (
 	return value, nil
 }
 
-func (h *BrandHandler) Get(w http.ResponseWriter, r *http.Request) {
-	_, ok := authenticatedUserID(w, r)
-	if !ok {
-		return
-	}
-
-	id, ok := brandID(w, r)
-	if !ok {
-		return
-	}
-
-	brand, err := h.querier.Get(r.Context(), id)
-	if err != nil {
-		api.WriteDomainError(w, r, err)
-
-		return
-	}
-
-	api.JSON(w, r, http.StatusOK, brand)
-}
-
 func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
 	_, ok := authenticatedUserID(w, r)
 	if !ok {
@@ -269,14 +224,14 @@ func (h *BrandHandler) Update(w http.ResponseWriter, r *http.Request) {
 		Description: req.Description,
 	})
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, brand)
+	apiresponse.JSON(w, r, http.StatusOK, BrandToResponse(brand))
 }
 
 func (h *BrandHandler) Countries(w http.ResponseWriter, r *http.Request) {
-	api.JSON(w, r, http.StatusOK, koidomain.SearchSupportedCountries(r.URL.Query().Get("q")))
+	apiresponse.JSON(w, r, http.StatusOK, koidomain.SearchSupportedCountries(r.URL.Query().Get("q")))
 }

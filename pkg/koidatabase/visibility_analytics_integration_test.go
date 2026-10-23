@@ -59,7 +59,7 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	previousCell.Sources = []string{}
 	require.NoError(t, db.Create(&previousCell).Error)
 
-	repo := store.VisibilityRepo().(koidomain.VisibilityAnalyticsRepository)
+	repo := store.VisibilityRepo()
 	read := func(engines []koidomain.EngineID) *koidomain.VisibilityReport {
 		t.Helper()
 		byPrompt, _, err := repo.AggregateVisibility(ctx, brand.ID, []uuid.UUID{promptID}, 7, engines, now)
@@ -84,7 +84,7 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	require.Equal(t, 1, report.Competitors[1].Metric.Mentioned)
 
 	aliases := []string{"Shared"}
-	_, err = commander.Patch(ctx, brand.ID, acme.ID, koidomain.CompetitorUpdate{Aliases: &aliases})
+	_, err = commander.Patch(ctx, acme.ID, koidomain.CompetitorUpdate{Aliases: &aliases})
 	require.NoError(t, err)
 	report = read(nil)
 	require.Equal(t, 1, report.Competitors[0].Metric.Cited)
@@ -97,7 +97,9 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	secondPrompt, err := koidomain.NewPromptCommander(store).Create(ctx, brand.ID, koidomain.PromptParams{Text: "Another analytics prompt?"})
 	require.NoError(t, err)
 	var cellQueries atomic.Int32
+	var totalQueries atomic.Int32
 	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("analytics_cell_count", func(tx *gorm.DB) {
+		totalQueries.Add(1)
 		if tx.Statement.Table == "visibility_results" {
 			cellQueries.Add(1)
 		}
@@ -106,16 +108,47 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	_, _, err = repo.AggregateVisibility(ctx, brand.ID, []uuid.UUID{promptID, secondPrompt.ID}, 7, nil, now)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, cellQueries.Load())
+	require.EqualValues(t, 2, totalQueries.Load())
 	require.NoError(t, db.Model(&koidomain.Prompt{}).Where("id = ?", promptID).
 		Update("confirmed", false).Error)
 	require.Equal(t, 2, read(nil).Metric.Completed)
-	require.NoError(t, koidomain.NewPromptCommander(store).Delete(ctx, brand.ID, promptID))
+	require.NoError(t, koidomain.NewPromptCommander(store).Delete(ctx, promptID))
 	require.Equal(t, 2, read(nil).Metric.Completed)
-	require.NoError(t, commander.Delete(ctx, brand.ID, acme.ID))
-	require.NoError(t, commander.Delete(ctx, brand.ID, shared.ID))
+	require.NoError(t, commander.Delete(ctx, acme.ID))
+	require.NoError(t, commander.Delete(ctx, shared.ID))
 	require.Empty(t, read(nil).Competitors)
 
 	stranger := context.Background()
 	_, _, err = koidomain.NewVisibilityAnalyticsQuerier(store).Aggregate(stranger, brand.ID, nil, 7, nil)
 	require.Error(t, err)
+}
+
+func TestVisibilityAnalyticsRepositoryScopesCellsWithoutDomainGuard(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
+	require.NoError(t, err)
+	now := time.Now().UTC()
+	outcome := koidomain.OutcomeMentioned
+	cell := cells[0]
+	cell.Outcome = &outcome
+	cell.FetchedAt = &now
+	cell.RawAnswer = "Private brand answer"
+	require.NoError(t, db.Save(&cell).Error)
+
+	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
+	require.NoError(t, store.UserRepo().Create(t.Context(), user))
+	testOrganizationForUser(t, store, user.ID)
+	foreignContext := testIdentity(t, store, user.ID)
+
+	_, ownerReport, err := store.VisibilityRepo().AggregateVisibility(ctx, brand.ID, nil, 7, nil, now)
+	require.NoError(t, err)
+	require.Equal(t, 1, ownerReport.Metric.Completed)
+
+	byPrompt, foreignReport, err := store.VisibilityRepo().AggregateVisibility(foreignContext, brand.ID, []uuid.UUID{cell.PromptID}, 7, nil, now)
+	require.NoError(t, err)
+	require.Zero(t, foreignReport.Metric.Completed)
+	require.Nil(t, foreignReport.Metric.Rate)
+	require.Zero(t, byPrompt[cell.PromptID].Metric.Completed)
+	require.Empty(t, foreignReport.Competitors)
 }

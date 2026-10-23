@@ -80,8 +80,8 @@ export function BillingChangeFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'quantity': json['quantity'],
         'effective': json['effective'],
-        'paymentUrl': json['payment_url'] == null ? undefined : json['payment_url'],
-        'expiresAt': json['expires_at'] == null ? undefined : (new Date(json['expires_at'])),
+        'paymentUrl': json['paymentUrl'] == null ? undefined : json['paymentUrl'],
+        'expiresAt': json['expiresAt'] == null ? undefined : (new Date(json['expiresAt'])),
     };
 }
 
@@ -98,8 +98,8 @@ export function BillingChangeToJSONTyped(value?: BillingChange | null, ignoreDis
         
         'quantity': value['quantity'],
         'effective': value['effective'],
-        'payment_url': value['paymentUrl'],
-        'expires_at': value['expiresAt'] == null ? value['expiresAt'] : value['expiresAt'].toISOString(),
+        'paymentUrl': value['paymentUrl'],
+        'expiresAt': value['expiresAt'] == null ? value['expiresAt'] : value['expiresAt'].toISOString(),
     };
 }
 

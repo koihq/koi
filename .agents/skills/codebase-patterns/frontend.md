@@ -21,28 +21,17 @@ Import alias is `@/*` → `src/*` (tsconfig `baseUrl` + `paths`). Do not use `#/
 
 ## API layer (`src/api/`)
 
-SDK/client instances are created **once** in `apiProvider.tsx` and passed into thin per-entity wrappers. Entity files never construct the HTTP client themselves.
+SDK/client instances are created **once** by `createApi()` in `main.tsx` and passed into thin per-entity wrappers. Entity files never construct the HTTP client themselves.
 
 - `featureName.api.ts` — Entity types, Create/Update types, ListParams, and `createFeatureNameApi(client)` wrapper that receives a pre-built client.
 - `shared/types.ts` — `BaseEntity`, `ApiListResponse`, `BaseListParams`.
 - `shared/mappers.ts` — Entity mappers + field utilities.
-- `shared/apiClient.ts` — `createApiClient()` (base URL) and `callApi(fn)` error wrapper.
+- `shared/apiClient.ts` — `createApiClient()` (base URL) and one generated-runtime response middleware for `ApiError`.
 - `apiProvider.tsx` — instantiates clients, builds wrappers, exposes `ApiProvider` + `useApi()` for DI.
 
 ```typescript
-// src/api/health.api.ts
-export interface Health {
-  status: string;
-  db: string;
-}
-
-export function createHealthApi(client: ApiClient) {
-  return {
-    get: async (): Promise<Health> => {
-      const response = await callApi(() => client.get<Health>("/health"));
-      return response;
-    },
-  };
+export function createHealthApi(client: HealthApi) {
+  return { get: () => client.get() };
 }
 ```
 
@@ -50,9 +39,9 @@ export function createHealthApi(client: ApiClient) {
 
 To register a new entity:
 
-1. Add `<entity>: ReturnType<typeof create<Entity>Api>` to `ApiContextValue`.
-2. Inside the `useMemo` block, reuse an existing client or create a thin wrapper next to the others.
-3. Add `<entity>: create<Entity>Api(client)` to the returned object.
+1. Instantiate the generated resource in `createApiClient()` using the shared configuration.
+2. Build its thin wrapper in `createApi()`. The `Api` type is inferred from that function.
+3. Use shared query options and keys in loaders and hooks.
 
 ```typescript
 const { health } = useApi();
@@ -65,7 +54,14 @@ Leave empty until a non-HTTP service exists. Do not add Keycloak or role-permiss
 
 ## Dependency injection (`src/api/apiProvider.tsx`)
 
-`ApiProvider` creates one HTTP client via `createApiClient()`, instantiates wrappers inside a `useMemo`, and returns them via Context.
+`main.tsx` creates one API instance and QueryClient, passes both into router context
+and injects the same instances into the React providers. Wrappers receive generated
+resource clients with request-object signatures. Public APIs use camelCase.
+
+Shared `queryOptions` in `src/lib/queries.ts` serve loaders and hooks. Shared keys
+live in `src/lib/query-keys.ts`; account changes cancel queries and clear the cache.
+Resource details take their ID alone; lists and creates carry explicit brand scope.
+Do not read session preferences inside API wrappers to choose a destination.
 
 ## Presentation layer (`src/routes/`)
 
@@ -77,7 +73,7 @@ TanStack Router file-based routing:
 | `$`    | Dynamic parameter                  | `$id.tsx` → `/route/:id`   |
 | `-`    | Private folder or read-only module | `-components/`, `-hooks/`  |
 
-Pathless `_authenticated` layout gates `/`. `beforeLoad` calls `context.api.auth.me()` (the same `createApi()` instance is passed into the router in `main.tsx`; hooks cannot run in `beforeLoad`) and redirects to `/sign-in` on failure. Public routes: `/sign-in`, `/sign-up`. Do not add Keycloak or JWT.
+Pathless `_authenticated` layout gates `/`. `beforeLoad` loads account and brand through `context.queryClient` and shared query options (the same `createApi()` instance is passed into the router in `main.tsx`; hooks cannot run in `beforeLoad`) and redirects to `/sign-in` on failure. Public routes: `/sign-in`, `/sign-up`. Do not add Keycloak or JWT.
 
 Full-CRUD feature structure:
 

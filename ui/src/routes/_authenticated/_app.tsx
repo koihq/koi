@@ -1,13 +1,15 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-
 import { AppHeader } from "@/components/blocks/app-header";
+import { billingOptions } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/_app")({
   beforeLoad: async ({ context }) => {
     if (!context.brand) throw redirect({ to: "/setup" });
-    if ((await context.api.capabilities.get()).cloudBilling) {
-      const billing = await context.api.billing.subscription();
+    if (context.capabilities.cloudBilling) {
+      const billing = await context.queryClient.fetchQuery(
+        billingOptions(context.api, context.me.organization.id),
+      );
       if (billing.promptLimit === 0) throw redirect({ to: "/settings/billing" });
     }
 
@@ -34,7 +36,7 @@ function AppLayout() {
         tabIndex={-1}
         className="mx-auto w-full max-w-[1376px] px-4 pb-10 sm:px-7"
       >
-        <Outlet />
+        <Outlet key={brand.id} />
       </main>
     </div>
   );

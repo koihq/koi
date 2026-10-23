@@ -58,6 +58,12 @@ compatibility migrations for earlier development schemas or historical job kinds
 
 ## API and implementation conventions
 
+- Architecture and examples: `docs/architecture.md`. Product APIs are flat: collections require `brandId` in query, creates and collection commands in the body; detail and mutation routes use the resource UUID alone. `active_brand_id` is only a session UI preference.
+- HTTP DTOs use camelCase, including error field names. Keep persisted snapshot JSON and vendor payloads unchanged. Shared responses live in `pkg/koiapi/response`; generic HTTP adapters stay in `koiapi` and carry no business policy.
+- Authentication resolves membership once per request into `koiauth.Identity` with user, organization and role. Scoped repositories reject a missing organization. One organization per user is enforced in the DB; an organization can have multiple members and brands.
+- Keep the intentional absence of a live-prompt FK on historical results. Model live parent relations with GORM associations and explicit delete policy.
+- OpenAPI generates request objects (`useSingleRequestParameter=true`). Share `queryOptions` between loaders and hooks, normalize HTTP errors in the client middleware, and clear queries on account changes.
+
 - Persisted-resource `GET` lists accept `page` and `pageSize` and return `Page[T]`, even when empty: `items: []`, `totalItems: 0`, `totalPages: 0`, `currentPage: 1`, `hasNext: false`, `hasPrev: false`. Keep OpenAPI and UI wrappers aligned. Country options and competitor search are bounded combobox lookups, so they are exceptions.
 - Put shared UI blocks in `ui/src/components/blocks/`, shared hooks in `ui/src/hooks/`, and shared query keys in `ui/src/lib/query-keys.ts`. Route-private code stays under a route's `-` folders.
 - Live visibility runs collect engine answers and sources through Cloro. OpenRouter is for onboarding research and prompt/competitor drafting. Keep engine identity (ChatGPT, Perplexity, Gemini, Google AI Overviews) separate from the collection provider (stub or Cloro).

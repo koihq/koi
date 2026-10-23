@@ -15,7 +15,7 @@
 
 import { mapValues } from '../runtime';
 /**
- * Editable brand fields. At least one of domain or github_repo must remain after the update.
+ * Editable brand fields. At least one of domain or githubRepo must remain after the update.
  * @export
  * @interface BrandPatchRequest
  */
@@ -71,7 +71,7 @@ export function BrandPatchRequestFromJSONTyped(json: any, ignoreDiscriminator: b
         
         'name': json['name'] == null ? undefined : json['name'],
         'domain': json['domain'] == null ? undefined : json['domain'],
-        'githubRepo': json['github_repo'] == null ? undefined : json['github_repo'],
+        'githubRepo': json['githubRepo'] == null ? undefined : json['githubRepo'],
         'country': json['country'] == null ? undefined : json['country'],
         'description': json['description'] == null ? undefined : json['description'],
     };
@@ -90,7 +90,7 @@ export function BrandPatchRequestToJSONTyped(value?: BrandPatchRequest | null, i
         
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'country': value['country'],
         'description': value['description'],
     };

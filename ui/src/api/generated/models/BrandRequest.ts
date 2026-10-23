@@ -15,7 +15,7 @@
 
 import { mapValues } from '../runtime';
 /**
- * At least one of domain or github_repo is required.
+ * At least one of domain or githubRepo is required.
  * @export
  * @interface BrandRequest
  */
@@ -73,7 +73,7 @@ export function BrandRequestFromJSONTyped(json: any, ignoreDiscriminator: boolea
         
         'name': json['name'],
         'domain': json['domain'] == null ? undefined : json['domain'],
-        'githubRepo': json['github_repo'] == null ? undefined : json['github_repo'],
+        'githubRepo': json['githubRepo'] == null ? undefined : json['githubRepo'],
         'country': json['country'],
         'description': json['description'] == null ? undefined : json['description'],
     };
@@ -92,7 +92,7 @@ export function BrandRequestToJSONTyped(value?: BrandRequest | null, ignoreDiscr
         
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'country': value['country'],
         'description': value['description'],
     };

@@ -115,7 +115,7 @@ export interface BillingApiInterface {
 
     /**
      */
-    billingChangeAllowance(idempotencyKey: string, billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange>;
+    billingChangeAllowance(requestParameters: BillingChangeAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange>;
 
     /**
      * Creates request options for billingCheckout without sending the request
@@ -136,7 +136,7 @@ export interface BillingApiInterface {
 
     /**
      */
-    billingCheckout(billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingRedirect>;
+    billingCheckout(requestParameters: BillingCheckoutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingRedirect>;
 
     /**
      * Creates request options for billingPortal without sending the request
@@ -176,7 +176,7 @@ export interface BillingApiInterface {
 
     /**
      */
-    billingQuote(prompts: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingQuote>;
+    billingQuote(requestParameters: BillingQuoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingQuote>;
 
     /**
      * Creates request options for billingSubscription without sending the request
@@ -218,7 +218,7 @@ export interface BillingApiInterface {
 
     /**
      */
-    stripeWebhook(stripeSignature: string, body: object, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+    stripeWebhook(requestParameters: StripeWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
 }
 
@@ -313,8 +313,8 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
 
     /**
      */
-    async billingChangeAllowance(idempotencyKey: string, billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange> {
-        const response = await this.billingChangeAllowanceRaw({ idempotencyKey: idempotencyKey, billingAllowanceRequest: billingAllowanceRequest }, initOverrides);
+    async billingChangeAllowance(requestParameters: BillingChangeAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange> {
+        const response = await this.billingChangeAllowanceRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -358,8 +358,8 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
 
     /**
      */
-    async billingCheckout(billingAllowanceRequest: BillingAllowanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingRedirect> {
-        const response = await this.billingCheckoutRaw({ billingAllowanceRequest: billingAllowanceRequest }, initOverrides);
+    async billingCheckout(requestParameters: BillingCheckoutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingRedirect> {
+        const response = await this.billingCheckoutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -439,8 +439,8 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
 
     /**
      */
-    async billingQuote(prompts: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingQuote> {
-        const response = await this.billingQuoteRaw({ prompts: prompts }, initOverrides);
+    async billingQuote(requestParameters: BillingQuoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingQuote> {
+        const response = await this.billingQuoteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -530,8 +530,8 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
 
     /**
      */
-    async stripeWebhook(stripeSignature: string, body: object, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.stripeWebhookRaw({ stripeSignature: stripeSignature, body: body }, initOverrides);
+    async stripeWebhook(requestParameters: StripeWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.stripeWebhookRaw(requestParameters, initOverrides);
     }
 
 }

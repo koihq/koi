@@ -35,7 +35,7 @@ func validEmail(email string) bool {
 }
 
 type UserRepository interface {
-	BaseEntityRepository[User, uuid.UUID]
+	BaseEntityRepository[User]
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	LockForUpdate(ctx context.Context, id uuid.UUID) error
 }

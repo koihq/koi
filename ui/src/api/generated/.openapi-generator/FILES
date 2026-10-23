@@ -20,6 +20,7 @@ models/BillingSubscription.ts
 models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
+models/BrandRequestScope.ts
 models/BrandRes.ts
 models/CapabilitiesResponse.ts
 models/CompetitorAppearance.ts

@@ -99,7 +99,7 @@ function Home() {
   const prompts = useQuery({
     queryKey: [...promptKey(brand.id), "confirmed-count"],
     queryFn: ({ signal }) =>
-      api.prompts.list(brand.id, { page: 1, pageSize: 10, confirmed: true }, { signal }),
+      api.prompts.list({ brandId: brand.id, page: 1, pageSize: 10, confirmed: true }, { signal }),
   });
   const summary = useQuery({
     queryKey: [...promptKey(brand.id), "visibility-summary", scope],
@@ -109,7 +109,7 @@ function Home() {
     queryKey: [...competitorKey(brand.id), "analytics"],
     queryFn: ({ signal }) =>
       collectPages<Competitor>((page) =>
-        api.competitors.list(brand.id, { page, pageSize: 50 }, { signal }),
+        api.competitors.list({ brandId: brand.id, page, pageSize: 50 }, { signal }),
       ),
   });
 

@@ -64,7 +64,7 @@ export interface AuthApiInterface {
 
     /**
      */
-    login(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
+    login(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
 
     /**
      * Creates request options for logout without sending the request
@@ -123,7 +123,7 @@ export interface AuthApiInterface {
 
     /**
      */
-    signup(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
+    signup(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
 
 }
 
@@ -172,8 +172,8 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
 
     /**
      */
-    async login(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
-        const response = await this.loginRaw({ credentialsReq: credentialsReq }, initOverrides);
+    async login(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
+        const response = await this.loginRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -286,8 +286,8 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
 
     /**
      */
-    async signup(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
-        const response = await this.signupRaw({ credentialsReq: credentialsReq }, initOverrides);
+    async signup(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
+        const response = await this.signupRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

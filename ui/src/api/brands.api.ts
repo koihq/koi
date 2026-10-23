@@ -5,7 +5,6 @@ import type {
   BrandsApi,
   CountryOption,
 } from "@/api/generated";
-import { callApi } from "@/api/shared/apiClient";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
 export type Brand = BrandRes;
@@ -18,14 +17,14 @@ export type BrandCountry = CountryOption;
 
 export function createBrandsApi(api: BrandsApi) {
   return {
-    list: (params: BaseListParams = {}): Promise<ApiListResponse<Brand>> =>
-      callApi(() => api.listBrands(params.page, params.pageSize)),
-    getById: (id: string): Promise<Brand> => callApi(() => api.getBrand(id)),
-    activate: (id: string): Promise<Brand> => callApi(() => api.activateBrand(id)),
-    create: (request: CreateBrand): Promise<Brand> => callApi(() => api.createBrand(request)),
+    list: (params: BaseListParams = {}, init?: RequestInit): Promise<ApiListResponse<Brand>> =>
+      api.listBrands(params, init),
+    getById: (id: string): Promise<Brand> => api.getBrand({ id }),
+    activate: (id: string): Promise<Brand> => api.activateBrand({ id }),
+    create: (request: CreateBrand): Promise<Brand> => api.createBrand({ brandRequest: request }),
     update: (id: string, request: UpdateBrand): Promise<Brand> =>
-      callApi(() => api.updateBrand(id, request)),
+      api.updateBrand({ id, brandPatchRequest: request }),
     listCountries: (query?: string, initOverrides?: RequestInit): Promise<BrandCountry[]> =>
-      callApi(() => api.listBrandCountries(query, initOverrides)),
+      api.listBrandCountries({ q: query }, initOverrides),
   };
 }

@@ -2,9 +2,9 @@ package koidatabase
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/koihq/koi/pkg/koidomain"
@@ -62,10 +62,6 @@ func likePattern(query string) string {
 	return "%" + replacer.Replace(query) + "%"
 }
 
-func (r *GormPromptRepository) Get(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Prompt, error) {
-	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB { return applyPromptFilter(db, filter) })
-}
-
 func (r *GormPromptRepository) List(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Page[koidomain.Prompt], error) {
 	order := promptSortOrder(filter.Sort, filter.Descending, "prompts.text", "prompts.created_at ASC, prompts.id ASC")
 
@@ -80,10 +76,12 @@ func (r *GormPromptRepository) List(ctx context.Context, filter koidomain.Prompt
 	}, filter.Page, order)
 }
 
-func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.PromptFilter, update koidomain.PromptUpdate) error {
-	if _, err := r.Repository.query(ctx); err != nil {
+func (r *GormPromptRepository) Update(ctx context.Context, id uuid.UUID, update koidomain.PromptUpdate) error {
+	currentEntity, err := r.Get(ctx, id)
+	if err != nil {
 		return err
 	}
+	filter := koidomain.PromptFilter{ID: id, BrandID: currentEntity.BrandID}
 
 	values := &koidomain.Prompt{}
 	columns := make([]string, 0, 3)
@@ -109,7 +107,7 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
 				return err
 			}
-			current, err := NewGormPromptRepository(tx).Get(ctx, filter)
+			current, err := NewGormPromptRepository(tx).Get(ctx, filter.ID)
 			if err != nil {
 				return err
 			}
@@ -133,10 +131,12 @@ func (r *GormPromptRepository) Update(ctx context.Context, filter koidomain.Prom
 	})
 }
 
-func (r *GormPromptRepository) Delete(ctx context.Context, filter koidomain.PromptFilter) error {
-	if _, err := r.Repository.query(ctx); err != nil {
+func (r *GormPromptRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	currentEntity, err := r.Get(ctx, id)
+	if err != nil {
 		return err
 	}
+	filter := koidomain.PromptFilter{ID: id, BrandID: currentEntity.BrandID}
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {

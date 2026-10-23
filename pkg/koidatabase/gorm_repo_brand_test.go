@@ -76,7 +76,7 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 	require.Contains(t, queries[0], "id =")
 
 	for _, query := range queries[1:] {
-		require.Contains(t, query, "user_id =")
+		require.Contains(t, query, "organization_id =")
 	}
 
 	// DryRun has no rows, so shared pagination stops after its count query.

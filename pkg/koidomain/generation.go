@@ -77,7 +77,7 @@ type GenerationRun struct {
 func (GenerationRun) TableName() string { return "generation_runs" }
 
 type GenerationRepository interface {
-	Get(context.Context, uuid.UUID, uuid.UUID) (*GenerationRun, error)
+	Get(context.Context, uuid.UUID) (*GenerationRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[GenerationRun], error)
 	ByKey(context.Context, uuid.UUID, string) (*GenerationRun, error)
 	Active(context.Context, uuid.UUID) (*GenerationRun, error)
@@ -90,7 +90,7 @@ type GenerationCommander interface {
 }
 
 type GenerationQuerier interface {
-	Get(context.Context, uuid.UUID, uuid.UUID) (*GenerationRun, error)
+	Get(context.Context, uuid.UUID) (*GenerationRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[GenerationRun], error)
 }
 
@@ -191,12 +191,8 @@ func (s *generationService) Create(ctx context.Context, brandID uuid.UUID, mode 
 	return run, terminalReplay, nil
 }
 
-func (s *generationService) Get(ctx context.Context, brandID, runID uuid.UUID) (*GenerationRun, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	return s.store.GenerationRepo().Get(ctx, brandID, runID)
+func (s *generationService) Get(ctx context.Context, runID uuid.UUID) (*GenerationRun, error) {
+	return s.store.GenerationRepo().Get(ctx, runID)
 }
 
 func (s *generationService) List(ctx context.Context, brandID uuid.UUID, page PageParams) (*Page[GenerationRun], error) {

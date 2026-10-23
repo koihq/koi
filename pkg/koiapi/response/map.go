@@ -1,4 +1,4 @@
-package api
+package response
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ func MapError(err error) (int, Envelope) {
 		switch de.Code {
 		case koidomain.CodeValidation, koidomain.CodeInvalidJSON:
 			return http.StatusBadRequest, envelope(de)
-		case koidomain.CodeEmailTaken, koidomain.CodeBrandLimitReached, koidomain.CodePromptLimitReached,
+		case koidomain.CodeResourceConflict, koidomain.CodeEmailTaken, koidomain.CodeBrandLimitReached, koidomain.CodePromptLimitReached,
 			koidomain.CodeBillingConflict, koidomain.CodeBillingCheckoutPending,
 			koidomain.CodeBillingSubscriptionExists, koidomain.CodeBillingPriceMismatch,
 			koidomain.CodeGenerationConflict, koidomain.CodeIdempotencyConflict,
