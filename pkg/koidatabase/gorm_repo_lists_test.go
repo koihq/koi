@@ -138,9 +138,16 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 	brands := NewGormBrandRepository(db)
 	_, err = brands.Count(ctx)
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
-	_, err = brands.List(ctx, koidomain.PageParams{Page: 1, PageSize: 10})
+	_, err = brands.List(ctx, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	})
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	_, err = brands.Get(ctx, brandID)
+	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
+	_, err = brands.Latest(ctx)
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	require.ErrorIs(t, brands.Update(ctx, &koidomain.Brand{
 		BaseEntity: koidomain.BaseEntity{
@@ -150,6 +157,8 @@ func TestProtectedRepositoriesFailWithoutIdentity(t *testing.T) {
 	require.ErrorIs(t, brands.Create(ctx, &koidomain.Brand{}), koidomain.ErrUnauthorized)
 
 	prompts := NewGormPromptRepository(db)
+	_, err = prompts.HasConfirmed(ctx, brandID)
+	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	_, err = prompts.Get(ctx, brandID)
 	require.ErrorIs(t, err, koidomain.ErrUnauthorized)
 	_, err = prompts.List(ctx, koidomain.PromptFilter{

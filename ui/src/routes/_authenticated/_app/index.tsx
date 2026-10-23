@@ -20,7 +20,6 @@ import {
 import { memo, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
-import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine } from "@/api/generated";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { TrackingSummary } from "@/components/blocks/tracking-review";
@@ -29,8 +28,7 @@ import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTracking } from "@/hooks/use-tracking";
-import { collectPages } from "@/lib/collect-pages";
-import { competitorKey, promptKey } from "@/lib/query-keys";
+import { promptKey } from "@/lib/query-keys";
 import {
   engines,
   type VisibilityScope,
@@ -96,45 +94,30 @@ function Home() {
     [graph.days, selectedEngines],
   );
 
-  const prompts = useQuery({
-    queryKey: [...promptKey(brand.id), "confirmed-count"],
-    queryFn: ({ signal }) =>
-      api.prompts.list({ brandId: brand.id, page: 1, pageSize: 10, confirmed: true }, { signal }),
-  });
   const summary = useQuery({
     queryKey: [...promptKey(brand.id), "visibility-summary", scope],
     queryFn: ({ signal }) => api.runs.summary(brand.id, scope, { signal }),
   });
-  const competitors = useQuery({
-    queryKey: [...competitorKey(brand.id), "analytics"],
-    queryFn: ({ signal }) =>
-      collectPages<Competitor>((page) =>
-        api.competitors.list({ brandId: brand.id, page, pageSize: 50 }, { signal }),
-      ),
-  });
-
-  const hasConfirmedPrompts = (prompts.data?.totalItems ?? 0) > 0;
-  const confirmedCompetitors = useMemo(
-    () => (competitors.data ?? []).filter((competitor) => competitor.confirmed),
-    [competitors.data],
+  const hasConfirmedPrompts = summary.data?.hasConfirmedPrompts;
+  const comparison = summary.data?.competitors.find(
+    (competitor) => competitor.id === graph.compareId,
   );
-  const comparison = confirmedCompetitors.find((competitor) => competitor.id === graph.compareId);
   const { series, comparedSeries, rate, change, rivals, comparisonRate } = useMemo(() => {
     const report = summary.data;
     const series = visibilitySeries(report);
     const comparedSeries = comparison ? visibilitySeries(report, comparison.id) : [];
     const rate = visibilityRate(report);
     const change = visibilityChange(report);
-    const rivals = confirmedCompetitors
+    const rivals = (report?.competitors ?? [])
       .map((competitor) => ({
         competitor,
-        rate: visibilityRate(report, undefined, competitor.id),
+        rate: competitor.metric.rate,
       }))
       .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
     const comparisonRate = comparison ? visibilityRate(report, undefined, comparison.id) : null;
 
     return { series, comparedSeries, rate, change, rivals, comparisonRate };
-  }, [summary.data, comparison, confirmedCompetitors]);
+  }, [summary.data, comparison]);
   const selectedPoint = inspected === null ? undefined : series[inspected];
   const selectedComparisonPoint = inspected === null ? undefined : comparedSeries[inspected];
   const headlineRate = selectedPoint ? selectedPoint.rate : rate;
@@ -190,16 +173,14 @@ function Home() {
             <h2 id="signal-heading" className="mt-0.5 text-xl leading-tight font-bold">
               {t("dashboard.aiVisibility")}
             </h2>
-            {prompts.isPending || competitors.isPending || summary.isPending ? (
+            {summary.isPending ? (
               <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
-            ) : prompts.isError || competitors.isError || summary.isError ? (
+            ) : summary.isError ? (
               <p role="alert" className="mt-6 text-sm">
                 {t("dashboard.loadError")}{" "}
                 <Button
                   variant="link"
                   onClick={() => {
-                    void prompts.refetch();
-                    void competitors.refetch();
                     void summary.refetch();
                   }}
                 >
@@ -350,7 +331,7 @@ function Home() {
           </fieldset>
         </div>
 
-        {rate === null ? (
+        {summary.isSuccess && rate === null ? (
           <div className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
             <p>
               {t(
@@ -363,7 +344,7 @@ function Home() {
               </a>
             )}
           </div>
-        ) : (
+        ) : rate !== null ? (
           <VisibilityChart
             series={series}
             comparison={comparedSeries}
@@ -375,7 +356,7 @@ function Home() {
             locale={i18n.language}
             scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
           />
-        )}
+        ) : null}
 
         <div className="mt-4 flex items-center justify-between gap-4">
           <span className="text-xs font-normal text-muted-foreground">
@@ -443,15 +424,15 @@ function Home() {
                 </button>
               );
             })
-          ) : (
+          ) : summary.isSuccess ? (
             <p className="text-xs font-normal text-muted-foreground py-2">
               {t("dashboard.noCompetitors")}
             </p>
-          )}
+          ) : null}
         </div>
       </section>
 
-      {tracking.data && !hasConfirmedPrompts && (
+      {tracking.data && hasConfirmedPrompts === false && (
         <div className="mt-6 border-l-2 border-border pl-4">
           <TrackingSummary brandID={brand.id} />
         </div>
@@ -459,7 +440,6 @@ function Home() {
       <MemoPromptManager
         brandID={brand.id}
         scope={scope}
-        competitors={confirmedCompetitors}
         draftStartFailed={draftStart === "failed"}
       />
     </div>

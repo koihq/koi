@@ -1,7 +1,7 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import type { Api } from "@/api/apiProvider";
+import type { BrandListParams } from "@/api/brands.api";
 import type { PromptListParams } from "@/api/prompts.api";
-import { collectPages } from "@/lib/collect-pages";
 import {
   accountKey,
   billingSubscriptionKey,
@@ -26,11 +26,10 @@ export const capabilitiesOptions = (api: Api) =>
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });
-export const brandsOptions = (api: Api, organizationId: string) =>
+export const brandListOptions = (api: Api, organizationId: string, params: BrandListParams) =>
   queryOptions({
-    queryKey: brandsKey(organizationId),
-    queryFn: ({ signal }) =>
-      collectPages((page) => api.brands.list({ page, pageSize: 100 }, { signal })),
+    queryKey: [...brandsKey(organizationId), "list", params],
+    queryFn: ({ signal }) => api.brands.list(params, { signal }),
   });
 export const billingOptions = (api: Api, organizationId: string) =>
   queryOptions({

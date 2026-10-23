@@ -34,7 +34,7 @@ test("an open form keeps its explicit brand when another tab changes the prefere
         id: "user",
         email: "founder@example.com",
         organization: { id: "org", name: "Organization", role: "owner" },
-        activeBrandId,
+        activeBrand: brands.find((brand) => brand.id === activeBrandId),
       };
     else if (path === "/api/v1/brands")
       json = {

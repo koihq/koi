@@ -211,8 +211,14 @@ type BrandRepository interface {
 	BaseEntityRepository[Brand]
 	LockForUpdate(context.Context, uuid.UUID) (*Brand, error)
 	Count(context.Context) (int64, error)
-	List(context.Context, PageParams) (*Page[Brand], error)
+	Latest(context.Context) (*Brand, error)
+	List(context.Context, BrandListParams) (*Page[Brand], error)
 	Update(context.Context, *Brand) error
+}
+
+type BrandListParams struct {
+	Page  PageParams
+	Query string
 }
 
 type BrandParams struct {
@@ -229,7 +235,7 @@ type BrandCommander interface {
 }
 
 type BrandQuerier interface {
-	List(ctx context.Context, params PageParams) (*Page[Brand], error)
+	List(ctx context.Context, params BrandListParams) (*Page[Brand], error)
 	Get(ctx context.Context, id uuid.UUID) (*Brand, error)
 }
 
@@ -314,7 +320,7 @@ type brandQuerier struct{ store Store }
 
 func NewBrandQuerier(store Store) BrandQuerier { return &brandQuerier{store: store} }
 
-func (q *brandQuerier) List(ctx context.Context, params PageParams) (*Page[Brand], error) {
+func (q *brandQuerier) List(ctx context.Context, params BrandListParams) (*Page[Brand], error) {
 	return q.store.BrandRepo().List(ctx, params)
 }
 

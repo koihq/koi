@@ -5,6 +5,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
 	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
@@ -16,11 +17,15 @@ type CredentialsReq struct {
 	Password string `json:"password"`
 }
 
+type AuthRes struct {
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	Organization OrgRes `json:"organization"`
+}
+
 type MeRes struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Organization  OrgRes `json:"organization"`
-	ActiveBrandID string `json:"activeBrandId,omitempty"`
+	AuthRes
+	ActiveBrand *BrandRes `json:"activeBrand"`
 }
 
 type OrgRes struct {
@@ -29,8 +34,8 @@ type OrgRes struct {
 	Role string `json:"role"`
 }
 
-func MeToRes(me *koidomain.Me) MeRes {
-	return MeRes{
+func AuthToRes(me *koidomain.Me) AuthRes {
+	return AuthRes{
 		ID:    me.User.ID.String(),
 		Email: me.User.Email,
 		Organization: OrgRes{
@@ -80,7 +85,7 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiresponse.JSON(w, r, http.StatusCreated, MeToRes(me))
+	apiresponse.JSON(w, r, http.StatusCreated, AuthToRes(me))
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -98,9 +103,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := MeToRes(me)
-	res.ActiveBrandID = h.sess.GetString(r.Context(), "active_brand_id")
-	apiresponse.JSON(w, r, http.StatusOK, res)
+	apiresponse.JSON(w, r, http.StatusOK, AuthToRes(me))
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -119,15 +122,20 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	me, err := h.querier.Me(r.Context())
+	preferredBrandID, _ := uuid.Parse(h.sess.GetString(r.Context(), "active_brand_id"))
+	me, err := h.querier.Me(r.Context(), preferredBrandID)
 	if err != nil {
 		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	res := MeToRes(me)
-	res.ActiveBrandID = h.sess.GetString(r.Context(), "active_brand_id")
+	res := MeRes{AuthRes: AuthToRes(me)}
+	if me.ActiveBrand != nil {
+		brand := BrandToResponse(me.ActiveBrand)
+		res.ActiveBrand = &brand
+	}
+
 	apiresponse.JSON(w, r, http.StatusOK, res)
 }
 

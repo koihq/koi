@@ -24,6 +24,15 @@ line and the tier's flat-fee line for this volume-tiered Price. Omitting
 Do these steps in a Stripe **sandbox** before enabling Cloud mode. The local code does
 not create or modify objects in the account automatically at startup.
 
+Enable [Managed Payments in the Stripe Dashboard](https://dashboard.stripe.com/settings/managed-payments)
+for the sandbox before testing Checkout, and separately for the live account before
+accepting live payments. The SaaS product tax code alone does not enable Stripe as
+merchant of record. Koi sends `managed_payments[enabled]=true` on every new Checkout
+Session, including trials, using the pinned Stripe Go SDK. It omits the unsupported
+tax and customer-update parameters. This applies to new subscriptions purchased
+through these sessions; existing subscriptions are not converted. See
+[Stripe's Checkout integration guide](https://docs.stripe.com/payments/managed-payments/update-checkout).
+
 1. Log in with the installed CLI: `stripe login`.
 2. Use the sandbox Product `prod_VTTHrgW2E8Lgny`, named `Koi Cloud`.
    Managed Payments requires an eligible product tax code; this Product uses

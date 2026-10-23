@@ -10,6 +10,7 @@ apis/VisibilityApi.ts
 apis/index.ts
 index.ts
 models/AppearanceEvidence.ts
+models/AuthRes.ts
 models/BillingAllowanceRequest.ts
 models/BillingCatalog.ts
 models/BillingChange.ts
@@ -61,5 +62,6 @@ models/VisibilityResult.ts
 models/VisibilityResultPage.ts
 models/VisibilityRunPage.ts
 models/VisibilityRunStatus.ts
+models/VisibilitySummary.ts
 models/index.ts
 runtime.ts

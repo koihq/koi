@@ -59,6 +59,7 @@ func (p Prompt) Validate() error {
 type PromptRepository interface {
 	BaseEntityRepository[Prompt]
 	List(context.Context, PromptFilter) (*Page[Prompt], error)
+	HasConfirmed(context.Context, uuid.UUID) (bool, error)
 	Update(context.Context, uuid.UUID, PromptUpdate) error
 	Delete(context.Context, uuid.UUID) error
 }

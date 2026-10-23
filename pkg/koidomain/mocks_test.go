@@ -224,9 +224,71 @@ func (_c *MockBrandRepository_Get_Call) RunAndReturn(run func(ctx context.Contex
 	return _c
 }
 
+// Latest provides a mock function for the type MockBrandRepository
+func (_mock *MockBrandRepository) Latest(context1 context.Context) (*Brand, error) {
+	ret := _mock.Called(context1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Latest")
+	}
+
+	var r0 *Brand
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (*Brand, error)); ok {
+		return returnFunc(context1)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) *Brand); ok {
+		r0 = returnFunc(context1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Brand)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(context1)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBrandRepository_Latest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Latest'
+type MockBrandRepository_Latest_Call struct {
+	*mock.Call
+}
+
+// Latest is a helper method to define mock.On call
+//   - context1 context.Context
+func (_e *MockBrandRepository_Expecter) Latest(context1 interface{}) *MockBrandRepository_Latest_Call {
+	return &MockBrandRepository_Latest_Call{Call: _e.mock.On("Latest", context1)}
+}
+
+func (_c *MockBrandRepository_Latest_Call) Run(run func(context1 context.Context)) *MockBrandRepository_Latest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBrandRepository_Latest_Call) Return(brand *Brand, err error) *MockBrandRepository_Latest_Call {
+	_c.Call.Return(brand, err)
+	return _c
+}
+
+func (_c *MockBrandRepository_Latest_Call) RunAndReturn(run func(context1 context.Context) (*Brand, error)) *MockBrandRepository_Latest_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // List provides a mock function for the type MockBrandRepository
-func (_mock *MockBrandRepository) List(context1 context.Context, pageParams PageParams) (*Page[Brand], error) {
-	ret := _mock.Called(context1, pageParams)
+func (_mock *MockBrandRepository) List(context1 context.Context, brandListParams BrandListParams) (*Page[Brand], error) {
+	ret := _mock.Called(context1, brandListParams)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -234,18 +296,18 @@ func (_mock *MockBrandRepository) List(context1 context.Context, pageParams Page
 
 	var r0 *Page[Brand]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, PageParams) (*Page[Brand], error)); ok {
-		return returnFunc(context1, pageParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, BrandListParams) (*Page[Brand], error)); ok {
+		return returnFunc(context1, brandListParams)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, PageParams) *Page[Brand]); ok {
-		r0 = returnFunc(context1, pageParams)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, BrandListParams) *Page[Brand]); ok {
+		r0 = returnFunc(context1, brandListParams)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*Page[Brand])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, PageParams) error); ok {
-		r1 = returnFunc(context1, pageParams)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, BrandListParams) error); ok {
+		r1 = returnFunc(context1, brandListParams)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -259,20 +321,20 @@ type MockBrandRepository_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - context1 context.Context
-//   - pageParams PageParams
-func (_e *MockBrandRepository_Expecter) List(context1 interface{}, pageParams interface{}) *MockBrandRepository_List_Call {
-	return &MockBrandRepository_List_Call{Call: _e.mock.On("List", context1, pageParams)}
+//   - brandListParams BrandListParams
+func (_e *MockBrandRepository_Expecter) List(context1 interface{}, brandListParams interface{}) *MockBrandRepository_List_Call {
+	return &MockBrandRepository_List_Call{Call: _e.mock.On("List", context1, brandListParams)}
 }
 
-func (_c *MockBrandRepository_List_Call) Run(run func(context1 context.Context, pageParams PageParams)) *MockBrandRepository_List_Call {
+func (_c *MockBrandRepository_List_Call) Run(run func(context1 context.Context, brandListParams BrandListParams)) *MockBrandRepository_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 PageParams
+		var arg1 BrandListParams
 		if args[1] != nil {
-			arg1 = args[1].(PageParams)
+			arg1 = args[1].(BrandListParams)
 		}
 		run(
 			arg0,
@@ -287,7 +349,7 @@ func (_c *MockBrandRepository_List_Call) Return(page *Page[Brand], err error) *M
 	return _c
 }
 
-func (_c *MockBrandRepository_List_Call) RunAndReturn(run func(context1 context.Context, pageParams PageParams) (*Page[Brand], error)) *MockBrandRepository_List_Call {
+func (_c *MockBrandRepository_List_Call) RunAndReturn(run func(context1 context.Context, brandListParams BrandListParams) (*Page[Brand], error)) *MockBrandRepository_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1768,6 +1830,72 @@ func (_c *MockPromptRepository_Get_Call) Return(prompt *Prompt, err error) *Mock
 }
 
 func (_c *MockPromptRepository_Get_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (*Prompt, error)) *MockPromptRepository_Get_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// HasConfirmed provides a mock function for the type MockPromptRepository
+func (_mock *MockPromptRepository) HasConfirmed(context1 context.Context, uUID uuid.UUID) (bool, error) {
+	ret := _mock.Called(context1, uUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasConfirmed")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (bool, error)); ok {
+		return returnFunc(context1, uUID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) bool); ok {
+		r0 = returnFunc(context1, uUID)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockPromptRepository_HasConfirmed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasConfirmed'
+type MockPromptRepository_HasConfirmed_Call struct {
+	*mock.Call
+}
+
+// HasConfirmed is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+func (_e *MockPromptRepository_Expecter) HasConfirmed(context1 interface{}, uUID interface{}) *MockPromptRepository_HasConfirmed_Call {
+	return &MockPromptRepository_HasConfirmed_Call{Call: _e.mock.On("HasConfirmed", context1, uUID)}
+}
+
+func (_c *MockPromptRepository_HasConfirmed_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockPromptRepository_HasConfirmed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPromptRepository_HasConfirmed_Call) Return(b bool, err error) *MockPromptRepository_HasConfirmed_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *MockPromptRepository_HasConfirmed_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (bool, error)) *MockPromptRepository_HasConfirmed_Call {
 	_c.Call.Return(run)
 	return _c
 }

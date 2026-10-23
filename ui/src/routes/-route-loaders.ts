@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 import type { Api } from "@/api/apiProvider";
 import { ApiError } from "@/api/errors";
-import { accountOptions, brandsOptions, capabilitiesOptions } from "@/lib/queries";
+import { accountOptions, capabilitiesOptions } from "@/lib/queries";
 
 export async function requireAccount(api: Api, queryClient: QueryClient) {
   try {
@@ -18,11 +18,7 @@ export async function requireAccount(api: Api, queryClient: QueryClient) {
 
 export async function loadAccountBrand(api: Api, queryClient: QueryClient) {
   const me = await requireAccount(api, queryClient);
-  const [brands, capabilities] = await Promise.all([
-    queryClient.fetchQuery(brandsOptions(api, me.organization.id)),
-    queryClient.ensureQueryData(capabilitiesOptions(api)),
-  ]);
-  const brand = brands.find((candidate) => candidate.id === me.activeBrandId) ?? brands[0];
+  const capabilities = await queryClient.ensureQueryData(capabilitiesOptions(api));
 
-  return { me, brand, brands, capabilities };
+  return { me, brand: me.activeBrand, capabilities };
 }

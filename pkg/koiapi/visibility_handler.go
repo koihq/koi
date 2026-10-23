@@ -61,7 +61,7 @@ func (h *VisibilityHandler) Summary(w http.ResponseWriter, r *http.Request) {
 		apiresponse.WriteDomainError(w, r, err)
 		return
 	}
-	_, report, err := h.analytics.Aggregate(r.Context(), brandID, nil, days, engines)
+	report, err := h.analytics.Summary(r.Context(), brandID, days, engines)
 	if err != nil {
 		apiresponse.WriteDomainError(w, r, err)
 		return

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Brand } from "@/api/brands.api";
-import { BrandIcon } from "@/components/blocks/brand-icon";
+import { BrandSwitcher } from "@/components/blocks/brand-switcher";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,7 @@ import {
 import { useTheme } from "@/hooks/use-theme";
 import { capabilitiesOptions, clearAccountCache } from "@/lib/queries";
 
-export function AppHeader({ brand, brands }: { brand: Brand; brands: Brand[] }) {
+export function AppHeader({ brand }: { brand: Brand }) {
   const api = useApi();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -38,36 +38,9 @@ export function AppHeader({ brand, brands }: { brand: Brand; brands: Brand[] }) 
     }
   }
 
-  async function selectBrand(id: string) {
-    if (id === brand.id) return;
-
-    await api.brands.activate(id);
-    await router.invalidate();
-    await router.navigate({ to: "/" });
-  }
-
   return (
     <header className="relative mx-auto flex min-h-8 w-full max-w-[1376px] items-center justify-between gap-4 px-4 pt-5 pb-6 sm:px-7 sm:pt-7 sm:pb-10">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={`Active brand: ${brand.name}`}
-          className="inline-flex items-center gap-2 rounded-full p-1 pe-3 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <BrandIcon name={brand.name} domain={brand.domain} className="size-6" />
-          <span className="max-w-40 truncate text-sm">{brand.name}</span>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={8}>
-          {brands.map((candidate) => (
-            <DropdownMenuItem
-              key={candidate.id}
-              onClick={() => void selectBrand(candidate.id)}
-              aria-current={candidate.id === brand.id ? "true" : undefined}
-            >
-              {candidate.name}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <BrandSwitcher key={brand.id} brand={brand} />
 
       <div className="flex shrink-0 items-center gap-3">
         <Link

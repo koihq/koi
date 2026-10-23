@@ -61,6 +61,13 @@ commands rather than generic CRUD updates.
 of another request. Open forms and separate tabs keep their explicit destinations.
 No aliases for the former `/brands/{brandID}/...` product paths are provided.
 
+`GET /auth/me` returns `activeBrand: BrandRes | null`, resolved within the verified
+organization. An absent, malformed or inaccessible session preference falls back
+to the newest accessible brand (`created_at DESC, id DESC`); no brands means `null`.
+This read does not write the fallback to the session. Login and signup return only
+the account identity. `GET /brands?q=...` searches name, domain and GitHub repository
+within the organization, retaining the normal paginated response and newest-first order.
+
 Persisted lists use `Page[T]`, `page` starting at 1 and `pageSize` between 1 and 100.
 Empty results contain `items: []` and all page metadata. Country and competitor
 search remain bounded lookups.
@@ -94,6 +101,11 @@ Visibility analytics selects cell data, run timestamp and brand snapshot in one
 joined query that applies the repository organization scope, without a second run preload. Current competitor identities are still
 applied at read time.
 
+Every analytics report includes each confirmed competitor's ID, name, domain,
+metric and series, even when the period has no completed answers. The summary adds
+`hasConfirmedPrompts`, checked independently of period and engines and including
+paused prompts. Handlers do not load prompt pages to derive that state.
+
 Workers consume the application `CollectedAnswer` and `ProviderError` contracts.
 Provider adapters retain their protocol details and stable failure codes. Cloro is
 required for live collection; OpenRouter drafting and Logo.dev remain optional.
@@ -118,7 +130,11 @@ The generated client's response middleware normalizes errors once. Shared
 and billing include organization identity in their cache keys; product keys include
 the globally unique brand UUID. Account changes cancel requests and clear the cache.
 Capabilities share one cached query. Query options forward the abort signal through
-the API wrappers, including every request in a paginated brand load.
+the API wrappers. The authenticated loader uses the resolved active brand without
+loading the brand collection. The shared brand selector searches only while open
+and fetches one page of 20 results at a time, with a 300 ms search debounce.
+Analytics screens and prompt previews use the identities in their own reports;
+they do not load competitor collections to complete those reports.
 
 Feature-specific mutations share invalidation sets. Prompt list queries and batch
 actions are local hooks; failed batch IDs remain selected for retry. Changing brand

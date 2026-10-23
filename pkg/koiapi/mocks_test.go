@@ -209,8 +209,8 @@ func (_m *MockAuthQuerier) EXPECT() *MockAuthQuerier_Expecter {
 }
 
 // Me provides a mock function for the type MockAuthQuerier
-func (_mock *MockAuthQuerier) Me(ctx context.Context) (*koidomain.Me, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockAuthQuerier) Me(ctx context.Context, preferredBrandID uuid.UUID) (*koidomain.Me, error) {
+	ret := _mock.Called(ctx, preferredBrandID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Me")
@@ -218,18 +218,18 @@ func (_mock *MockAuthQuerier) Me(ctx context.Context) (*koidomain.Me, error) {
 
 	var r0 *koidomain.Me
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) (*koidomain.Me, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*koidomain.Me, error)); ok {
+		return returnFunc(ctx, preferredBrandID)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) *koidomain.Me); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) *koidomain.Me); ok {
+		r0 = returnFunc(ctx, preferredBrandID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Me)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, preferredBrandID)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -243,18 +243,24 @@ type MockAuthQuerier_Me_Call struct {
 
 // Me is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockAuthQuerier_Expecter) Me(ctx interface{}) *MockAuthQuerier_Me_Call {
-	return &MockAuthQuerier_Me_Call{Call: _e.mock.On("Me", ctx)}
+//   - preferredBrandID uuid.UUID
+func (_e *MockAuthQuerier_Expecter) Me(ctx interface{}, preferredBrandID interface{}) *MockAuthQuerier_Me_Call {
+	return &MockAuthQuerier_Me_Call{Call: _e.mock.On("Me", ctx, preferredBrandID)}
 }
 
-func (_c *MockAuthQuerier_Me_Call) Run(run func(ctx context.Context)) *MockAuthQuerier_Me_Call {
+func (_c *MockAuthQuerier_Me_Call) Run(run func(ctx context.Context, preferredBrandID uuid.UUID)) *MockAuthQuerier_Me_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -265,7 +271,7 @@ func (_c *MockAuthQuerier_Me_Call) Return(me *koidomain.Me, err error) *MockAuth
 	return _c
 }
 
-func (_c *MockAuthQuerier_Me_Call) RunAndReturn(run func(ctx context.Context) (*koidomain.Me, error)) *MockAuthQuerier_Me_Call {
+func (_c *MockAuthQuerier_Me_Call) RunAndReturn(run func(ctx context.Context, preferredBrandID uuid.UUID) (*koidomain.Me, error)) *MockAuthQuerier_Me_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1096,7 +1102,7 @@ func (_c *MockBrandQuerier_Get_Call) RunAndReturn(run func(ctx context.Context, 
 }
 
 // List provides a mock function for the type MockBrandQuerier
-func (_mock *MockBrandQuerier) List(ctx context.Context, params koidomain.PageParams) (*koidomain.Page[koidomain.Brand], error) {
+func (_mock *MockBrandQuerier) List(ctx context.Context, params koidomain.BrandListParams) (*koidomain.Page[koidomain.Brand], error) {
 	ret := _mock.Called(ctx, params)
 
 	if len(ret) == 0 {
@@ -1105,17 +1111,17 @@ func (_mock *MockBrandQuerier) List(ctx context.Context, params koidomain.PagePa
 
 	var r0 *koidomain.Page[koidomain.Brand]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, koidomain.PageParams) (*koidomain.Page[koidomain.Brand], error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, koidomain.BrandListParams) (*koidomain.Page[koidomain.Brand], error)); ok {
 		return returnFunc(ctx, params)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, koidomain.PageParams) *koidomain.Page[koidomain.Brand]); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, koidomain.BrandListParams) *koidomain.Page[koidomain.Brand]); ok {
 		r0 = returnFunc(ctx, params)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*koidomain.Page[koidomain.Brand])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, koidomain.PageParams) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, koidomain.BrandListParams) error); ok {
 		r1 = returnFunc(ctx, params)
 	} else {
 		r1 = ret.Error(1)
@@ -1130,20 +1136,20 @@ type MockBrandQuerier_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-//   - params koidomain.PageParams
+//   - params koidomain.BrandListParams
 func (_e *MockBrandQuerier_Expecter) List(ctx interface{}, params interface{}) *MockBrandQuerier_List_Call {
 	return &MockBrandQuerier_List_Call{Call: _e.mock.On("List", ctx, params)}
 }
 
-func (_c *MockBrandQuerier_List_Call) Run(run func(ctx context.Context, params koidomain.PageParams)) *MockBrandQuerier_List_Call {
+func (_c *MockBrandQuerier_List_Call) Run(run func(ctx context.Context, params koidomain.BrandListParams)) *MockBrandQuerier_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 koidomain.PageParams
+		var arg1 koidomain.BrandListParams
 		if args[1] != nil {
-			arg1 = args[1].(koidomain.PageParams)
+			arg1 = args[1].(koidomain.BrandListParams)
 		}
 		run(
 			arg0,
@@ -1158,7 +1164,7 @@ func (_c *MockBrandQuerier_List_Call) Return(page *koidomain.Page[koidomain.Bran
 	return _c
 }
 
-func (_c *MockBrandQuerier_List_Call) RunAndReturn(run func(ctx context.Context, params koidomain.PageParams) (*koidomain.Page[koidomain.Brand], error)) *MockBrandQuerier_List_Call {
+func (_c *MockBrandQuerier_List_Call) RunAndReturn(run func(ctx context.Context, params koidomain.BrandListParams) (*koidomain.Page[koidomain.Brand], error)) *MockBrandQuerier_List_Call {
 	_c.Call.Return(run)
 	return _c
 }

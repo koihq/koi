@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Api, createApi } from "@/api/apiProvider";
 import {
-  brandsOptions,
+  brandListOptions,
   capabilitiesOptions,
   clearAccountCache,
   promptListOptions,
@@ -40,8 +40,8 @@ describe("query isolation and batch failures", () => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("account changes during pagination", () => {
-  it("aborts brand requests and stops collecting subsequent pages", async () => {
+describe("brand pagination and account changes", () => {
+  it("loads one page at a time and aborts an explicit page request on account changes", async () => {
     const client = new QueryClient();
     let requestSignal: AbortSignal | undefined;
     const fetch = vi
@@ -80,7 +80,16 @@ describe("account changes during pagination", () => {
         });
       });
     vi.stubGlobal("fetch", fetch);
-    const pending = client.fetchQuery(brandsOptions(createApi(), "org-a"));
+    const api = createApi();
+    const first = await client.fetchQuery(
+      brandListOptions(api, "org-a", { page: 1, pageSize: 20 }),
+    );
+    expect(first.hasNext).toBe(true);
+    expect(fetch).toHaveBeenCalledOnce();
+
+    const pending = client.fetchQuery(
+      brandListOptions(api, "org-a", { page: 2, pageSize: 20, q: "koi" }),
+    );
     const settled = pending.catch((error: unknown) => error);
     await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
 
@@ -88,7 +97,11 @@ describe("account changes during pagination", () => {
     await settled;
 
     expect(requestSignal?.aborted).toBe(true);
-    expect(fetch.mock.calls[0][1].signal).toBe(requestSignal);
+    expect(fetch.mock.calls[1][1].signal).toBe(requestSignal);
+    const address = new URL(String(fetch.mock.calls[1][0]), "http://koi.test");
+    expect(address.searchParams.get("q")).toBe("koi");
+    expect(address.searchParams.get("page")).toBe("2");
+    expect(address.searchParams.get("pageSize")).toBe("20");
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(client.getQueryCache().getAll()).toEqual([]);
   });

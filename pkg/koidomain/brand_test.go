@@ -180,7 +180,12 @@ func TestBrandQuerierPages(t *testing.T) {
 	repo := NewMockBrandRepository(t)
 	store.EXPECT().BrandRepo().Return(repo)
 	userID := uuid.New()
-	repo.EXPECT().List(mock.Anything, PageParams{Page: 2, PageSize: 10}).Return(&Page[Brand]{
+	repo.EXPECT().List(mock.Anything, BrandListParams{
+		Page: PageParams{
+			Page:     2,
+			PageSize: 10,
+		},
+	}).Return(&Page[Brand]{
 		Items: []Brand{
 			{
 				OrganizationID: userID,
@@ -192,7 +197,12 @@ func TestBrandQuerierPages(t *testing.T) {
 		HasNext:     true,
 		HasPrev:     true,
 	}, nil)
-	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), PageParams{Page: 2, PageSize: 10})
+	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), BrandListParams{
+		Page: PageParams{
+			Page:     2,
+			PageSize: 10,
+		},
+	})
 	require.NoError(t, err)
 	require.Equal(t, &Page[Brand]{
 		Items: []Brand{
@@ -207,14 +217,24 @@ func TestBrandQuerierPages(t *testing.T) {
 		HasPrev:     true,
 	}, page)
 
-	repo.EXPECT().List(mock.Anything, PageParams{Page: 10, PageSize: 10}).Return(&Page[Brand]{
+	repo.EXPECT().List(mock.Anything, BrandListParams{
+		Page: PageParams{
+			Page:     10,
+			PageSize: 10,
+		},
+	}).Return(&Page[Brand]{
 		Items:       []Brand{},
 		TotalItems:  21,
 		TotalPages:  3,
 		CurrentPage: 10,
 		HasPrev:     true,
 	}, nil)
-	page, err = NewBrandQuerier(store).List(identityCtx(t, userID), PageParams{Page: 10, PageSize: 10})
+	page, err = NewBrandQuerier(store).List(identityCtx(t, userID), BrandListParams{
+		Page: PageParams{
+			Page:     10,
+			PageSize: 10,
+		},
+	})
 	require.NoError(t, err)
 	require.Empty(t, page.Items)
 	require.EqualValues(t, 21, page.TotalItems)
@@ -229,11 +249,21 @@ func TestBrandQuerierEmptyPage(t *testing.T) {
 	repo := NewMockBrandRepository(t)
 	store.EXPECT().BrandRepo().Return(repo)
 	userID := uuid.New()
-	repo.EXPECT().List(mock.Anything, PageParams{Page: 1, PageSize: 10}).Return(&Page[Brand]{
+	repo.EXPECT().List(mock.Anything, BrandListParams{
+		Page: PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&Page[Brand]{
 		Items:       []Brand{},
 		CurrentPage: 1,
 	}, nil)
-	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), PageParams{Page: 1, PageSize: 10})
+	page, err := NewBrandQuerier(store).List(identityCtx(t, userID), BrandListParams{
+		Page: PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	})
 	require.NoError(t, err)
 	require.Equal(t, &Page[Brand]{
 		Items:       []Brand{},

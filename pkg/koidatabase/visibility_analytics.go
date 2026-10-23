@@ -21,6 +21,8 @@ func newVisibilityReport(start time.Time, days int, competitors []koidomain.Comp
 	}
 	for i, competitor := range competitors {
 		report.Competitors[i].ID = competitor.ID
+		report.Competitors[i].Name = competitor.Name
+		report.Competitors[i].Domain = competitor.Domain
 		report.Competitors[i].Series = make([]koidomain.VisibilityDay, days)
 		for day := range report.Series {
 			report.Competitors[i].Series[day].Date = report.Series[day].Date

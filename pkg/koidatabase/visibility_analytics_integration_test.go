@@ -2,6 +2,7 @@ package koidatabase
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -80,6 +81,8 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	shared, err := commander.Create(ctx, brand.ID, koidomain.CompetitorParams{Name: "Other", Domain: "other.dev", Aliases: []string{"Shared"}})
 	require.NoError(t, err)
 	report := read(nil)
+	require.Equal(t, "Acme", report.Competitors[0].Name)
+	require.Equal(t, "acme.dev", report.Competitors[0].Domain)
 	require.Equal(t, 1, report.Competitors[0].Metric.Cited)
 	require.Equal(t, 1, report.Competitors[1].Metric.Mentioned)
 
@@ -90,6 +93,10 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	require.Equal(t, 1, report.Competitors[0].Metric.Cited)
 	require.Zero(t, report.Competitors[0].Metric.Mentioned)
 	require.Zero(t, report.Competitors[1].Metric.Mentioned)
+	newName := "Acme renamed"
+	_, err = commander.Patch(ctx, acme.ID, koidomain.CompetitorUpdate{Name: &newName})
+	require.NoError(t, err)
+	require.Equal(t, newName, read(nil).Competitors[0].Name)
 
 	filtered := read([]koidomain.EngineID{cells[0].Engine})
 	require.Equal(t, 1, filtered.Metric.Completed)
@@ -114,6 +121,11 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	require.Equal(t, 2, read(nil).Metric.Completed)
 	require.NoError(t, koidomain.NewPromptCommander(store).Delete(ctx, promptID))
 	require.Equal(t, 2, read(nil).Metric.Completed)
+	require.NoError(t, koidomain.NewPromptCommander(store).Delete(ctx, secondPrompt.ID))
+	summary, err := koidomain.NewVisibilityAnalyticsQuerier(store).Summary(ctx, brand.ID, 7, nil)
+	require.NoError(t, err)
+	require.False(t, summary.HasConfirmedPrompts)
+	require.Equal(t, 2, summary.Metric.Completed)
 	require.NoError(t, commander.Delete(ctx, acme.ID))
 	require.NoError(t, commander.Delete(ctx, shared.ID))
 	require.Empty(t, read(nil).Competitors)
@@ -121,6 +133,54 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	stranger := context.Background()
 	_, _, err = koidomain.NewVisibilityAnalyticsQuerier(store).Aggregate(stranger, brand.ID, nil, 7, nil)
 	require.Error(t, err)
+}
+
+func TestVisibilitySummaryIncludesAllConfirmedCompetitorsAndPromptState(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, false)
+	competitors := make([]koidomain.Competitor, 122)
+	for i := range competitors {
+		competitors[i] = koidomain.Competitor{
+			BrandID:   brand.ID,
+			Name:      fmt.Sprintf("Competitor %d", i),
+			Domain:    fmt.Sprintf("competitor%d.example", i),
+			Source:    koidomain.CompetitorSourceManual,
+			Confirmed: i < 121,
+		}
+	}
+	require.NoError(t, db.Create(&competitors).Error)
+	querier := koidomain.NewVisibilityAnalyticsQuerier(store)
+
+	for _, tt := range []struct {
+		name      string
+		confirmed bool
+		inactive  bool
+	}{
+		{name: "confirmed", confirmed: true},
+		{name: "paused", confirmed: true, inactive: true},
+		{name: "unconfirmed"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NoError(t, db.Model(&koidomain.Prompt{}).Where("brand_id = ?", brand.ID).
+				Updates(map[string]any{"confirmed": tt.confirmed, "inactive": tt.inactive}).Error)
+
+			summary, err := querier.Summary(ctx, brand.ID, 7, nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.confirmed, summary.HasConfirmedPrompts)
+			require.Len(t, summary.Competitors, 121)
+			for _, competitor := range summary.Competitors {
+				require.NotEmpty(t, competitor.Name)
+				require.NotEmpty(t, competitor.Domain)
+				require.Nil(t, competitor.Metric.Rate)
+				require.Len(t, competitor.Series, 7)
+			}
+		})
+	}
+
+	require.NoError(t, db.Where("brand_id = ?", brand.ID).Delete(&koidomain.Prompt{}).Error)
+	summary, err := querier.Summary(ctx, brand.ID, 90, []koidomain.EngineID{koidomain.EngineChatGPT})
+	require.NoError(t, err)
+	require.False(t, summary.HasConfirmedPrompts)
+	require.Len(t, summary.Series, 90)
 }
 
 func TestVisibilityAnalyticsRepositoryScopesCellsWithoutDomainGuard(t *testing.T) {
@@ -140,6 +200,9 @@ func TestVisibilityAnalyticsRepositoryScopesCellsWithoutDomainGuard(t *testing.T
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
 	testOrganizationForUser(t, store, user.ID)
 	foreignContext := testIdentity(t, store, user.ID)
+	hasPrompts, err := store.PromptRepo().HasConfirmed(foreignContext, brand.ID)
+	require.NoError(t, err)
+	require.False(t, hasPrompts)
 
 	_, ownerReport, err := store.VisibilityRepo().AggregateVisibility(ctx, brand.ID, nil, 7, nil, now)
 	require.NoError(t, err)

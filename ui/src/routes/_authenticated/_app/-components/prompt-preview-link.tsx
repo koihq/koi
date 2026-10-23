@@ -1,20 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { trendPath } from "@/lib/trend-path";
 import { rate, series as visibilitySeries } from "@/lib/visibility";
 
-export function PromptPreviewLink({
-  prompt,
-  competitors,
-}: {
-  prompt: Prompt;
-  competitors: Competitor[];
-}) {
+export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
   const { t } = useTranslation("home");
   const [open, setOpen] = useState(false);
   const link = (
@@ -31,9 +24,8 @@ export function PromptPreviewLink({
 
   const series = visibilitySeries(prompt.visibility);
   const currentRate = rate(prompt.visibility);
-  const rivals = competitors
-    .filter((item) => item.confirmed)
-    .map((item) => ({ item, rate: rate(prompt.visibility, undefined, item.id) }))
+  const rivals = prompt.visibility.competitors
+    .map((item) => ({ item, rate: item.metric.rate }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
     .slice(0, 3);
   const width = 320;

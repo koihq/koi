@@ -32,7 +32,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VisibilityReport"
+                $ref: "#/components/schemas/VisibilitySummary"
         default:
           $ref: "#/components/responses/Error"
   /api/v1/tracking:
@@ -232,7 +232,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeRes"
+                $ref: "#/components/schemas/AuthRes"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -253,7 +253,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeRes"
+                $ref: "#/components/schemas/AuthRes"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -425,6 +425,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
       responses:
         "200":
           description: Page of brands owned by the session user, newest first
@@ -1187,9 +1188,11 @@ components:
           $ref: "#/components/schemas/VisibilityMetric"
     CompetitorVisibility:
       type: object
-      required: [id, metric, series]
+      required: [id, name, domain, metric, series]
       properties:
         id: { type: string, format: uuid }
+        name: { type: string }
+        domain: { type: string }
         metric:
           $ref: "#/components/schemas/VisibilityMetric"
         series:
@@ -1216,6 +1219,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompetitorVisibility"
+    VisibilitySummary:
+      allOf:
+        - $ref: "#/components/schemas/VisibilityReport"
+        - type: object
+          required: [hasConfirmedPrompts]
+          properties:
+            hasConfirmedPrompts:
+              type: boolean
+              description: Whether the brand has any current confirmed prompts, including paused prompts, regardless of the selected period and engines
     HistoricalPromptPage:
       type: object
       required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
@@ -1701,7 +1713,7 @@ components:
           type: string
         password:
           type: string
-    MeRes:
+    AuthRes:
       type: object
       required: [id, email, organization]
       properties:
@@ -1711,9 +1723,16 @@ components:
           type: string
         organization:
           $ref: "#/components/schemas/OrgRes"
-        activeBrandId:
-          type: string
-          format: uuid
+    MeRes:
+      allOf:
+        - $ref: "#/components/schemas/AuthRes"
+        - type: object
+          required: [activeBrand]
+          properties:
+            activeBrand:
+              nullable: true
+              allOf:
+                - $ref: "#/components/schemas/BrandRes"
     OrgRes:
       type: object
       required: [id, name, role]

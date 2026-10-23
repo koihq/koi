@@ -49,7 +49,7 @@ func NewBrandHandler(q koidomain.BrandQuerier, c koidomain.BrandCommander, sess 
 func (h *BrandHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
 		r.With(middlewares.DecodeBody[BrandRequest]()).Post("/", h.Create)
-		r.Get("/", List(pageParams, h.querier.List, BrandToResponse))
+		r.Get("/", List(brandListQuery, h.querier.List, BrandToResponse))
 		r.Get("/countries", h.Countries)
 		r.Get("/{id}", Get("id", h.querier.Get, BrandToResponse))
 		if h.billing != nil {
@@ -130,6 +130,20 @@ func pageParams(r *http.Request) (koidomain.PageParams, error) {
 	}
 
 	return koidomain.PageParams{Page: page, PageSize: pageSize}, nil
+}
+
+func brandListQuery(r *http.Request) (koidomain.BrandListParams, error) {
+	page, err := pageParams(r)
+	if err != nil {
+		return koidomain.BrandListParams{}, err
+	}
+
+	query, err := optionalStringQuery(r, "q")
+	if err != nil {
+		return koidomain.BrandListParams{}, err
+	}
+
+	return koidomain.BrandListParams{Page: page, Query: query}, nil
 }
 
 type listQuery struct {

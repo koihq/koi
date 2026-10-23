@@ -80,7 +80,12 @@ func TestBrandHandlerRequiresSession(t *testing.T) {
 func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	userID := uuid.New()
 	q := NewMockBrandQuerier(t)
-	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 3, PageSize: 100}).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     3,
+			PageSize: 100,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
 		Items:       []koidomain.Brand{},
 		CurrentPage: 3,
 		HasPrev:     true,
@@ -108,6 +113,7 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 		{"pageSize=101", "pageSize"},
 		{"pageSize=abc", "pageSize"},
 		{"pageSize=", "pageSize"},
+		{"q=one&q=two", "q"},
 	} {
 		resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?"+query.value, "")
 		var body apiresponse.Envelope
@@ -127,6 +133,27 @@ func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, 3, page.CurrentPage)
+}
+
+func TestBrandHandlerSearch(t *testing.T) {
+	q := NewMockBrandQuerier(t)
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     2,
+			PageSize: 20,
+		},
+		Query: "Koi",
+	}).Return(&koidomain.Page[koidomain.Brand]{
+		Items:       []koidomain.Brand{},
+		CurrentPage: 2,
+		HasPrev:     true,
+	}, nil)
+	server := newBrandTestServer(t, q, NewMockBrandCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, server.URL, uuid.New())
+	resp := doJSON(t, client, http.MethodGet, server.URL+"/api/v1/brands?q=%20Koi%20&page=2&pageSize=20", "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NoError(t, resp.Body.Close())
 }
 
 func TestBrandHandlerCountries(t *testing.T) {
@@ -185,17 +212,32 @@ func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
 
 	q := NewMockBrandQuerier(t)
 	c := NewMockBrandCommander(t)
-	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
 		Items:       []koidomain.Brand{},
 		CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
 		Items:       []koidomain.Brand{*brand},
 		TotalItems:  1,
 		TotalPages:  1,
 		CurrentPage: 1,
 	}, nil).Once()
-	q.EXPECT().List(mock.Anything, koidomain.PageParams{Page: 1, PageSize: 10}).Return(&koidomain.Page[koidomain.Brand]{
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
 		Items:       []koidomain.Brand{},
 		CurrentPage: 1,
 	}, nil)

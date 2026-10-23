@@ -10,7 +10,6 @@ import { Link } from "@tanstack/react-router";
 import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
@@ -153,12 +152,10 @@ function PromptChoice({
 export function PromptManager({
   brandID,
   scope,
-  competitors,
   draftStartFailed = false,
 }: {
   brandID: string;
   scope: VisibilityScope;
-  competitors: Competitor[];
   draftStartFailed?: boolean;
 }) {
   const { t } = useTranslation(["management", "home"]);
@@ -229,7 +226,7 @@ export function PromptManager({
   const renderPrompt = (row: PromptRow) => (
     <div>
       {row.prompt ? (
-        <PromptPreviewLink prompt={row.prompt} competitors={competitors} />
+        <PromptPreviewLink prompt={row.prompt} />
       ) : (
         <Link to="/prompts/$promptId" params={{ promptId: row.id }} className={promptRowLinkClass}>
           {row.text}
@@ -288,10 +285,10 @@ export function PromptManager({
           {t("home:dashboard.noData")}
         </span>
       );
-    const top = competitors
+    const top = row.visibility.competitors
       .map((competitor) => ({
         competitor,
-        rate: rate(row.visibility, undefined, competitor.id),
+        rate: competitor.metric.rate,
       }))
       .filter(({ rate: competitorRate }) => competitorRate !== null && competitorRate > 0)
       .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))

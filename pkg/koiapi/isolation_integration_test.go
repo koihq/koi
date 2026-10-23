@@ -13,6 +13,7 @@ import (
 
 	"github.com/koihq/koi/internal/testdb"
 	"github.com/koihq/koi/pkg/koidatabase"
+	"github.com/koihq/koi/pkg/koidomain"
 )
 
 func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
@@ -44,6 +45,16 @@ func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
 	resp = doJSON(t, first, http.MethodPost, server.URL+"/api/v1/competitors", `{"brandId":"`+brandA.ID.String()+`","name":"Acme","domain":"acme.dev"}`)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	readJSON(t, resp, &competitor)
+	resp = doJSON(t, first, http.MethodGet, server.URL+"/api/v1/visibility/summary?brandId="+brandA.ID.String(), "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var summary koidomain.VisibilitySummary
+	readJSON(t, resp, &summary)
+	require.True(t, summary.HasConfirmedPrompts)
+	require.Len(t, summary.Competitors, 1)
+	require.Equal(t, competitor.ID, summary.Competitors[0].ID)
+	require.Equal(t, "Acme", summary.Competitors[0].Name)
+	require.Equal(t, "acme.dev", summary.Competitors[0].Domain)
+	require.Nil(t, summary.Metric.Rate)
 
 	// The preference can change without changing the destination of an explicit request.
 	resp = doJSON(t, first, http.MethodPost, server.URL+"/api/v1/brands/"+brandB.ID.String()+"/activate", "")
@@ -94,7 +105,10 @@ func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
 	}))
 	resp = doJSON(t, first, http.MethodGet, server.URL+"/api/v1/auth/me", "")
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.NoError(t, resp.Body.Close())
+	var account MeRes
+	readJSON(t, resp, &account)
+	require.NotNil(t, account.ActiveBrand)
+	require.Equal(t, brandB.ID, account.ActiveBrand.ID)
 	require.EqualValues(t, 1, membershipReads.Load())
 	require.NoError(t, db.Callback().Query().Remove("count_request_membership"))
 

@@ -46,6 +46,10 @@ func newAuthTestServer(t *testing.T, q koidomain.AuthQuerier, c koidomain.AuthCo
 	sess.Cookie.Name = "koi_session"
 	r := chi.NewRouter()
 	r.Use(sess.LoadAndSave)
+	r.Get("/test-brand-preference/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sess.Put(r.Context(), "active_brand_id", chi.URLParam(r, "id"))
+		w.WriteHeader(http.StatusNoContent)
+	})
 	r.Route("/api/v1/auth", NewAuthHandler(q, c, sess, Authorizer(sess)).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
@@ -173,7 +177,7 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 	cmd := NewMockAuthCommander(t)
 	q := NewMockAuthQuerier(t)
 	cmd.EXPECT().Signup(mock.Anything, mock.Anything).Return(me, nil)
-	q.EXPECT().Me(mock.Anything).Return(me, nil)
+	q.EXPECT().Me(mock.Anything, uuid.Nil).Return(me, nil)
 	ts := newAuthTestServer(t, q, cmd)
 	client := newCookieClient(t)
 	creds := `{"email":"you@example.com","password":"password1"}`
@@ -201,6 +205,42 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 	readJSON(t, resp, &after)
 	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	require.Equal(t, koidomain.CodeUnauthorized, after.Error.Code)
+}
+
+func TestAuthHandlerMePassesBrandPreferenceAndReturnsResolvedBrand(t *testing.T) {
+	for _, raw := range []string{"invalid", uuid.NewString()} {
+		t.Run(raw, func(t *testing.T) {
+			me := sampleMe()
+			me.ActiveBrand = &koidomain.Brand{
+				BaseEntity: koidomain.BaseEntity{
+					ID: uuid.New(),
+				},
+				OrganizationID: me.Organization.ID,
+				Name:           "Koi",
+				Domain:         "koi.example",
+			}
+			cmd := NewMockAuthCommander(t)
+			cmd.EXPECT().Signup(mock.Anything, mock.Anything).Return(me, nil)
+			q := NewMockAuthQuerier(t)
+			preferred, _ := uuid.Parse(raw)
+			q.EXPECT().Me(mock.Anything, preferred).Return(me, nil)
+			server := newAuthTestServer(t, q, cmd)
+			client := newCookieClient(t)
+			resp := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"you@example.com","password":"password123"}`)
+			require.NoError(t, resp.Body.Close())
+			resp = doJSON(t, client, http.MethodGet, server.URL+"/test-brand-preference/"+raw, "")
+			require.NoError(t, resp.Body.Close())
+
+			resp = doJSON(t, client, http.MethodGet, server.URL+"/api/v1/auth/me", "")
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			var body map[string]any
+			readJSON(t, resp, &body)
+			require.NotContains(t, body, "activeBrandId")
+			brand := body["activeBrand"].(map[string]any)
+			require.Equal(t, me.ActiveBrand.ID.String(), brand["id"])
+			require.Equal(t, "Koi", brand["name"])
+		})
+	}
 }
 
 func Authorizer(sess *scs.SessionManager) func(http.Handler) http.Handler {

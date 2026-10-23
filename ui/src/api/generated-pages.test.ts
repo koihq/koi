@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { BrandsApi, CompetitorsApi, Configuration, PromptsApi } from "@/api/generated";
+import {
+  AuthApi,
+  BrandsApi,
+  CompetitorsApi,
+  Configuration,
+  PromptsApi,
+  VisibilityApi,
+} from "@/api/generated";
 
 describe("generated list deserialization", () => {
   it("converts typed items and retains populated and empty page metadata", async () => {
@@ -78,5 +85,50 @@ describe("generated list deserialization", () => {
     expect(await new CompetitorsApi(configuration([])).listCompetitors({ brandId: "b" })).toEqual(
       page,
     );
+  });
+});
+
+describe("generated analytics and account deserialization", () => {
+  it("retains competitor identities, prompt state and the resolved or absent active brand", async () => {
+    const metric = { completed: 0, cited: 0, mentioned: 0, rate: null };
+    const competitor = {
+      id: "competitor",
+      name: "Other",
+      domain: "other.example",
+      metric,
+      series: [],
+    };
+    const report = { metric, previous: metric, series: [], engines: {}, competitors: [competitor] };
+    const fetchApi = vi
+      .fn()
+      .mockImplementation(async () => Response.json({ ...report, hasConfirmedPrompts: false }));
+    const config = new Configuration({ basePath: "http://koi.test", fetchApi });
+
+    const summary = await new VisibilityApi(config).getVisibilitySummary({ brandId: "brand" });
+    expect(summary.hasConfirmedPrompts).toBe(false);
+    expect(summary.competitors).toEqual([competitor]);
+
+    const brand = {
+      id: "brand",
+      organizationId: "org",
+      name: "Koi",
+      domain: "koi.example",
+      githubRepo: "",
+      country: "IT",
+      description: "",
+    };
+
+    for (const activeBrand of [brand, null]) {
+      fetchApi.mockImplementation(async () =>
+        Response.json({
+          id: "user",
+          email: "founder@example.com",
+          organization: { id: "org", name: "Organization", role: "owner" },
+          activeBrand,
+        }),
+      );
+
+      expect((await new AuthApi(config).me()).activeBrand).toEqual(activeBrand);
+    }
   });
 });

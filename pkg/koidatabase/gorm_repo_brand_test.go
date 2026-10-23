@@ -60,7 +60,12 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 	require.NoError(t, NewGormUserRepository(db).LockForUpdate(t.Context(), id))
 	_, err = NewGormBrandRepository(db).Count(ctx)
 	require.NoError(t, err)
-	_, err = NewGormBrandRepository(db).List(ctx, koidomain.PageParams{Page: 3, PageSize: 10})
+	_, err = NewGormBrandRepository(db).List(ctx, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     3,
+			PageSize: 10,
+		},
+	})
 	require.NoError(t, err)
 	_, err = NewGormBrandRepository(db).Get(ctx, uuid.New())
 	require.NoError(t, err)

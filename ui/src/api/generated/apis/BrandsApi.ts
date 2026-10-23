@@ -64,6 +64,7 @@ export interface ListBrandCountriesRequest {
 export interface ListBrandsRequest {
     page?: number;
     pageSize?: number;
+    q?: string;
 }
 
 export interface UpdateBrandRequest {
@@ -167,6 +168,7 @@ export interface BrandsApiInterface {
      * Creates request options for listBrands without sending the request
      * @param {number} [page] 
      * @param {number} [pageSize] 
+     * @param {string} [q] 
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
      */
@@ -176,6 +178,7 @@ export interface BrandsApiInterface {
      * 
      * @param {number} [page] 
      * @param {number} [pageSize] 
+     * @param {string} [q] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
@@ -400,6 +403,10 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
         if (requestParameters['pageSize'] != null) {
             queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};

@@ -62,6 +62,21 @@ func likePattern(query string) string {
 	return "%" + replacer.Replace(query) + "%"
 }
 
+func (r *GormPromptRepository) HasConfirmed(ctx context.Context, brandID uuid.UUID) (bool, error) {
+	query, err := r.query(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	subquery := query.Model(&koidomain.Prompt{}).
+		Select("1").
+		Where("brand_id = ? AND confirmed = true", brandID)
+	var exists bool
+	err = r.db.WithContext(ctx).Raw("SELECT EXISTS (?)", subquery).Scan(&exists).Error
+
+	return exists, mapDBError(err)
+}
+
 func (r *GormPromptRepository) List(ctx context.Context, filter koidomain.PromptFilter) (*koidomain.Page[koidomain.Prompt], error) {
 	order := promptSortOrder(filter.Sort, filter.Descending, "prompts.text", "prompts.created_at ASC, prompts.id ASC")
 

@@ -43,6 +43,18 @@ export interface CompetitorVisibility {
     id: string;
     /**
      * 
+     * @type {string}
+     * @memberof CompetitorVisibility
+     */
+    name: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof CompetitorVisibility
+     */
+    domain: string;
+    /**
+     * 
      * @type {VisibilityMetric}
      * @memberof CompetitorVisibility
      */
@@ -60,6 +72,8 @@ export interface CompetitorVisibility {
  */
 export function instanceOfCompetitorVisibility(value: object): value is CompetitorVisibility {
     if (!('id' in value) || value['id'] === undefined) return false;
+    if (!('name' in value) || value['name'] === undefined) return false;
+    if (!('domain' in value) || value['domain'] === undefined) return false;
     if (!('metric' in value) || value['metric'] === undefined) return false;
     if (!('series' in value) || value['series'] === undefined) return false;
     return true;
@@ -76,6 +90,8 @@ export function CompetitorVisibilityFromJSONTyped(json: any, ignoreDiscriminator
     return {
         
         'id': json['id'],
+        'name': json['name'],
+        'domain': json['domain'],
         'metric': VisibilityMetricFromJSON(json['metric']),
         'series': ((json['series'] as Array<any>).map(VisibilityDayFromJSON)),
     };
@@ -93,6 +109,8 @@ export function CompetitorVisibilityToJSONTyped(value?: CompetitorVisibility | n
     return {
         
         'id': value['id'],
+        'name': value['name'],
+        'domain': value['domain'],
         'metric': VisibilityMetricToJSON(value['metric']),
         'series': ((value['series'] as Array<any>).map(VisibilityDayToJSON)),
     };

@@ -2,6 +2,7 @@ package koidomain
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -181,7 +182,7 @@ func TestAuthQuerier_MeNotFound(t *testing.T) {
 	id := uuid.New()
 	d.users.EXPECT().Get(mock.Anything, id).Return(nil, ErrNotFound)
 
-	_, err := NewAuthQuerier(d.store).Me(koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: id, OrganizationID: uuid.New(), Role: RoleOwner}))
+	_, err := NewAuthQuerier(d.store).Me(koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: id, OrganizationID: uuid.New(), Role: RoleOwner}), uuid.Nil)
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
@@ -191,7 +192,74 @@ func TestAuthQuerierRequiresTenantIdentity(t *testing.T) {
 		t.Context(),
 		koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: uuid.New()}),
 	} {
-		_, err := querier.Me(ctx)
+		_, err := querier.Me(ctx, uuid.Nil)
 		require.ErrorIs(t, err, ErrUnauthorized)
+	}
+}
+
+func TestAuthQuerierResolvesActiveBrand(t *testing.T) {
+	failed := errors.New("database unavailable")
+	for _, tt := range []struct {
+		name        string
+		preferred   bool
+		getError    error
+		latestError error
+	}{
+		{name: "preferred", preferred: true},
+		{name: "no preference"},
+		{name: "inaccessible preference", preferred: true, getError: ErrNotFound},
+		{name: "no brands", latestError: ErrNotFound},
+		{name: "preferred read failure", preferred: true, getError: failed},
+		{name: "fallback read failure", latestError: failed},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			d := newAuthDeps(t)
+			brands := NewMockBrandRepository(t)
+			d.store.EXPECT().BrandRepo().Return(brands)
+			userID, organizationID := uuid.New(), uuid.New()
+			d.users.EXPECT().Get(mock.Anything, userID).Return(&User{}, nil)
+			d.orgs.EXPECT().Get(mock.Anything, organizationID).Return(&Organization{}, nil)
+			preferredID := uuid.Nil
+			want := &Brand{
+				BaseEntity: BaseEntity{
+					ID: uuid.New(),
+				},
+			}
+
+			if tt.preferred {
+				preferredID = uuid.New()
+				var preferred *Brand
+				if tt.getError == nil {
+					preferred = want
+				}
+				brands.EXPECT().Get(mock.Anything, preferredID).Return(preferred, tt.getError)
+			}
+			if !tt.preferred || errors.Is(tt.getError, ErrNotFound) {
+				var latest *Brand
+				if tt.latestError == nil {
+					latest = want
+				}
+				brands.EXPECT().Latest(mock.Anything).Return(latest, tt.latestError)
+			}
+
+			ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{
+				UserID:         userID,
+				OrganizationID: organizationID,
+				Role:           RoleOwner,
+			})
+			me, err := NewAuthQuerier(d.store).Me(ctx, preferredID)
+			if errors.Is(tt.getError, failed) || errors.Is(tt.latestError, failed) {
+				require.ErrorIs(t, err, failed)
+				require.Nil(t, me)
+				return
+			}
+
+			require.NoError(t, err)
+			if errors.Is(tt.latestError, ErrNotFound) {
+				require.Nil(t, me.ActiveBrand)
+			} else {
+				require.Equal(t, want, me.ActiveBrand)
+			}
+		})
 	}
 }

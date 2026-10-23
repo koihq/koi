@@ -7,6 +7,7 @@ import type {
   VisibilityResultPage,
   VisibilityRunPage,
   VisibilityRunStatus,
+  VisibilitySummary,
 } from "@/api/generated";
 import type { PromptSort } from "@/api/prompts.api";
 import type { VisibilityScope } from "@/lib/visibility";
@@ -55,7 +56,7 @@ export function createRunsApi(api: VisibilityApi) {
       brandId: string,
       scope: VisibilityScope,
       init?: RequestInit,
-    ): Promise<VisibilityReport> =>
+    ): Promise<VisibilitySummary> =>
       api.getVisibilitySummary(
         { brandId, days: scope.days, engines: scope.engines.join(",") || undefined },
         init,

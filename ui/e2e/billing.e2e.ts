@@ -33,7 +33,15 @@ async function mockAccount(page: Page, subscription = active) {
           id: "user_1",
           email: "founder@example.com",
           organization: { id: "org_1", name: "Koi" },
-          activeBrandId: "brand_1",
+          activeBrand: {
+            id: "brand_1",
+            organizationId: "org_1",
+            name: "Koi",
+            domain: "koi.example",
+            githubRepo: "",
+            country: "IT",
+            description: "",
+          },
         };
         break;
       case "/api/v1/brands":

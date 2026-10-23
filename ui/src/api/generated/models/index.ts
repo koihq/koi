@@ -2,6 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AppearanceEvidence';
+export * from './AuthRes';
 export * from './BillingAllowanceRequest';
 export * from './BillingCatalog';
 export * from './BillingChange';
@@ -53,3 +54,4 @@ export * from './VisibilityResult';
 export * from './VisibilityResultPage';
 export * from './VisibilityRunPage';
 export * from './VisibilityRunStatus';
+export * from './VisibilitySummary';

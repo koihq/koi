@@ -13,14 +13,14 @@ export const Route = createFileRoute("/_authenticated/_app")({
       if (billing.promptLimit === 0) throw redirect({ to: "/settings/billing" });
     }
 
-    return { brand: context.brand, brands: context.brands };
+    return { brand: context.brand };
   },
   component: AppLayout,
 });
 
 function AppLayout() {
   const { t } = useTranslation("home");
-  const { brand, brands } = Route.useRouteContext();
+  const { brand } = Route.useRouteContext();
 
   return (
     <div className="font-sans text-sm font-medium leading-normal min-h-svh bg-background text-foreground">
@@ -30,7 +30,7 @@ function AppLayout() {
       >
         {t("skip")}
       </a>
-      <AppHeader brand={brand} brands={brands} />
+      <AppHeader brand={brand} />
       <main
         id="main-content"
         tabIndex={-1}

@@ -103,12 +103,13 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 			t.Fatal(err)
 		}
 		for key, want := range map[string]string{
-			"mode":                    "subscription",
-			"ui_mode":                 "hosted_page",
-			"customer":                "cus_org",
-			"client_reference_id":     "org_uuid",
-			"line_items[0][price]":    "price_v1",
-			"line_items[0][quantity]": "10",
+			"mode":                      "subscription",
+			"ui_mode":                   "hosted_page",
+			"customer":                  "cus_org",
+			"client_reference_id":       "org_uuid",
+			"line_items[0][price]":      "price_v1",
+			"line_items[0][quantity]":   "10",
+			"managed_payments[enabled]": "true",
 			"subscription_data[metadata][organization_id]": "org_uuid",
 		} {
 			if got := r.Form.Get(key); got != want {
@@ -117,6 +118,17 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 		}
 		if got := r.Header.Get("Idempotency-Key"); got != "koi-checkout-reservation_uuid" {
 			t.Errorf("idempotency key = %q", got)
+		}
+		for _, key := range []string{
+			"automatic_tax[enabled]",
+			"tax_id_collection[enabled]",
+			"payment_method_types[0]",
+			"customer_update[name]",
+			"customer_update[address]",
+		} {
+			if r.Form.Has(key) {
+				t.Errorf("Managed Payments checkout must omit %s", key)
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(checkoutResponse{
@@ -145,6 +157,9 @@ func TestHostedCheckoutTrialRequiresPaymentMethod(t *testing.T) {
 		}
 		if got := r.Form.Get("payment_method_collection"); got != "always" {
 			t.Errorf("payment method collection = %q, want always", got)
+		}
+		if got := r.Form.Get("managed_payments[enabled]"); got != "true" {
+			t.Errorf("managed payments = %q, want true", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(checkoutResponse{

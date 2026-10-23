@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/_settings")({
   beforeLoad: ({ context }) => {
     if (!context.brand) throw redirect({ to: "/setup" });
 
-    return { brand: context.brand, brands: context.brands };
+    return { brand: context.brand };
   },
   errorComponent: RouteLoadError,
   component: SettingsLayout,
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/_settings")({
 
 function SettingsLayout() {
   const { t } = useTranslation("home");
-  const { brand, brands } = Route.useRouteContext();
+  const { brand } = Route.useRouteContext();
 
   return (
     <div className="font-sans text-sm font-medium leading-normal min-h-svh bg-background text-foreground">
@@ -26,7 +26,7 @@ function SettingsLayout() {
       >
         {t("skip")}
       </a>
-      <AppHeader brand={brand} brands={brands} />
+      <AppHeader brand={brand} />
       <main
         id="settings-content"
         tabIndex={-1}

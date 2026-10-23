@@ -33,6 +33,7 @@ type Me struct {
 	User         User
 	Organization Organization
 	Role         string
+	ActiveBrand  *Brand
 }
 
 type AuthCommander interface {
@@ -41,7 +42,7 @@ type AuthCommander interface {
 }
 
 type AuthQuerier interface {
-	Me(ctx context.Context) (*Me, error)
+	Me(ctx context.Context, preferredBrandID uuid.UUID) (*Me, error)
 }
 
 type authCommander struct {
@@ -132,7 +133,7 @@ func (c *authCommander) Login(ctx context.Context, email, password string) (*Me,
 	return loadMe(ctx, c.store, user)
 }
 
-func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
+func (q *authQuerier) Me(ctx context.Context, preferredBrandID uuid.UUID) (*Me, error) {
 	identity, ok := koiauth.FromContext(ctx)
 	if !ok || identity.OrganizationID == uuid.Nil {
 		return nil, ErrUnauthorized
@@ -148,7 +149,26 @@ func (q *authQuerier) Me(ctx context.Context) (*Me, error) {
 		return nil, err
 	}
 
-	return &Me{User: *user, Organization: *organization, Role: identity.Role}, nil
+	var brand *Brand
+	if preferredBrandID != uuid.Nil {
+		brand, err = q.store.BrandRepo().Get(ctx, preferredBrandID)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return nil, err
+		}
+	}
+	if brand == nil {
+		brand, err = q.store.BrandRepo().Latest(ctx)
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return nil, err
+		}
+	}
+
+	return &Me{
+		User:         *user,
+		Organization: *organization,
+		Role:         identity.Role,
+		ActiveBrand:  brand,
+	}, nil
 }
 
 func loadMe(ctx context.Context, store Store, user *User) (*Me, error) {

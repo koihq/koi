@@ -160,6 +160,9 @@ func (c *Client) CreateCheckout(ctx context.Context, input koidomain.BillingChec
 		Customer:                stripe.String(input.CustomerID),
 		PaymentMethodCollection: stripe.String("always"),
 		ClientReferenceID:       stripe.String(input.OrganizationID),
+		ManagedPayments: &stripe.CheckoutSessionCreateManagedPaymentsParams{
+			Enabled: stripe.Bool(true),
+		},
 		LineItems: []*stripe.CheckoutSessionCreateLineItemParams{
 			{
 				Price:    stripe.String(input.PriceID),

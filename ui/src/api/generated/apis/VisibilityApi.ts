@@ -54,6 +54,11 @@ import {
     VisibilityRunStatusFromJSON,
     VisibilityRunStatusToJSON,
 } from '../models/VisibilityRunStatus';
+import {
+    type VisibilitySummary,
+    VisibilitySummaryFromJSON,
+    VisibilitySummaryToJSON,
+} from '../models/VisibilitySummary';
 
 export interface GetPromptVisibilityRequest {
     promptID: string;
@@ -180,11 +185,11 @@ export interface VisibilityApiInterface {
      * @throws {RequiredError}
      * @memberof VisibilityApiInterface
      */
-    getVisibilitySummaryRaw(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilityReport>>;
+    getVisibilitySummaryRaw(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilitySummary>>;
 
     /**
      */
-    getVisibilitySummary(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityReport>;
+    getVisibilitySummary(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilitySummary>;
 
     /**
      * Creates request options for getVisibilityTracking without sending the request
@@ -474,16 +479,16 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
 
     /**
      */
-    async getVisibilitySummaryRaw(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilityReport>> {
+    async getVisibilitySummaryRaw(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<VisibilitySummary>> {
         const requestOptions = await this.getVisibilitySummaryRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => VisibilityReportFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => VisibilitySummaryFromJSON(jsonValue));
     }
 
     /**
      */
-    async getVisibilitySummary(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityReport> {
+    async getVisibilitySummary(requestParameters: GetVisibilitySummaryRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilitySummary> {
         const response = await this.getVisibilitySummaryRaw(requestParameters, initOverrides);
         return await response.value();
     }
