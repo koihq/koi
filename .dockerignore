@@ -1,0 +1,12 @@
+.git
+.github
+.env*
+deploy.md
+bin
+tmp
+ui/node_modules
+ui/.vite
+ui/.pnpm-store
+pkg/web/dist
+**/*.tsbuildinfo
+
