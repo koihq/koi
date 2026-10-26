@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down ui-build ensure-ui run test dev mocks openapi format go-format-check
+.PHONY: compose-up compose-down compose-image ui-build ensure-ui run test dev mocks openapi format go-format-check
 
 OPENAPI_GENERATOR_IMAGE := openapitools/openapi-generator-cli:v7.22.0
 
@@ -7,6 +7,9 @@ compose-up:
 
 compose-down:
 	docker compose down
+
+compose-image:
+	docker compose --profile image up --build -d --wait
 
 ui-build:
 	pnpm --dir ui build

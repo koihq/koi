@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16.15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: koi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: koi
+    volumes:
+      - koi_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koi -d koi"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  koi:
+    image: ghcr.io/koihq/koi:${KOI_IMAGE_TAG:?Set KOI_IMAGE_TAG}
+    restart: unless-stopped
+    stop_grace_period: 90s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KOI_PORT: :8080
+      KOI_DEPLOYMENT_MODE: selfhosted
+      KOI_DATABASE_URL: postgres://koi:${POSTGRES_PASSWORD}@postgres:5432/koi?sslmode=disable
+      KOI_SESSION_SECRET: ${KOI_SESSION_SECRET:?Set KOI_SESSION_SECRET}
+      KOI_CLORO_API_KEY: ${KOI_CLORO_API_KEY:-}
+      KOI_OPENROUTER_API_KEY: ${KOI_OPENROUTER_API_KEY:-}
+      LOGODEV_SECRET_KEY: ${LOGODEV_SECRET_KEY:-}
+      KOI_LOG_FORMAT: json
+    ports:
+      - "127.0.0.1:${KOI_HOST_PORT:-8080}:8080"
+
+volumes:
+  koi_pg:
+

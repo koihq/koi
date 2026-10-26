@@ -31,6 +31,11 @@ make run
 
 API listens on `:8080`.
 
+To build and run the Docker image locally with PostgreSQL, set
+`KOI_SESSION_SECRET` in `.env`, then run `make compose-image`. The image profile
+is separate from `make dev` so the Go API does not claim port 8080 twice.
+Use `make compose-down` to stop it.
+
 ```bash
 make test
 ```
@@ -68,3 +73,37 @@ The project currently initializes a fresh database through GORM entity definitio
 migrations. It does not provide upgrades from earlier development schemas.
 
 Koi Cloud billing setup and sandbox checks are in [docs/billing.md](docs/billing.md).
+
+## Self-host with Docker Compose
+
+Use a released image after the first public release. Docker Compose and an existing
+HTTPS reverse proxy are the only host requirements; Koi does not require Coolify or
+Cloudflare. Live visibility collection requires your own Cloro account and API key.
+
+```bash
+cp .env.selfhosted.example .env.selfhosted
+openssl rand -hex 24      # POSTGRES_PASSWORD
+openssl rand -base64 32   # KOI_SESSION_SECRET
+```
+
+Put those generated values and a published `KOI_IMAGE_TAG` (for example `v0.1.0`)
+in `.env.selfhosted`. `POSTGRES_PASSWORD` must be hex because Compose uses it in a
+PostgreSQL URL. Add `KOI_CLORO_API_KEY` to collect live answers. OpenRouter and
+Logo.dev are optional; manual prompt and competitor management work without them.
+
+```bash
+docker compose --env-file .env.selfhosted -f docker-compose.selfhosted.yml up -d --wait
+```
+
+Koi listens only on `127.0.0.1:8080` on the host. Point your existing HTTPS
+reverse proxy at that address; do not publish PostgreSQL. To update, set
+`KOI_IMAGE_TAG` to another published version, pull it, and restart the stack:
+
+```bash
+docker compose --env-file .env.selfhosted -f docker-compose.selfhosted.yml pull
+docker compose --env-file .env.selfhosted -f docker-compose.selfhosted.yml up -d --wait
+```
+
+The `koi_pg` volume holds the database. Back it up before changing versions.
+The current schema is intended for a fresh installation; upgrades from earlier
+development schemas are unsupported.

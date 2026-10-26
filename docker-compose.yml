@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:16.15
     environment:
       POSTGRES_USER: koi
       POSTGRES_PASSWORD: koi
@@ -14,6 +14,29 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  koi:
+    profiles: [image]
+    image: koi:local
+    build:
+      context: .
+      args:
+        VERSION: local
+        REVISION: local
+    environment:
+      KOI_PORT: :8080
+      KOI_DEPLOYMENT_MODE: selfhosted
+      KOI_DATABASE_URL: postgres://koi:koi@postgres:5432/koi?sslmode=disable
+      KOI_SESSION_SECRET: ${KOI_SESSION_SECRET:-}
+      KOI_CLORO_API_KEY: ${KOI_CLORO_API_KEY:-}
+      KOI_OPENROUTER_API_KEY: ${KOI_OPENROUTER_API_KEY:-}
+      LOGODEV_SECRET_KEY: ${LOGODEV_SECRET_KEY:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 90s
 
 volumes:
   koi_pg:
