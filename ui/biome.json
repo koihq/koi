@@ -40,7 +40,8 @@
         "recommended": true
       },
       "style": {
-        "recommended": true
+        "recommended": true,
+        "noJsxLiterals": "error"
       },
       "suspicious": {
         "recommended": true
@@ -73,7 +74,7 @@
       }
     },
     {
-      "includes": ["**/*.gen.ts"],
+      "includes": ["**/*.gen.ts", "src/api/generated/**"],
       "linter": {
         "enabled": false
       },

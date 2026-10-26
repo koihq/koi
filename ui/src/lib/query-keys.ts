@@ -1,0 +1,18 @@
+export const promptKey = (brandID: string) => ["brands", brandID, "prompts"] as const;
+export const competitorKey = (brandID: string) => ["brands", brandID, "competitors"] as const;
+export const generationKey = (brandID: string) => ["brands", brandID, "generations"] as const;
+export const runKey = (brandID: string) => ["brands", brandID, "runs"] as const;
+
+export const runResultsKey = (brandID: string, runID: string | undefined) =>
+  [...runKey(brandID), runID, "results"] as const;
+export const trackingKey = (brandID: string) => ["brands", brandID, "tracking"] as const;
+
+export const billingKey = ["billing"] as const;
+export const billingSubscriptionKey = (organizationID: string) =>
+  [...billingKey, organizationID, "subscription"] as const;
+export const billingCatalogKey = [...billingKey, "catalog"] as const;
+
+export const accountKey = ["account"] as const;
+export const capabilitiesKey = ["capabilities"] as const;
+export const brandsKey = (organizationId: string) =>
+  ["organizations", organizationId, "brands"] as const;

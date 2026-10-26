@@ -1,0 +1,17 @@
+{
+  "currency": "eur",
+  "options": [
+    { "prompts": 5, "euros": 9 },
+    { "prompts": 10, "euros": 15 },
+    { "prompts": 15, "euros": 20 },
+    { "prompts": 25, "euros": 29 },
+    { "prompts": 50, "euros": 49 },
+    { "prompts": 75, "euros": 69 },
+    { "prompts": 100, "euros": 89 },
+    { "prompts": 150, "euros": 119 },
+    { "prompts": 200, "euros": 149 },
+    { "prompts": 250, "euros": 179 },
+    { "prompts": 350, "euros": 235 },
+    { "prompts": 500, "euros": 319 }
+  ]
+}

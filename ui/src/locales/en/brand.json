@@ -1,0 +1,112 @@
+{
+  "setup": {
+    "title": "Set up your brand",
+    "description": "Tell Koi which brand and market to measure.",
+    "submit": "Create brand"
+  },
+  "settings": {
+    "title": "Brand settings",
+    "description": "Update the brand and market Koi measures.",
+    "back": "Back to app",
+    "navigation": "Settings navigation",
+    "section": "Settings",
+    "brand": "Brand",
+    "prompts": "Prompts",
+    "competitors": "Tracked competitors",
+    "save": "Save changes",
+    "saved": "Brand settings saved"
+  },
+  "lists": {
+    "loading": "Loading tracking lists…",
+    "loadError": "Unable to load these lists. Check your connection and try again.",
+    "saveError": "Unable to save this change. Try again.",
+    "confirmed": "Confirmed",
+    "unconfirmed": "Needs confirmation",
+    "confirm": "Confirm",
+    "confirmAll": "Confirm all",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "pagination": {
+      "label": "List pagination",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
+    },
+    "source": {
+      "manual": "Added manually",
+      "drafted": "Drafted by Koi",
+      "observed": "Observed by Koi"
+    },
+    "prompts": {
+      "title": "Prompts",
+      "description": "Questions Koi will ask answer engines about your market.",
+      "field": "Prompt",
+      "placeholder": "What are the best AEO tools for technical founders?",
+      "invalid": "Enter a prompt",
+      "add": "Add prompt",
+      "empty": "Add the first question you want Koi to track.",
+      "deleteConfirm": "Delete this prompt?"
+    },
+    "competitors": {
+      "title": "Tracked competitors",
+      "description": "Brands Koi will compare with yours. New discoveries can be reviewed here later.",
+      "name": "Competitor name",
+      "nameInvalid": "Enter a competitor name",
+      "domain": "Domain",
+      "domainPlaceholder": "example.com",
+      "domainInvalid": "Enter a valid hostname without https://",
+      "aliases": "Aliases",
+      "aliasesPlaceholder": "Example AI, Example Labs",
+      "aliasesValue": "Also known as: {aliases}",
+      "add": "Add competitor",
+      "empty": "Add the first competitor you want Koi to track.",
+      "deleteConfirm": "Delete this competitor?"
+    }
+  },
+  "menu": {
+    "open": "Open {name} menu",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "fields": {
+    "name": {
+      "label": "Brand name"
+    },
+    "domain": {
+      "label": "Domain",
+      "placeholder": "koi.dev"
+    },
+    "githubRepo": {
+      "label": "GitHub repository",
+      "placeholder": "https://github.com/koihq/koi"
+    },
+    "identifierHelp": "Enter a domain, a GitHub repository, or both.",
+    "country": {
+      "label": "Measurement country",
+      "placeholder": "Search by code or country",
+      "description": "Choose the first country where you want Koi to measure the brand.",
+      "searching": "Searching…",
+      "noResults": "No supported countries found",
+      "searchError": "Unable to search countries"
+    },
+    "description": {
+      "label": "Description",
+      "placeholder": "AI visibility for technical founders",
+      "description": "Briefly describe what the brand offers."
+    }
+  },
+  "validation": {
+    "name": { "invalid": "Enter a brand name" },
+    "domain": { "invalid": "Enter a valid domain or provide a GitHub repository" },
+    "github_repo": { "invalid": "Enter a valid GitHub URL or provide a domain" },
+    "country": { "invalid": "Select a supported country" },
+    "description": { "invalid": "Check the description" }
+  },
+  "loadError": {
+    "title": "Unable to load your brand",
+    "description": "Check your connection and try again."
+  },
+  "retry": "Try again"
+}

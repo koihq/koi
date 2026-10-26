@@ -1,0 +1,110 @@
+all: false
+force-file-write: true
+formatter: goimports
+recursive: false
+structname: '{{.Mock}}{{.InterfaceName}}'
+template: testify
+packages:
+  github.com/koihq/koi/pkg/koidomain:
+    config:
+      dir: '{{.InterfaceDir}}'
+      filename: mocks_test.go
+      pkgname: '{{.SrcPackageName}}'
+      inpackage: true
+    interfaces:
+      Store:
+        configs:
+          - dir: '{{.InterfaceDir}}'
+            filename: mocks_test.go
+            pkgname: '{{.SrcPackageName}}'
+            inpackage: true
+          - dir: '{{.InterfaceDir}}/../koiapi'
+            filename: mocks_test.go
+            pkgname: koiapi
+            inpackage: false
+      BillingCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      BillingQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      UserRepository:
+      OrganizationRepository:
+      MembershipRepository:
+      BrandRepository:
+      PromptRepository:
+      CompetitorRepository:
+      GenerationRepository:
+      VisibilityRepository:
+      BrandCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      BrandQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      PromptCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      PromptQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      CompetitorCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      CompetitorQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      GenerationCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      VisibilityQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      GenerationQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      AuthCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false
+      AuthQuerier:
+        config:
+          dir: '{{.InterfaceDir}}/../koiapi'
+          filename: mocks_test.go
+          pkgname: koiapi
+          inpackage: false

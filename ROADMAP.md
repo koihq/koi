@@ -24,7 +24,7 @@ onboard → generate prompts + competitors → first run → inspect who-shows-u
 
 ## Now — MVP
 
-Ship in this order. Slice 2 starts as soon as slice 1 works. Slice 3 is the same MVP, not a later product.
+Ship in this order. Self-hosted email/password cookie sessions precede Slice 1. Slice 2 starts as soon as slice 1 works. Slice 3 is the same MVP, not a later product.
 
 ### Slice 1 — See (AI visibility)
 
@@ -33,8 +33,9 @@ Onboarding and the first prompt × engine run. Includes competitor identificatio
 - [ ] Brand onboarding: name, domain or GitHub repo, country, optional one-line product
 - [ ] OpenRouter onboarding agent (not the collect pipeline) drafts, in one pass:
   - ~10–15 buyer prompts: category, alternatives-to, comparison, use-case — not only vanity branded queries
-  - ~5–8 likely competitors: `name`, `domain`, mention aliases
+  - ~5–8 likely competitors: `name`, `domain`
 - [ ] Human review of both lists (accept / edit / drop / add) before any collect
+- [ ] Live visibility collection through Cloro for ChatGPT, Perplexity, Gemini, and Google AI Overviews. OpenRouter handles onboarding research and drafting.
 - [ ] First run: persist prompt, engine, fetched_at, outcome, raw answer, sources, mentioned/cited entities
 - [ ] Who-shows-up: attach rows to confirmed competitors; repeating unknowns become suggestions, not silent adds
 - [ ] UI: live progress, per-engine breakdown, filters, answer detail, competitor panel
@@ -76,7 +77,7 @@ Replace the spreadsheet. Keep the loop closed.
 | Brief | copy / download | `koi brief` | `gap_brief` |
 | Recheck | re-run on a run | `koi check` | `check_run` |
 
-Tracked competitor: `name`, `domain`, aliases, source (`drafted` | `observed` | `manual`), confirmed boolean. Prompt mix uses confirmed competitors for `alternatives to X` and `X vs Y`. Mention/cite detection uses aliases.
+Tracked competitor: `name`, `domain`, source (`drafted` | `observed` | `manual`), confirmed boolean. Prompt mix uses confirmed competitors for `alternatives to X` and `X vs Y`. Mention/cite detection uses the selected brand name and domain.
 
 ## Next
 

@@ -1,6 +1,5 @@
 /// <reference types="vitest/config" />
 import tailwindcss from "@tailwindcss/vite";
-import { devtools } from "@tanstack/devtools-vite";
 
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
@@ -8,6 +7,7 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const config = defineConfig({
+  envDir: "..",
   resolve: { tsconfigPaths: true },
   test: {
     environment: "node",
@@ -17,8 +17,8 @@ const config = defineConfig({
       "class-variance-authority",
       "cn",
       "@base-ui/react/button",
-      "@tanstack/react-devtools",
-      "@tanstack/react-router-devtools",
+      "@base-ui/react/input",
+      "@base-ui/react/separator",
     ],
   },
   server: {
@@ -34,7 +34,6 @@ const config = defineConfig({
     emptyOutDir: true,
   },
   plugins: [
-    devtools(),
     tailwindcss(),
     tanstackRouter({ target: "react", autoCodeSplitting: true }),
     viteReact(),

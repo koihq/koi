@@ -14,5 +14,6 @@ func FileSystem() http.FileSystem {
 	if err != nil {
 		panic(err)
 	}
+
 	return http.FS(sub)
 }

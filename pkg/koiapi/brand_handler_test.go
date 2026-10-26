@@ -1,0 +1,342 @@
+package koiapi
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/alexedwards/scs/v2"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
+	"github.com/koihq/koi/pkg/koiauth"
+	"github.com/koihq/koi/pkg/koidomain"
+)
+
+func identityIs(userID uuid.UUID) any {
+	return mock.MatchedBy(func(ctx context.Context) bool {
+		identity, ok := koiauth.FromContext(ctx)
+
+		return ok && identity.UserID == userID
+	})
+}
+
+func newBrandTestServer(t *testing.T, q koidomain.BrandQuerier, c koidomain.BrandCommander) *httptest.Server {
+	t.Helper()
+	sess := scs.New()
+	sess.Cookie.Name = "koi_session"
+	r := chi.NewRouter()
+	r.Use(sess.LoadAndSave)
+	r.Get("/test-session/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
+		w.WriteHeader(http.StatusNoContent)
+	})
+	r.With(Authorizer(sess)).Route("/api/v1/brands", NewBrandHandler(q, c, sess).Routes())
+	ts := httptest.NewServer(r)
+	t.Cleanup(ts.Close)
+
+	return ts
+}
+
+func brandSession(t *testing.T, client *http.Client, serverURL string, userID uuid.UUID) {
+	t.Helper()
+	resp, err := client.Get(serverURL + "/test-session/" + userID.String())
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+}
+
+func TestBrandHandlerRequiresSession(t *testing.T) {
+	ts := newBrandTestServer(t, NewMockBrandQuerier(t), NewMockBrandCommander(t))
+	client := newCookieClient(t)
+	id := uuid.New().String()
+
+	for _, path := range []string{"/brands", "/brands/countries", "/brands/" + id} {
+		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+path, "")
+		var body apiresponse.Envelope
+		readJSON(t, resp, &body)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
+	}
+
+	for _, method := range []string{http.MethodPost, http.MethodPatch} {
+		path := "/brands"
+		if method == http.MethodPatch {
+			path += "/" + id
+		}
+
+		resp := doJSON(t, client, method, ts.URL+"/api/v1"+path, `{}`)
+		var body apiresponse.Envelope
+		readJSON(t, resp, &body)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
+	}
+}
+
+func TestBrandHandlerRejectsMalformedSessionAndPagination(t *testing.T) {
+	userID := uuid.New()
+	q := NewMockBrandQuerier(t)
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     3,
+			PageSize: 100,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
+		Items:       []koidomain.Brand{},
+		CurrentPage: 3,
+		HasPrev:     true,
+	}, nil)
+	ts := newBrandTestServer(t, q, NewMockBrandCommander(t))
+	client := newCookieClient(t)
+	resp, err := client.Get(ts.URL + "/test-session/invalid")
+	require.NoError(t, err)
+	resp.Body.Close()
+	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands", "")
+	var denied apiresponse.Envelope
+	readJSON(t, resp, &denied)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	require.Equal(t, koidomain.CodeUnauthorized, denied.Error.Code)
+
+	brandSession(t, client, ts.URL, userID)
+
+	for _, query := range []struct{ value, field string }{
+		{"page=0", "page"},
+		{"page=-1", "page"},
+		{"page=abc", "page"},
+		{"page=", "page"},
+		{"page=1&page=2", "page"},
+		{"pageSize=0", "pageSize"},
+		{"pageSize=101", "pageSize"},
+		{"pageSize=abc", "pageSize"},
+		{"pageSize=", "pageSize"},
+		{"q=one&q=two", "q"},
+	} {
+		resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?"+query.value, "")
+		var body apiresponse.Envelope
+		readJSON(t, resp, &body)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, query.value)
+		require.Equal(t, koidomain.CodeValidation, body.Error.Code)
+		require.Equal(t, []koidomain.FieldError{
+			{
+				Field: query.field,
+				Code:  koidomain.FieldInvalid,
+			},
+		}, body.Error.Fields)
+	}
+
+	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands?page=3&pageSize=100", "")
+	var page koidomain.Page[koidomain.Brand]
+	readJSON(t, resp, &page)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, 3, page.CurrentPage)
+}
+
+func TestBrandHandlerSearch(t *testing.T) {
+	q := NewMockBrandQuerier(t)
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     2,
+			PageSize: 20,
+		},
+		Query: "Koi",
+	}).Return(&koidomain.Page[koidomain.Brand]{
+		Items:       []koidomain.Brand{},
+		CurrentPage: 2,
+		HasPrev:     true,
+	}, nil)
+	server := newBrandTestServer(t, q, NewMockBrandCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, server.URL, uuid.New())
+	resp := doJSON(t, client, http.MethodGet, server.URL+"/api/v1/brands?q=%20Koi%20&page=2&pageSize=20", "")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NoError(t, resp.Body.Close())
+}
+
+func TestBrandHandlerCountries(t *testing.T) {
+	ts := newBrandTestServer(t, NewMockBrandQuerier(t), NewMockBrandCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, uuid.New())
+
+	for _, tt := range []struct {
+		name  string
+		query string
+		want  []koidomain.CountryOption
+	}{
+		{
+			name: "omitted",
+			want: koidomain.SearchSupportedCountries(""),
+		},
+		{
+			name:  "empty",
+			query: "?q=",
+			want:  koidomain.SearchSupportedCountries(""),
+		},
+		{
+			name:  "search",
+			query: "?q=italy",
+			want: []koidomain.CountryOption{
+				{
+					Code: "IT",
+					Name: "Italy",
+				},
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/countries"+tt.query, "")
+			var countries []koidomain.CountryOption
+			readJSON(t, resp, &countries)
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+			require.Equal(t, tt.want, countries)
+		})
+	}
+}
+
+func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
+	userA, userB, brandID := uuid.New(), uuid.New(), uuid.New()
+	organizationID := uuid.New()
+
+	brand := &koidomain.Brand{
+		BaseEntity: koidomain.BaseEntity{
+			ID: brandID,
+		},
+		OrganizationID: organizationID,
+		Name:           "Koi",
+		Domain:         "koi.dev",
+		Country:        "IT",
+	}
+
+	q := NewMockBrandQuerier(t)
+	c := NewMockBrandCommander(t)
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
+		Items:       []koidomain.Brand{},
+		CurrentPage: 1,
+	}, nil).Once()
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
+		Items:       []koidomain.Brand{*brand},
+		TotalItems:  1,
+		TotalPages:  1,
+		CurrentPage: 1,
+	}, nil).Once()
+	q.EXPECT().List(mock.Anything, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     1,
+			PageSize: 10,
+		},
+	}).Return(&koidomain.Page[koidomain.Brand]{
+		Items:       []koidomain.Brand{},
+		CurrentPage: 1,
+	}, nil)
+	q.EXPECT().Get(identityIs(userA), brandID).Return(brand, nil)
+	q.EXPECT().Get(identityIs(userB), brandID).Return(nil, koidomain.ErrNotFound)
+	c.EXPECT().Create(mock.Anything, mock.MatchedBy(func(p koidomain.BrandParams) bool {
+		return p.Name == "Koi" && p.Domain == "koi.dev" && p.Country == "IT"
+	})).Return(brand, nil)
+	second := *brand
+	second.ID = uuid.New()
+	second.Name = "Second"
+	c.EXPECT().Create(mock.Anything, mock.MatchedBy(func(p koidomain.BrandParams) bool {
+		return p.Name == "Second" && p.Domain == "second.dev"
+	})).Return(&second, nil)
+	c.EXPECT().Update(identityIs(userB), brandID, mock.Anything).Return(nil, koidomain.ErrNotFound)
+	c.EXPECT().Update(identityIs(userA), brandID, mock.MatchedBy(func(p koidomain.BrandPatch) bool {
+		return p.Description != nil && *p.Description == "AI visibility"
+	})).Return(brand, nil)
+
+	ts := newBrandTestServer(t, q, c)
+	clientA, clientB := newCookieClient(t), newCookieClient(t)
+	brandSession(t, clientA, ts.URL, userA)
+	brandSession(t, clientB, ts.URL, userB)
+	base := ts.URL + "/api/v1/brands"
+
+	resp := doJSON(t, clientA, http.MethodGet, base, "")
+	var empty koidomain.Page[koidomain.Brand]
+	readJSON(t, resp, &empty)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotNil(t, empty.Items)
+	require.Empty(t, empty.Items)
+	require.Equal(t, 1, empty.CurrentPage)
+
+	resp = doJSON(t, clientA, http.MethodGet, base+"/countries?q=italy", "")
+	var countries []koidomain.CountryOption
+	readJSON(t, resp, &countries)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, []koidomain.CountryOption{
+		{
+			Code: "IT",
+			Name: "Italy",
+		},
+	}, countries)
+
+	resp = doJSON(t, clientA, http.MethodPost, base,
+		`{"user_id":"00000000-0000-0000-0000-000000000000","name":"Koi","domain":"koi.dev","country":"IT"}`)
+
+	var created BrandRes
+	readJSON(t, resp, &created)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, organizationID, created.OrganizationID)
+
+	resp = doJSON(t, clientA, http.MethodGet, base, "")
+	var listA koidomain.Page[BrandRes]
+	readJSON(t, resp, &listA)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Len(t, listA.Items, 1)
+	require.Equal(t, organizationID, listA.Items[0].OrganizationID)
+	require.EqualValues(t, 1, listA.TotalItems)
+
+	resp = doJSON(t, clientB, http.MethodGet, base, "")
+	var listB koidomain.Page[koidomain.Brand]
+	readJSON(t, resp, &listB)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Empty(t, listB.Items)
+	require.Zero(t, listB.TotalItems)
+	require.Zero(t, listB.TotalPages)
+	require.Equal(t, 1, listB.CurrentPage)
+	require.False(t, listB.HasNext)
+	require.False(t, listB.HasPrev)
+
+	resp = doJSON(t, clientA, http.MethodGet, base+"/"+brandID.String(), "")
+	var own koidomain.Brand
+	readJSON(t, resp, &own)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, brandID, own.ID)
+
+	resp = doJSON(t, clientB, http.MethodGet, base+"/"+brandID.String(), "")
+	var denied apiresponse.Envelope
+	readJSON(t, resp, &denied)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Equal(t, koidomain.CodeNotFound, denied.Error.Code)
+
+	resp = doJSON(t, clientB, http.MethodPatch, base+"/"+brandID.String(), `{"name":"Stolen"}`)
+	readJSON(t, resp, &denied)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Equal(t, koidomain.CodeNotFound, denied.Error.Code)
+
+	resp = doJSON(t, clientA, http.MethodPatch, base+"/"+brandID.String(),
+		`{"description":"AI visibility","user_id":"00000000-0000-0000-0000-000000000000"}`)
+
+	var updated BrandRes
+	readJSON(t, resp, &updated)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, organizationID, updated.OrganizationID)
+
+	resp = doJSON(t, clientA, http.MethodPost, base, `{"name":"Second","domain":"second.dev","country":"IT"}`)
+	var secondCreated BrandRes
+	readJSON(t, resp, &secondCreated)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	require.Equal(t, "Second", secondCreated.Name)
+}

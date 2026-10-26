@@ -1,0 +1,22 @@
+.sidebar-catalog-stage {
+  position: relative;
+  height: 36rem;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+}
+
+.sidebar-catalog-stage [data-slot="sidebar-container"] {
+  position: absolute;
+  height: 100%;
+}
+
+.sidebar-catalog-stage [data-slot="sidebar-gap"] {
+  height: 100%;
+}
+
+.sidebar-catalog-inset {
+  min-height: 0;
+  overflow: auto;
+}

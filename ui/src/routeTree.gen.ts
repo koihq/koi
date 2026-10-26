@@ -9,50 +9,440 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/_app'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/_settings'
+import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
+import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
+import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/_app/index'
+import { Route as AuthenticatedSetupIndexRouteImport } from './routes/_authenticated/setup/index'
+import { Route as DevUiIndexRouteImport } from './routes/dev/ui/index'
+import { Route as DevUiButtonRouteImport } from './routes/dev/ui/button'
+import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
+import { Route as DevUiMarkRouteImport } from './routes/dev/ui/mark'
+import { Route as DevUiSeparatorRouteImport } from './routes/dev/ui/separator'
+import { Route as DevUiSidebarRouteImport } from './routes/dev/ui/sidebar'
+import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_authenticated/_app/competitors/index'
+import { Route as AuthenticatedAppPromptsPromptIdRouteImport } from './routes/_authenticated/_app/prompts/$promptId'
+import { Route as AuthenticatedSettingsSettingsBillingRouteImport } from './routes/_authenticated/_settings/settings/billing'
+import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/_settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const DevUiRouteRoute = DevUiRouteRouteImport.update({
+  id: '/dev/ui',
+  path: '/dev/ui',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInIndexRoute = SignInIndexRouteImport.update({
+  id: '/sign-in/',
+  path: '/sign-in/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignUpIndexRoute = SignUpIndexRouteImport.update({
+  id: '/sign-up/',
+  path: '/sign-up/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedSetupIndexRoute = AuthenticatedSetupIndexRouteImport.update({
+  id: '/setup/',
+  path: '/setup/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const DevUiIndexRoute = DevUiIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiButtonRoute = DevUiButtonRouteImport.update({
+  id: '/button',
+  path: '/button',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiFieldRoute = DevUiFieldRouteImport.update({
+  id: '/field',
+  path: '/field',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiMarkRoute = DevUiMarkRouteImport.update({
+  id: '/mark',
+  path: '/mark',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiSeparatorRoute = DevUiSeparatorRouteImport.update({
+  id: '/separator',
+  path: '/separator',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const DevUiSidebarRoute = DevUiSidebarRouteImport.update({
+  id: '/sidebar',
+  path: '/sidebar',
+  getParentRoute: () => DevUiRouteRoute,
+} as any)
+const AuthenticatedAppCompetitorsIndexRoute =
+  AuthenticatedAppCompetitorsIndexRouteImport.update({
+    id: '/competitors/',
+    path: '/competitors/',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppPromptsPromptIdRoute =
+  AuthenticatedAppPromptsPromptIdRouteImport.update({
+    id: '/prompts/$promptId',
+    path: '/prompts/$promptId',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedSettingsSettingsBillingRoute =
+  AuthenticatedSettingsSettingsBillingRouteImport.update({
+    id: '/settings/billing',
+    path: '/settings/billing',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
+const AuthenticatedSettingsSettingsBrandRoute =
+  AuthenticatedSettingsSettingsBrandRouteImport.update({
+    id: '/settings/brand',
+    path: '/settings/brand',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedAppIndexRoute
+  '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/sign-in/': typeof SignInIndexRoute
+  '/sign-up/': typeof SignUpIndexRoute
+  '/dev/ui/button': typeof DevUiButtonRoute
+  '/dev/ui/field': typeof DevUiFieldRoute
+  '/dev/ui/mark': typeof DevUiMarkRoute
+  '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
+  '/setup/': typeof AuthenticatedSetupIndexRoute
+  '/dev/ui/': typeof DevUiIndexRoute
+  '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
+  '/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
+  '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof AuthenticatedAppIndexRoute
+  '/sign-in': typeof SignInIndexRoute
+  '/sign-up': typeof SignUpIndexRoute
+  '/dev/ui/button': typeof DevUiButtonRoute
+  '/dev/ui/field': typeof DevUiFieldRoute
+  '/dev/ui/mark': typeof DevUiMarkRoute
+  '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
+  '/setup': typeof AuthenticatedSetupIndexRoute
+  '/dev/ui': typeof DevUiIndexRoute
+  '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
+  '/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
+  '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/_authenticated/_app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/_settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/sign-in/': typeof SignInIndexRoute
+  '/sign-up/': typeof SignUpIndexRoute
+  '/dev/ui/button': typeof DevUiButtonRoute
+  '/dev/ui/field': typeof DevUiFieldRoute
+  '/dev/ui/mark': typeof DevUiMarkRoute
+  '/dev/ui/separator': typeof DevUiSeparatorRoute
+  '/dev/ui/sidebar': typeof DevUiSidebarRoute
+  '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
+  '/_authenticated/setup/': typeof AuthenticatedSetupIndexRoute
+  '/dev/ui/': typeof DevUiIndexRoute
+  '/_authenticated/_app/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
+  '/_authenticated/_settings/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
+  '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/dev/ui'
+    | '/sign-in/'
+    | '/sign-up/'
+    | '/dev/ui/button'
+    | '/dev/ui/field'
+    | '/dev/ui/mark'
+    | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
+    | '/setup/'
+    | '/dev/ui/'
+    | '/prompts/$promptId'
+    | '/settings/billing'
+    | '/settings/brand'
+    | '/competitors/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/sign-in'
+    | '/sign-up'
+    | '/dev/ui/button'
+    | '/dev/ui/field'
+    | '/dev/ui/mark'
+    | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
+    | '/setup'
+    | '/dev/ui'
+    | '/prompts/$promptId'
+    | '/settings/billing'
+    | '/settings/brand'
+    | '/competitors'
+  id:
+    | '__root__'
+    | '/_authenticated'
+    | '/dev/ui'
+    | '/_authenticated/_app'
+    | '/_authenticated/_settings'
+    | '/sign-in/'
+    | '/sign-up/'
+    | '/dev/ui/button'
+    | '/dev/ui/field'
+    | '/dev/ui/mark'
+    | '/dev/ui/separator'
+    | '/dev/ui/sidebar'
+    | '/_authenticated/_app/'
+    | '/_authenticated/setup/'
+    | '/dev/ui/'
+    | '/_authenticated/_app/prompts/$promptId'
+    | '/_authenticated/_settings/settings/billing'
+    | '/_authenticated/_settings/settings/brand'
+    | '/_authenticated/_app/competitors/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  DevUiRouteRoute: typeof DevUiRouteRouteWithChildren
+  SignInIndexRoute: typeof SignInIndexRoute
+  SignUpIndexRoute: typeof SignUpIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_app': {
+      id: '/_authenticated/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/_settings': {
+      id: '/_authenticated/_settings'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/dev/ui': {
+      id: '/dev/ui'
+      path: '/dev/ui'
+      fullPath: '/dev/ui'
+      preLoaderRoute: typeof DevUiRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in/': {
+      id: '/sign-in/'
+      path: '/sign-in'
+      fullPath: '/sign-in/'
+      preLoaderRoute: typeof SignInIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up/': {
+      id: '/sign-up/'
+      path: '/sign-up'
+      fullPath: '/sign-up/'
+      preLoaderRoute: typeof SignUpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/_app/': {
+      id: '/_authenticated/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/setup/': {
+      id: '/_authenticated/setup/'
+      path: '/setup'
+      fullPath: '/setup/'
+      preLoaderRoute: typeof AuthenticatedSetupIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/dev/ui/': {
+      id: '/dev/ui/'
+      path: '/'
+      fullPath: '/dev/ui/'
+      preLoaderRoute: typeof DevUiIndexRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/button': {
+      id: '/dev/ui/button'
+      path: '/button'
+      fullPath: '/dev/ui/button'
+      preLoaderRoute: typeof DevUiButtonRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/field': {
+      id: '/dev/ui/field'
+      path: '/field'
+      fullPath: '/dev/ui/field'
+      preLoaderRoute: typeof DevUiFieldRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/mark': {
+      id: '/dev/ui/mark'
+      path: '/mark'
+      fullPath: '/dev/ui/mark'
+      preLoaderRoute: typeof DevUiMarkRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/separator': {
+      id: '/dev/ui/separator'
+      path: '/separator'
+      fullPath: '/dev/ui/separator'
+      preLoaderRoute: typeof DevUiSeparatorRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/dev/ui/sidebar': {
+      id: '/dev/ui/sidebar'
+      path: '/sidebar'
+      fullPath: '/dev/ui/sidebar'
+      preLoaderRoute: typeof DevUiSidebarRouteImport
+      parentRoute: typeof DevUiRouteRoute
+    }
+    '/_authenticated/_app/competitors/': {
+      id: '/_authenticated/_app/competitors/'
+      path: '/competitors'
+      fullPath: '/competitors/'
+      preLoaderRoute: typeof AuthenticatedAppCompetitorsIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_app/prompts/$promptId': {
+      id: '/_authenticated/_app/prompts/$promptId'
+      path: '/prompts/$promptId'
+      fullPath: '/prompts/$promptId'
+      preLoaderRoute: typeof AuthenticatedAppPromptsPromptIdRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/_settings/settings/billing': {
+      id: '/_authenticated/_settings/settings/billing'
+      path: '/settings/billing'
+      fullPath: '/settings/billing'
+      preLoaderRoute: typeof AuthenticatedSettingsSettingsBillingRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
+    '/_authenticated/_settings/settings/brand': {
+      id: '/_authenticated/_settings/settings/brand'
+      path: '/settings/brand'
+      fullPath: '/settings/brand'
+      preLoaderRoute: typeof AuthenticatedSettingsSettingsBrandRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
     }
   }
 }
 
+interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppPromptsPromptIdRoute: typeof AuthenticatedAppPromptsPromptIdRoute
+  AuthenticatedAppCompetitorsIndexRoute: typeof AuthenticatedAppCompetitorsIndexRoute
+}
+
+const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppPromptsPromptIdRoute: AuthenticatedAppPromptsPromptIdRoute,
+  AuthenticatedAppCompetitorsIndexRoute: AuthenticatedAppCompetitorsIndexRoute,
+}
+
+const AuthenticatedAppRouteWithChildren =
+  AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
+
+interface AuthenticatedSettingsRouteChildren {
+  AuthenticatedSettingsSettingsBillingRoute: typeof AuthenticatedSettingsSettingsBillingRoute
+  AuthenticatedSettingsSettingsBrandRoute: typeof AuthenticatedSettingsSettingsBrandRoute
+}
+
+const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
+  AuthenticatedSettingsSettingsBillingRoute:
+    AuthenticatedSettingsSettingsBillingRoute,
+  AuthenticatedSettingsSettingsBrandRoute:
+    AuthenticatedSettingsSettingsBrandRoute,
+}
+
+const AuthenticatedSettingsRouteWithChildren =
+  AuthenticatedSettingsRoute._addFileChildren(
+    AuthenticatedSettingsRouteChildren,
+  )
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRouteWithChildren
+  AuthenticatedSetupIndexRoute: typeof AuthenticatedSetupIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRouteWithChildren,
+  AuthenticatedSetupIndexRoute: AuthenticatedSetupIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
+interface DevUiRouteRouteChildren {
+  DevUiButtonRoute: typeof DevUiButtonRoute
+  DevUiFieldRoute: typeof DevUiFieldRoute
+  DevUiMarkRoute: typeof DevUiMarkRoute
+  DevUiSeparatorRoute: typeof DevUiSeparatorRoute
+  DevUiSidebarRoute: typeof DevUiSidebarRoute
+  DevUiIndexRoute: typeof DevUiIndexRoute
+}
+
+const DevUiRouteRouteChildren: DevUiRouteRouteChildren = {
+  DevUiButtonRoute: DevUiButtonRoute,
+  DevUiFieldRoute: DevUiFieldRoute,
+  DevUiMarkRoute: DevUiMarkRoute,
+  DevUiSeparatorRoute: DevUiSeparatorRoute,
+  DevUiSidebarRoute: DevUiSidebarRoute,
+  DevUiIndexRoute: DevUiIndexRoute,
+}
+
+const DevUiRouteRouteWithChildren = DevUiRouteRoute._addFileChildren(
+  DevUiRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  DevUiRouteRoute: DevUiRouteRouteWithChildren,
+  SignInIndexRoute: SignInIndexRoute,
+  SignUpIndexRoute: SignUpIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

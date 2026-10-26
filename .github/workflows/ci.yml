@@ -16,6 +16,20 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: koi
+          POSTGRES_PASSWORD: koi
+          POSTGRES_DB: koi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U koi -d koi"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7.0.1
 
@@ -26,12 +40,17 @@ jobs:
       - name: Stub embedded UI
         run: |
           mkdir -p pkg/web/dist
-          echo '<!doctype html>' > pkg/web/dist/index.html
+          echo '<!doctype html><html><head><title>Koi</title></head><body></body></html>' > pkg/web/dist/index.html
 
       - name: Vet
         run: go vet ./...
 
+      - name: Go formatting
+        run: make go-format-check
+
       - name: Test
+        env:
+          KOI_DATABASE_URL: postgres://koi:koi@localhost:5432/koi?sslmode=disable
         run: go test ./...
 
   frontend:
@@ -54,8 +73,8 @@ jobs:
       - name: Install
         run: pnpm --dir ui install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm --dir ui lint
+      - name: Formatting, lint, and imports
+        run: pnpm --dir ui check
 
       - name: Typecheck
         run: pnpm --dir ui check-types

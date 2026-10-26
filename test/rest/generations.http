@@ -1,0 +1,160 @@
+### Generation API walkthrough (VS Code REST Client)
+### Run make dev, then execute the requests in order.
+### For the 202/409 cases, start the API with KOI_OPENROUTER_API_KEY set to any nonempty test value.
+### Item 2 only enqueues jobs; no provider request runs until the drafting worker is added.
+### Requests use explicit cookies so user A and B stay separate.
+
+@host = http://localhost:5173
+@baseUrl = {{host}}/api/v1
+@password = password1
+
+### No session: 401 unauthorized
+# @no-cookie-jar
+POST {{baseUrl}}/brands/11111111-1111-4111-8111-111111111111/generations
+Content-Type: application/json
+
+{"mode":"prompts"}
+
+### Create user A: 201
+# @no-cookie-jar
+# @name signupA
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{"email":"generation-a-{{$guid}}@example.com","password":"{{password}}"}
+
+### Create A's brand: 201
+# @no-cookie-jar
+# @name createBrandA
+POST {{baseUrl}}/brands
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"name":"Northstar Metrics","domain":"northstar.example","country":"US","description":"Analytics for startup acquisition teams"}
+
+### Capability: 200, aiDrafting true with a configured key and enqueue client
+# @no-cookie-jar
+GET {{baseUrl}}/capabilities
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Invalid JSON: 400 invalid_json
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+not-json
+
+### Invalid mode: 400 validation, field mode/invalid
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"unknown"}
+
+### Invalid key: 400 validation, field idempotency_key/invalid
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Idempotency-Key: bad key
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"prompts"}
+
+### Enqueue prompts: 202 queued with id, mode, state, status_url
+# @no-cookie-jar
+# @name draftPrompts
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Idempotency-Key: manual-prompts-1
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"prompts"}
+
+### Same key and mode: 202 with the same run ID
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Idempotency-Key: manual-prompts-1
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"prompts"}
+
+### Same active mode with another key: 202 with the same run ID
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Idempotency-Key: another-prompts-key
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"prompts"}
+
+### Reuse the original key for another mode: 409 idempotency_conflict
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Idempotency-Key: manual-prompts-1
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"competitors"}
+
+### Incompatible active mode: 409 generation_conflict with error.status_url
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"competitors"}
+
+### Read status: 200; internal snapshot, job ID, key, and model are absent
+# @no-cookie-jar
+GET {{host}}{{draftPrompts.response.body.$.status_url}}
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Recent runs: 200, paginated response with one queued item
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations?page=1&pageSize=10
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Invalid page size: 400 validation, field pageSize/invalid
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations?pageSize=101
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Missing run: 404 not_found
+# @no-cookie-jar
+GET {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations/22222222-2222-4222-8222-222222222222
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+### Create user B: 201
+# @no-cookie-jar
+# @name signupB
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{"email":"generation-b-{{$guid}}@example.com","password":"{{password}}"}
+
+### B cannot read A's run: 404 not_found
+# @no-cookie-jar
+GET {{host}}{{draftPrompts.response.body.$.status_url}}
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+### B cannot enqueue for A's brand: 404 not_found
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Cookie: {{signupB.response.headers.Set-Cookie}}
+
+{"mode":"initial"}
+
+### To test 503: remove KOI_OPENROUTER_API_KEY from .env/environment, restart the API, then run this request.
+### Expected: 503 feature_unavailable; GET status and manual CRUD still work.
+# @no-cookie-jar
+POST {{baseUrl}}/brands/{{createBrandA.response.body.$.id}}/generations
+Content-Type: application/json
+Cookie: {{signupA.response.headers.Set-Cookie}}
+
+{"mode":"prompts"}
+
+### Terminal key replay (200) and initial_already_completed (409) need a completed worker run in item 3.

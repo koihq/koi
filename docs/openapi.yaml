@@ -1,0 +1,2002 @@
+openapi: 3.0.3
+info:
+  title: Koi API
+  version: 0.0.0
+servers:
+  - url: /
+tags:
+  - name: auth
+  - name: brands
+  - name: prompts
+  - name: competitors
+  - name: health
+  - name: capabilities
+  - name: generations
+  - name: visibility
+paths:
+  /api/v1/visibility/summary:
+    get:
+      tags: [visibility]
+      operationId: getVisibilitySummary
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/VisibilityDays"
+        - $ref: "#/components/parameters/VisibilityEngines"
+      responses:
+        "402":
+          $ref: "#/components/responses/Error"
+        "200":
+          description: Visibility across saved answers for the selected period
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilitySummary"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/tracking:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+      operationId: getVisibilityTracking
+      tags: [visibility]
+      security:
+        - cookieAuth: []
+      responses:
+        "402":
+          $ref: "#/components/responses/Error"
+        "200":
+          description: Review and daily collection schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingStatus"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/runs:
+    get:
+      tags: [visibility]
+      operationId: listVisibilityRuns
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Saved visibility runs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityRunPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/prompt-history:
+    get:
+      tags: [visibility]
+      operationId: listHistoricalPrompts
+      description: Deleted prompts with saved run results, newest snapshot first.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+        - $ref: "#/components/parameters/PromptSort"
+        - $ref: "#/components/parameters/Descending"
+        - $ref: "#/components/parameters/VisibilityDays"
+        - $ref: "#/components/parameters/VisibilityEngines"
+      responses:
+        "402":
+          $ref: "#/components/responses/Error"
+        "200":
+          description: Page of historical prompts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoricalPromptPage"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/prompt-history/{promptID}/runs:
+    parameters:
+      - $ref: "#/components/parameters/PromptID"
+    get:
+      tags: [visibility]
+      operationId: listPromptHistoryRuns
+      description: Saved runs and answers for a live or deleted prompt, newest first.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "402":
+          $ref: "#/components/responses/Error"
+        "200":
+          description: Page of runs with this prompt's results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptHistoryRunPage"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/prompt-history/{promptID}/visibility:
+    parameters:
+      - $ref: "#/components/parameters/PromptID"
+    get:
+      tags: [visibility]
+      operationId: getPromptVisibility
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/VisibilityDays"
+        - $ref: "#/components/parameters/VisibilityEngines"
+      responses:
+        "402":
+          $ref: "#/components/responses/Error"
+        "200":
+          description: Visibility for a live or deleted prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityReport"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/runs/{runID}:
+    parameters:
+      - $ref: "#/components/parameters/RunID"
+    get:
+      tags: [visibility]
+      operationId: getVisibilityRun
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Saved run status and progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityRunStatus"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/runs/{runID}/results:
+    parameters:
+      - $ref: "#/components/parameters/RunID"
+    get:
+      tags: [visibility]
+      operationId: listVisibilityResults
+      description: Results in prompt position then engine order. Pending results have null outcome and fetched_at. All completed results have one of the four outcomes, including collection errors. Prompt snapshots survive edits and deletion.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Page of persisted results, including pending cells
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisibilityResultPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/capabilities:
+    get:
+      tags: [capabilities]
+      operationId: getCapabilities
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Optional server features available to this installation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilitiesResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/auth/signup:
+    post:
+      tags: [auth]
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsReq"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CredentialsReq"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      responses:
+        "204":
+          description: No Content
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      operationId: me
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeRes"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/billing/catalog:
+    get:
+      tags: [billing]
+      operationId: billingCatalog
+      responses:
+        "200":
+          description: Available tax-inclusive monthly allowances validated against Stripe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCatalog"
+        "500":
+          $ref: "#/components/responses/Error"
+  /api/v1/billing/quote:
+    get:
+      tags: [billing]
+      operationId: billingQuote
+      parameters:
+        - name: prompts
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 500
+            description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
+      responses:
+        "200":
+          description: Tax-inclusive monthly price for the exact prompt allowance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingQuote"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/v1/billing/subscription:
+    get:
+      tags: [billing]
+      operationId: billingSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Organization billing state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+  /api/v1/billing/checkout:
+    post:
+      tags: [billing]
+      operationId: billingCheckout
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingAllowanceRequest"
+      responses:
+        "200":
+          description: Hosted Stripe Checkout redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/billing/change-allowance:
+    post:
+      tags: [billing]
+      operationId: billingChangeAllowance
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingAllowanceRequest"
+      responses:
+        "200":
+          description: Allowance already current or scheduled change removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "202":
+          description: Change submitted to Stripe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+  /api/v1/billing/portal:
+    post:
+      tags: [billing]
+      operationId: billingPortal
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Stripe Customer Portal redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/webhooks/stripe:
+    post:
+      tags: [billing]
+      operationId: stripeWebhook
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Verified Stripe event processed or already processed
+  /api/v1/brands:
+    get:
+      tags: [brands]
+      operationId: listBrands
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+      responses:
+        "200":
+          description: Page of brands owned by the session user, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [brands]
+      operationId: createBrand
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/countries:
+    get:
+      tags: [brands]
+      operationId: listBrandCountries
+      description: Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Supported countries ordered by English name, or up to 20 prefix matches ordered by match quality
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CountryOption"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [brands]
+      operationId: getBrand
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Brand owned by the session user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [brands]
+      operationId: updateBrand
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandPatchRequest"
+      responses:
+        "200":
+          description: Updated brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/{id}/activate:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [brands]
+      operationId: activateBrand
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Active brand saved in the cookie session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/prompts:
+    get:
+      tags: [prompts]
+      operationId: listPrompts
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+        - $ref: "#/components/parameters/Confirmed"
+        - $ref: "#/components/parameters/PromptSort"
+        - $ref: "#/components/parameters/Descending"
+        - $ref: "#/components/parameters/VisibilityDays"
+        - $ref: "#/components/parameters/VisibilityEngines"
+      responses:
+        "200":
+          description: Prompts for the owned brand in creation order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [prompts]
+      operationId: createPrompt
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptRequest"
+      responses:
+        "201":
+          description: Manually created and confirmed prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/prompts/{promptID}:
+    parameters:
+      - $ref: "#/components/parameters/PromptID"
+    get:
+      tags: [prompts]
+      operationId: getPrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Prompt belonging to the owned brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [prompts]
+      operationId: updatePrompt
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptPatchRequest"
+      responses:
+        "200":
+          description: Updated prompt with confirmation and source preserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [prompts]
+      operationId: deletePrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/prompts/{promptID}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/PromptID"
+    post:
+      tags: [prompts]
+      operationId: confirmPrompt
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Confirmed prompt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/prompts/confirm:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequestScope"
+      tags: [prompts]
+      operationId: confirmAllPrompts
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: All prompts confirmed
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/competitors:
+    get:
+      tags: [competitors]
+      operationId: listCompetitors
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
+        - $ref: "#/components/parameters/Confirmed"
+      responses:
+        "200":
+          description: Tracked competitors for the owned brand in creation order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [competitors]
+      operationId: createCompetitor
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitorRequest"
+      responses:
+        "201":
+          description: Manually created and confirmed competitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/competitors/search:
+    get:
+      tags: [competitors]
+      operationId: searchCompetitors
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+      responses:
+        "200":
+          description: Matching companies from the configured search provider
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name, domain]
+                  properties:
+                    name:
+                      type: string
+                    domain:
+                      type: string
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "503":
+          description: Competitor search is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+  /api/v1/competitors/{competitorID}:
+    parameters:
+      - $ref: "#/components/parameters/CompetitorID"
+    get:
+      tags: [competitors]
+      operationId: getCompetitor
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Competitor belonging to the owned brand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      tags: [competitors]
+      operationId: patchCompetitor
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitorPatchRequest"
+      responses:
+        "200":
+          description: Updated identity, preserving source and confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      tags: [competitors]
+      operationId: deleteCompetitor
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/competitors/{competitorID}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/CompetitorID"
+    post:
+      tags: [competitors]
+      operationId: confirmCompetitor
+      description: Requires a primary domain or GitHub repository; name-only observed suggestions return validation errors.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Confirmed competitor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorRes"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/competitors/confirm:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequestScope"
+      tags: [competitors]
+      operationId: confirmAllCompetitors
+      description: Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Review finished; observed suggestions remain unchanged
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/generations:
+    post:
+      tags: [generations]
+      operationId: createGeneration
+      description: Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerationRequest"
+            example:
+              mode: initial
+      responses:
+        "200":
+          description: Terminal run replayed with the same idempotency key and mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationAccepted"
+        "202":
+          description: New or compatible active run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationAccepted"
+              example:
+                id: 22222222-2222-4222-8222-222222222222
+                mode: initial
+                state: queued
+                statusUrl: /api/v1/generations/22222222-2222-4222-8222-222222222222
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Active mode conflict, idempotency key reused for another mode, or initial already completed. Active mode conflicts include error.statusUrl.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Envelope"
+        "503":
+          $ref: "#/components/responses/Error"
+    get:
+      tags: [generations]
+      operationId: listGenerations
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Page of runs, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationPage"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/generations/{generationID}:
+    parameters:
+      - $ref: "#/components/parameters/GenerationID"
+    get:
+      tags: [generations]
+      operationId: getGeneration
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Public status of an owned run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationStatus"
+              example:
+                id: 22222222-2222-4222-8222-222222222222
+                mode: initial
+                state: queued
+                attempt: 0
+                promptCount: 0
+                competitorCount: 0
+                createdAt: "2026-09-28T10:00:00Z"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /health:
+    get:
+      tags: [health]
+      operationId: get
+      responses:
+        "402":
+          $ref: "#/components/responses/Error"
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+components:
+  parameters:
+    VisibilityDays:
+      name: days
+      in: query
+      schema:
+        type: integer
+        enum: [7, 30, 90]
+        default: 30
+    VisibilityEngines:
+      name: engines
+      in: query
+      description: Comma-separated visibility engine IDs; omitted means all engines.
+      schema:
+        type: string
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    Confirmed:
+      name: confirmed
+      in: query
+      schema:
+        type: boolean
+    Query:
+      name: q
+      in: query
+      schema:
+        type: string
+    PromptSort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum: [original, prompt, rate, change]
+        default: original
+    Descending:
+      name: descending
+      in: query
+      schema:
+        type: boolean
+        default: false
+    BrandID:
+      name: brandId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PromptID:
+      name: promptID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CompetitorID:
+      name: competitorID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GenerationID:
+      name: generationID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RunID:
+      name: runID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: koi_session
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Envelope"
+  schemas:
+    BrandRequestScope:
+      type: object
+      required: [brandId]
+      properties:
+        brandId:
+          type: string
+          format: uuid
+    HistoricalPrompt:
+      type: object
+      required: [promptId, promptText, lastSeenAt]
+      properties:
+        promptId:
+          type: string
+          format: uuid
+        promptText:
+          type: string
+        lastSeenAt:
+          type: string
+          format: date-time
+        visibility:
+          $ref: "#/components/schemas/VisibilityReport"
+    VisibilityMetric:
+      type: object
+      required: [completed, cited, mentioned, rate]
+      properties:
+        completed: { type: integer }
+        cited: { type: integer }
+        mentioned: { type: integer }
+        rate: { type: number, format: double, nullable: true, description: Percentage of valid answers that cited or mentioned the brand }
+    VisibilityDay:
+      type: object
+      required: [date, metric]
+      properties:
+        date: { type: string, format: date }
+        metric:
+          $ref: "#/components/schemas/VisibilityMetric"
+    CompetitorVisibility:
+      type: object
+      required: [id, name, domain, metric, series]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        domain: { type: string }
+        metric:
+          $ref: "#/components/schemas/VisibilityMetric"
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityDay"
+    VisibilityReport:
+      type: object
+      required: [metric, previous, series, engines, competitors]
+      properties:
+        metric:
+          $ref: "#/components/schemas/VisibilityMetric"
+        previous:
+          $ref: "#/components/schemas/VisibilityMetric"
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityDay"
+        engines:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/VisibilityMetric"
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorVisibility"
+    VisibilitySummary:
+      allOf:
+        - $ref: "#/components/schemas/VisibilityReport"
+        - type: object
+          required: [hasConfirmedPrompts]
+          properties:
+            hasConfirmedPrompts:
+              type: boolean
+              description: Whether the brand has any current confirmed prompts, including paused prompts, regardless of the selected period and engines
+    HistoricalPromptPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoricalPrompt"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    PromptHistoryRun:
+      type: object
+      required: [run, results]
+      properties:
+        run:
+          $ref: "#/components/schemas/VisibilityRunStatus"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityResult"
+    PromptHistoryRunPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptHistoryRun"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    VisibilityRunStatus:
+      type: object
+      required: [id, brandId, engines, state, totalResults, completedResults, createdAt, startedAt, finishedAt, errorCode, statusUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+        brandId:
+          type: string
+          format: uuid
+        engines:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityEngine"
+        state:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        totalResults:
+          type: integer
+          format: int64
+        completedResults:
+          type: integer
+          format: int64
+          description: Number of results with a terminal outcome, including errors
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        errorCode:
+          type: string
+          nullable: true
+        statusUrl:
+          type: string
+    VisibilityEngine:
+      type: string
+      enum: [chatgpt, perplexity, gemini, google_ai_overviews]
+    VisibilityResult:
+      type: object
+      required: [id, runId, promptId, promptText, promptPosition, engine, collector, fetchedAt, outcome, rawAnswer, sources, errorCode, appearances]
+      properties:
+        id:
+          type: string
+          format: uuid
+        runId:
+          type: string
+          format: uuid
+        promptId:
+          type: string
+          format: uuid
+          description: Historical identifier; the live tracking prompt may have been deleted
+        promptText:
+          type: string
+        promptPosition:
+          type: integer
+          minimum: 0
+        engine:
+          $ref: "#/components/schemas/VisibilityEngine"
+        collector:
+          type: string
+          enum: [stub, cloro]
+          description: stub is sample data; cloro identifies live collection
+        fetchedAt:
+          type: string
+          format: date-time
+          nullable: true
+        outcome:
+          type: string
+          enum: [cited, mentioned, miss, error]
+          nullable: true
+        rawAnswer:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+            format: uri
+        errorCode:
+          type: string
+          nullable: true
+        appearances:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorAppearance"
+    AppearanceEvidence:
+      type: object
+      required: [kind, value]
+      properties:
+        kind:
+          type: string
+          enum: [mention, citation, entity, link]
+        value:
+          type: string
+    CompetitorAppearance:
+      type: object
+      required: [competitorId, name, confirmed, evidence]
+      properties:
+        competitorId:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        confirmed:
+          type: boolean
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppearanceEvidence"
+    VisibilityRunPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityRunStatus"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    VisibilityResultPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisibilityResult"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    TrackingStatus:
+      type: object
+      required: [promptsReviewed, competitorsReviewed, startedAt, nextRunAt, blockedReason]
+      properties:
+        promptsReviewed:
+          type: boolean
+        competitorsReviewed:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        nextRunAt:
+          type: string
+          format: date-time
+          nullable: true
+        blockedReason:
+          type: string
+          nullable: true
+          enum: [collection_unavailable, reviews_required, prompts_required, generation_active, billing_inactive_or_over_limit]
+    BrandRequest:
+      type: object
+      description: At least one of domain or githubRepo is required.
+      required: [name, country]
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        githubRepo:
+          type: string
+          format: uri
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+        description:
+          type: string
+          description: Briefly describe what this brand offers.
+    BrandPatchRequest:
+      type: object
+      description: Editable brand fields. At least one of domain or githubRepo must remain after the update.
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        githubRepo:
+          type: string
+          format: uri
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+        description:
+          type: string
+          description: Briefly describe what this brand offers.
+    BrandRes:
+      type: object
+      required: [id, organizationId, name, domain, githubRepo, country, description]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organizationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+        githubRepo:
+          type: string
+        country:
+          type: string
+        description:
+          type: string
+    BrandPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BrandRes"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    PromptPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptRes"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    CompetitorPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorRes"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    CountryOption:
+      type: object
+      required: [code, name]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z]{2}$"
+        name:
+          type: string
+    PromptRequest:
+      type: object
+      additionalProperties: false
+      required: [brandId, text]
+      properties:
+        brandId:
+          type: string
+          format: uuid
+        text:
+          type: string
+    PromptPatchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+        inactive:
+          type: boolean
+    PromptRes:
+      type: object
+      required: [id, brandId, text, source, confirmed, inactive]
+      properties:
+        id:
+          type: string
+          format: uuid
+        brandId:
+          type: string
+          format: uuid
+        text:
+          type: string
+        source:
+          type: string
+          enum: [manual, drafted]
+        confirmed:
+          type: boolean
+        inactive:
+          type: boolean
+        visibility:
+          $ref: "#/components/schemas/VisibilityReport"
+    CompetitorRequest:
+      type: object
+      additionalProperties: false
+      description: At least one of domain or githubRepo is required.
+      required: [brandId, name]
+      properties:
+        brandId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+        githubRepo:
+          type: string
+          format: uri
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 255
+        additionalUrls:
+          type: array
+          maxItems: 20
+          description: Additional official website origins or GitHub repository roots
+          items:
+            type: string
+            format: uri
+    CompetitorPatchRequest:
+      type: object
+      additionalProperties: false
+      description: Omitted fields stay unchanged; empty arrays clear aliases or URLs. Editing never confirms.
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        githubRepo:
+          type: string
+          format: uri
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 255
+        additionalUrls:
+          type: array
+          maxItems: 20
+          description: Additional official website origins or GitHub repository roots
+          items:
+            type: string
+            format: uri
+    CompetitorRes:
+      type: object
+      required: [id, brandId, name, domain, githubRepo, source, confirmed, aliases, additionalUrls]
+      properties:
+        id:
+          type: string
+          format: uuid
+        brandId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        domain:
+          type: string
+        githubRepo:
+          type: string
+          format: uri
+        source:
+          type: string
+          enum: [manual, drafted, observed]
+        confirmed:
+          type: boolean
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 255
+        additionalUrls:
+          type: array
+          maxItems: 20
+          description: Additional official website origins or GitHub repository roots
+          items:
+            type: string
+            format: uri
+    CredentialsReq:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    AuthRes:
+      type: object
+      required: [id, email, organization]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        organization:
+          $ref: "#/components/schemas/OrgRes"
+    MeRes:
+      allOf:
+        - $ref: "#/components/schemas/AuthRes"
+        - type: object
+          required: [activeBrand]
+          properties:
+            activeBrand:
+              nullable: true
+              allOf:
+                - $ref: "#/components/schemas/BrandRes"
+    OrgRes:
+      type: object
+      required: [id, name, role]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+    HealthResponse:
+      type: object
+      required: [status, db]
+      properties:
+        status:
+          type: string
+        db:
+          type: string
+    CapabilitiesResponse:
+      type: object
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling]
+      properties:
+        cloudBilling:
+          type: boolean
+        liveCollection:
+          type: boolean
+        competitorSearch:
+          type: boolean
+        aiDrafting:
+          type: boolean
+    BillingAllowanceRequest:
+      type: object
+      required: [prompts]
+      properties:
+        prompts:
+          type: integer
+          minimum: 5
+          maximum: 500
+          description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
+    BillingQuote:
+      type: object
+      required: [prompts, amountCents, currency, interval]
+      properties:
+        prompts:
+          type: integer
+        amountCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        interval:
+          type: string
+    BillingCatalog:
+      type: object
+      required: [currency, interval, options]
+      properties:
+        currency:
+          type: string
+        interval:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingQuote"
+    BillingSubscription:
+      type: object
+      required: [organizationId, quantity, status, cancelAtPeriodEnd]
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        status:
+          type: string
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        trialEnd:
+          type: string
+          format: date-time
+          nullable: true
+        pendingQuantity:
+          type: integer
+          nullable: true
+        pendingUpgradeQuantity:
+          type: integer
+          nullable: true
+        pendingUpgradeExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        paymentUrl:
+          type: string
+        cancelAtPeriodEnd:
+          type: boolean
+    BillingStatus:
+      type: object
+      required: [subscription, promptLimit, trialAvailable]
+      properties:
+        subscription:
+          allOf:
+            - $ref: "#/components/schemas/BillingSubscription"
+          nullable: true
+        promptLimit:
+          type: integer
+        trialAvailable:
+          type: boolean
+    BillingRedirect:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    BillingChange:
+      type: object
+      required: [quantity, effective]
+      properties:
+        quantity:
+          type: integer
+        effective:
+          type: string
+          enum: [current, trial_end, next_cycle, after_payment]
+        paymentUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    GenerationRequest:
+      type: object
+      required: [brandId, mode]
+      properties:
+        brandId:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [initial, prompts, competitors]
+    GenerationAccepted:
+      type: object
+      required: [id, mode, state, statusUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [initial, prompts, competitors]
+        state:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        statusUrl:
+          type: string
+    GenerationStatus:
+      type: object
+      required: [id, mode, state, attempt, promptCount, competitorCount, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [initial, prompts, competitors]
+        state:
+          type: string
+          enum: [queued, running, succeeded, failed]
+        attempt:
+          type: integer
+          minimum: 0
+        promptCount:
+          type: integer
+          minimum: 0
+        competitorCount:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        nextRetryAt:
+          type: string
+          format: date-time
+        errorCode:
+          type: string
+    GenerationPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GenerationStatus"
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int64
+        currentPage:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    Envelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+    ErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        requestId:
+          type: string
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+        statusUrl:
+          type: string
+          description: Present for generation_conflict to locate the active run.
+    FieldError:
+      type: object
+      required: [field, code]
+      properties:
+        field:
+          type: string
+        code:
+          $ref: "#/components/schemas/FieldCode"
+    ErrorCode:
+      type: string
+      enum:
+        - resource_conflict
+        - validation
+        - email_taken
+        - brand_limit_reached
+        - invalid_credentials
+        - not_found
+        - unauthorized
+        - invalid_json
+        - internal
+        - feature_unavailable
+        - generation_conflict
+        - idempotency_conflict
+        - initial_already_completed
+        - billing_required
+        - prompt_limit_reached
+    FieldCode:
+      type: string
+      enum:
+        - invalid
+        - min_length
+        - taken

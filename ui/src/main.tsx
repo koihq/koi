@@ -1,9 +1,20 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
-import ReactDOM from "react-dom/client";
+import { createRoot } from "react-dom/client";
+
+import { ApiProvider, createApi } from "@/api/apiProvider";
+import { initializeTheme } from "@/hooks/use-theme";
+import "@/config/i18n";
 import { routeTree } from "./routeTree.gen";
+
+initializeTheme();
+
+const api = createApi();
+const queryClient = new QueryClient();
 
 const router = createRouter({
   routeTree,
+  context: { api, queryClient },
   defaultPreload: "intent",
   scrollRestoration: true,
 });
@@ -17,6 +28,11 @@ declare module "@tanstack/react-router" {
 const rootElement = document.getElementById("app");
 
 if (rootElement && !rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(<RouterProvider router={router} />);
+  createRoot(rootElement).render(
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider api={api}>
+        <RouterProvider router={router} />
+      </ApiProvider>
+    </QueryClientProvider>,
+  );
 }
