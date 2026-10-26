@@ -60,7 +60,8 @@ export const TrackingStatusBlockedReasonEnum = {
     COLLECTION_UNAVAILABLE: 'collection_unavailable',
     REVIEWS_REQUIRED: 'reviews_required',
     PROMPTS_REQUIRED: 'prompts_required',
-    GENERATION_ACTIVE: 'generation_active'
+    GENERATION_ACTIVE: 'generation_active',
+    BILLING_INACTIVE_OR_OVER_LIMIT: 'billing_inactive_or_over_limit'
 } as const;
 export type TrackingStatusBlockedReasonEnum = typeof TrackingStatusBlockedReasonEnum[keyof typeof TrackingStatusBlockedReasonEnum];
 
@@ -87,11 +88,11 @@ export function TrackingStatusFromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
-        'promptsReviewed': json['prompts_reviewed'],
-        'competitorsReviewed': json['competitors_reviewed'],
-        'startedAt': (json['started_at'] == null ? null : new Date(json['started_at'])),
-        'nextRunAt': (json['next_run_at'] == null ? null : new Date(json['next_run_at'])),
-        'blockedReason': json['blocked_reason'],
+        'promptsReviewed': json['promptsReviewed'],
+        'competitorsReviewed': json['competitorsReviewed'],
+        'startedAt': (json['startedAt'] == null ? null : new Date(json['startedAt'])),
+        'nextRunAt': (json['nextRunAt'] == null ? null : new Date(json['nextRunAt'])),
+        'blockedReason': json['blockedReason'],
     };
 }
 
@@ -106,11 +107,11 @@ export function TrackingStatusToJSONTyped(value?: TrackingStatus | null, ignoreD
 
     return {
         
-        'prompts_reviewed': value['promptsReviewed'],
-        'competitors_reviewed': value['competitorsReviewed'],
-        'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
-        'next_run_at': value['nextRunAt'] == null ? value['nextRunAt'] : value['nextRunAt'].toISOString(),
-        'blocked_reason': value['blockedReason'],
+        'promptsReviewed': value['promptsReviewed'],
+        'competitorsReviewed': value['competitorsReviewed'],
+        'startedAt': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
+        'nextRunAt': value['nextRunAt'] == null ? value['nextRunAt'] : value['nextRunAt'].toISOString(),
+        'blockedReason': value['blockedReason'],
     };
 }
 

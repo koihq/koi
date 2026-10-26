@@ -2,13 +2,14 @@ package koidomain
 
 import (
 	"strings"
-
-	"github.com/google/uuid"
+	"time"
 )
 
 type Organization struct {
 	BaseEntity
-	Name string `json:"name" gorm:"not null"`
+	Name             string     `json:"name" gorm:"not null"`
+	StripeCustomerID *string    `json:"-" gorm:"uniqueIndex"`
+	TrialUsedAt      *time.Time `json:"-"`
 }
 
 func (Organization) TableName() string { return "organizations" }
@@ -22,5 +23,5 @@ func (o Organization) Validate() error {
 }
 
 type OrganizationRepository interface {
-	BaseEntityRepository[Organization, uuid.UUID]
+	BaseEntityRepository[Organization]
 }

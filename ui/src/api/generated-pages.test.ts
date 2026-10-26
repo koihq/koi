@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { BrandsApi, CompetitorsApi, Configuration, PromptsApi } from "@/api/generated";
+import {
+  AuthApi,
+  BrandsApi,
+  CompetitorsApi,
+  Configuration,
+  PromptsApi,
+  VisibilityApi,
+} from "@/api/generated";
 
 describe("generated list deserialization", () => {
   it("converts typed items and retains populated and empty page metadata", async () => {
@@ -32,22 +39,29 @@ describe("generated list deserialization", () => {
       configuration([
         {
           id: "b",
-          user_id: "u",
+          organizationId: "o",
           name: "Koi",
           domain: "koi.dev",
-          github_repo: "",
+          githubRepo: "",
           country: "IT",
           description: "",
         },
       ]),
     ).listBrands();
-    expect(brands.items[0]).toMatchObject({ userId: "u", githubRepo: "" });
+    expect(brands.items[0]).toMatchObject({ organizationId: "o", githubRepo: "" });
 
     const prompts = await new PromptsApi(
       configuration([
-        { id: "p", brand_id: "b", text: "Best tools?", source: "manual", confirmed: true },
+        {
+          id: "p",
+          brandId: "b",
+          text: "Best tools?",
+          source: "manual",
+          confirmed: true,
+          inactive: false,
+        },
       ]),
-    ).listPrompts("b");
+    ).listPrompts({ brandId: "b" });
     expect(prompts.items[0]).toMatchObject({ brandId: "b", text: "Best tools?" });
     expect(prompts).toMatchObject({ currentPage: 1, totalItems: 1, totalPages: 1 });
 
@@ -55,19 +69,66 @@ describe("generated list deserialization", () => {
       configuration([
         {
           id: "c",
-          brand_id: "b",
+          brandId: "b",
           name: "Other",
           domain: "other.dev",
-          github_repo: "",
+          githubRepo: "",
           source: "manual",
           confirmed: true,
         },
       ]),
-    ).listCompetitors("b");
+    ).listCompetitors({ brandId: "b" });
     expect(competitors.items[0]).toMatchObject({ brandId: "b", githubRepo: "" });
 
-    expect(await new PromptsApi(configuration([])).listPrompts("b")).toEqual(page);
+    expect(await new PromptsApi(configuration([])).listPrompts({ brandId: "b" })).toEqual(page);
     expect(await new BrandsApi(configuration([])).listBrands()).toEqual(page);
-    expect(await new CompetitorsApi(configuration([])).listCompetitors("b")).toEqual(page);
+    expect(await new CompetitorsApi(configuration([])).listCompetitors({ brandId: "b" })).toEqual(
+      page,
+    );
+  });
+});
+
+describe("generated analytics and account deserialization", () => {
+  it("retains competitor identities, prompt state and the resolved or absent active brand", async () => {
+    const metric = { completed: 0, cited: 0, mentioned: 0, rate: null };
+    const competitor = {
+      id: "competitor",
+      name: "Other",
+      domain: "other.example",
+      metric,
+      series: [],
+    };
+    const report = { metric, previous: metric, series: [], engines: {}, competitors: [competitor] };
+    const fetchApi = vi
+      .fn()
+      .mockImplementation(async () => Response.json({ ...report, hasConfirmedPrompts: false }));
+    const config = new Configuration({ basePath: "http://koi.test", fetchApi });
+
+    const summary = await new VisibilityApi(config).getVisibilitySummary({ brandId: "brand" });
+    expect(summary.hasConfirmedPrompts).toBe(false);
+    expect(summary.competitors).toEqual([competitor]);
+
+    const brand = {
+      id: "brand",
+      organizationId: "org",
+      name: "Koi",
+      domain: "koi.example",
+      githubRepo: "",
+      country: "IT",
+      description: "",
+    };
+
+    for (const activeBrand of [brand, null]) {
+      fetchApi.mockImplementation(async () =>
+        Response.json({
+          id: "user",
+          email: "founder@example.com",
+          organization: { id: "org", name: "Organization", role: "owner" },
+          activeBrand,
+        }),
+      );
+
+      expect((await new AuthApi(config).me()).activeBrand).toEqual(activeBrand);
+    }
   });
 });

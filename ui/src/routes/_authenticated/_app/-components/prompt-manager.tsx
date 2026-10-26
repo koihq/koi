@@ -6,13 +6,10 @@ import {
   PerplexityAiIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useApi } from "@/api/apiProvider";
-import type { Competitor } from "@/api/competitors.api";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
@@ -55,7 +52,6 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
-import { promptKey, runKey, trackingKey } from "@/lib/query-keys";
 import {
   change,
   engines,
@@ -66,6 +62,8 @@ import {
 import { PromptPreviewLink } from "@/routes/_authenticated/_app/-components/prompt-preview-link";
 import { PromptRateBreakdown } from "@/routes/_authenticated/_app/-components/prompt-rate-breakdown";
 import { PromptSelectCheckbox } from "@/routes/_authenticated/_app/-components/prompt-select-checkbox";
+import { usePromptBulkActions } from "./use-prompt-bulk-actions";
+import { usePromptList } from "./use-prompt-list";
 
 type PromptRow = {
   id: string;
@@ -154,50 +152,22 @@ function PromptChoice({
 export function PromptManager({
   brandID,
   scope,
-  competitors,
   draftStartFailed = false,
 }: {
   brandID: string;
   scope: VisibilityScope;
-  competitors: Competitor[];
   draftStartFailed?: boolean;
 }) {
   const { t } = useTranslation(["management", "home"]);
-  const api = useApi();
-  const queryClient = useQueryClient();
   const mutations = usePromptMutations(brandID);
   const [search, setSearch] = useQueryStates(promptSearchParams);
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<Prompt>();
   const [deleting, setDeleting] = useState<Prompt>();
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [bulkPending, setBulkPending] = useState(false);
-  const [bulkFailed, setBulkFailed] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
-  const page = Math.max(1, search.page);
-  const confirmed =
-    search.status === "confirmed" ? true : search.status === "unconfirmed" ? false : undefined;
-  const params = {
-    page,
-    pageSize: search.pageSize,
-    q: search.q.trim() || undefined,
-    sort: search.sort,
-    descending: search.descending,
-    scope,
-  };
-  const live = useQuery({
-    queryKey: [...promptKey(brandID), "list", params, confirmed],
-    enabled: search.status !== "past",
-    queryFn: ({ signal }) => api.prompts.list(brandID, { ...params, confirmed }, { signal }),
-  });
-  const history = useQuery({
-    queryKey: [...runKey(brandID), "past-prompts", params],
-    enabled: search.status === "past",
-    queryFn: ({ signal }) => api.runs.historicalPrompts(brandID, params, { signal }),
-  });
-  const active = search.status === "past" ? history : live;
-  const totalPages = active.data?.totalPages ?? 0;
+  const { active, live, history, page, totalPages } = usePromptList(brandID, scope, search);
   const visible: PromptRow[] =
     search.status === "past"
       ? (history.data?.items ?? []).map((prompt) => ({
@@ -219,6 +189,9 @@ export function PromptManager({
   const selectedPrompts = visible.flatMap((row) =>
     row.prompt && selectedVisible.includes(row.id) ? [row.prompt] : [],
   );
+  const bulk = usePromptBulkActions(brandID, selectedPrompts, setSelected);
+  const bulkPending = bulk.pending;
+  const bulkFailed = bulk.failed;
   const pending = Object.values(mutations).some((mutation) => mutation.isPending) || bulkPending;
 
   useEffect(() => {
@@ -234,43 +207,9 @@ export function PromptManager({
     setSelected([]);
   }, [page]);
 
-  async function invalidate() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: promptKey(brandID) }),
-      queryClient.invalidateQueries({ queryKey: runKey(brandID) }),
-      queryClient.invalidateQueries({ queryKey: trackingKey(brandID) }),
-    ]);
-  }
-
   async function bulkAction(kind: "confirm" | "delete") {
-    const targets = selectedPrompts.filter((prompt) => kind === "delete" || !prompt.confirmed);
-    if (!targets.length) return;
-
-    setBulkPending(true);
-    setBulkFailed(false);
-
-    try {
-      const results = await Promise.allSettled(
-        targets.map((prompt) =>
-          kind === "confirm"
-            ? api.prompts.confirm(brandID, prompt.id)
-            : api.prompts.delete(brandID, prompt.id),
-        ),
-      );
-      const failedIDs = targets
-        .filter((_, index) => results[index].status === "rejected")
-        .map((prompt) => prompt.id);
-
-      setSelected(failedIDs);
-      setBulkFailed(failedIDs.length > 0);
-      await invalidate();
-
-      if (kind === "delete" && !failedIDs.length) setBulkDeleting(false);
-    } catch {
-      setBulkFailed(true);
-    } finally {
-      setBulkPending(false);
-    }
+    const succeeded = await bulk.run(kind);
+    if (kind === "delete" && succeeded) setBulkDeleting(false);
   }
 
   function changeSearch(patch: Partial<typeof search>) {
@@ -287,15 +226,19 @@ export function PromptManager({
   const renderPrompt = (row: PromptRow) => (
     <div>
       {row.prompt ? (
-        <PromptPreviewLink prompt={row.prompt} competitors={competitors} />
+        <PromptPreviewLink prompt={row.prompt} />
       ) : (
         <Link to="/prompts/$promptId" params={{ promptId: row.id }} className={promptRowLinkClass}>
           {row.text}
         </Link>
       )}
-      {(row.past || !row.prompt?.confirmed) && (
+      {(row.past || !row.prompt?.confirmed || row.prompt.inactive) && (
         <small className="mt-1.5 block text-xs text-muted-foreground">
-          {row.past ? t("home:dashboard.pastPrompt") : t("home:dashboard.draft")}
+          {row.past
+            ? t("home:dashboard.pastPrompt")
+            : row.prompt?.inactive
+              ? t("inactivePrompt")
+              : t("home:dashboard.draft")}
         </small>
       )}
     </div>
@@ -342,10 +285,10 @@ export function PromptManager({
           {t("home:dashboard.noData")}
         </span>
       );
-    const top = competitors
+    const top = row.visibility.competitors
       .map((competitor) => ({
         competitor,
-        rate: rate(row.visibility, undefined, competitor.id),
+        rate: competitor.metric.rate,
       }))
       .filter(({ rate: competitorRate }) => competitorRate !== null && competitorRate > 0)
       .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
@@ -389,6 +332,17 @@ export function PromptManager({
               {t("edit")}
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={pending || !row.prompt.confirmed}
+              onClick={() =>
+                mutations.update.mutate({
+                  id: row.id,
+                  request: { inactive: !row.prompt?.inactive },
+                })
+              }
+            >
+              {row.prompt.inactive ? t("resumePrompt") : t("pausePrompt")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
               variant="destructive"
               disabled={pending}
               onClick={() => {
@@ -424,6 +378,11 @@ export function PromptManager({
         <TrackingReview brandID={brandID} kind="prompts" disabled={pending} />
       </div>
       {mutations.confirm.isError && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          {t("mutationError")}
+        </p>
+      )}
+      {mutations.update.isError && (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {t("mutationError")}
         </p>

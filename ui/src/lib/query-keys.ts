@@ -6,3 +6,13 @@ export const runKey = (brandID: string) => ["brands", brandID, "runs"] as const;
 export const runResultsKey = (brandID: string, runID: string | undefined) =>
   [...runKey(brandID), runID, "results"] as const;
 export const trackingKey = (brandID: string) => ["brands", brandID, "tracking"] as const;
+
+export const billingKey = ["billing"] as const;
+export const billingSubscriptionKey = (organizationID: string) =>
+  [...billingKey, organizationID, "subscription"] as const;
+export const billingCatalogKey = [...billingKey, "catalog"] as const;
+
+export const accountKey = ["account"] as const;
+export const capabilitiesKey = ["capabilities"] as const;
+export const brandsKey = (organizationId: string) =>
+  ["organizations", organizationId, "brands"] as const;

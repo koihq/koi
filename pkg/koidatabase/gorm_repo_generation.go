@@ -20,19 +20,21 @@ func (GenerationJobArgs) Kind() string { return "koi_generation" }
 
 type GormGenerationRepository struct {
 	*Repository[koidomain.GenerationRun]
-	client *river.Client[*sql.Tx]
+	client    *river.Client[*sql.Tx]
+	cloudMode bool
 }
 
-func NewGormGenerationRepository(db *gorm.DB, client *river.Client[*sql.Tx]) *GormGenerationRepository {
+func NewGormGenerationRepository(db *gorm.DB, client *river.Client[*sql.Tx], cloud ...bool) *GormGenerationRepository {
 	return &GormGenerationRepository{
 		Repository: newScopedRepository[koidomain.GenerationRun](db, childOwnerScope("generation_runs")),
 		client:     client,
+		cloudMode:  len(cloud) > 0 && cloud[0],
 	}
 }
 
-func (r *GormGenerationRepository) Get(ctx context.Context, brandID, runID uuid.UUID) (*koidomain.GenerationRun, error) {
+func (r *GormGenerationRepository) Get(ctx context.Context, runID uuid.UUID) (*koidomain.GenerationRun, error) {
 	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB {
-		return db.Where("brand_id = ? AND id = ?", brandID, runID)
+		return db.Where("id = ?", runID)
 	})
 }
 
@@ -72,8 +74,27 @@ func (r *GormGenerationRepository) CreateAndEnqueue(ctx context.Context, run *ko
 		return koidomain.ErrFeatureUnavailable
 	}
 
-	if _, err := NewGormBrandRepository(r.db).Get(ctx, run.BrandID); err != nil {
+	brand, err := NewGormBrandRepository(r.db).Get(ctx, run.BrandID)
+	if err != nil {
 		return err
+	}
+	if r.cloudMode {
+		limit, err := cloudPromptLimit(ctx, r.db, brand.OrganizationID)
+		if err != nil {
+			return err
+		}
+		if limit == 0 {
+			return koidomain.ErrBillingRequired
+		}
+		if run.Mode == koidomain.GenerationPrompts {
+			count, err := storedPromptCount(ctx, r.db, brand.OrganizationID)
+			if err != nil {
+				return err
+			}
+			if count >= int64(limit) {
+				return koidomain.ErrPromptLimitReached
+			}
+		}
 	}
 
 	tx := r.db.WithContext(ctx)

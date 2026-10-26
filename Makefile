@@ -42,7 +42,7 @@ openapi:
 		-i /local/docs/openapi.yaml \
 		-g typescript-fetch \
 		-o /local/ui/src/api/generated \
-		--additional-properties=supportsES6=true,typescriptThreePlus=true,withInterfaces=true,modelPropertyNaming=camelCase,enumPropertyNaming=UPPERCASE,useSingleRequestParameter=false
+		--additional-properties=supportsES6=true,typescriptThreePlus=true,withInterfaces=true,modelPropertyNaming=camelCase,enumPropertyNaming=UPPERCASE,useSingleRequestParameter=true
 	@rm -rf ui/src/api/generated/docs
 	@python3 -c "from pathlib import Path; \
 root = Path('ui/src/api/generated'); \

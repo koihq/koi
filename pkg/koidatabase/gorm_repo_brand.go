@@ -25,7 +25,9 @@ func (r *GormBrandRepository) Create(ctx context.Context, brand *koidomain.Brand
 		return koidomain.ErrUnauthorized
 	}
 
-	brand.UserID = identity.UserID
+	if identity.OrganizationID == uuid.Nil || identity.OrganizationID != brand.OrganizationID {
+		return koidomain.ErrUnauthorized
+	}
 
 	return r.Repository.Create(ctx, brand)
 }
@@ -36,8 +38,21 @@ func (r *GormBrandRepository) LockForUpdate(ctx context.Context, id uuid.UUID) (
 	})
 }
 
-func (r *GormBrandRepository) List(ctx context.Context, params koidomain.PageParams) (*koidomain.Page[koidomain.Brand], error) {
-	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB { return db }, params, "created_at DESC, id DESC")
+func (r *GormBrandRepository) Latest(ctx context.Context) (*koidomain.Brand, error) {
+	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB {
+		return db.Order("created_at DESC, id DESC")
+	})
+}
+
+func (r *GormBrandRepository) List(ctx context.Context, params koidomain.BrandListParams) (*koidomain.Page[koidomain.Brand], error) {
+	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB {
+		if params.Query != "" {
+			pattern := likePattern(params.Query)
+			db = db.Where("(name ILIKE ? ESCAPE '!' OR domain ILIKE ? ESCAPE '!' OR github_repo ILIKE ? ESCAPE '!')", pattern, pattern, pattern)
+		}
+
+		return db
+	}, params.Page, "created_at DESC, id DESC")
 }
 
 func (r *GormBrandRepository) Update(ctx context.Context, brand *koidomain.Brand) error {

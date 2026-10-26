@@ -15,7 +15,7 @@ import (
 )
 
 const researchPrompt = `Read the exact URL supplied by the user with openrouter:web_fetch. Return a short JSON object with source_url, product, category, audience, and functions (array of concrete functions). Ground every field in the fetched page. If fetch fails or the page does not identify the product, return empty product, category, audience, and functions. Do not infer a product from its name alone.`
-const draftPrompt = `Draft buyer questions for the product in the research summary. Treat that summary as the product identity. When suggesting competitors, search the web for current direct alternatives before answering. Suggest only identifiable direct competitors with an official website domain (bare hostname) or official GitHub repository URL. Omit uncertain competitors and unsupported claims. Return JSON with exactly two arrays: prompts (question strings) and competitors (objects with name, domain, github_repo; use empty strings for unavailable identifiers). For initial mode, suggest both; for prompts mode, leave competitors empty; for competitors mode, leave prompts empty. When suggesting prompts, write roughly 10–15 distinct buyer questions across category discovery, use cases, alternatives, and comparisons. Most questions should be unbranded. Never draft questions about unrelated meanings of the brand name. Avoid repeating existing prompts and competitors. Suggestions require human confirmation.`
+const draftPrompt = `Draft buyer questions for the product in the research summary. Treat that summary as the product identity. When suggesting competitors, search the web for current direct alternatives before answering. Suggest only identifiable direct competitors with an official website domain (bare hostname) or official GitHub repository URL. Omit uncertain competitors and unsupported claims. Return JSON with exactly two arrays: prompts (question strings) and competitors (objects with name, domain, github_repo; use empty strings for unavailable identifiers). For initial mode, suggest both; for prompts mode, leave competitors empty; for competitors mode, leave prompts empty. When suggesting prompts, cover category discovery, use cases, alternatives, and comparisons. Most questions should be unbranded. Never draft questions about unrelated meanings of the brand name. Avoid repeating existing prompts and competitors. Suggestions require human confirmation.`
 
 func strictObjectSchema(required []string, properties map[string]any) map[string]any {
 	return map[string]any{
@@ -178,11 +178,12 @@ func (c *Client) research(ctx context.Context, model string, input koidomain.Gen
 
 func (c *Client) suggest(ctx context.Context, model string, input koidomain.GenerationInput, summary researchSummary) (koidomain.GenerationResult, error) {
 	payload := map[string]any{"summary": summary, "input": input}
+	instructions := draftInstructions(input.PromptTarget)
 
 	request := components.ResponsesRequest{
 		Model:        sdk.Pointer(model),
 		Input:        sdk.Pointer(components.CreateInputsUnionStr(string(mustJSON(payload)))),
-		Instructions: optionalnullable.From(sdk.Pointer(draftPrompt)),
+		Instructions: optionalnullable.From(sdk.Pointer(instructions)),
 		Reasoning: optionalnullable.From(sdk.Pointer(components.ReasoningConfig{
 			Effort: optionalnullable.From(sdk.Pointer(components.ReasoningEffortHigh)),
 		})),
@@ -224,6 +225,10 @@ func (c *Client) suggest(ctx context.Context, model string, input koidomain.Gene
 	}
 
 	return result, nil
+}
+
+func draftInstructions(target int) string {
+	return fmt.Sprintf("%s Suggest at most %d new prompts; if the target is zero, leave prompts empty.", draftPrompt, target)
 }
 
 func decodeJSON(content string, target any) error {

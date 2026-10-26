@@ -15,6 +15,7 @@
     "check:fix-unsafe": "biome check --write --unsafe .",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "prepare": "cd .. && husky ui/.husky"
   },
   "dependencies": {

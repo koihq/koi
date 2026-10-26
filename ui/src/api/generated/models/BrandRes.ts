@@ -31,7 +31,7 @@ export interface BrandRes {
      * @type {string}
      * @memberof BrandRes
      */
-    userId: string;
+    organizationId: string;
     /**
      * 
      * @type {string}
@@ -69,7 +69,7 @@ export interface BrandRes {
  */
 export function instanceOfBrandRes(value: object): value is BrandRes {
     if (!('id' in value) || value['id'] === undefined) return false;
-    if (!('userId' in value) || value['userId'] === undefined) return false;
+    if (!('organizationId' in value) || value['organizationId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('domain' in value) || value['domain'] === undefined) return false;
     if (!('githubRepo' in value) || value['githubRepo'] === undefined) return false;
@@ -89,10 +89,10 @@ export function BrandResFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
     return {
         
         'id': json['id'],
-        'userId': json['user_id'],
+        'organizationId': json['organizationId'],
         'name': json['name'],
         'domain': json['domain'],
-        'githubRepo': json['github_repo'],
+        'githubRepo': json['githubRepo'],
         'country': json['country'],
         'description': json['description'],
     };
@@ -110,10 +110,10 @@ export function BrandResToJSONTyped(value?: BrandRes | null, ignoreDiscriminator
     return {
         
         'id': value['id'],
-        'user_id': value['userId'],
+        'organizationId': value['organizationId'],
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'country': value['country'],
         'description': value['description'],
     };

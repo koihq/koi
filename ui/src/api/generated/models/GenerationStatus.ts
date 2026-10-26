@@ -139,13 +139,13 @@ export function GenerationStatusFromJSONTyped(json: any, ignoreDiscriminator: bo
         'mode': json['mode'],
         'state': json['state'],
         'attempt': json['attempt'],
-        'promptCount': json['prompt_count'],
-        'competitorCount': json['competitor_count'],
-        'createdAt': (new Date(json['created_at'])),
-        'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
-        'finishedAt': json['finished_at'] == null ? undefined : (new Date(json['finished_at'])),
-        'nextRetryAt': json['next_retry_at'] == null ? undefined : (new Date(json['next_retry_at'])),
-        'errorCode': json['error_code'] == null ? undefined : json['error_code'],
+        'promptCount': json['promptCount'],
+        'competitorCount': json['competitorCount'],
+        'createdAt': (new Date(json['createdAt'])),
+        'startedAt': json['startedAt'] == null ? undefined : (new Date(json['startedAt'])),
+        'finishedAt': json['finishedAt'] == null ? undefined : (new Date(json['finishedAt'])),
+        'nextRetryAt': json['nextRetryAt'] == null ? undefined : (new Date(json['nextRetryAt'])),
+        'errorCode': json['errorCode'] == null ? undefined : json['errorCode'],
     };
 }
 
@@ -164,13 +164,13 @@ export function GenerationStatusToJSONTyped(value?: GenerationStatus | null, ign
         'mode': value['mode'],
         'state': value['state'],
         'attempt': value['attempt'],
-        'prompt_count': value['promptCount'],
-        'competitor_count': value['competitorCount'],
-        'created_at': value['createdAt'].toISOString(),
-        'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
-        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
-        'next_retry_at': value['nextRetryAt'] == null ? value['nextRetryAt'] : value['nextRetryAt'].toISOString(),
-        'error_code': value['errorCode'],
+        'promptCount': value['promptCount'],
+        'competitorCount': value['competitorCount'],
+        'createdAt': value['createdAt'].toISOString(),
+        'startedAt': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
+        'finishedAt': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
+        'nextRetryAt': value['nextRetryAt'] == null ? value['nextRetryAt'] : value['nextRetryAt'].toISOString(),
+        'errorCode': value['errorCode'],
     };
 }
 

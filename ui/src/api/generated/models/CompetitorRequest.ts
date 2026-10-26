@@ -15,11 +15,17 @@
 
 import { mapValues } from '../runtime';
 /**
- * At least one of domain or github_repo is required.
+ * At least one of domain or githubRepo is required.
  * @export
  * @interface CompetitorRequest
  */
 export interface CompetitorRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof CompetitorRequest
+     */
+    brandId: string;
     /**
      * 
      * @type {string}
@@ -56,6 +62,7 @@ export interface CompetitorRequest {
  * Check if a given object implements the CompetitorRequest interface.
  */
 export function instanceOfCompetitorRequest(value: object): value is CompetitorRequest {
+    if (!('brandId' in value) || value['brandId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     return true;
 }
@@ -70,11 +77,12 @@ export function CompetitorRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
+        'brandId': json['brandId'],
         'name': json['name'],
         'domain': json['domain'] == null ? undefined : json['domain'],
-        'githubRepo': json['github_repo'] == null ? undefined : json['github_repo'],
+        'githubRepo': json['githubRepo'] == null ? undefined : json['githubRepo'],
         'aliases': json['aliases'] == null ? undefined : json['aliases'],
-        'additionalUrls': json['additional_urls'] == null ? undefined : json['additional_urls'],
+        'additionalUrls': json['additionalUrls'] == null ? undefined : json['additionalUrls'],
     };
 }
 
@@ -89,11 +97,12 @@ export function CompetitorRequestToJSONTyped(value?: CompetitorRequest | null, i
 
     return {
         
+        'brandId': value['brandId'],
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'aliases': value['aliases'],
-        'additional_urls': value['additionalUrls'],
+        'additionalUrls': value['additionalUrls'],
     };
 }
 

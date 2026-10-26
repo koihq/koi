@@ -62,7 +62,8 @@
     "collection_unavailable": "Live collection is unavailable. Ask your instance administrator to configure Cloro.",
     "reviews_required": "Finish reviewing both tracking lists. Changes after tracking starts take effect at the next scheduled check.",
     "prompts_required": "Add at least one prompt and finish its review.",
-    "generation_active": "Prompt or competitor drafting is in progress. Collection waits until it finishes."
+    "generation_active": "Prompt or competitor drafting is in progress. Collection waits until it finishes.",
+    "billing_inactive_or_over_limit": "Tracking is paused. Check billing and deactivate prompts above your allowance to resume collection."
   },
   "whoAppeared": "Who appeared",
   "noAppearances": "No competitors identified in this answer.",
@@ -75,5 +76,6 @@
     "citation": "Cited source",
     "entity": "Named entity",
     "link": "Product link"
-  }
+  },
+  "reviewBilling": "Review billing"
 }

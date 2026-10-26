@@ -9,6 +9,7 @@ import (
 	sdk "github.com/OpenRouterTeam/go-sdk"
 	"github.com/OpenRouterTeam/go-sdk/models/sdkerrors"
 	"github.com/OpenRouterTeam/go-sdk/retry"
+
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -38,6 +39,7 @@ func BoundInput(input koidomain.GenerationInput, model string, maxBytes int) (ko
 	bounded := koidomain.GenerationInput{
 		Brand:               input.Brand,
 		Mode:                input.Mode,
+		PromptTarget:        input.PromptTarget,
 		ExistingPrompts:     []string{},
 		ExistingCompetitors: []koidomain.CompetitorIdentity{},
 	}
@@ -68,7 +70,7 @@ func requestSize(model string, input koidomain.GenerationInput) int {
 	return len(mustJSON(map[string]any{
 		"model":  model,
 		"input":  input,
-		"prompt": draftPrompt,
+		"prompt": draftInstructions(input.PromptTarget),
 		"schema": responseSchema,
 	}))
 }
@@ -170,4 +172,8 @@ func statusCode(status int) string {
 	}
 
 	return "provider_rejected"
+}
+
+func (e *Error) Failure() koidomain.ProviderFailure {
+	return koidomain.ProviderFailure{Code: e.Code, Retryable: e.Retryable, Status: e.Status}
 }

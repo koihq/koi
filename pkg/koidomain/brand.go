@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/koihq/koi/pkg/koiauth"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
+
+	"github.com/koihq/koi/pkg/koiauth"
 )
 
 type Brand struct {
@@ -21,12 +22,13 @@ type Brand struct {
 	VisibilityStartedAt   *time.Time `json:"-"`
 	NextVisibilityAt      *time.Time `json:"-"`
 	BaseEntity
-	UserID      uuid.UUID `json:"user_id" gorm:"type:uuid;not null;index"`
-	Name        string    `json:"name" gorm:"not null"`
-	Domain      string    `json:"domain"`
-	GitHubRepo  string    `json:"github_repo" gorm:"column:github_repo"`
-	Country     string    `json:"country" gorm:"not null;type:varchar(2)"`
-	Description string    `json:"description"`
+	OrganizationID uuid.UUID     `json:"organization_id" gorm:"type:uuid;not null;index"`
+	Organization   *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:RESTRICT"`
+	Name           string        `json:"name" gorm:"not null"`
+	Domain         string        `json:"domain"`
+	GitHubRepo     string        `json:"github_repo" gorm:"column:github_repo"`
+	Country        string        `json:"country" gorm:"not null;type:varchar(2)"`
+	Description    string        `json:"description"`
 }
 
 func (Brand) TableName() string { return "brands" }
@@ -50,8 +52,8 @@ func (b *Brand) Normalize() {
 }
 
 func (b Brand) Validate() error {
-	if b.UserID == uuid.Nil {
-		return Validation(FieldError{Field: "user_id", Code: FieldInvalid})
+	if b.OrganizationID == uuid.Nil {
+		return Validation(FieldError{Field: "organization_id", Code: FieldInvalid})
 	}
 
 	if strings.TrimSpace(b.Name) == "" {
@@ -206,11 +208,17 @@ func validGitHubRepo(raw string) bool {
 }
 
 type BrandRepository interface {
-	BaseEntityRepository[Brand, uuid.UUID]
+	BaseEntityRepository[Brand]
 	LockForUpdate(context.Context, uuid.UUID) (*Brand, error)
 	Count(context.Context) (int64, error)
-	List(context.Context, PageParams) (*Page[Brand], error)
+	Latest(context.Context) (*Brand, error)
+	List(context.Context, BrandListParams) (*Page[Brand], error)
 	Update(context.Context, *Brand) error
+}
+
+type BrandListParams struct {
+	Page  PageParams
+	Query string
 }
 
 type BrandParams struct {
@@ -227,7 +235,7 @@ type BrandCommander interface {
 }
 
 type BrandQuerier interface {
-	List(ctx context.Context, params PageParams) (*Page[Brand], error)
+	List(ctx context.Context, params BrandListParams) (*Page[Brand], error)
 	Get(ctx context.Context, id uuid.UUID) (*Brand, error)
 }
 
@@ -245,17 +253,17 @@ func NewBrandCommander(store Store) BrandCommander { return &brandCommander{stor
 
 func (c *brandCommander) Create(ctx context.Context, p BrandParams) (*Brand, error) {
 	identity, ok := koiauth.FromContext(ctx)
-	if !ok {
+	if !ok || identity.OrganizationID == uuid.Nil {
 		return nil, ErrUnauthorized
 	}
 
 	brand := &Brand{
-		UserID:      identity.UserID,
-		Name:        p.Name,
-		Domain:      p.Domain,
-		GitHubRepo:  p.GitHubRepo,
-		Country:     p.Country,
-		Description: p.Description,
+		OrganizationID: identity.OrganizationID,
+		Name:           p.Name,
+		Domain:         p.Domain,
+		GitHubRepo:     p.GitHubRepo,
+		Country:        p.Country,
+		Description:    p.Description,
 	}
 
 	brand.Normalize()
@@ -263,23 +271,7 @@ func (c *brandCommander) Create(ctx context.Context, p BrandParams) (*Brand, err
 		return nil, err
 	}
 
-	err := c.store.Atomic(ctx, func(s Store) error {
-		if err := s.UserRepo().LockForUpdate(ctx, identity.UserID); err != nil {
-			return err
-		}
-
-		count, err := s.BrandRepo().Count(ctx)
-		if err != nil {
-			return err
-		}
-
-		if count != 0 {
-			return ErrBrandLimitReached
-		}
-
-		return s.BrandRepo().Create(ctx, brand)
-	})
-	if err != nil {
+	if err := c.store.BrandRepo().Create(ctx, brand); err != nil {
 		return nil, err
 	}
 
@@ -328,7 +320,7 @@ type brandQuerier struct{ store Store }
 
 func NewBrandQuerier(store Store) BrandQuerier { return &brandQuerier{store: store} }
 
-func (q *brandQuerier) List(ctx context.Context, params PageParams) (*Page[Brand], error) {
+func (q *brandQuerier) List(ctx context.Context, params BrandListParams) (*Page[Brand], error) {
 	return q.store.BrandRepo().List(ctx, params)
 }
 

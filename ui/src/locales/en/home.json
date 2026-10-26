@@ -1,5 +1,6 @@
 {
   "signOut": "Sign out",
+  "billing": "Billing",
   "skip": "Skip to content",
   "navigation": "Main navigation",
   "toggleSidebar": "Toggle sidebar",
@@ -19,6 +20,12 @@
   "workspace": "Workspace",
   "action": "Act",
   "header": {
+    "activeBrand": "Active brand: {name}",
+    "searchBrands": "Search brands",
+    "searchingBrands": "Searching brands…",
+    "brandSearchError": "Brands could not be loaded.",
+    "noBrands": "No matching brands.",
+    "brandActivationError": "Unable to switch brand. Open the selector to try again.",
     "settings": "Settings",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",

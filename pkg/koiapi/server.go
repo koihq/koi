@@ -1,6 +1,7 @@
 package koiapi
 
 import (
+	"context"
 	"net/http"
 	"path"
 	"strings"
@@ -10,9 +11,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
+	"github.com/google/uuid"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
+	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/web"
 )
@@ -23,8 +26,17 @@ func NewServer(store koidomain.Store, sess *scs.SessionManager, searcher koidoma
 
 func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting bool, collection ...bool) http.Handler {
 	liveCollection := len(collection) > 0 && collection[0]
+	return buildHTTPServerWithBilling(store, sess, searcher, aiDrafting, liveCollection, nil)
+}
+
+func NewCloudServer(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting, liveCollection bool, billing *BillingHandler) http.Handler {
+	return buildHTTPServerWithBilling(store, sess, searcher, aiDrafting, liveCollection, billing)
+}
+
+func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting, liveCollection bool, billing *BillingHandler) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	r.Use(middlewares.RequestIDHeader)
 	r.Use(middlewares.RequestLogger)
 	r.Use(middlewares.Recoverer)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
@@ -37,44 +49,42 @@ func buildHTTPServer(store koidomain.Store, sess *scs.SessionManager, searcher k
 	r.Use(sess.LoadAndSave)
 
 	r.Get("/health", NewHealthHandler(store).Get)
+	authenticate := middlewares.Authenticate(sess, func(ctx context.Context, userID uuid.UUID) (koiauth.Identity, error) {
+		return koidomain.ResolveIdentity(ctx, store, userID)
+	})
 	r.Route("/api/v1", func(r chi.Router) {
-		r.With(Authorizer(sess)).Get("/capabilities", func(w http.ResponseWriter, req *http.Request) {
-			api.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting, "liveCollection": liveCollection})
-		})
-		r.Route("/auth", NewAuthHandler(
-			koidomain.NewAuthQuerier(store),
-			koidomain.NewAuthCommander(store),
-			sess,
-		).Routes())
-		r.Route("/brands", func(r chi.Router) {
-			NewBrandHandler(
-				koidomain.NewBrandQuerier(store),
-				koidomain.NewBrandCommander(store),
-				sess,
-			).Routes()(r)
-			r.Route("/{brandID}/prompts", NewPromptHandler(
-				koidomain.NewPromptQuerier(store),
-				koidomain.NewPromptCommander(store),
-				sess,
-				koidomain.NewVisibilityAnalyticsQuerier(store),
-			).Routes())
-			r.Route("/{brandID}/competitors", NewCompetitorHandler(
-				koidomain.NewCompetitorQuerier(store, searcher),
-				koidomain.NewCompetitorCommander(store),
-				sess,
-			).Routes())
-			visibility := NewVisibilityHandler(koidomain.NewVisibilityQuerier(store), sess, koidomain.NewVisibilityAnalyticsQuerier(store))
-			r.With(Authorizer(sess)).Get("/{brandID}/tracking", visibility.Tracking)
-			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history", visibility.ListHistoricalPrompts)
-			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/runs", visibility.ListPromptRuns)
-			r.With(Authorizer(sess)).Get("/{brandID}/prompt-history/{promptID}/visibility", visibility.PromptVisibility)
-			r.With(Authorizer(sess)).Get("/{brandID}/visibility/summary", visibility.Summary)
-			r.Route("/{brandID}/runs", visibility.Routes())
-			r.Route("/{brandID}/generations", NewGenerationHandler(
-				koidomain.NewGenerationQuerier(store),
-				koidomain.NewGenerationCommander(store, aiDrafting),
-				sess,
-			).Routes())
+		r.Route("/auth", NewAuthHandler(koidomain.NewAuthQuerier(store), koidomain.NewAuthCommander(store), sess, authenticate).Routes())
+		if billing != nil {
+			r.Post("/webhooks/stripe", billing.Webhook)
+		}
+		r.Group(func(r chi.Router) {
+			r.Use(authenticate)
+			if billing != nil {
+				r.Route("/billing", billing.Routes())
+			}
+			r.Get("/capabilities", func(w http.ResponseWriter, req *http.Request) {
+				apiresponse.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting, "liveCollection": liveCollection, "cloudBilling": billing != nil})
+			})
+			var billingGuard func(http.Handler) http.Handler
+			if billing != nil {
+				billingGuard = middlewares.RequireBilling(billing.querier)
+			}
+			r.Route("/brands", NewBrandHandler(koidomain.NewBrandQuerier(store), koidomain.NewBrandCommander(store), sess, billingGuard).Routes())
+			r.Group(func(r chi.Router) {
+				if billingGuard != nil {
+					r.Use(billingGuard)
+				}
+				r.Route("/prompts", NewPromptHandler(koidomain.NewPromptQuerier(store), koidomain.NewPromptCommander(store), koidomain.NewVisibilityAnalyticsQuerier(store)).Routes())
+				r.Route("/competitors", NewCompetitorHandler(koidomain.NewCompetitorQuerier(store, searcher), koidomain.NewCompetitorCommander(store)).Routes())
+				visibility := NewVisibilityHandler(koidomain.NewVisibilityQuerier(store), koidomain.NewVisibilityAnalyticsQuerier(store))
+				r.Get("/tracking", visibility.Tracking)
+				r.Get("/prompt-history", visibility.ListHistoricalPrompts)
+				r.Get("/prompt-history/{promptID}/runs", visibility.ListPromptRuns)
+				r.Get("/prompt-history/{promptID}/visibility", visibility.PromptVisibility)
+				r.Get("/visibility/summary", visibility.Summary)
+				r.Route("/runs", visibility.Routes())
+				r.Route("/generations", NewGenerationHandler(koidomain.NewGenerationQuerier(store), koidomain.NewGenerationCommander(store, aiDrafting)).Routes())
+			})
 		})
 	})
 	r.Handle("/*", spaHandler(web.FileSystem()))

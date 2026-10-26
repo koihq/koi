@@ -18,7 +18,7 @@ export function useCompetitorList(brandID: string) {
 
   const competitors = useQuery({
     queryKey: [...competitorKey(brandID), params],
-    queryFn: ({ signal }) => api.competitors.list(brandID, params, { signal }),
+    queryFn: ({ signal }) => api.competitors.list({ brandId: brandID, ...params }, { signal }),
     placeholderData: keepPreviousData,
     enabled: table.q === table.debouncedQuery,
   });

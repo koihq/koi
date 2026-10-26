@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,12 +41,7 @@ type taskResponse struct {
 	Response json.RawMessage `json:"response"`
 }
 
-type Answer struct {
-	Text     string
-	Markdown string
-	Entities []koidomain.NamedEntity
-	Sources  []string
-}
+type Answer = koidomain.CollectedAnswer
 
 func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
 	payload := map[string]any{"prompt": cell.PromptText, "country": country, "include": map[string]any{"markdown": true}}
@@ -113,7 +109,14 @@ func (c *Client) Poll(ctx context.Context, id string, engine koidomain.EngineID)
 	case "FAILED":
 		return nil, &Error{Code: "cloro_task_failed"}
 	case "COMPLETED":
-		return normalize(engine, result.Response)
+		answer, err := normalize(engine, result.Response)
+		if err != nil || answer == nil {
+			return answer, err
+		}
+		if credits, err := strconv.Atoi(resp.Header().Get("X-Credits-Charged")); err == nil && credits >= 0 {
+			answer.CreditsCharged = &credits
+		}
+		return answer, nil
 	default:
 		return nil, &Error{Code: "cloro_invalid_response"}
 	}
@@ -206,4 +209,8 @@ func Failure(err error) *Error {
 	}
 
 	return &Error{Code: "cloro_unavailable", Retryable: true}
+}
+
+func (e *Error) Failure() koidomain.ProviderFailure {
+	return koidomain.ProviderFailure{Code: e.Code, Retryable: e.Retryable, AccountWide: e.AccountWide}
 }

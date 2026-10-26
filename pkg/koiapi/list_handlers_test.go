@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -31,8 +31,8 @@ func newListsTestServer(
 		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
 		w.WriteHeader(http.StatusNoContent)
 	})
-	r.Route("/api/v1/brands/{brandID}/prompts", NewPromptHandler(pq, pc, sess).Routes())
-	r.Route("/api/v1/brands/{brandID}/competitors", NewCompetitorHandler(cq, cc, sess).Routes())
+	r.With(Authorizer(sess)).Route("/api/v1/prompts", NewPromptHandler(pq, pc).Routes())
+	r.With(Authorizer(sess)).Route("/api/v1/competitors", NewCompetitorHandler(cq, cc).Routes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 
@@ -60,8 +60,8 @@ func TestListHandlersRequireSession(t *testing.T) {
 	}
 
 	for _, request := range paths {
-		resp := doJSON(t, client, request.method, ts.URL+"/api/v1/brands/"+brandID.String()+request.path, request.body)
-		var body api.Envelope
+		resp := doJSON(t, client, request.method, ts.URL+"/api/v1"+request.path, request.body, brandID)
+		var body apiresponse.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 		require.Equal(t, koidomain.CodeUnauthorized, body.Error.Code)
@@ -74,7 +74,7 @@ func TestCompetitorPatchCannotConfirmOrChangeSource(t *testing.T) {
 	name := "Acme Analytics"
 	aliases := []string{"Acme"}
 	urls := []string{"https://acme.tools"}
-	commander.EXPECT().Patch(mock.Anything, brandID, competitorID, koidomain.CompetitorUpdate{
+	commander.EXPECT().Patch(mock.Anything, competitorID, koidomain.CompetitorUpdate{
 		Name: &name, Aliases: &aliases, AdditionalURLs: &urls,
 	}).Return(&koidomain.Competitor{
 		BaseEntity: koidomain.BaseEntity{
@@ -87,9 +87,9 @@ func TestCompetitorPatchCannotConfirmOrChangeSource(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodPatch, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors/"+competitorID.String(),
-		`{"name":"Acme Analytics","aliases":["Acme"],"additional_urls":["https://acme.tools"],"source":"manual","confirmed":true}`)
-	var body koidomain.Competitor
+	resp := doJSON(t, client, http.MethodPatch, ts.URL+"/api/v1"+"/competitors/"+competitorID.String(),
+		`{"name":"Acme Analytics","aliases":["Acme"],"additionalUrls":["https://acme.tools"],"source":"manual","confirmed":true}`, brandID)
+	var body CompetitorRes
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, koidomain.CompetitorSourceObserved, body.Source)
@@ -110,14 +110,14 @@ func TestPromptHandlerCreateMalformedAndUnowned(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts", `{`)
-	var malformed api.Envelope
+	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/prompts", `{`, brandID)
+	var malformed apiresponse.Envelope
 	readJSON(t, resp, &malformed)
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	require.Equal(t, koidomain.CodeInvalidJSON, malformed.Error.Code)
 
-	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts", "")
-	var missing api.Envelope
+	resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+"/prompts", "", brandID)
+	var missing apiresponse.Envelope
 	readJSON(t, resp, &missing)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	require.Equal(t, koidomain.CodeNotFound, missing.Error.Code)
@@ -137,14 +137,14 @@ func TestPromptHandlerConfirmationIsIdempotent(t *testing.T) {
 		Confirmed: true,
 	}
 
-	commander.EXPECT().Confirm(mock.Anything, brandID, promptID).Return(prompt, nil).Twice()
+	commander.EXPECT().Confirm(mock.Anything, promptID).Return(prompt, nil).Twice()
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
 	for range 2 {
-		resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts/"+promptID.String()+"/confirm", "")
-		var body koidomain.Prompt
+		resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/prompts/"+promptID.String()+"/confirm", "", brandID)
+		var body PromptRes
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.True(t, body.Confirmed)
@@ -168,10 +168,10 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors",
-		`{"name":"Acme","domain":"acme.com","source":"observed","confirmed":false}`)
+	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/competitors",
+		`{"name":"Acme","domain":"acme.com","source":"observed","confirmed":false}`, brandID)
 
-	var body koidomain.Competitor
+	var body CompetitorRes
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	require.Equal(t, koidomain.CompetitorSourceManual, body.Source)
@@ -196,7 +196,7 @@ func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?page=2&pageSize=5&q=best+tools&confirmed=false", "")
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+"/prompts?page=2&pageSize=5&q=best+tools&confirmed=false", "", brandID)
 	var page koidomain.Page[koidomain.Prompt]
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -217,8 +217,8 @@ func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {
 	for _, query := range []string{
 		"page=0", "pageSize=101", "confirmed=maybe", "confirmed=true&confirmed=false", "q=one&q=two",
 	} {
-		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts?"+query, "")
-		var body api.Envelope
+		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+"/prompts?"+query, "", brandID)
+		var body apiresponse.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode, query)
 		require.Equal(t, koidomain.CodeValidation, body.Error.Code)
@@ -235,19 +235,19 @@ func TestPromptHandlerGetsOneAndConfirmsAllWithoutBody(t *testing.T) {
 		},
 		BrandID: brandID,
 	}
-	querier.EXPECT().Get(mock.Anything, brandID, promptID).Return(prompt, nil)
+	querier.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil)
 	commander.EXPECT().ConfirmAll(mock.Anything, brandID).Return(nil)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts/"+promptID.String(), "")
-	var body koidomain.Prompt
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+"/prompts/"+promptID.String(), "", brandID)
+	var body PromptRes
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, promptID, body.ID)
 
-	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/prompts/confirm", "")
+	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/prompts/confirm", "", brandID)
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 	require.Zero(t, resp.ContentLength)
 	resp.Body.Close()
@@ -270,13 +270,13 @@ func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
 
-	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors?pageSize=1&q=acme&confirmed=true", "")
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+"/competitors?pageSize=1&q=acme&confirmed=true", "", brandID)
 	var page koidomain.Page[koidomain.Competitor]
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotNil(t, page.Items)
 
-	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/brands/"+brandID.String()+"/competitors/confirm", "")
+	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/competitors/confirm", "", brandID)
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 	require.Zero(t, resp.ContentLength)
 	resp.Body.Close()

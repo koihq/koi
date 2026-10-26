@@ -21,6 +21,19 @@ func (s *Store) BeginVisibilityAttempt(ctx context.Context, runID uuid.UUID, job
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&run, "id = ? AND river_job_id = ?", runID, jobID).Error; err != nil {
 			return mapDBError(err)
 		}
+		if s.cloudMode {
+			var brand koidomain.Brand
+			if err := tx.First(&brand, "id = ?", run.BrandID).Error; err != nil {
+				return mapDBError(err)
+			}
+			allowed, err := cloudTrackingAllowed(ctx, tx, brand.OrganizationID)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return koidomain.ErrPromptLimitReached
+			}
+		}
 
 		if run.State == koidomain.VisibilitySucceeded || run.State == koidomain.VisibilityFailed {
 			return nil
@@ -62,6 +75,29 @@ func (s *Store) ContactVisibilityTask(ctx context.Context, runID uuid.UUID, atte
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := lockVisibilityAttempt(tx, runID, attempt); err != nil {
 			return err
+		}
+		if s.cloudMode {
+			var brand koidomain.Brand
+			if err := tx.Joins("JOIN visibility_runs ON visibility_runs.brand_id = brands.id").
+				Where("visibility_runs.id = ?", runID).Take(&brand).Error; err != nil {
+				return mapDBError(err)
+			}
+			allowed, err := cloudTrackingAllowed(ctx, tx, brand.OrganizationID)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return koidomain.ErrPromptLimitReached
+			}
+			var active int64
+			if err := tx.Model(&koidomain.Prompt{}).
+				Where("id = ? AND brand_id = ? AND confirmed AND NOT inactive", result.PromptID, brand.ID).
+				Count(&active).Error; err != nil {
+				return err
+			}
+			if active != 1 {
+				return koidomain.ErrPromptLimitReached
+			}
 		}
 
 		values := map[string]any{"checked_at": now}
@@ -130,7 +166,7 @@ func (s *Store) SaveVisibilityResult(ctx context.Context, runID uuid.UUID, attem
 
 		// A replay never overwrites an answer or advances discovery counts.
 		saved := tx.Model(&koidomain.VisibilityResult{}).Where("id = ? AND run_id = ? AND outcome IS NULL", result.ID, runID).
-			Select("outcome", "fetched_at", "raw_answer", "answer_markdown", "named_entities", "observations", "sources", "error_code").Updates(&result)
+			Select("outcome", "fetched_at", "raw_answer", "answer_markdown", "named_entities", "observations", "sources", "error_code", "provider_credits").Updates(&result)
 		if saved.Error != nil || saved.RowsAffected == 0 {
 			return saved.Error
 		}

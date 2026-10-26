@@ -81,21 +81,22 @@ type VisibilityResult struct {
 	BaseEntity
 	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:1;index:idx_visibility_results_order,priority:1"`
 	// PromptID is a snapshot identifier, deliberately independent of the live prompt row.
-	PromptID       uuid.UUID               `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2"`
-	PromptText     string                  `json:"prompt_text" gorm:"not null"`
-	PromptPosition int                     `json:"prompt_position" gorm:"not null;index:idx_visibility_results_order,priority:2"`
-	Engine         EngineID                `json:"engine" gorm:"type:varchar(32);not null;uniqueIndex:idx_visibility_results_cell,priority:3;index:idx_visibility_results_order,priority:3"`
-	Collector      CollectorID             `json:"collector" gorm:"type:varchar(16);not null"`
-	FetchedAt      *time.Time              `json:"fetched_at"`
-	Outcome        *Outcome                `json:"outcome" gorm:"type:varchar(16);check:chk_visibility_outcome,outcome IS NULL OR outcome IN ('cited','mentioned','miss','error')"`
-	RawAnswer      string                  `json:"raw_answer" gorm:"not null;default:''"`
-	AnswerMarkdown string                  `json:"-" gorm:"not null;default:''"`
-	NamedEntities  []NamedEntity           `json:"-" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	Observations   []AppearanceObservation `json:"-" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
-	Appearances    []CompetitorAppearance  `json:"appearances" gorm:"-"`
-	Sources        []string                `json:"sources" gorm:"type:jsonb;serializer:json;not null"`
-	ErrorCode      *string                 `json:"error_code"`
-	Run            *VisibilityRun          `json:"-" gorm:"foreignKey:RunID;constraint:OnDelete:CASCADE"`
+	PromptID        uuid.UUID               `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2"`
+	PromptText      string                  `json:"prompt_text" gorm:"not null"`
+	PromptPosition  int                     `json:"prompt_position" gorm:"not null;index:idx_visibility_results_order,priority:2"`
+	Engine          EngineID                `json:"engine" gorm:"type:varchar(32);not null;uniqueIndex:idx_visibility_results_cell,priority:3;index:idx_visibility_results_order,priority:3"`
+	Collector       CollectorID             `json:"collector" gorm:"type:varchar(16);not null"`
+	FetchedAt       *time.Time              `json:"fetched_at"`
+	Outcome         *Outcome                `json:"outcome" gorm:"type:varchar(16);check:chk_visibility_outcome,outcome IS NULL OR outcome IN ('cited','mentioned','miss','error')"`
+	RawAnswer       string                  `json:"raw_answer" gorm:"not null;default:''"`
+	AnswerMarkdown  string                  `json:"-" gorm:"not null;default:''"`
+	NamedEntities   []NamedEntity           `json:"-" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	Observations    []AppearanceObservation `json:"-" gorm:"type:jsonb;serializer:json;not null;default:'[]'"`
+	Appearances     []CompetitorAppearance  `json:"appearances" gorm:"-"`
+	Sources         []string                `json:"sources" gorm:"type:jsonb;serializer:json;not null"`
+	ErrorCode       *string                 `json:"error_code"`
+	ProviderCredits *int                    `json:"-"`
+	Run             *VisibilityRun          `json:"-" gorm:"foreignKey:RunID;constraint:OnDelete:CASCADE"`
 }
 
 func (VisibilityResult) TableName() string { return "visibility_results" }
@@ -154,14 +155,15 @@ type PromptHistoryRun struct {
 }
 
 type VisibilityRepository interface {
+	VisibilityAnalyticsRepository
 	FinishReview(context.Context, uuid.UUID, string) error
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
-	Get(context.Context, uuid.UUID, uuid.UUID) (*VisibilityRun, error)
+	Get(context.Context, uuid.UUID) (*VisibilityRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
 	Active(context.Context, uuid.UUID) (*VisibilityRun, error)
 	Inputs(context.Context, uuid.UUID) (VisibilityInputs, error)
 	CreateAndEnqueue(context.Context, *VisibilityRun, []VisibilityResult) error
-	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
+	ListResults(context.Context, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
@@ -175,9 +177,9 @@ type TrackingStatus struct {
 }
 
 type VisibilityQuerier interface {
-	Get(context.Context, uuid.UUID, uuid.UUID) (*VisibilityRun, error)
+	Get(context.Context, uuid.UUID) (*VisibilityRun, error)
 	List(context.Context, uuid.UUID, PageParams) (*Page[VisibilityRun], error)
-	ListResults(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
+	ListResults(context.Context, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
 	ListHistoricalPrompts(context.Context, uuid.UUID, PromptListParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
@@ -191,12 +193,8 @@ func (s *visibilityService) Tracking(ctx context.Context, brandID uuid.UUID) (*T
 	return s.store.VisibilityRepo().Tracking(ctx, brandID)
 }
 
-func (s *visibilityService) Get(ctx context.Context, brandID, runID uuid.UUID) (*VisibilityRun, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	return s.store.VisibilityRepo().Get(ctx, brandID, runID)
+func (s *visibilityService) Get(ctx context.Context, runID uuid.UUID) (*VisibilityRun, error) {
+	return s.store.VisibilityRepo().Get(ctx, runID)
 }
 
 func (s *visibilityService) List(ctx context.Context, brandID uuid.UUID, page PageParams) (*Page[VisibilityRun], error) {
@@ -207,12 +205,12 @@ func (s *visibilityService) List(ctx context.Context, brandID uuid.UUID, page Pa
 	return s.store.VisibilityRepo().List(ctx, brandID, page)
 }
 
-func (s *visibilityService) ListResults(ctx context.Context, brandID, runID uuid.UUID, page PageParams) (*Page[VisibilityResult], error) {
-	if _, err := s.Get(ctx, brandID, runID); err != nil {
+func (s *visibilityService) ListResults(ctx context.Context, runID uuid.UUID, page PageParams) (*Page[VisibilityResult], error) {
+	if _, err := s.Get(ctx, runID); err != nil {
 		return nil, err
 	}
 
-	return s.store.VisibilityRepo().ListResults(ctx, brandID, runID, page)
+	return s.store.VisibilityRepo().ListResults(ctx, runID, page)
 }
 
 func (s *visibilityService) ListHistoricalPrompts(ctx context.Context, brandID uuid.UUID, params PromptListParams) (*Page[HistoricalPrompt], error) {

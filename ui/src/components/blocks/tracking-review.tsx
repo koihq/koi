@@ -6,7 +6,7 @@ import { useApi } from "@/api/apiProvider";
 import { messageFromUnknown } from "@/api/errors";
 import { Button } from "@/components/ui/button";
 import { useTracking } from "@/hooks/use-tracking";
-import { competitorKey, promptKey, runKey, trackingKey } from "@/lib/query-keys";
+import { invalidateProduct } from "@/lib/queries";
 
 export function TrackingReview({
   brandID,
@@ -24,14 +24,7 @@ export function TrackingReview({
 
   const finish = useMutation({
     mutationFn: () => api[kind].confirmAll(brandID),
-    onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: trackingKey(brandID) }),
-        queryClient.invalidateQueries({ queryKey: runKey(brandID) }),
-        queryClient.invalidateQueries({
-          queryKey: kind === "prompts" ? promptKey(brandID) : competitorKey(brandID),
-        }),
-      ]),
+    onSuccess: () => invalidateProduct(queryClient, brandID, kind),
   });
 
   const reviewed =
@@ -93,6 +86,11 @@ export function TrackingSummary({ brandID }: { brandID: string }) {
       ) : null}
       {state.blockedReason ? <p>{t(`blocked.${state.blockedReason}`)}</p> : null}
       <div className="flex flex-wrap gap-4">
+        {state.blockedReason === "billing_inactive_or_over_limit" ? (
+          <Link to="/settings/billing" className="underline underline-offset-4">
+            {t("reviewBilling")}
+          </Link>
+        ) : null}
         {!state.promptsReviewed ? (
           <Link to="/" hash="prompts" className="underline underline-offset-4">
             {t("reviewPrompts")}

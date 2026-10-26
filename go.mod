@@ -15,7 +15,9 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/riverqueue/river v0.47.0
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.47.0
+	github.com/riverqueue/river/rivertype v0.47.0
 	github.com/stretchr/testify v1.12.1
+	github.com/stripe/stripe-go/v87 v87.0.0
 	golang.org/x/crypto v0.57.0
 	golang.org/x/text v0.42.0
 	gorm.io/driver/postgres v1.6.2
@@ -66,8 +68,8 @@ require (
 	github.com/riverqueue/river/riverdriver v0.47.0 // indirect
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.47.0 // indirect
 	github.com/riverqueue/river/rivershared v0.47.0 // indirect
-	github.com/riverqueue/river/rivertype v0.47.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect

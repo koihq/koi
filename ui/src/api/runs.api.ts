@@ -7,9 +7,9 @@ import type {
   VisibilityResultPage,
   VisibilityRunPage,
   VisibilityRunStatus,
+  VisibilitySummary,
 } from "@/api/generated";
 import type { PromptSort } from "@/api/prompts.api";
-import { callApi } from "@/api/shared/apiClient";
 import type { VisibilityScope } from "@/lib/visibility";
 
 export type VisibilityRun = VisibilityRunStatus;
@@ -28,81 +28,56 @@ export type HistoricalPromptListParams = {
 
 export function createRunsApi(api: VisibilityApi) {
   return {
-    tracking: (brandID: string, initOverrides?: RequestInit) =>
-      callApi(() => api.getVisibilityTracking(brandID, initOverrides)),
+    tracking: (brandId: string, init?: RequestInit) => api.getVisibilityTracking({ brandId }, init),
     list: (
-      brandID: string,
+      brandId: string,
       page = 1,
       pageSize = 10,
-      initOverrides?: RequestInit,
-    ): Promise<VisibilityRunPage> =>
-      callApi(() => api.listVisibilityRuns(brandID, page, pageSize, initOverrides)),
-    getById: (
-      brandID: string,
-      runID: string,
-      initOverrides?: RequestInit,
-    ): Promise<VisibilityRun> => callApi(() => api.getVisibilityRun(brandID, runID, initOverrides)),
+      init?: RequestInit,
+    ): Promise<VisibilityRunPage> => api.listVisibilityRuns({ brandId, page, pageSize }, init),
+    getById: (runID: string, init?: RequestInit): Promise<VisibilityRun> =>
+      api.getVisibilityRun({ runID }, init),
     listResults: (
-      brandID: string,
       runID: string,
       page = 1,
       pageSize = 40,
-      initOverrides?: RequestInit,
-    ): Promise<VisibilityResultPage> =>
-      callApi(() => api.listVisibilityResults(brandID, runID, page, pageSize, initOverrides)),
+      init?: RequestInit,
+    ): Promise<VisibilityResultPage> => api.listVisibilityResults({ runID, page, pageSize }, init),
     historicalPrompts: (
-      brandID: string,
-      params: HistoricalPromptListParams,
-      initOverrides?: RequestInit,
+      brandId: string,
+      { scope, ...params }: HistoricalPromptListParams,
+      init?: RequestInit,
     ): Promise<HistoricalPromptPage> =>
-      callApi(() =>
-        api.listHistoricalPrompts(
-          brandID,
-          params.page,
-          params.pageSize,
-          params.q,
-          params.sort,
-          params.descending,
-          params.scope.days,
-          params.scope.engines.join(",") || undefined,
-          initOverrides,
-        ),
+      api.listHistoricalPrompts(
+        { ...params, brandId, days: scope.days, engines: scope.engines.join(",") || undefined },
+        init,
       ),
     summary: (
-      brandID: string,
+      brandId: string,
       scope: VisibilityScope,
-      initOverrides?: RequestInit,
-    ): Promise<VisibilityReport> =>
-      callApi(() =>
-        api.getVisibilitySummary(
-          brandID,
-          scope.days,
-          scope.engines.join(",") || undefined,
-          initOverrides,
-        ),
+      init?: RequestInit,
+    ): Promise<VisibilitySummary> =>
+      api.getVisibilitySummary(
+        { brandId, days: scope.days, engines: scope.engines.join(",") || undefined },
+        init,
       ),
     promptVisibility: (
-      brandID: string,
+      brandId: string,
       promptID: string,
       scope: VisibilityScope,
-      initOverrides?: RequestInit,
+      init?: RequestInit,
     ): Promise<VisibilityReport> =>
-      callApi(() =>
-        api.getPromptVisibility(
-          brandID,
-          promptID,
-          scope.days,
-          scope.engines.join(",") || undefined,
-          initOverrides,
-        ),
+      api.getPromptVisibility(
+        { brandId, promptID, days: scope.days, engines: scope.engines.join(",") || undefined },
+        init,
       ),
     promptHistory: (
-      brandID: string,
+      brandId: string,
       promptID: string,
       page = 1,
       pageSize = 10,
-      initOverrides?: RequestInit,
+      init?: RequestInit,
     ): Promise<PromptHistoryRunPage> =>
-      callApi(() => api.listPromptHistoryRuns(brandID, promptID, page, pageSize, initOverrides)),
+      api.listPromptHistoryRuns({ brandId, promptID, page, pageSize }, init),
   };
 }

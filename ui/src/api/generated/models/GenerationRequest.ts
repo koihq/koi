@@ -22,6 +22,12 @@ import { mapValues } from '../runtime';
 export interface GenerationRequest {
     /**
      * 
+     * @type {string}
+     * @memberof GenerationRequest
+     */
+    brandId: string;
+    /**
+     * 
      * @type {GenerationRequestModeEnum}
      * @memberof GenerationRequest
      */
@@ -44,6 +50,7 @@ export type GenerationRequestModeEnum = typeof GenerationRequestModeEnum[keyof t
  * Check if a given object implements the GenerationRequest interface.
  */
 export function instanceOfGenerationRequest(value: object): value is GenerationRequest {
+    if (!('brandId' in value) || value['brandId'] === undefined) return false;
     if (!('mode' in value) || value['mode'] === undefined) return false;
     return true;
 }
@@ -58,6 +65,7 @@ export function GenerationRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
+        'brandId': json['brandId'],
         'mode': json['mode'],
     };
 }
@@ -73,6 +81,7 @@ export function GenerationRequestToJSONTyped(value?: GenerationRequest | null, i
 
     return {
         
+        'brandId': value['brandId'],
         'mode': value['mode'],
     };
 }

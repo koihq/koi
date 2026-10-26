@@ -138,16 +138,16 @@ export function VisibilityRunStatusFromJSONTyped(json: any, ignoreDiscriminator:
     return {
         
         'id': json['id'],
-        'brandId': json['brand_id'],
+        'brandId': json['brandId'],
         'engines': ((json['engines'] as Array<any>).map(VisibilityEngineFromJSON)),
         'state': json['state'],
-        'totalResults': json['total_results'],
-        'completedResults': json['completed_results'],
-        'createdAt': (new Date(json['created_at'])),
-        'startedAt': (json['started_at'] == null ? null : new Date(json['started_at'])),
-        'finishedAt': (json['finished_at'] == null ? null : new Date(json['finished_at'])),
-        'errorCode': json['error_code'],
-        'statusUrl': json['status_url'],
+        'totalResults': json['totalResults'],
+        'completedResults': json['completedResults'],
+        'createdAt': (new Date(json['createdAt'])),
+        'startedAt': (json['startedAt'] == null ? null : new Date(json['startedAt'])),
+        'finishedAt': (json['finishedAt'] == null ? null : new Date(json['finishedAt'])),
+        'errorCode': json['errorCode'],
+        'statusUrl': json['statusUrl'],
     };
 }
 
@@ -163,16 +163,16 @@ export function VisibilityRunStatusToJSONTyped(value?: VisibilityRunStatus | nul
     return {
         
         'id': value['id'],
-        'brand_id': value['brandId'],
+        'brandId': value['brandId'],
         'engines': ((value['engines'] as Array<any>).map(VisibilityEngineToJSON)),
         'state': value['state'],
-        'total_results': value['totalResults'],
-        'completed_results': value['completedResults'],
-        'created_at': value['createdAt'].toISOString(),
-        'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
-        'finished_at': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
-        'error_code': value['errorCode'],
-        'status_url': value['statusUrl'],
+        'totalResults': value['totalResults'],
+        'completedResults': value['completedResults'],
+        'createdAt': value['createdAt'].toISOString(),
+        'startedAt': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
+        'finishedAt': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),
+        'errorCode': value['errorCode'],
+        'statusUrl': value['statusUrl'],
     };
 }
 

@@ -14,35 +14,38 @@ tags:
   - name: generations
   - name: visibility
 paths:
-  /api/v1/brands/{brandID}/visibility/summary:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/visibility/summary:
     get:
       tags: [visibility]
       operationId: getVisibilitySummary
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Visibility across saved answers for the selected period
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VisibilityReport"
+                $ref: "#/components/schemas/VisibilitySummary"
         default:
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/tracking:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/tracking:
     get:
+      parameters:
+        - $ref: "#/components/parameters/BrandID"
       operationId: getVisibilityTracking
       tags: [visibility]
       security:
         - cookieAuth: []
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Review and daily collection schedule
           content:
@@ -51,15 +54,14 @@ paths:
                 $ref: "#/components/schemas/TrackingStatus"
         default:
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/runs:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/runs:
     get:
       tags: [visibility]
       operationId: listVisibilityRuns
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
@@ -73,11 +75,11 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompt-history:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/prompt-history:
     get:
       tags: [visibility]
       operationId: listHistoricalPrompts
@@ -85,6 +87,7 @@ paths:
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Query"
@@ -93,6 +96,8 @@ paths:
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Page of historical prompts
           content:
@@ -101,9 +106,8 @@ paths:
                 $ref: "#/components/schemas/HistoricalPromptPage"
         default:
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompt-history/{promptID}/runs:
+  /api/v1/prompt-history/{promptID}/runs:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/PromptID"
     get:
       tags: [visibility]
@@ -112,9 +116,12 @@ paths:
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Page of runs with this prompt's results
           content:
@@ -123,9 +130,8 @@ paths:
                 $ref: "#/components/schemas/PromptHistoryRunPage"
         default:
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompt-history/{promptID}/visibility:
+  /api/v1/prompt-history/{promptID}/visibility:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/PromptID"
     get:
       tags: [visibility]
@@ -133,9 +139,12 @@ paths:
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/VisibilityDays"
         - $ref: "#/components/parameters/VisibilityEngines"
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: Visibility for a live or deleted prompt
           content:
@@ -144,9 +153,8 @@ paths:
                 $ref: "#/components/schemas/VisibilityReport"
         default:
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/runs/{runID}:
+  /api/v1/runs/{runID}:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/RunID"
     get:
       tags: [visibility]
@@ -162,11 +170,12 @@ paths:
                 $ref: "#/components/schemas/VisibilityRunStatus"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/runs/{runID}/results:
+  /api/v1/runs/{runID}/results:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/RunID"
     get:
       tags: [visibility]
@@ -187,6 +196,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -221,7 +232,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeRes"
+                $ref: "#/components/schemas/AuthRes"
         "400":
           $ref: "#/components/responses/Error"
         "409":
@@ -242,7 +253,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeRes"
+                $ref: "#/components/schemas/AuthRes"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -269,6 +280,142 @@ paths:
                 $ref: "#/components/schemas/MeRes"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/billing/catalog:
+    get:
+      tags: [billing]
+      operationId: billingCatalog
+      responses:
+        "200":
+          description: Available tax-inclusive monthly allowances validated against Stripe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCatalog"
+        "500":
+          $ref: "#/components/responses/Error"
+  /api/v1/billing/quote:
+    get:
+      tags: [billing]
+      operationId: billingQuote
+      parameters:
+        - name: prompts
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 5
+            maximum: 500
+            description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
+      responses:
+        "200":
+          description: Tax-inclusive monthly price for the exact prompt allowance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingQuote"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/v1/billing/subscription:
+    get:
+      tags: [billing]
+      operationId: billingSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Organization billing state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+  /api/v1/billing/checkout:
+    post:
+      tags: [billing]
+      operationId: billingCheckout
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingAllowanceRequest"
+      responses:
+        "200":
+          description: Hosted Stripe Checkout redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/billing/change-allowance:
+    post:
+      tags: [billing]
+      operationId: billingChangeAllowance
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingAllowanceRequest"
+      responses:
+        "200":
+          description: Allowance already current or scheduled change removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+        "202":
+          description: Change submitted to Stripe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+  /api/v1/billing/portal:
+    post:
+      tags: [billing]
+      operationId: billingPortal
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Stripe Customer Portal redirect URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/webhooks/stripe:
+    post:
+      tags: [billing]
+      operationId: stripeWebhook
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Verified Stripe event processed or already processed
   /api/v1/brands:
     get:
       tags: [brands]
@@ -278,6 +425,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Query"
       responses:
         "200":
           description: Page of brands owned by the session user, newest first
@@ -383,17 +531,44 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompts:
+  /api/v1/brands/{id}/activate:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      tags: [brands]
+      operationId: activateBrand
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Active brand saved in the cookie session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandRes"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/v1/prompts:
     get:
       tags: [prompts]
       operationId: listPrompts
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Query"
@@ -412,6 +587,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -437,11 +614,12 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompts/{promptID}:
+  /api/v1/prompts/{promptID}:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/PromptID"
     get:
       tags: [prompts]
@@ -456,6 +634,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/PromptRes"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -481,6 +661,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     delete:
@@ -493,11 +675,12 @@ paths:
           description: Deleted
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompts/{promptID}/confirm:
+  /api/v1/prompts/{promptID}/confirm:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/PromptID"
     post:
       tags: [prompts]
@@ -513,12 +696,18 @@ paths:
                 $ref: "#/components/schemas/PromptRes"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/prompts/confirm:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/prompts/confirm:
     post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequestScope"
       tags: [prompts]
       operationId: confirmAllPrompts
       security:
@@ -528,17 +717,18 @@ paths:
           description: All prompts confirmed
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/competitors:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/competitors:
     get:
       tags: [competitors]
       operationId: listCompetitors
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Query"
@@ -553,6 +743,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -578,17 +770,18 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/competitors/search:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/competitors/search:
     get:
       tags: [competitors]
       operationId: searchCompetitors
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - name: q
           in: query
           required: true
@@ -614,6 +807,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
         "503":
@@ -622,9 +817,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Envelope"
-  /api/v1/brands/{brandID}/competitors/{competitorID}:
+  /api/v1/competitors/{competitorID}:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/CompetitorID"
     get:
       tags: [competitors]
@@ -639,6 +833,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/CompetitorRes"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -664,6 +860,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
     delete:
@@ -676,11 +874,12 @@ paths:
           description: Deleted
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/competitors/{competitorID}/confirm:
+  /api/v1/competitors/{competitorID}/confirm:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/CompetitorID"
     post:
       tags: [competitors]
@@ -699,12 +898,18 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/competitors/confirm:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/competitors/confirm:
     post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequestScope"
       tags: [competitors]
       operationId: confirmAllCompetitors
       description: Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
@@ -715,11 +920,11 @@ paths:
           description: Review finished; observed suggestions remain unchanged
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/generations:
-    parameters:
-      - $ref: "#/components/parameters/BrandID"
+  /api/v1/generations:
     post:
       tags: [generations]
       operationId: createGeneration
@@ -753,15 +958,17 @@ paths:
                 id: 22222222-2222-4222-8222-222222222222
                 mode: initial
                 state: queued
-                status_url: /api/v1/brands/11111111-1111-4111-8111-111111111111/generations/22222222-2222-4222-8222-222222222222
+                statusUrl: /api/v1/generations/22222222-2222-4222-8222-222222222222
         "400":
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
         "409":
-          description: Active mode conflict, idempotency key reused for another mode, or initial already completed. Active mode conflicts include error.status_url.
+          description: Active mode conflict, idempotency key reused for another mode, or initial already completed. Active mode conflicts include error.statusUrl.
           content:
             application/json:
               schema:
@@ -774,6 +981,7 @@ paths:
       security:
         - cookieAuth: []
       parameters:
+        - $ref: "#/components/parameters/BrandID"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
@@ -787,11 +995,12 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/brands/{brandID}/generations/{generationID}:
+  /api/v1/generations/{generationID}:
     parameters:
-      - $ref: "#/components/parameters/BrandID"
       - $ref: "#/components/parameters/GenerationID"
     get:
       tags: [generations]
@@ -810,10 +1019,12 @@ paths:
                 mode: initial
                 state: queued
                 attempt: 0
-                prompt_count: 0
-                competitor_count: 0
-                created_at: "2026-09-28T10:00:00Z"
+                promptCount: 0
+                competitorCount: 0
+                createdAt: "2026-09-28T10:00:00Z"
         "401":
+          $ref: "#/components/responses/Error"
+        "402":
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
@@ -822,6 +1033,8 @@ paths:
       tags: [health]
       operationId: get
       responses:
+        "402":
+          $ref: "#/components/responses/Error"
         "200":
           description: OK
           content:
@@ -882,8 +1095,8 @@ components:
         type: boolean
         default: false
     BrandID:
-      name: brandID
-      in: path
+      name: brandId
+      in: query
       required: true
       schema:
         type: string
@@ -937,16 +1150,23 @@ components:
           schema:
             $ref: "#/components/schemas/Envelope"
   schemas:
-    HistoricalPrompt:
+    BrandRequestScope:
       type: object
-      required: [prompt_id, prompt_text, last_seen_at]
+      required: [brandId]
       properties:
-        prompt_id:
+        brandId:
           type: string
           format: uuid
-        prompt_text:
+    HistoricalPrompt:
+      type: object
+      required: [promptId, promptText, lastSeenAt]
+      properties:
+        promptId:
           type: string
-        last_seen_at:
+          format: uuid
+        promptText:
+          type: string
+        lastSeenAt:
           type: string
           format: date-time
         visibility:
@@ -968,9 +1188,11 @@ components:
           $ref: "#/components/schemas/VisibilityMetric"
     CompetitorVisibility:
       type: object
-      required: [id, metric, series]
+      required: [id, name, domain, metric, series]
       properties:
         id: { type: string, format: uuid }
+        name: { type: string }
+        domain: { type: string }
         metric:
           $ref: "#/components/schemas/VisibilityMetric"
         series:
@@ -997,6 +1219,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompetitorVisibility"
+    VisibilitySummary:
+      allOf:
+        - $ref: "#/components/schemas/VisibilityReport"
+        - type: object
+          required: [hasConfirmedPrompts]
+          properties:
+            hasConfirmedPrompts:
+              type: boolean
+              description: Whether the brand has any current confirmed prompts, including paused prompts, regardless of the selected period and engines
     HistoricalPromptPage:
       type: object
       required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
@@ -1049,12 +1280,12 @@ components:
           type: boolean
     VisibilityRunStatus:
       type: object
-      required: [id, brand_id, engines, state, total_results, completed_results, created_at, started_at, finished_at, error_code, status_url]
+      required: [id, brandId, engines, state, totalResults, completedResults, createdAt, startedAt, finishedAt, errorCode, statusUrl]
       properties:
         id:
           type: string
           format: uuid
-        brand_id:
+        brandId:
           type: string
           format: uuid
         engines:
@@ -1064,49 +1295,49 @@ components:
         state:
           type: string
           enum: [queued, running, succeeded, failed]
-        total_results:
+        totalResults:
           type: integer
           format: int64
-        completed_results:
+        completedResults:
           type: integer
           format: int64
           description: Number of results with a terminal outcome, including errors
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        started_at:
-          type: string
-          format: date-time
-          nullable: true
-        finished_at:
+        startedAt:
           type: string
           format: date-time
           nullable: true
-        error_code:
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        errorCode:
           type: string
           nullable: true
-        status_url:
+        statusUrl:
           type: string
     VisibilityEngine:
       type: string
       enum: [chatgpt, perplexity, gemini, google_ai_overviews]
     VisibilityResult:
       type: object
-      required: [id, run_id, prompt_id, prompt_text, prompt_position, engine, collector, fetched_at, outcome, raw_answer, sources, error_code, appearances]
+      required: [id, runId, promptId, promptText, promptPosition, engine, collector, fetchedAt, outcome, rawAnswer, sources, errorCode, appearances]
       properties:
         id:
           type: string
           format: uuid
-        run_id:
+        runId:
           type: string
           format: uuid
-        prompt_id:
+        promptId:
           type: string
           format: uuid
           description: Historical identifier; the live tracking prompt may have been deleted
-        prompt_text:
+        promptText:
           type: string
-        prompt_position:
+        promptPosition:
           type: integer
           minimum: 0
         engine:
@@ -1115,7 +1346,7 @@ components:
           type: string
           enum: [stub, cloro]
           description: stub is sample data; cloro identifies live collection
-        fetched_at:
+        fetchedAt:
           type: string
           format: date-time
           nullable: true
@@ -1123,14 +1354,14 @@ components:
           type: string
           enum: [cited, mentioned, miss, error]
           nullable: true
-        raw_answer:
+        rawAnswer:
           type: string
         sources:
           type: array
           items:
             type: string
             format: uri
-        error_code:
+        errorCode:
           type: string
           nullable: true
         appearances:
@@ -1148,9 +1379,9 @@ components:
           type: string
     CompetitorAppearance:
       type: object
-      required: [competitor_id, name, confirmed, evidence]
+      required: [competitorId, name, confirmed, evidence]
       properties:
-        competitor_id:
+        competitorId:
           type: string
           format: uuid
           nullable: true
@@ -1204,34 +1435,34 @@ components:
           type: boolean
     TrackingStatus:
       type: object
-      required: [prompts_reviewed, competitors_reviewed, started_at, next_run_at, blocked_reason]
+      required: [promptsReviewed, competitorsReviewed, startedAt, nextRunAt, blockedReason]
       properties:
-        prompts_reviewed:
+        promptsReviewed:
           type: boolean
-        competitors_reviewed:
+        competitorsReviewed:
           type: boolean
-        started_at:
+        startedAt:
           type: string
           format: date-time
           nullable: true
-        next_run_at:
+        nextRunAt:
           type: string
           format: date-time
           nullable: true
-        blocked_reason:
+        blockedReason:
           type: string
           nullable: true
-          enum: [collection_unavailable, reviews_required, prompts_required, generation_active]
+          enum: [collection_unavailable, reviews_required, prompts_required, generation_active, billing_inactive_or_over_limit]
     BrandRequest:
       type: object
-      description: At least one of domain or github_repo is required.
+      description: At least one of domain or githubRepo is required.
       required: [name, country]
       properties:
         name:
           type: string
         domain:
           type: string
-        github_repo:
+        githubRepo:
           type: string
           format: uri
         country:
@@ -1242,13 +1473,13 @@ components:
           description: Briefly describe what this brand offers.
     BrandPatchRequest:
       type: object
-      description: Editable brand fields. At least one of domain or github_repo must remain after the update.
+      description: Editable brand fields. At least one of domain or githubRepo must remain after the update.
       properties:
         name:
           type: string
         domain:
           type: string
-        github_repo:
+        githubRepo:
           type: string
           format: uri
         country:
@@ -1259,19 +1490,19 @@ components:
           description: Briefly describe what this brand offers.
     BrandRes:
       type: object
-      required: [id, user_id, name, domain, github_repo, country, description]
+      required: [id, organizationId, name, domain, githubRepo, country, description]
       properties:
         id:
           type: string
           format: uuid
-        user_id:
+        organizationId:
           type: string
           format: uuid
         name:
           type: string
         domain:
           type: string
-        github_repo:
+        githubRepo:
           type: string
         country:
           type: string
@@ -1349,8 +1580,11 @@ components:
     PromptRequest:
       type: object
       additionalProperties: false
-      required: [text]
+      required: [brandId, text]
       properties:
+        brandId:
+          type: string
+          format: uuid
         text:
           type: string
     PromptPatchRequest:
@@ -1359,14 +1593,16 @@ components:
       properties:
         text:
           type: string
+        inactive:
+          type: boolean
     PromptRes:
       type: object
-      required: [id, brand_id, text, source, confirmed]
+      required: [id, brandId, text, source, confirmed, inactive]
       properties:
         id:
           type: string
           format: uuid
-        brand_id:
+        brandId:
           type: string
           format: uuid
         text:
@@ -1376,19 +1612,24 @@ components:
           enum: [manual, drafted]
         confirmed:
           type: boolean
+        inactive:
+          type: boolean
         visibility:
           $ref: "#/components/schemas/VisibilityReport"
     CompetitorRequest:
       type: object
       additionalProperties: false
-      description: At least one of domain or github_repo is required.
-      required: [name]
+      description: At least one of domain or githubRepo is required.
+      required: [brandId, name]
       properties:
+        brandId:
+          type: string
+          format: uuid
         name:
           type: string
         domain:
           type: string
-        github_repo:
+        githubRepo:
           type: string
           format: uri
         aliases:
@@ -1397,7 +1638,7 @@ components:
           items:
             type: string
             maxLength: 255
-        additional_urls:
+        additionalUrls:
           type: array
           maxItems: 20
           description: Additional official website origins or GitHub repository roots
@@ -1413,7 +1654,7 @@ components:
           type: string
         domain:
           type: string
-        github_repo:
+        githubRepo:
           type: string
           format: uri
         aliases:
@@ -1422,7 +1663,7 @@ components:
           items:
             type: string
             maxLength: 255
-        additional_urls:
+        additionalUrls:
           type: array
           maxItems: 20
           description: Additional official website origins or GitHub repository roots
@@ -1431,19 +1672,19 @@ components:
             format: uri
     CompetitorRes:
       type: object
-      required: [id, brand_id, name, domain, github_repo, source, confirmed, aliases, additional_urls]
+      required: [id, brandId, name, domain, githubRepo, source, confirmed, aliases, additionalUrls]
       properties:
         id:
           type: string
           format: uuid
-        brand_id:
+        brandId:
           type: string
           format: uuid
         name:
           type: string
         domain:
           type: string
-        github_repo:
+        githubRepo:
           type: string
           format: uri
         source:
@@ -1457,7 +1698,7 @@ components:
           items:
             type: string
             maxLength: 255
-        additional_urls:
+        additionalUrls:
           type: array
           maxItems: 20
           description: Additional official website origins or GitHub repository roots
@@ -1472,7 +1713,7 @@ components:
           type: string
         password:
           type: string
-    MeRes:
+    AuthRes:
       type: object
       required: [id, email, organization]
       properties:
@@ -1482,6 +1723,16 @@ components:
           type: string
         organization:
           $ref: "#/components/schemas/OrgRes"
+    MeRes:
+      allOf:
+        - $ref: "#/components/schemas/AuthRes"
+        - type: object
+          required: [activeBrand]
+          properties:
+            activeBrand:
+              nullable: true
+              allOf:
+                - $ref: "#/components/schemas/BrandRes"
     OrgRes:
       type: object
       required: [id, name, role]
@@ -1502,24 +1753,130 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting, liveCollection]
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling]
       properties:
+        cloudBilling:
+          type: boolean
         liveCollection:
           type: boolean
         competitorSearch:
           type: boolean
         aiDrafting:
           type: boolean
+    BillingAllowanceRequest:
+      type: object
+      required: [prompts]
+      properties:
+        prompts:
+          type: integer
+          minimum: 5
+          maximum: 500
+          description: "Selectable allowances: 5, 10, 15, 25, 50, 75, 100, 150, 200, 250, 350, 500."
+    BillingQuote:
+      type: object
+      required: [prompts, amountCents, currency, interval]
+      properties:
+        prompts:
+          type: integer
+        amountCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        interval:
+          type: string
+    BillingCatalog:
+      type: object
+      required: [currency, interval, options]
+      properties:
+        currency:
+          type: string
+        interval:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillingQuote"
+    BillingSubscription:
+      type: object
+      required: [organizationId, quantity, status, cancelAtPeriodEnd]
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        status:
+          type: string
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        trialEnd:
+          type: string
+          format: date-time
+          nullable: true
+        pendingQuantity:
+          type: integer
+          nullable: true
+        pendingUpgradeQuantity:
+          type: integer
+          nullable: true
+        pendingUpgradeExpiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        paymentUrl:
+          type: string
+        cancelAtPeriodEnd:
+          type: boolean
+    BillingStatus:
+      type: object
+      required: [subscription, promptLimit, trialAvailable]
+      properties:
+        subscription:
+          allOf:
+            - $ref: "#/components/schemas/BillingSubscription"
+          nullable: true
+        promptLimit:
+          type: integer
+        trialAvailable:
+          type: boolean
+    BillingRedirect:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    BillingChange:
+      type: object
+      required: [quantity, effective]
+      properties:
+        quantity:
+          type: integer
+        effective:
+          type: string
+          enum: [current, trial_end, next_cycle, after_payment]
+        paymentUrl:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
     GenerationRequest:
       type: object
-      required: [mode]
+      required: [brandId, mode]
       properties:
+        brandId:
+          type: string
+          format: uuid
         mode:
           type: string
           enum: [initial, prompts, competitors]
     GenerationAccepted:
       type: object
-      required: [id, mode, state, status_url]
+      required: [id, mode, state, statusUrl]
       properties:
         id:
           type: string
@@ -1530,11 +1887,11 @@ components:
         state:
           type: string
           enum: [queued, running, succeeded, failed]
-        status_url:
+        statusUrl:
           type: string
     GenerationStatus:
       type: object
-      required: [id, mode, state, attempt, prompt_count, competitor_count, created_at]
+      required: [id, mode, state, attempt, promptCount, competitorCount, createdAt]
       properties:
         id:
           type: string
@@ -1548,25 +1905,25 @@ components:
         attempt:
           type: integer
           minimum: 0
-        prompt_count:
+        promptCount:
           type: integer
           minimum: 0
-        competitor_count:
+        competitorCount:
           type: integer
           minimum: 0
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        started_at:
+        startedAt:
           type: string
           format: date-time
-        finished_at:
+        finishedAt:
           type: string
           format: date-time
-        next_retry_at:
+        nextRetryAt:
           type: string
           format: date-time
-        error_code:
+        errorCode:
           type: string
     GenerationPage:
       type: object
@@ -1598,6 +1955,8 @@ components:
       type: object
       required: [code, message]
       properties:
+        requestId:
+          type: string
         code:
           $ref: "#/components/schemas/ErrorCode"
         message:
@@ -1606,7 +1965,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldError"
-        status_url:
+        statusUrl:
           type: string
           description: Present for generation_conflict to locate the active run.
     FieldError:
@@ -1620,6 +1979,7 @@ components:
     ErrorCode:
       type: string
       enum:
+        - resource_conflict
         - validation
         - email_taken
         - brand_limit_reached
@@ -1632,6 +1992,8 @@ components:
         - generation_conflict
         - idempotency_conflict
         - initial_already_completed
+        - billing_required
+        - prompt_limit_reached
     FieldCode:
       type: string
       enum:

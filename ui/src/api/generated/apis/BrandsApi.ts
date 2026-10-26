@@ -45,6 +45,10 @@ import {
     EnvelopeToJSON,
 } from '../models/Envelope';
 
+export interface ActivateBrandRequest {
+    id: string;
+}
+
 export interface CreateBrandRequest {
     brandRequest: BrandRequest;
 }
@@ -60,6 +64,7 @@ export interface ListBrandCountriesRequest {
 export interface ListBrandsRequest {
     page?: number;
     pageSize?: number;
+    q?: string;
 }
 
 export interface UpdateBrandRequest {
@@ -74,6 +79,27 @@ export interface UpdateBrandRequest {
  * @interface BrandsApiInterface
  */
 export interface BrandsApiInterface {
+    /**
+     * Creates request options for activateBrand without sending the request
+     * @param {string} id 
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    activateBrandRequestOpts(requestParameters: ActivateBrandRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    activateBrandRaw(requestParameters: ActivateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandRes>>;
+
+    /**
+     */
+    activateBrand(requestParameters: ActivateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
+
     /**
      * Creates request options for createBrand without sending the request
      * @param {BrandRequest} brandRequest 
@@ -93,7 +119,7 @@ export interface BrandsApiInterface {
 
     /**
      */
-    createBrand(brandRequest: BrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
+    createBrand(requestParameters: CreateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
 
     /**
      * Creates request options for getBrand without sending the request
@@ -114,7 +140,7 @@ export interface BrandsApiInterface {
 
     /**
      */
-    getBrand(id: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
+    getBrand(requestParameters: GetBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
 
     /**
      * Creates request options for listBrandCountries without sending the request
@@ -136,12 +162,13 @@ export interface BrandsApiInterface {
     /**
      * Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
      */
-    listBrandCountries(q?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>>;
+    listBrandCountries(requestParameters: ListBrandCountriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>>;
 
     /**
      * Creates request options for listBrands without sending the request
      * @param {number} [page] 
      * @param {number} [pageSize] 
+     * @param {string} [q] 
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
      */
@@ -151,6 +178,7 @@ export interface BrandsApiInterface {
      * 
      * @param {number} [page] 
      * @param {number} [pageSize] 
+     * @param {string} [q] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof BrandsApiInterface
@@ -159,7 +187,7 @@ export interface BrandsApiInterface {
 
     /**
      */
-    listBrands(page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage>;
+    listBrands(requestParameters: ListBrandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage>;
 
     /**
      * Creates request options for updateBrand without sending the request
@@ -182,7 +210,7 @@ export interface BrandsApiInterface {
 
     /**
      */
-    updateBrand(id: string, brandPatchRequest: BrandPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
+    updateBrand(requestParameters: UpdateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes>;
 
 }
 
@@ -190,6 +218,49 @@ export interface BrandsApiInterface {
  * 
  */
 export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
+
+    /**
+     * Creates request options for activateBrand without sending the request
+     */
+    async activateBrandRequestOpts(requestParameters: ActivateBrandRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling activateBrand().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/{id}/activate`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async activateBrandRaw(requestParameters: ActivateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandRes>> {
+        const requestOptions = await this.activateBrandRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BrandResFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async activateBrand(requestParameters: ActivateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
+        const response = await this.activateBrandRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for createBrand without sending the request
@@ -231,8 +302,8 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
     /**
      */
-    async createBrand(brandRequest: BrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
-        const response = await this.createBrandRaw({ brandRequest: brandRequest }, initOverrides);
+    async createBrand(requestParameters: CreateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
+        const response = await this.createBrandRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -274,8 +345,8 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
     /**
      */
-    async getBrand(id: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
-        const response = await this.getBrandRaw({ id: id }, initOverrides);
+    async getBrand(requestParameters: GetBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
+        const response = await this.getBrandRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -315,8 +386,8 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
     /**
      * Returns all supported countries when q is omitted or blank; otherwise filters the committed country list by a case-insensitive code or English-name prefix.
      */
-    async listBrandCountries(q?: string, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>> {
-        const response = await this.listBrandCountriesRaw({ q: q }, initOverrides);
+    async listBrandCountries(requestParameters: ListBrandCountriesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CountryOption>> {
+        const response = await this.listBrandCountriesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -332,6 +403,10 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
         if (requestParameters['pageSize'] != null) {
             queryParameters['pageSize'] = requestParameters['pageSize'];
+        }
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -358,8 +433,8 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
     /**
      */
-    async listBrands(page?: number, pageSize?: number, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage> {
-        const response = await this.listBrandsRaw({ page: page, pageSize: pageSize }, initOverrides);
+    async listBrands(requestParameters: ListBrandsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage> {
+        const response = await this.listBrandsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -411,8 +486,8 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
 
     /**
      */
-    async updateBrand(id: string, brandPatchRequest: BrandPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
-        const response = await this.updateBrandRaw({ id: id, brandPatchRequest: brandPatchRequest }, initOverrides);
+    async updateBrand(requestParameters: UpdateBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandRes> {
+        const response = await this.updateBrandRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

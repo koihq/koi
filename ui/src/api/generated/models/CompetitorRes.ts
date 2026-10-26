@@ -115,14 +115,14 @@ export function CompetitorResFromJSONTyped(json: any, ignoreDiscriminator: boole
     return {
         
         'id': json['id'],
-        'brandId': json['brand_id'],
+        'brandId': json['brandId'],
         'name': json['name'],
         'domain': json['domain'],
-        'githubRepo': json['github_repo'],
+        'githubRepo': json['githubRepo'],
         'source': json['source'],
         'confirmed': json['confirmed'],
         'aliases': json['aliases'],
-        'additionalUrls': json['additional_urls'],
+        'additionalUrls': json['additionalUrls'],
     };
 }
 
@@ -138,14 +138,14 @@ export function CompetitorResToJSONTyped(value?: CompetitorRes | null, ignoreDis
     return {
         
         'id': value['id'],
-        'brand_id': value['brandId'],
+        'brandId': value['brandId'],
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'source': value['source'],
         'confirmed': value['confirmed'],
         'aliases': value['aliases'],
-        'additional_urls': value['additionalUrls'],
+        'additionalUrls': value['additionalUrls'],
     };
 }
 

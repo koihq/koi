@@ -1,4 +1,5 @@
 apis/AuthApi.ts
+apis/BillingApi.ts
 apis/BrandsApi.ts
 apis/CapabilitiesApi.ts
 apis/CompetitorsApi.ts
@@ -9,9 +10,18 @@ apis/VisibilityApi.ts
 apis/index.ts
 index.ts
 models/AppearanceEvidence.ts
+models/AuthRes.ts
+models/BillingAllowanceRequest.ts
+models/BillingCatalog.ts
+models/BillingChange.ts
+models/BillingQuote.ts
+models/BillingRedirect.ts
+models/BillingStatus.ts
+models/BillingSubscription.ts
 models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
+models/BrandRequestScope.ts
 models/BrandRes.ts
 models/CapabilitiesResponse.ts
 models/CompetitorAppearance.ts
@@ -52,5 +62,6 @@ models/VisibilityResult.ts
 models/VisibilityResultPage.ts
 models/VisibilityRunPage.ts
 models/VisibilityRunStatus.ts
+models/VisibilitySummary.ts
 models/index.ts
 runtime.ts

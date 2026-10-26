@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -25,10 +25,10 @@ func newVisibilityTestServer(t *testing.T, q koidomain.VisibilityQuerier) *httpt
 		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
 		w.WriteHeader(http.StatusNoContent)
 	})
-	handler := NewVisibilityHandler(q, sess)
-	r.Route("/api/v1/brands/{brandID}/runs", handler.Routes())
-	r.With(Authorizer(sess)).Get("/api/v1/brands/{brandID}/prompt-history", handler.ListHistoricalPrompts)
-	r.With(Authorizer(sess)).Get("/api/v1/brands/{brandID}/prompt-history/{promptID}/runs", handler.ListPromptRuns)
+	handler := NewVisibilityHandler(q)
+	r.With(Authorizer(sess)).Route("/api/v1/runs", handler.Routes())
+	r.With(Authorizer(sess)).Get("/api/v1/prompt-history", handler.ListHistoricalPrompts)
+	r.With(Authorizer(sess)).Get("/api/v1/prompt-history/{promptID}/runs", handler.ListPromptRuns)
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
 
@@ -40,9 +40,9 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 	q := NewMockVisibilityQuerier(t)
 	ts := newVisibilityTestServer(t, q)
 	client := newCookieClient(t)
-	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/prompt-history"
+	base := ts.URL + "/api/v1" + "/prompt-history"
 
-	response := doJSON(t, client, http.MethodGet, base, "")
+	response := doJSON(t, client, http.MethodGet, base, "", brandID)
 	require.Equal(t, http.StatusUnauthorized, response.StatusCode)
 	response.Body.Close()
 
@@ -64,12 +64,12 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 			CurrentPage: 1,
 		}, nil,
 	)
-	response = doJSON(t, client, http.MethodGet, base+"?pageSize=10", "")
+	response = doJSON(t, client, http.MethodGet, base+"?pageSize=10", "", brandID)
 	var snapshots map[string]any
 	readJSON(t, response, &snapshots)
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.EqualValues(t, 1, snapshots["totalItems"])
-	require.Equal(t, promptID.String(), snapshots["items"].([]any)[0].(map[string]any)["prompt_id"])
+	require.Equal(t, promptID.String(), snapshots["items"].([]any)[0].(map[string]any)["promptId"])
 
 	run := koidomain.VisibilityRun{
 		BaseEntity:    koidomain.BaseEntity{ID: runID},
@@ -97,7 +97,7 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 			CurrentPage: 1,
 		}, nil,
 	)
-	response = doJSON(t, client, http.MethodGet, base+"/"+promptID.String()+"/runs?pageSize=10", "")
+	response = doJSON(t, client, http.MethodGet, base+"/"+promptID.String()+"/runs?pageSize=10", "", brandID)
 	var history map[string]any
 	readJSON(t, response, &history)
 	require.Equal(t, http.StatusOK, response.StatusCode)
@@ -114,11 +114,11 @@ func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {
 	q := NewMockVisibilityQuerier(t)
 	ts := newVisibilityTestServer(t, q)
 	client := newCookieClient(t)
-	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/runs"
+	base := ts.URL + "/api/v1" + "/runs"
 
 	for _, path := range []string{base, base + "/" + runID.String(), base + "/" + runID.String() + "/results"} {
-		resp := doJSON(t, client, http.MethodGet, path, "")
-		var body api.Envelope
+		resp := doJSON(t, client, http.MethodGet, path, "", brandID)
+		var body apiresponse.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	}
@@ -138,19 +138,19 @@ func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {
 		},
 	}
 
-	q.EXPECT().Get(identityIs(userID), brandID, runID).Return(run, nil).Once()
-	resp := doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "")
+	q.EXPECT().Get(identityIs(userID), runID).Return(run, nil).Once()
+	resp := doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "", brandID)
 	var saved map[string]any
 	readJSON(t, resp, &saved)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, runID.String(), saved["id"])
-	require.Equal(t, float64(8), saved["total_results"])
+	require.Equal(t, float64(8), saved["totalResults"])
 	require.NotContains(t, saved, "brand_snapshot")
 	require.NotContains(t, saved, "river_job_id")
 	require.NotContains(t, saved, "attempt")
-	q.EXPECT().Get(identityIs(userID), brandID, runID).Return(nil, koidomain.ErrNotFound)
-	resp = doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "")
-	var body api.Envelope
+	q.EXPECT().Get(identityIs(userID), runID).Return(nil, koidomain.ErrNotFound)
+	resp = doJSON(t, client, http.MethodGet, base+"/"+runID.String(), "", brandID)
+	var body apiresponse.Envelope
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
@@ -161,13 +161,13 @@ func TestVisibilityHandlerPagesAndPendingResults(t *testing.T) {
 	ts := newVisibilityTestServer(t, q)
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
-	base := ts.URL + "/api/v1/brands/" + brandID.String() + "/runs"
+	base := ts.URL + "/api/v1" + "/runs"
 	q.EXPECT().List(identityIs(userID), brandID, koidomain.PageParams{Page: 1, PageSize: 10}).Return(
 		&koidomain.Page[koidomain.VisibilityRun]{
 			Items:       []koidomain.VisibilityRun{},
 			CurrentPage: 1,
 		}, nil)
-	resp := doJSON(t, client, http.MethodGet, base, "")
+	resp := doJSON(t, client, http.MethodGet, base, "", brandID)
 	var empty map[string]any
 	readJSON(t, resp, &empty)
 	require.Equal(t, map[string]any{
@@ -178,7 +178,7 @@ func TestVisibilityHandlerPagesAndPendingResults(t *testing.T) {
 		"hasNext":     false,
 		"hasPrev":     false,
 	}, empty)
-	q.EXPECT().ListResults(identityIs(userID), brandID, runID, koidomain.PageParams{Page: 2, PageSize: 40}).Return(
+	q.EXPECT().ListResults(identityIs(userID), runID, koidomain.PageParams{Page: 2, PageSize: 40}).Return(
 		&koidomain.Page[koidomain.VisibilityResult]{
 			Items: []koidomain.VisibilityResult{
 				{
@@ -195,26 +195,26 @@ func TestVisibilityHandlerPagesAndPendingResults(t *testing.T) {
 			TotalPages:  2,
 			HasPrev:     true,
 		}, nil)
-	resp = doJSON(t, client, http.MethodGet, base+"/"+runID.String()+"/results?page=2&pageSize=40", "")
+	resp = doJSON(t, client, http.MethodGet, base+"/"+runID.String()+"/results?page=2&pageSize=40", "", brandID)
 	var page koidomain.Page[map[string]any]
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.EqualValues(t, 44, page.TotalItems)
 	require.Nil(t, page.Items[0]["outcome"])
-	require.Nil(t, page.Items[0]["fetched_at"])
+	require.Nil(t, page.Items[0]["fetchedAt"])
 	require.Equal(t, []any{}, page.Items[0]["sources"])
 
 	for _, path := range []string{base, base + "/" + runID.String() + "/results"} {
 		for _, query := range []string{"page=0", "pageSize=101", "page=bad", "page=1&page=2"} {
-			resp = doJSON(t, client, http.MethodGet, path+"?"+query, "")
-			var body api.Envelope
+			resp = doJSON(t, client, http.MethodGet, path+"?"+query, "", brandID)
+			var body apiresponse.Envelope
 			readJSON(t, resp, &body)
 			require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		}
 	}
 
-	resp = doJSON(t, client, http.MethodGet, base+"/bad-id/results", "")
-	var missing api.Envelope
+	resp = doJSON(t, client, http.MethodGet, base+"/bad-id/results", "", brandID)
+	var missing apiresponse.Envelope
 	readJSON(t, resp, &missing)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }

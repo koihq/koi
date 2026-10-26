@@ -21,6 +21,13 @@ import {
     OrgResToJSON,
     OrgResToJSONTyped,
 } from './OrgRes';
+import type { BrandRes } from './BrandRes';
+import {
+    BrandResFromJSON,
+    BrandResFromJSONTyped,
+    BrandResToJSON,
+    BrandResToJSONTyped,
+} from './BrandRes';
 
 /**
  * 
@@ -46,6 +53,12 @@ export interface MeRes {
      * @memberof MeRes
      */
     organization: OrgRes;
+    /**
+     * 
+     * @type {BrandRes}
+     * @memberof MeRes
+     */
+    activeBrand: BrandRes | null;
 }
 
 /**
@@ -55,6 +68,7 @@ export function instanceOfMeRes(value: object): value is MeRes {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('email' in value) || value['email'] === undefined) return false;
     if (!('organization' in value) || value['organization'] === undefined) return false;
+    if (!('activeBrand' in value) || value['activeBrand'] === undefined) return false;
     return true;
 }
 
@@ -71,6 +85,7 @@ export function MeResFromJSONTyped(json: any, ignoreDiscriminator: boolean): MeR
         'id': json['id'],
         'email': json['email'],
         'organization': OrgResFromJSON(json['organization']),
+        'activeBrand': BrandResFromJSON(json['activeBrand']),
     };
 }
 
@@ -88,6 +103,7 @@ export function MeResToJSONTyped(value?: MeRes | null, ignoreDiscriminator: bool
         'id': value['id'],
         'email': value['email'],
         'organization': OrgResToJSON(value['organization']),
+        'activeBrand': BrandResToJSON(value['activeBrand']),
     };
 }
 

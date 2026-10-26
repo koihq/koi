@@ -2,9 +2,18 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AppearanceEvidence';
+export * from './AuthRes';
+export * from './BillingAllowanceRequest';
+export * from './BillingCatalog';
+export * from './BillingChange';
+export * from './BillingQuote';
+export * from './BillingRedirect';
+export * from './BillingStatus';
+export * from './BillingSubscription';
 export * from './BrandPage';
 export * from './BrandPatchRequest';
 export * from './BrandRequest';
+export * from './BrandRequestScope';
 export * from './BrandRes';
 export * from './CapabilitiesResponse';
 export * from './CompetitorAppearance';
@@ -45,3 +54,4 @@ export * from './VisibilityResult';
 export * from './VisibilityResultPage';
 export * from './VisibilityRunPage';
 export * from './VisibilityRunStatus';
+export * from './VisibilitySummary';

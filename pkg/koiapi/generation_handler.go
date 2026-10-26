@@ -4,28 +4,25 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/koihq/koi/pkg/koiapi/api"
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
 type GenerationHandler struct {
 	querier   koidomain.GenerationQuerier
 	commander koidomain.GenerationCommander
-	sess      *scs.SessionManager
 }
 
-func NewGenerationHandler(q koidomain.GenerationQuerier, c koidomain.GenerationCommander, sess *scs.SessionManager) *GenerationHandler {
-	return &GenerationHandler{querier: q, commander: c, sess: sess}
+func NewGenerationHandler(q koidomain.GenerationQuerier, c koidomain.GenerationCommander) *GenerationHandler {
+	return &GenerationHandler{querier: q, commander: c}
 }
 
 func (h *GenerationHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
-		r.Use(Authorizer(h.sess))
 		r.With(middlewares.DecodeBody[generationRequest]()).Post("/", h.Create)
 		r.Get("/", h.List)
 		r.Get("/{generationID}", h.Get)
@@ -33,6 +30,7 @@ func (h *GenerationHandler) Routes() func(chi.Router) {
 }
 
 type generationRequest struct {
+	BrandRequestScope
 	Mode koidomain.GenerationMode `json:"mode"`
 }
 
@@ -40,7 +38,7 @@ type generationAccepted struct {
 	ID        uuid.UUID                 `json:"id"`
 	Mode      koidomain.GenerationMode  `json:"mode"`
 	State     koidomain.GenerationState `json:"state"`
-	StatusURL string                    `json:"status_url"`
+	StatusURL string                    `json:"statusUrl"`
 }
 
 type generationStatus struct {
@@ -48,17 +46,17 @@ type generationStatus struct {
 	Mode            koidomain.GenerationMode  `json:"mode"`
 	State           koidomain.GenerationState `json:"state"`
 	Attempt         int                       `json:"attempt"`
-	PromptCount     int                       `json:"prompt_count"`
-	CompetitorCount int                       `json:"competitor_count"`
-	CreatedAt       time.Time                 `json:"created_at"`
-	StartedAt       *time.Time                `json:"started_at,omitempty"`
-	FinishedAt      *time.Time                `json:"finished_at,omitempty"`
-	NextRetryAt     *time.Time                `json:"next_retry_at,omitempty"`
-	ErrorCode       *string                   `json:"error_code,omitempty"`
+	PromptCount     int                       `json:"promptCount"`
+	CompetitorCount int                       `json:"competitorCount"`
+	CreatedAt       time.Time                 `json:"createdAt"`
+	StartedAt       *time.Time                `json:"startedAt,omitempty"`
+	FinishedAt      *time.Time                `json:"finishedAt,omitempty"`
+	NextRetryAt     *time.Time                `json:"nextRetryAt,omitempty"`
+	ErrorCode       *string                   `json:"errorCode,omitempty"`
 }
 
-func generationStatusURL(brandID, runID uuid.UUID) string {
-	return "/api/v1/brands/" + brandID.String() + "/generations/" + runID.String()
+func generationStatusURL(runID uuid.UUID) string {
+	return "/api/v1/generations/" + runID.String()
 }
 
 func publicGenerationStatus(run *koidomain.GenerationRun) generationStatus {
@@ -78,8 +76,9 @@ func publicGenerationStatus(run *koidomain.GenerationRun) generationStatus {
 }
 
 func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
+	brandID := middlewares.Body[generationRequest](r).BrandID
+	if brandID == uuid.Nil {
+		apiresponse.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "brandId", Code: koidomain.FieldInvalid}))
 		return
 	}
 
@@ -87,7 +86,7 @@ func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var key *string
 	if values, present := r.Header[http.CanonicalHeaderKey("Idempotency-Key")]; present {
 		if len(values) != 1 || !validIdempotencyKey(values[0]) {
-			api.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "idempotency_key", Code: koidomain.FieldInvalid}))
+			apiresponse.WriteDomainError(w, r, koidomain.Validation(koidomain.FieldError{Field: "idempotency_key", Code: koidomain.FieldInvalid}))
 
 			return
 		}
@@ -97,18 +96,18 @@ func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	run, terminalReplay, err := h.commander.Create(r.Context(), brandID, input.Mode, key)
 	if err != nil {
-		status, env := api.MapError(err)
+		status, env := apiresponse.MapError(err)
 		if domainErr, ok := err.(*koidomain.Error); ok && domainErr.RunID != uuid.Nil {
-			env.Error.StatusURL = generationStatusURL(brandID, domainErr.RunID)
+			env.Error.StatusURL = generationStatusURL(domainErr.RunID)
 		}
 
 		if status == http.StatusInternalServerError {
-			api.WriteDomainError(w, r, err)
+			apiresponse.WriteDomainError(w, r, err)
 
 			return
 		}
 
-		api.JSON(w, r, status, env)
+		apiresponse.JSON(w, r, status, env)
 
 		return
 	}
@@ -118,11 +117,12 @@ func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusOK
 	}
 
-	api.JSON(w, r, status, generationAccepted{
+	w.Header().Set("Location", generationStatusURL(run.ID))
+	apiresponse.JSON(w, r, status, generationAccepted{
 		ID:        run.ID,
 		Mode:      run.Mode,
 		State:     run.State,
-		StatusURL: generationStatusURL(brandID, run.ID),
+		StatusURL: generationStatusURL(run.ID),
 	})
 }
 
@@ -141,24 +141,19 @@ func validIdempotencyKey(key string) bool {
 }
 
 func (h *GenerationHandler) Get(w http.ResponseWriter, r *http.Request) {
-	_, brandID, ok := requestOwnerAndBrand(w, r)
-	if !ok {
-		return
-	}
-
 	runID, ok := pathID(w, r, "generationID")
 	if !ok {
 		return
 	}
 
-	run, err := h.querier.Get(r.Context(), brandID, runID)
+	run, err := h.querier.Get(r.Context(), runID)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
-	api.JSON(w, r, http.StatusOK, publicGenerationStatus(run))
+	apiresponse.JSON(w, r, http.StatusOK, publicGenerationStatus(run))
 }
 
 func (h *GenerationHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -169,14 +164,14 @@ func (h *GenerationHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	page, err := pageParams(r)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
 
 	runs, err := h.querier.List(r.Context(), brandID, page)
 	if err != nil {
-		api.WriteDomainError(w, r, err)
+		apiresponse.WriteDomainError(w, r, err)
 
 		return
 	}
@@ -187,7 +182,7 @@ func (h *GenerationHandler) List(w http.ResponseWriter, r *http.Request) {
 		items = append(items, publicGenerationStatus(&runs.Items[i]))
 	}
 
-	api.JSON(w, r, http.StatusOK, koidomain.Page[generationStatus]{
+	apiresponse.JSON(w, r, http.StatusOK, koidomain.Page[generationStatus]{
 		Items:       items,
 		TotalItems:  runs.TotalItems,
 		TotalPages:  runs.TotalPages,

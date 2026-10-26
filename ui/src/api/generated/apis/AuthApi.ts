@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type AuthRes,
+    AuthResFromJSON,
+    AuthResToJSON,
+} from '../models/AuthRes';
+import {
     type CredentialsReq,
     CredentialsReqFromJSON,
     CredentialsReqToJSON,
@@ -60,11 +65,11 @@ export interface AuthApiInterface {
      * @throws {RequiredError}
      * @memberof AuthApiInterface
      */
-    loginRaw(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeRes>>;
+    loginRaw(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthRes>>;
 
     /**
      */
-    login(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
+    login(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthRes>;
 
     /**
      * Creates request options for logout without sending the request
@@ -119,11 +124,11 @@ export interface AuthApiInterface {
      * @throws {RequiredError}
      * @memberof AuthApiInterface
      */
-    signupRaw(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeRes>>;
+    signupRaw(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthRes>>;
 
     /**
      */
-    signup(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
+    signup(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthRes>;
 
 }
 
@@ -163,17 +168,17 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
 
     /**
      */
-    async loginRaw(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeRes>> {
+    async loginRaw(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthRes>> {
         const requestOptions = await this.loginRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => MeResFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuthResFromJSON(jsonValue));
     }
 
     /**
      */
-    async login(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
-        const response = await this.loginRaw({ credentialsReq: credentialsReq }, initOverrides);
+    async login(requestParameters: LoginRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthRes> {
+        const response = await this.loginRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -277,17 +282,17 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
 
     /**
      */
-    async signupRaw(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MeRes>> {
+    async signupRaw(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthRes>> {
         const requestOptions = await this.signupRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => MeResFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuthResFromJSON(jsonValue));
     }
 
     /**
      */
-    async signup(credentialsReq: CredentialsReq, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
-        const response = await this.signupRaw({ credentialsReq: credentialsReq }, initOverrides);
+    async signup(requestParameters: SignupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthRes> {
+        const response = await this.signupRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

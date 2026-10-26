@@ -71,9 +71,9 @@ export function CompetitorPatchRequestFromJSONTyped(json: any, ignoreDiscriminat
         
         'name': json['name'] == null ? undefined : json['name'],
         'domain': json['domain'] == null ? undefined : json['domain'],
-        'githubRepo': json['github_repo'] == null ? undefined : json['github_repo'],
+        'githubRepo': json['githubRepo'] == null ? undefined : json['githubRepo'],
         'aliases': json['aliases'] == null ? undefined : json['aliases'],
-        'additionalUrls': json['additional_urls'] == null ? undefined : json['additional_urls'],
+        'additionalUrls': json['additionalUrls'] == null ? undefined : json['additionalUrls'],
     };
 }
 
@@ -90,9 +90,9 @@ export function CompetitorPatchRequestToJSONTyped(value?: CompetitorPatchRequest
         
         'name': value['name'],
         'domain': value['domain'],
-        'github_repo': value['githubRepo'],
+        'githubRepo': value['githubRepo'],
         'aliases': value['aliases'],
-        'additional_urls': value['additionalUrls'],
+        'additionalUrls': value['additionalUrls'],
     };
 }
 

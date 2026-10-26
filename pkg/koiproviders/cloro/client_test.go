@@ -66,6 +66,7 @@ func TestAsyncContracts(t *testing.T) {
 				}
 
 				require.Equal(t, "/v1/async/task/"+taskID, r.URL.Path)
+				w.Header().Set("X-Credits-Charged", "4")
 				response := `{"text":"Koi is an option.","markdown":"1. [Acme](https://acme.dev)","entities":[{"type":"software","name":"Acme"}],"sources":[{"url":"https://koi.dev"},{"url":"https://koi.dev"}]}`
 				if engine == koidomain.EngineGoogleAIOverviews {
 					response = `{"aioverview":` + response + `,"organic":[{"url":"https://ignore.test"}]}`
@@ -88,6 +89,7 @@ func TestAsyncContracts(t *testing.T) {
 			require.Equal(t, "1. [Acme](https://acme.dev)", answer.Markdown)
 			require.Equal(t, []koidomain.NamedEntity{{Type: "software", Name: "Acme"}}, answer.Entities)
 			require.Equal(t, []string{"https://koi.dev"}, answer.Sources)
+			require.Equal(t, 4, *answer.CreditsCharged)
 		})
 	}
 }

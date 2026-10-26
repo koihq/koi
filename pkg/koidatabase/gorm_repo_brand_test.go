@@ -25,7 +25,7 @@ func TestBrandSchema(t *testing.T) {
 	var ownerIndex *schema.Index
 
 	for _, index := range s.ParseIndexes() {
-		if index.Name == "idx_brands_user_id" {
+		if index.Name == "idx_brands_organization_id" {
 			ownerIndex = index
 			break
 		}
@@ -33,7 +33,7 @@ func TestBrandSchema(t *testing.T) {
 
 	require.NotNil(t, ownerIndex)
 	require.Empty(t, ownerIndex.Class)
-	require.Equal(t, "user_id", ownerIndex.Fields[0].Field.DBName)
+	require.Equal(t, "organization_id", ownerIndex.Fields[0].Field.DBName)
 }
 
 func TestBrandQueriesScopeAndLock(t *testing.T) {
@@ -60,7 +60,12 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 	require.NoError(t, NewGormUserRepository(db).LockForUpdate(t.Context(), id))
 	_, err = NewGormBrandRepository(db).Count(ctx)
 	require.NoError(t, err)
-	_, err = NewGormBrandRepository(db).List(ctx, koidomain.PageParams{Page: 3, PageSize: 10})
+	_, err = NewGormBrandRepository(db).List(ctx, koidomain.BrandListParams{
+		Page: koidomain.PageParams{
+			Page:     3,
+			PageSize: 10,
+		},
+	})
 	require.NoError(t, err)
 	_, err = NewGormBrandRepository(db).Get(ctx, uuid.New())
 	require.NoError(t, err)
@@ -68,15 +73,15 @@ func TestBrandQueriesScopeAndLock(t *testing.T) {
 		BaseEntity: koidomain.BaseEntity{
 			ID: uuid.New(),
 		},
-		UserID: uuid.New(),
-		Name:   "Koi",
+		OrganizationID: uuid.New(),
+		Name:           "Koi",
 	}), koidomain.ErrNotFound)
 	require.Len(t, queries, 5)
 	require.Contains(t, strings.ToUpper(queries[0]), "FOR UPDATE")
 	require.Contains(t, queries[0], "id =")
 
 	for _, query := range queries[1:] {
-		require.Contains(t, query, "user_id =")
+		require.Contains(t, query, "organization_id =")
 	}
 
 	// DryRun has no rows, so shared pagination stops after its count query.

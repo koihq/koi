@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/riverqueue/river"
+
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
 	"github.com/koihq/koi/pkg/koiproviders/openrouter"
-	"github.com/riverqueue/river"
 )
 
 const maxGenerationContextBytes = 128 << 10
@@ -49,6 +50,12 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	started := time.Now()
 	run, input, err := w.store.BeginGenerationAttempt(ctx, job.Args.RunID, job.ID, job.Attempt)
 	if err != nil {
+		if errors.Is(err, koidomain.ErrBillingRequired) {
+			return w.fail(ctx, job, "billing_required", false, err)
+		}
+		if errors.Is(err, koidomain.ErrPromptLimitReached) {
+			return w.fail(ctx, job, "prompt_limit_reached", false, err)
+		}
 		return w.fail(ctx, job, "storage_error", true, fmt.Errorf("begin generation: %w", err))
 	}
 
@@ -68,8 +75,9 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 			return w.fail(ctx, job, "job_timeout", true, ctx.Err())
 		}
 
-		var providerErr *openrouter.Error
-		if errors.As(err, &providerErr) {
+		var classified koidomain.ProviderError
+		if errors.As(err, &classified) {
+			providerErr := classified.Failure()
 			slog.Info("generation provider result", "run_id", run.ID, "attempt", job.Attempt, "status", providerErr.Status, "duration_ms", time.Since(started).Milliseconds())
 
 			return w.fail(ctx, job, providerErr.Code, providerErr.Retryable, err)
@@ -80,6 +88,9 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 
 	prompts, competitors, err := w.store.FinishGenerationAttempt(ctx, run.ID, job.Attempt, result)
 	if err != nil {
+		if errors.Is(err, koidomain.ErrBillingRequired) {
+			return w.fail(ctx, job, "billing_required", false, err)
+		}
 		return w.fail(ctx, job, "storage_error", true, err)
 	}
 

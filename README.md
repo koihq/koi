@@ -66,3 +66,5 @@ there are at most three attempts. Graceful shutdown allows jobs 60 seconds befor
 
 The project currently initializes a fresh database through GORM entity definitions and River's
 migrations. It does not provide upgrades from earlier development schemas.
+
+Koi Cloud billing setup and sandbox checks are in [docs/billing.md](docs/billing.md).

@@ -12,7 +12,6 @@ import {
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
-import type { Competitor } from "@/api/competitors.api";
 import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
@@ -27,8 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
-import { collectPages } from "@/lib/collect-pages";
-import { competitorKey, promptKey, runKey } from "@/lib/query-keys";
+import { promptKey, runKey } from "@/lib/query-keys";
 import { safeSourceURL } from "@/lib/source-url";
 import {
   engines,
@@ -73,22 +71,12 @@ function PromptDetail() {
 
   const prompt = useQuery({
     queryKey: [...promptKey(brand.id), promptId],
-    queryFn: () => api.prompts.getById(brand.id, promptId),
+    queryFn: ({ signal }) => api.prompts.getById(promptId, { signal }),
   });
   const history = useQuery({
     queryKey: [...runKey(brand.id), "prompt", promptId, search.page],
     queryFn: ({ signal }) =>
       api.runs.promptHistory(brand.id, promptId, search.page, 10, { signal }),
-  });
-  const competitors = useQuery({
-    queryKey: [...competitorKey(brand.id), "detail-comparison"],
-    queryFn: async ({ signal }) => {
-      const items = await collectPages<Competitor>((page) =>
-        api.competitors.list(brand.id, { page, pageSize: 50 }, { signal }),
-      );
-
-      return items.filter((item) => item.confirmed);
-    },
   });
   const scope: VisibilityScope = { days: search.days, engines: [] };
   const visibility = useQuery({
@@ -100,17 +88,17 @@ function PromptDetail() {
   const run = runs.find((item) => item.run.id === search.runId);
   const result = run?.results.find((item) => item.engine === search.responseEngine);
   const title = prompt.data?.text ?? runs[0]?.results[0]?.promptText;
-  const comparison = competitors.data?.find((item) => item.id === search.compareId);
+  const comparison = visibility.data?.competitors.find((item) => item.id === search.compareId);
   const series = visibilitySeries(visibility.data);
   const comparedSeries = comparison ? visibilitySeries(visibility.data, comparison.id) : [];
   const rate = visibilityRate(visibility.data);
   const comparisonRate = comparison
     ? visibilityRate(visibility.data, undefined, comparison.id)
     : null;
-  const rivals = (competitors.data ?? [])
+  const rivals = (visibility.data?.competitors ?? [])
     .map((competitor) => ({
       competitor,
-      rate: visibilityRate(visibility.data, undefined, competitor.id),
+      rate: competitor.metric.rate,
     }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
   const metricRate = inspected === null ? rate : (series[inspected]?.rate ?? null);
@@ -172,16 +160,18 @@ function PromptDetail() {
               <h2 id="detail-visibility-heading" className="text-base font-bold">
                 {t("home:dashboard.aiVisibility")}
               </h2>
-              <VisibilityHeadline
-                brand={brand}
-                competitor={comparison}
-                rate={metricRate}
-                comparisonRate={metricComparisonRate}
-                paired={Boolean(comparison && metricComparisonRate !== null)}
-                locale={i18n.language}
-                animated={canAnimateNumbers && inspectionInput === "pointer"}
-                variant="detail"
-              />
+              {visibility.isSuccess && (
+                <VisibilityHeadline
+                  brand={brand}
+                  competitor={comparison}
+                  rate={metricRate}
+                  comparisonRate={metricComparisonRate}
+                  paired={Boolean(comparison && metricComparisonRate !== null)}
+                  locale={i18n.language}
+                  animated={canAnimateNumbers && inspectionInput === "pointer"}
+                  variant="detail"
+                />
+              )}
               <p className="text-xs font-normal text-muted-foreground">
                 {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
               </p>
@@ -203,7 +193,16 @@ function PromptDetail() {
               ))}
             </fieldset>
           </div>
-          {visibility.data?.metric.completed ? (
+          {visibility.isPending ? (
+            <p className="py-8 text-sm text-muted-foreground">{t("home:dashboard.loading")}</p>
+          ) : visibility.isError ? (
+            <p role="alert" className="py-8 text-sm">
+              {t("home:dashboard.loadError")}{" "}
+              <Button variant="link" onClick={() => void visibility.refetch()}>
+                {t("home:dashboard.retry")}
+              </Button>
+            </p>
+          ) : visibility.data?.metric.completed ? (
             <VisibilityChart
               series={series}
               comparison={comparedSeries}
@@ -270,11 +269,11 @@ function PromptDetail() {
                 </small>
               </button>
             ))
-          ) : (
+          ) : visibility.isSuccess ? (
             <p className="text-xs font-normal text-muted-foreground">
               {t("home:dashboard.noCompetitors")}
             </p>
-          )}
+          ) : null}
         </aside>
       </div>
 
@@ -374,7 +373,7 @@ function PromptDetail() {
                                 key={appearance.name}
                                 name={appearance.name}
                                 domain={
-                                  competitors.data?.find(
+                                  visibility.data?.competitors.find(
                                     (candidate) => candidate.name === appearance.name,
                                   )?.domain
                                 }

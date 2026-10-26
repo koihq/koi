@@ -60,6 +60,12 @@ export interface PromptRes {
     confirmed: boolean;
     /**
      * 
+     * @type {boolean}
+     * @memberof PromptRes
+     */
+    inactive: boolean;
+    /**
+     * 
      * @type {VisibilityReport}
      * @memberof PromptRes
      */
@@ -86,6 +92,7 @@ export function instanceOfPromptRes(value: object): value is PromptRes {
     if (!('text' in value) || value['text'] === undefined) return false;
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
+    if (!('inactive' in value) || value['inactive'] === undefined) return false;
     return true;
 }
 
@@ -100,10 +107,11 @@ export function PromptResFromJSONTyped(json: any, ignoreDiscriminator: boolean):
     return {
         
         'id': json['id'],
-        'brandId': json['brand_id'],
+        'brandId': json['brandId'],
         'text': json['text'],
         'source': json['source'],
         'confirmed': json['confirmed'],
+        'inactive': json['inactive'],
         'visibility': json['visibility'] == null ? undefined : VisibilityReportFromJSON(json['visibility']),
     };
 }
@@ -120,10 +128,11 @@ export function PromptResToJSONTyped(value?: PromptRes | null, ignoreDiscriminat
     return {
         
         'id': value['id'],
-        'brand_id': value['brandId'],
+        'brandId': value['brandId'],
         'text': value['text'],
         'source': value['source'],
         'confirmed': value['confirmed'],
+        'inactive': value['inactive'],
         'visibility': VisibilityReportToJSON(value['visibility']),
     };
 }

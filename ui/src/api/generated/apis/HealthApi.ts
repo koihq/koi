@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type Envelope,
+    EnvelopeFromJSON,
+    EnvelopeToJSON,
+} from '../models/Envelope';
+import {
     type HealthResponse,
     HealthResponseFromJSON,
     HealthResponseToJSON,

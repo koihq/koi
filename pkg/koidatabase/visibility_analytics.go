@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -20,6 +21,8 @@ func newVisibilityReport(start time.Time, days int, competitors []koidomain.Comp
 	}
 	for i, competitor := range competitors {
 		report.Competitors[i].ID = competitor.ID
+		report.Competitors[i].Name = competitor.Name
+		report.Competitors[i].Domain = competitor.Domain
 		report.Competitors[i].Series = make([]koidomain.VisibilityDay, days)
 		for day := range report.Series {
 			report.Competitors[i].Series[day].Date = report.Series[day].Date
@@ -78,31 +81,41 @@ func (r *GormVisibilityRepository) AggregateVisibility(ctx context.Context, bran
 	if ids != nil && len(ids) == 0 {
 		return byPrompt, overall, nil
 	}
-	cellsQuery := r.db.WithContext(ctx).Model(&koidomain.VisibilityResult{}).
+	cellsQuery, err := r.query(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cellsQuery = cellsQuery.Model(&koidomain.VisibilityResult{}).
 		Joins("JOIN visibility_runs ON visibility_runs.id = visibility_results.run_id").
 		Where("visibility_runs.brand_id = ? AND visibility_runs.created_at >= ? AND visibility_runs.created_at < ?", brandID, previousStart, end).
 		Where("visibility_results.outcome IN ?", []koidomain.Outcome{koidomain.OutcomeCited, koidomain.OutcomeMentioned, koidomain.OutcomeMiss}).
-		Preload("Run")
+		Select("visibility_results.*, visibility_runs.created_at AS run_created_at, visibility_runs.brand_snapshot AS run_snapshot")
 	if ids != nil {
 		cellsQuery = cellsQuery.Where("visibility_results.prompt_id IN ?", ids)
 	}
 	if len(engines) > 0 {
 		cellsQuery = cellsQuery.Where("visibility_results.engine IN ?", engines)
 	}
-	var cells []koidomain.VisibilityResult
+	var cells []struct {
+		koidomain.VisibilityResult
+		RunCreatedAt time.Time
+		RunSnapshot  koidomain.BrandSnapshot `gorm:"type:jsonb;serializer:json"`
+	}
 	if err := cellsQuery.Find(&cells).Error; err != nil {
 		return nil, nil, mapDBError(err)
 	}
 
-	for _, cell := range cells {
-		if cell.Run == nil || !validVisibilityOutcome(cell.Outcome) {
+	for _, row := range cells {
+		cell := row.VisibilityResult
+		if !validVisibilityOutcome(cell.Outcome) {
 			continue
 		}
-		current := !cell.Run.CreatedAt.Before(start)
-		day := int(cell.Run.CreatedAt.UTC().Truncate(24*time.Hour).Sub(start) / (24 * time.Hour))
+		current := !row.RunCreatedAt.Before(start)
+		day := int(row.RunCreatedAt.UTC().Truncate(24*time.Hour).Sub(start) / (24 * time.Hour))
 		competitorOutcomes := map[uuid.UUID]koidomain.Outcome{}
 		if current && len(competitors) > 0 {
-			for _, appearance := range koidomain.MatchAppearances(cell, competitors, cell.Run.BrandSnapshot) {
+			for _, appearance := range koidomain.MatchAppearances(cell, competitors, row.RunSnapshot) {
 				if appearance.CompetitorID == nil {
 					continue
 				}

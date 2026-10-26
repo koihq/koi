@@ -26,6 +26,12 @@ export interface PromptPatchRequest {
      * @memberof PromptPatchRequest
      */
     text?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof PromptPatchRequest
+     */
+    inactive?: boolean;
 }
 
 /**
@@ -46,6 +52,7 @@ export function PromptPatchRequestFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
         
         'text': json['text'] == null ? undefined : json['text'],
+        'inactive': json['inactive'] == null ? undefined : json['inactive'],
     };
 }
 
@@ -61,6 +68,7 @@ export function PromptPatchRequestToJSONTyped(value?: PromptPatchRequest | null,
     return {
         
         'text': value['text'],
+        'inactive': value['inactive'],
     };
 }
 

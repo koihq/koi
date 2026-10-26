@@ -15,6 +15,7 @@ var errNoDatabase = errors.New("database not connected")
 
 type Store struct {
 	liveCollection bool
+	cloudMode      bool
 	db             *gorm.DB
 	enqueueClient  *river.Client[*sql.Tx]
 }
@@ -47,7 +48,7 @@ func (s *Store) Atomic(ctx context.Context, fn func(koidomain.Store) error) erro
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return fn(&Store{db: tx, enqueueClient: s.enqueueClient, liveCollection: s.liveCollection})
+		return fn(&Store{db: tx, enqueueClient: s.enqueueClient, liveCollection: s.liveCollection, cloudMode: s.cloudMode})
 	})
 }
 
@@ -63,12 +64,16 @@ func (s *Store) MembershipRepo() koidomain.MembershipRepository {
 	return NewGormMembershipRepository(s.db)
 }
 
+func (s *Store) BillingRepo() koidomain.BillingRepository {
+	return NewBillingRepository(s.db)
+}
+
 func (s *Store) BrandRepo() koidomain.BrandRepository {
 	return NewGormBrandRepository(s.db)
 }
 
 func (s *Store) PromptRepo() koidomain.PromptRepository {
-	return NewGormPromptRepository(s.db)
+	return NewGormPromptRepository(s.db, s.cloudMode)
 }
 
 func (s *Store) CompetitorRepo() koidomain.CompetitorRepository {
@@ -76,7 +81,7 @@ func (s *Store) CompetitorRepo() koidomain.CompetitorRepository {
 }
 
 func (s *Store) GenerationRepo() koidomain.GenerationRepository {
-	return NewGormGenerationRepository(s.db, s.enqueueClient)
+	return NewGormGenerationRepository(s.db, s.enqueueClient, s.cloudMode)
 }
 
 // WithLiveCollection enables paid collection only when the operator configured Cloro.
@@ -85,6 +90,12 @@ func (s *Store) WithLiveCollection(enabled bool) *Store {
 	return s
 }
 
+func (s *Store) WithCloudMode(enabled bool) *Store {
+	s.cloudMode = enabled
+
+	return s
+}
+
 func (s *Store) VisibilityRepo() koidomain.VisibilityRepository {
-	return NewGormVisibilityRepository(s.db, s.enqueueClient, s.liveCollection)
+	return NewGormVisibilityRepository(s.db, s.enqueueClient, s.liveCollection, s.cloudMode)
 }

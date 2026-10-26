@@ -233,17 +233,20 @@ func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {
 			Name: "Koi",
 		},
 		Mode:            koidomain.GenerationPrompts,
+		PromptTarget:    5,
 		ExistingPrompts: []string{strings.Repeat("x", 2000), "short"},
 	}
 	limit := requestSize("test", koidomain.GenerationInput{
 		Brand:               input.Brand,
 		Mode:                input.Mode,
+		PromptTarget:        input.PromptTarget,
 		ExistingPrompts:     []string{"short"},
 		ExistingCompetitors: []koidomain.CompetitorIdentity{},
 	})
 	bounded, fits := BoundInput(input, "test", limit)
 	require.True(t, fits)
 	require.Equal(t, []string{"short"}, bounded.ExistingPrompts)
+	require.Equal(t, 5, bounded.PromptTarget)
 }
 
 func TestGenerationFixturesAndOutputValidation(t *testing.T) {

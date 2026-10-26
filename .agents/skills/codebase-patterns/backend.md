@@ -16,9 +16,9 @@ Persistence         pkg/koidatabase/gorm_repo_*.go  (GORM implementations of Sto
 
 Handlers receive querier and commander via constructor. No global state.
 
-Cookie session auth exists (`scs`, `koi_session`, `Authorizer`). Keep constructors injectable. Do not add Keycloak or JWT.
+Cookie session auth exists (`scs`, `koi_session`, `middlewares.Authenticate`). Keep constructors injectable. Do not add Keycloak or JWT.
 
-Shared HTTP: `api.JSON`, `api.Error`, `api.WriteDomainError`, `middlewares.DecodeBody`. Do **not** add generic `api.List` / `api.Create` / `api.Get` or `middlewares.ID` until a `/{id}` resource exists. Auth handlers stay explicit (they also set cookies).
+Shared HTTP responses live in `koiapi/response` (import alias `apiresponse`). Small `koiapi.Get`, `List`, `Create`, `Update`, `Delete` adapters share only transport handling. Domain commands and cookie handlers stay explicit. See `docs/architecture.md` for current contracts.
 
 ## Stack (from `go.mod`)
 
@@ -32,34 +32,24 @@ Shared HTTP: `api.JSON`, `api.Error`, `api.WriteDomainError`, `middlewares.Decod
 
 ## Handler pattern (`pkg/koiapi/`)
 
-Handlers depend on **domain interfaces**, not unexported copies:
+Handlers receive domain interfaces. `server.go` applies authentication once to the
+protected route group and injects the identity resolver. Resource handlers do not
+receive the session manager; auth and brand preference handlers still manage cookies
+or session state. Billing guards consume the verified organization identity.
 
-```go
-type AuthHandler struct {
-    querier   koidomain.AuthQuerier
-    commander koidomain.AuthCommander
-    sess      *scs.SessionManager
-}
+HTTP DTOs explicitly map public camelCase fields without changing persistence
+serialization. Collections require `brandId`; creates and collection commands carry
+it in the body. Details and mutations take their UUID alone. Foreign resource IDs
+return 404 through repository scope. `active_brand_id` is only a UI preference.
 
-func (h *AuthHandler) Routes() func(r chi.Router) {
-    return func(r chi.Router) {
-        r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/signup", h.Signup)
-        r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/login", h.Login)
-        r.Post("/logout", h.Logout)
-        r.With(Authorizer(h.sess)).Get("/me", h.Me)
-    }
-}
-```
-
-Health is an exception: no domain entity, handler pings `Store` directly. Use `api.JSON` for all JSON responses.
-
-Public JSON lives under `/api/v1`. `GET /health` is unprefixed.
+Health is an exception: no domain entity, handler pings Store directly.
+Public JSON lives under `/api/v1`; `GET /health` is unprefixed.
 
 ## Errors
 
 Domain returns `*koidomain.Error` with a stable `Code` and optional `Fields`. UI owns user-facing copy; the API contract is the code (and field codes), not the message.
 
-Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP mapping lives only in `pkg/koiapi/api`:
+Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP mapping lives only in `pkg/koiapi/response`:
 
 ```json
 {
@@ -113,7 +103,7 @@ type Store interface {
 
 ## Repositories (`pkg/koidatabase/`)
 
-GORM-backed. Name files `gorm_repo_<entity>.go`. Entity repos embed `*Repository[T]` (`Create` / `Get` by UUID). `mapDBError` turns `ErrRecordNotFound` into `ErrNotFound` and email unique-violations into `ErrEmailTaken`.
+GORM-backed. Name files `gorm_repo_<entity>.go`. Entity repos embed `*Repository[T]` (`Create` / `Get` by UUID). Domain interfaces embed `BaseEntityRepository[T]`; list filters are resource-specific. `mapDBError` turns `ErrRecordNotFound` into `ErrNotFound` and email unique-violations into `ErrEmailTaken`.
 
 `pkg/koidatabase` implements `koidomain.Store`. `Atomic` opens a GORM transaction and passes a store bound to that tx.
 
@@ -123,15 +113,10 @@ Generate doubles with `make mocks` (or `go generate ./pkg/koidomain`) into `*_te
 
 ## Server wiring (`pkg/koiapi/server.go`)
 
-`buildHTTPServer` instantiates commanders, then handlers, then mounts routes on a `chi.Router`. New handlers are registered here.
-
-```go
-r.Route("/api/v1/auth", NewAuthHandler(
-    koidomain.NewAuthQuerier(store),
-    koidomain.NewAuthCommander(store),
-    sess,
-).Routes())
-```
+Compose domain services, resource handlers and middleware here. Authentication
+resolves membership into `koiauth.Identity{UserID, OrganizationID, Role}` once per
+request. Do not put resource authorization in generic HTTP adapters; scoped
+repositories enforce tenant access on every read and mutation.
 
 ## Lists and integration tests
 

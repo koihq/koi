@@ -10,9 +10,11 @@ const RoleOwner = "owner"
 
 type Membership struct {
 	BaseEntity
-	UserID         uuid.UUID `gorm:"uniqueIndex:idx_memberships_user_org;not null"`
-	OrganizationID uuid.UUID `gorm:"uniqueIndex:idx_memberships_user_org;not null"`
-	Role           string    `gorm:"not null"`
+	UserID         uuid.UUID     `gorm:"type:uuid;uniqueIndex;not null"`
+	OrganizationID uuid.UUID     `gorm:"type:uuid;index;not null"`
+	User           *User         `json:"-" gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	Organization   *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE"`
+	Role           string        `gorm:"not null"`
 }
 
 func (Membership) TableName() string { return "memberships" }
@@ -30,6 +32,6 @@ func (m Membership) Validate() error {
 }
 
 type MembershipRepository interface {
-	BaseEntityRepository[Membership, uuid.UUID]
+	BaseEntityRepository[Membership]
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*Membership, error)
 }

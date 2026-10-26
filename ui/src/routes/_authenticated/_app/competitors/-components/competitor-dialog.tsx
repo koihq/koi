@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-
 import { useApi } from "@/api/apiProvider";
 import type { Competitor, CompetitorSearchResult, CreateCompetitor } from "@/api/competitors.api";
 import { ApiError } from "@/api/errors";
@@ -26,6 +25,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { capabilitiesOptions } from "@/lib/queries";
 
 export function CompetitorDialog({
   brandID,
@@ -68,13 +68,7 @@ export function CompetitorDialog({
   const saving = useRef(false);
   const debouncedQuery = useDebouncedValue(query.trim(), 400);
 
-  const capabilities = useQuery({
-    queryKey: ["capabilities"],
-    queryFn: api.capabilities.get,
-    enabled: visible && !competitor,
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
-  });
+  const capabilities = useQuery({ ...capabilitiesOptions(api), enabled: visible && !competitor });
 
   const searchEnabled = capabilities.data?.competitorSearch === true;
 
@@ -122,7 +116,7 @@ export function CompetitorDialog({
       const domainField =
         error instanceof ApiError
           ? error.fields?.find((field) =>
-              ["domain", "github_repo", "additional_urls", "aliases"].includes(field.field),
+              ["domain", "githubRepo", "additionalUrls", "aliases"].includes(field.field),
             )
           : undefined;
 

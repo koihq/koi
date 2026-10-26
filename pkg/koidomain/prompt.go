@@ -20,6 +20,7 @@ type Prompt struct {
 	Text       string            `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:lower(text)"`
 	Source     PromptSource      `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed  bool              `json:"confirmed" gorm:"not null;default:false"`
+	Inactive   bool              `json:"inactive" gorm:"not null;default:false"`
 	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
 	Brand      *Brand            `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
@@ -56,10 +57,11 @@ func (p Prompt) Validate() error {
 }
 
 type PromptRepository interface {
-	BaseEntityRepository[Prompt, PromptFilter]
+	BaseEntityRepository[Prompt]
 	List(context.Context, PromptFilter) (*Page[Prompt], error)
-	Update(context.Context, PromptFilter, PromptUpdate) error
-	Delete(context.Context, PromptFilter) error
+	HasConfirmed(context.Context, uuid.UUID) (bool, error)
+	Update(context.Context, uuid.UUID, PromptUpdate) error
+	Delete(context.Context, uuid.UUID) error
 }
 
 type PromptFilter struct {
@@ -96,22 +98,26 @@ type PromptListParams struct {
 type PromptUpdate struct {
 	Text      *string
 	Confirmed *bool
+	Inactive  *bool
 }
 
 type PromptParams struct{ Text string }
-type PromptPatch struct{ Text *string }
+type PromptPatch struct {
+	Text     *string
+	Inactive *bool
+}
 
 type PromptCommander interface {
 	Create(context.Context, uuid.UUID, PromptParams) (*Prompt, error)
-	Update(context.Context, uuid.UUID, uuid.UUID, PromptPatch) (*Prompt, error)
-	Delete(context.Context, uuid.UUID, uuid.UUID) error
-	Confirm(context.Context, uuid.UUID, uuid.UUID) (*Prompt, error)
+	Update(context.Context, uuid.UUID, PromptPatch) (*Prompt, error)
+	Delete(context.Context, uuid.UUID) error
+	Confirm(context.Context, uuid.UUID) (*Prompt, error)
 	ConfirmAll(context.Context, uuid.UUID) error
 }
 
 type PromptQuerier interface {
 	List(context.Context, uuid.UUID, PromptListParams) (*Page[Prompt], error)
-	Get(context.Context, uuid.UUID, uuid.UUID) (*Prompt, error)
+	Get(context.Context, uuid.UUID) (*Prompt, error)
 }
 
 type promptService struct{ store Store }
@@ -149,13 +155,8 @@ func (s *promptService) Create(ctx context.Context, brandID uuid.UUID, params Pr
 	return prompt, nil
 }
 
-func (s *promptService) Update(ctx context.Context, brandID, promptID uuid.UUID, patch PromptPatch) (*Prompt, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	filter := PromptFilter{ID: promptID, BrandID: brandID}
-	prompt, err := s.store.PromptRepo().Get(ctx, filter)
+func (s *promptService) Update(ctx context.Context, promptID uuid.UUID, patch PromptPatch) (*Prompt, error) {
+	prompt, err := s.store.PromptRepo().Get(ctx, promptID)
 	if err != nil {
 		return nil, err
 	}
@@ -163,40 +164,38 @@ func (s *promptService) Update(ctx context.Context, brandID, promptID uuid.UUID,
 	if patch.Text != nil {
 		prompt.Text = *patch.Text
 	}
+	if patch.Inactive != nil {
+		prompt.Inactive = *patch.Inactive
+	}
 
 	prompt.Normalize()
 	if err := prompt.Validate(); err != nil {
 		return nil, err
 	}
 
-	if err := s.store.PromptRepo().Update(ctx, filter, PromptUpdate{Text: &prompt.Text}); err != nil {
+	text := patch.Text
+	if text != nil {
+		text = &prompt.Text
+	}
+	if err := s.store.PromptRepo().Update(ctx, promptID, PromptUpdate{Text: text, Inactive: patch.Inactive}); err != nil {
 		return nil, err
 	}
 
 	return prompt, nil
 }
 
-func (s *promptService) Delete(ctx context.Context, brandID, promptID uuid.UUID) error {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return err
-	}
-
-	return s.store.PromptRepo().Delete(ctx, PromptFilter{ID: promptID, BrandID: brandID})
+func (s *promptService) Delete(ctx context.Context, promptID uuid.UUID) error {
+	return s.store.PromptRepo().Delete(ctx, promptID)
 }
 
-func (s *promptService) Confirm(ctx context.Context, brandID, promptID uuid.UUID) (*Prompt, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	filter := PromptFilter{ID: promptID, BrandID: brandID}
-	prompt, err := s.store.PromptRepo().Get(ctx, filter)
+func (s *promptService) Confirm(ctx context.Context, promptID uuid.UUID) (*Prompt, error) {
+	prompt, err := s.store.PromptRepo().Get(ctx, promptID)
 	if err != nil {
 		return nil, err
 	}
 
 	confirmed := true
-	if err := s.store.PromptRepo().Update(ctx, filter, PromptUpdate{Confirmed: &confirmed}); err != nil {
+	if err := s.store.PromptRepo().Update(ctx, promptID, PromptUpdate{Confirmed: &confirmed}); err != nil {
 		return nil, err
 	}
 
@@ -226,10 +225,6 @@ func (s *promptService) List(ctx context.Context, brandID uuid.UUID, params Prom
 	})
 }
 
-func (s *promptService) Get(ctx context.Context, brandID, promptID uuid.UUID) (*Prompt, error) {
-	if err := ownedBrand(ctx, s.store, brandID); err != nil {
-		return nil, err
-	}
-
-	return s.store.PromptRepo().Get(ctx, PromptFilter{ID: promptID, BrandID: brandID})
+func (s *promptService) Get(ctx context.Context, promptID uuid.UUID) (*Prompt, error) {
+	return s.store.PromptRepo().Get(ctx, promptID)
 }

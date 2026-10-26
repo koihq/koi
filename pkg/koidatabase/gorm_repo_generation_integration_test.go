@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -31,8 +30,9 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	store := NewStore(db, client)
 	user := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), user))
-	ctx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: user.ID})
-	brand := &koidomain.Brand{Name: "Koi", Domain: "koi.dev", Country: "IT"}
+	organizationID := testOrganizationForUser(t, store, user.ID)
+	ctx := testIdentity(t, store, user.ID)
+	brand := &koidomain.Brand{OrganizationID: organizationID, Name: "Koi", Domain: "koi.dev", Country: "IT"}
 	require.NoError(t, store.BrandRepo().Create(ctx, brand))
 	key := "setup-1"
 
@@ -312,8 +312,8 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 
 	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), otherUser))
-	otherCtx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: otherUser.ID})
-	_, err = koidomain.NewGenerationQuerier(store).Get(otherCtx, brand.ID, first.run.ID)
+	otherCtx := testIdentity(t, store, otherUser.ID)
+	_, err = koidomain.NewGenerationQuerier(store).Get(otherCtx, first.run.ID)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 	_, err = koidomain.NewGenerationQuerier(store).List(otherCtx, brand.ID, koidomain.PageParams{Page: 1, PageSize: 10})
 	require.ErrorIs(t, err, koidomain.ErrNotFound)

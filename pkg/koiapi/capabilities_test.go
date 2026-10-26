@@ -42,7 +42,7 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sess := scs.New()
 			sess.Cookie.Name = "koi_session"
-			app := NewServer(NewMockStore(t), sess, tc.searcher, tc.draftingEnabled)
+			app := NewServer(sessionStore(t), sess, tc.searcher, tc.draftingEnabled)
 
 			testSession := sess.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				sess.Put(r.Context(), "user_id", uuid.NewString())

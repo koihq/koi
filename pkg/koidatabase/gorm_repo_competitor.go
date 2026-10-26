@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 
 	"github.com/koihq/koi/pkg/koidomain"
@@ -52,18 +53,16 @@ func applyCompetitorFilter(db *gorm.DB, filter koidomain.CompetitorFilter) *gorm
 	return db
 }
 
-func (r *GormCompetitorRepository) Get(ctx context.Context, filter koidomain.CompetitorFilter) (*koidomain.Competitor, error) {
-	return r.getBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) })
-}
-
 func (r *GormCompetitorRepository) List(ctx context.Context, filter koidomain.CompetitorFilter) (*koidomain.Page[koidomain.Competitor], error) {
 	return r.listBy(ctx, func(db *gorm.DB) *gorm.DB { return applyCompetitorFilter(db, filter) }, filter.Page, "created_at ASC, id ASC")
 }
 
-func (r *GormCompetitorRepository) Update(ctx context.Context, filter koidomain.CompetitorFilter, update koidomain.CompetitorUpdate) error {
-	if _, err := r.Repository.query(ctx); err != nil {
+func (r *GormCompetitorRepository) Update(ctx context.Context, id uuid.UUID, update koidomain.CompetitorUpdate) error {
+	currentEntity, err := r.Get(ctx, id)
+	if err != nil {
 		return err
 	}
+	filter := koidomain.CompetitorFilter{ID: id, BrandID: currentEntity.BrandID}
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
@@ -71,7 +70,7 @@ func (r *GormCompetitorRepository) Update(ctx context.Context, filter koidomain.
 		}
 
 		repo := NewGormCompetitorRepository(tx)
-		competitor, err := repo.Get(ctx, filter)
+		competitor, err := repo.Get(ctx, filter.ID)
 		if err != nil {
 			return err
 		}
@@ -148,10 +147,12 @@ func checkCompetitorURLs(tx *gorm.DB, competitor koidomain.Competitor) error {
 	return nil
 }
 
-func (r *GormCompetitorRepository) Delete(ctx context.Context, filter koidomain.CompetitorFilter) error {
-	if _, err := r.Repository.query(ctx); err != nil {
+func (r *GormCompetitorRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	currentEntity, err := r.Get(ctx, id)
+	if err != nil {
 		return err
 	}
+	filter := koidomain.CompetitorFilter{ID: id, BrandID: currentEntity.BrandID}
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if _, err := NewGormBrandRepository(tx).LockForUpdate(ctx, filter.BrandID); err != nil {
@@ -159,7 +160,7 @@ func (r *GormCompetitorRepository) Delete(ctx context.Context, filter koidomain.
 		}
 
 		repo := NewGormCompetitorRepository(tx)
-		competitor, err := repo.Get(ctx, filter)
+		competitor, err := repo.Get(ctx, filter.ID)
 		if err != nil {
 			return err
 		}

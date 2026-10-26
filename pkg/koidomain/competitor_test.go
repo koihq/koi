@@ -122,20 +122,16 @@ func TestCompetitorRejectsUnownedBrandBeforeChildLookup(t *testing.T) {
 
 func TestCompetitorConfirmationUsesUpdate(t *testing.T) {
 	store := NewMockStore(t)
-	brands := NewMockBrandRepository(t)
 	competitors := NewMockCompetitorRepository(t)
 	userID, brandID, competitorID := uuid.New(), uuid.New(), uuid.New()
-	store.EXPECT().BrandRepo().Return(brands).Once()
 	store.EXPECT().CompetitorRepo().Return(competitors).Twice()
-	brands.EXPECT().Get(mock.Anything, brandID).Return(&Brand{}, nil).Once()
 	competitor := &Competitor{BaseEntity: BaseEntity{ID: competitorID}, BrandID: brandID}
-	filter := CompetitorFilter{ID: competitorID, BrandID: brandID}
-	competitors.EXPECT().Get(mock.Anything, filter).Return(competitor, nil)
-	competitors.EXPECT().Update(mock.Anything, filter, mock.MatchedBy(func(update CompetitorUpdate) bool {
+	competitors.EXPECT().Get(mock.Anything, competitorID).Return(competitor, nil)
+	competitors.EXPECT().Update(mock.Anything, competitorID, mock.MatchedBy(func(update CompetitorUpdate) bool {
 		return update.Confirmed != nil && *update.Confirmed
 	})).Return(nil)
 
-	confirmed, err := NewCompetitorCommander(store).Confirm(identityCtx(t, userID), brandID, competitorID)
+	confirmed, err := NewCompetitorCommander(store).Confirm(identityCtx(t, userID), competitorID)
 	require.NoError(t, err)
 	require.True(t, confirmed.Confirmed)
 
