@@ -96,7 +96,7 @@ jobs:
 
   release:
     needs: dev
-    if: needs.dev.outputs.current == 'true'
+    if: needs.dev.outputs.current == 'true' && vars.RELEASE_ENABLED == 'true'
     runs-on: ubuntu-24.04
     outputs:
       created: ${{ steps.release.outputs.release_created }}
