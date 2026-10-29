@@ -94,6 +94,37 @@ func TestAsyncContracts(t *testing.T) {
 	}
 }
 
+func TestSyncContracts(t *testing.T) {
+	for _, engine := range koidomain.VisibilityEngines() {
+		t.Run(string(engine), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodPost, r.Method)
+				require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
+				var body map[string]any
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				require.Equal(t, "US", body["country"])
+				w.Header().Set("X-Credits-Charged", "7")
+				if engine == koidomain.EngineGoogleAIOverviews {
+					require.Equal(t, "/v1/monitor/google", r.URL.Path)
+					require.Equal(t, "Best tools?", body["query"])
+					fmt.Fprint(w, `{"success":true,"result":{"aioverview":{"text":"Koi","sources":[]}}}`)
+					return
+				}
+				require.Equal(t, "/v1/monitor/"+string(engine), r.URL.Path)
+				require.Equal(t, "Best tools?", body["prompt"])
+				fmt.Fprint(w, `{"success":true,"result":{"text":"Koi","sources":[]}}`)
+			}))
+			defer server.Close()
+			client := New("test-key")
+			client.syncHTTP.SetBaseURL(server.URL)
+			answer, err := client.Fetch(t.Context(), koidomain.VisibilityResult{Engine: engine, PromptText: "Best tools?"}, "US")
+			require.NoError(t, err)
+			require.Equal(t, "Koi", answer.Text)
+			require.Equal(t, 7, *answer.CreditsCharged)
+		})
+	}
+}
+
 func TestTaskResponsesAndErrors(t *testing.T) {
 	for _, test := range []struct {
 		name    string

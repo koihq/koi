@@ -5,11 +5,27 @@ import {
   brandListOptions,
   capabilitiesOptions,
   clearAccountCache,
+  ensureInitialGeneration,
   promptListOptions,
 } from "@/lib/queries";
 import { runPromptBatch } from "@/routes/_authenticated/_app/-components/use-prompt-bulk-actions";
 
 describe("query isolation and batch failures", () => {
+  it("starts the cloud onboarding draft once after billing access", async () => {
+    const client = new QueryClient();
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValue({ items: [{ id: "run" }] });
+    const create = vi.fn().mockResolvedValue({ id: "run" });
+    const api = { generations: { list, create } } as unknown as Api;
+
+    await ensureInitialGeneration(api, client, "brand-a");
+    await ensureInitialGeneration(api, client, "brand-a");
+
+    expect(create).toHaveBeenCalledOnce();
+    expect(create).toHaveBeenCalledWith({ brandId: "brand-a", mode: "initial" }, "setup-brand-a");
+  });
   it("deduplicates shared capabilities and retains explicit brand cache keys", async () => {
     const client = new QueryClient();
     const get = vi.fn().mockResolvedValue({ aiDrafting: false });

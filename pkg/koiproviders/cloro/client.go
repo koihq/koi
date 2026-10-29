@@ -15,12 +15,14 @@ import (
 )
 
 type Client struct {
-	http *resty.Client
+	http     *resty.Client
+	syncHTTP *resty.Client
 }
 
 func New(key string) *Client {
-	return &Client{http: resty.New().SetBaseURL("https://api.cloro.dev").
-		SetAuthToken(strings.TrimSpace(key)).SetTimeout(10 * time.Second)}
+	http := resty.New().SetBaseURL("https://api.cloro.dev").
+		SetAuthToken(strings.TrimSpace(key)).SetTimeout(10 * time.Second)
+	return &Client{http: http, syncHTTP: http.Clone().SetTimeout(3 * time.Minute)}
 }
 
 type Error struct {
@@ -44,30 +46,11 @@ type taskResponse struct {
 type Answer = koidomain.CollectedAnswer
 
 func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
-	payload := map[string]any{"prompt": cell.PromptText, "country": country, "include": map[string]any{"markdown": true}}
-	var taskType string
-	switch cell.Engine {
-	case koidomain.EngineChatGPT:
-		taskType = "CHATGPT"
-		payload["disableWebSearch"] = false
-	case koidomain.EnginePerplexity:
-		taskType = "PERPLEXITY"
-	case koidomain.EngineGemini:
-		taskType = "GEMINI"
-	case koidomain.EngineGoogleAIOverviews:
-		taskType = "GOOGLE"
-		payload = map[string]any{
-			"query":   cell.PromptText,
-			"country": country,
-			"pages":   1,
-			"include": map[string]any{
-				"aioverview": map[string]any{"markdown": true},
-			},
-		}
-	default:
-		return "", &Error{Code: "cloro_engine_unsupported"}
+	path, payload, err := request(cell, country)
+	if err != nil {
+		return "", err
 	}
-
+	taskType := strings.ToUpper(strings.TrimPrefix(path, "/v1/monitor/"))
 	resp, err := c.http.R().SetContext(ctx).SetBody(map[string]any{
 		"taskType":       taskType,
 		"idempotencyKey": "koi:" + cell.ID.String(),
@@ -82,11 +65,65 @@ func (c *Client) Submit(ctx context.Context, cell koidomain.VisibilityResult, co
 
 	var result taskResponse
 	if json.Unmarshal(resp.Body(), &result) != nil || result.Task.ID == "" {
-		// A successful but unreadable submission may already have spent credits.
 		return "", &Error{Code: "cloro_unavailable", Retryable: true}
 	}
-
 	return result.Task.ID, nil
+}
+
+func request(cell koidomain.VisibilityResult, country string) (string, map[string]any, error) {
+	payload := map[string]any{"prompt": cell.PromptText, "country": country, "include": map[string]any{"markdown": true}}
+	var path string
+	switch cell.Engine {
+	case koidomain.EngineChatGPT:
+		path = "/v1/monitor/chatgpt"
+		payload["disableWebSearch"] = false
+	case koidomain.EnginePerplexity:
+		path = "/v1/monitor/perplexity"
+	case koidomain.EngineGemini:
+		path = "/v1/monitor/gemini"
+	case koidomain.EngineGoogleAIOverviews:
+		path = "/v1/monitor/google"
+		payload = map[string]any{
+			"query":   cell.PromptText,
+			"country": country,
+			"pages":   1,
+			"include": map[string]any{
+				"aioverview": map[string]any{"markdown": true},
+			},
+		}
+	default:
+		return "", nil, &Error{Code: "cloro_engine_unsupported"}
+	}
+	return path, payload, nil
+}
+
+func (c *Client) Fetch(ctx context.Context, cell koidomain.VisibilityResult, country string) (*Answer, error) {
+	path, payload, err := request(cell, country)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.syncHTTP.R().SetContext(ctx).SetBody(payload).Post(path)
+	if err != nil {
+		return nil, &Error{Code: "cloro_unavailable", Retryable: true}
+	}
+	if err := responseError(resp); err != nil {
+		return nil, err
+	}
+	var envelope struct {
+		Success bool            `json:"success"`
+		Result  json.RawMessage `json:"result"`
+	}
+	if json.Unmarshal(resp.Body(), &envelope) != nil || !envelope.Success {
+		return nil, &Error{Code: "cloro_invalid_response"}
+	}
+	answer, err := normalize(cell.Engine, envelope.Result)
+	if err != nil {
+		return nil, err
+	}
+	if credits, err := strconv.Atoi(resp.Header().Get("X-Credits-Charged")); err == nil && credits >= 0 {
+		answer.CreditsCharged = &credits
+	}
+	return answer, nil
 }
 
 // Poll reads response directly: async responses do not have the sync result envelope.

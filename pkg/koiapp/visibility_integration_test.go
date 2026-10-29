@@ -21,6 +21,7 @@ import (
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidatabase"
 	"github.com/koihq/koi/pkg/koidomain"
+	"github.com/koihq/koi/pkg/koiproviders/cloro"
 )
 
 func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
@@ -81,10 +82,10 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	worker := &visibilityWorker{
 		store: store,
 		provider: visibilityTestProvider{
-			submit: func(ctx context.Context, _ koidomain.VisibilityResult, _ string) (string, error) {
+			fetch: func(ctx context.Context, _ koidomain.VisibilityResult, _ string) (*cloro.Answer, error) {
 				<-ctx.Done()
 
-				return "", ctx.Err()
+				return nil, ctx.Err()
 			},
 		},
 	}

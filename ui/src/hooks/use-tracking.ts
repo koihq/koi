@@ -9,6 +9,6 @@ export function useTracking(brandID: string) {
   return useQuery({
     queryKey: trackingKey(brandID),
     queryFn: ({ signal }) => api.runs.tracking(brandID, { signal }),
-    refetchInterval: 60_000,
+    refetchInterval: (query) => (query.state.data?.startedAt ? 60_000 : 5_000),
   });
 }

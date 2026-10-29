@@ -51,6 +51,7 @@ type VisibilityRun struct {
 	BaseEntity
 	// Recent indexes use expressions for the inherited BaseEntity timestamps and ID.
 	BrandID          uuid.UUID       `json:"-" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_runs_active,where:state = 'queued' OR state = 'running';index:idx_visibility_runs_recent,priority:1;index:idx_visibility_runs_recent,priority:2,expression:created_at,sort:desc;index:idx_visibility_runs_recent,priority:3,expression:id,sort:desc;uniqueIndex:idx_visibility_runs_slot,priority:1,where:scheduled_for IS NOT NULL"`
+	FastStart        bool            `json:"-" gorm:"not null;default:false"`
 	BrandSnapshot    BrandSnapshot   `json:"-" gorm:"type:jsonb;serializer:json;not null"`
 	Engines          []EngineID      `json:"-" gorm:"type:jsonb;serializer:json;not null"`
 	State            VisibilityState `json:"-" gorm:"type:varchar(16);not null;check:chk_visibility_state,state IN ('queued','running','succeeded','failed')"`
@@ -75,9 +76,10 @@ func (r VisibilityRun) Validate() error {
 }
 
 type VisibilityResult struct {
-	CheckedAt   *time.Time `json:"-"`
-	CloroTaskID *string    `json:"-"`
-	SubmittedAt *time.Time `json:"-"`
+	CheckedAt    *time.Time `json:"-"`
+	CloroTaskID  *string    `json:"-"`
+	SubmittedAt  *time.Time `json:"-"`
+	SyncAttempts int        `json:"-" gorm:"not null;default:0"`
 	BaseEntity
 	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:1;index:idx_visibility_results_order,priority:1"`
 	// PromptID is a snapshot identifier, deliberately independent of the live prompt row.

@@ -347,6 +347,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillingRedirect"
+  /api/v1/billing/confirm-checkout:
+    post:
+      tags: [billing]
+      operationId: billingConfirmCheckout
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillingConfirmCheckoutRequest"
+      responses:
+        "200":
+          description: Current billing status after checking the saved Stripe session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/billing/change-allowance:
     post:
       tags: [billing]
@@ -1842,6 +1863,12 @@ components:
           type: integer
         trialAvailable:
           type: boolean
+    BillingConfirmCheckoutRequest:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
     BillingRedirect:
       type: object
       required: [url]

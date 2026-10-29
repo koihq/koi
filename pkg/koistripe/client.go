@@ -174,7 +174,7 @@ func (c *Client) CreateCheckout(ctx context.Context, input koidomain.BillingChec
 				"organization_id": input.OrganizationID,
 			},
 		},
-		SuccessURL: stripe.String(input.PublicURL + "/settings/billing?checkout=success"),
+		SuccessURL: stripe.String(input.PublicURL + "/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"),
 		CancelURL:  stripe.String(input.PublicURL + "/settings/billing?checkout=cancel"),
 	}
 	if input.Trial {
@@ -213,6 +213,18 @@ func checkoutFromStripe(got *stripe.CheckoutSession) (koidomain.BillingCheckout,
 		result.SubscriptionID = got.Subscription.ID
 	}
 	return result, nil
+}
+
+func (c *Client) RetrieveCheckout(ctx context.Context, id string) (koidomain.BillingCheckout, error) {
+	got, err := c.stripe.V1CheckoutSessions.Retrieve(ctx, id, nil)
+	if err != nil {
+		return koidomain.BillingCheckout{}, err
+	}
+	result, err := checkoutFromStripe(got)
+	if err == nil && result.ID != id {
+		return koidomain.BillingCheckout{}, errors.New("Stripe returned unexpected checkout")
+	}
+	return result, err
 }
 
 func (c *Client) ExpireCheckout(ctx context.Context, id string) (koidomain.BillingCheckout, error) {

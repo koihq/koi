@@ -1,19 +1,27 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { AppHeader } from "@/components/blocks/app-header";
-import { billingOptions } from "@/lib/queries";
+import { billingOptions, ensureInitialGeneration } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/_app")({
   beforeLoad: async ({ context }) => {
     if (!context.brand) throw redirect({ to: "/setup" });
+    let draftStartFailed = false;
     if (context.capabilities.cloudBilling) {
       const billing = await context.queryClient.fetchQuery(
         billingOptions(context.api, context.me.organization.id),
       );
       if (billing.promptLimit === 0) throw redirect({ to: "/settings/billing" });
+      if (context.capabilities.aiDrafting) {
+        try {
+          await ensureInitialGeneration(context.api, context.queryClient, context.brand.id);
+        } catch {
+          draftStartFailed = true;
+        }
+      }
     }
 
-    return { brand: context.brand };
+    return { brand: context.brand, draftStartFailed };
   },
   component: AppLayout,
 });

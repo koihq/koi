@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +20,7 @@ import (
 )
 
 type visibilityWorkerStore struct {
+	mu                 sync.Mutex
 	run                *koidomain.VisibilityRun
 	pending            []koidomain.VisibilityResult
 	saved              []koidomain.VisibilityResult
@@ -28,6 +31,8 @@ type visibilityWorkerStore struct {
 }
 
 func (s *visibilityWorkerStore) BeginVisibilityAttempt(context.Context, uuid.UUID, int64, int) (*koidomain.VisibilityRun, []koidomain.VisibilityResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return s.run, append([]koidomain.VisibilityResult(nil), s.pending...), s.beginErr
 }
 
@@ -39,7 +44,23 @@ func (s *visibilityWorkerStore) ContactVisibilityTask(_ context.Context, _ uuid.
 	return nil
 }
 
+func (s *visibilityWorkerStore) BeginSyncVisibilityTask(_ context.Context, _ uuid.UUID, _ int, cell *koidomain.VisibilityResult, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cell.SyncAttempts++
+	cell.CheckedAt = &now
+	cell.SubmittedAt = &now
+	for i := range s.pending {
+		if s.pending[i].ID == cell.ID {
+			s.pending[i].SyncAttempts = cell.SyncAttempts
+		}
+	}
+	return nil
+}
+
 func (s *visibilityWorkerStore) SaveVisibilityTask(_ context.Context, _ uuid.UUID, _ int, cellID uuid.UUID, id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for i := range s.pending {
 		if s.pending[i].ID == cellID {
 			s.pending[i].CloroTaskID = &id
@@ -57,6 +78,8 @@ func (s *visibilityWorkerStore) SaveVisibilityResult(ctx context.Context, _ uuid
 	if s.saveErr != nil {
 		return s.saveErr
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.saved = append(s.saved, result)
 	for i, cell := range s.pending {
 		if cell.ID == result.ID {
@@ -83,6 +106,14 @@ func (s *visibilityWorkerStore) RecordVisibilityFailure(ctx context.Context, _ u
 type visibilityTestProvider struct {
 	submit func(context.Context, koidomain.VisibilityResult, string) (string, error)
 	poll   func(context.Context, string, koidomain.EngineID) (*cloro.Answer, error)
+	fetch  func(context.Context, koidomain.VisibilityResult, string) (*cloro.Answer, error)
+}
+
+func (p visibilityTestProvider) Fetch(ctx context.Context, cell koidomain.VisibilityResult, country string) (*cloro.Answer, error) {
+	if p.fetch != nil {
+		return p.fetch(ctx, cell, country)
+	}
+	return p.Poll(ctx, "", cell.Engine)
 }
 
 func (p visibilityTestProvider) Submit(ctx context.Context, cell koidomain.VisibilityResult, country string) (string, error) {
@@ -176,6 +207,43 @@ func TestVisibilityWorkerSubmitsThenResumesPolling(t *testing.T) {
 		require.Equal(t, "1. [Acme](https://acme.dev)", result.AnswerMarkdown)
 		require.Equal(t, []koidomain.NamedEntity{{Type: "software", Name: "Acme"}}, result.NamedEntities)
 	}
+}
+
+func TestVisibilityWorkerFastStartRetriesOnce(t *testing.T) {
+	store, job := newVisibilityWorkerFixture()
+	store.run.FastStart = true
+	var attempts atomic.Int32
+	worker := &visibilityWorker{store: store, provider: visibilityTestProvider{
+		fetch: func(context.Context, koidomain.VisibilityResult, string) (*cloro.Answer, error) {
+			attempts.Add(1)
+			return nil, &cloro.Error{Code: "cloro_unavailable", Retryable: true}
+		},
+	}}
+	var snooze *river.JobSnoozeError
+	require.ErrorAs(t, worker.Work(t.Context(), job), &snooze)
+	require.Equal(t, int32(4), attempts.Load())
+	require.Empty(t, store.saved)
+	require.ErrorAs(t, worker.Work(t.Context(), job), &snooze)
+	require.Equal(t, int32(8), attempts.Load())
+	require.Len(t, store.saved, 4)
+	require.NoError(t, worker.Work(t.Context(), job))
+	require.True(t, store.finished)
+	require.Equal(t, int32(8), attempts.Load())
+}
+
+func TestVisibilityWorkerFastStartSavesAnswers(t *testing.T) {
+	store, job := newVisibilityWorkerFixture()
+	store.run.FastStart = true
+	worker := &visibilityWorker{store: store, provider: visibilityTestProvider{}}
+	var snooze *river.JobSnoozeError
+	require.ErrorAs(t, worker.Work(t.Context(), job), &snooze)
+	require.Len(t, store.saved, 4)
+	for _, cell := range store.saved {
+		require.Equal(t, koidomain.OutcomeCited, *cell.Outcome)
+		require.Equal(t, 1, cell.SyncAttempts)
+	}
+	require.NoError(t, worker.Work(t.Context(), job))
+	require.True(t, store.finished)
 }
 
 func TestVisibilityWorkerProviderFailuresAndPending(t *testing.T) {

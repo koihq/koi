@@ -152,10 +152,12 @@ function PromptChoice({
 export function PromptManager({
   brandID,
   scope,
+  collecting,
   draftStartFailed = false,
 }: {
   brandID: string;
   scope: VisibilityScope;
+  collecting: boolean;
   draftStartFailed?: boolean;
 }) {
   const { t } = useTranslation(["management", "home"]);
@@ -167,7 +169,12 @@ export function PromptManager({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
-  const { active, live, history, page, totalPages } = usePromptList(brandID, scope, search);
+  const { active, live, history, page, totalPages } = usePromptList(
+    brandID,
+    scope,
+    search,
+    collecting,
+  );
   const visible: PromptRow[] =
     search.status === "past"
       ? (history.data?.items ?? []).map((prompt) => ({

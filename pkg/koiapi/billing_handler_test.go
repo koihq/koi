@@ -40,3 +40,15 @@ func TestBillingChangeRequiresIdempotencyKeyAndPreservesPaymentResult(t *testing
 		})
 	}
 }
+
+func TestBillingConfirmCheckoutUsesSavedSessionID(t *testing.T) {
+	commander := NewMockBillingCommander(t)
+	handler := NewBillingHandler(NewMockBillingQuerier(t), commander, "secret")
+	router := chi.NewRouter()
+	router.With(middlewares.DecodeBody[confirmCheckoutRequest]()).Post("/confirm", handler.ConfirmCheckout)
+	commander.EXPECT().ConfirmCheckout(mock.Anything, "cs_test").Return(koidomain.BillingStatus{PromptLimit: 5}, nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/confirm", strings.NewReader(`{"sessionId":"cs_test"}`)))
+	require.Equal(t, http.StatusOK, response.Code)
+	require.Contains(t, response.Body.String(), `"promptLimit":5`)
+}

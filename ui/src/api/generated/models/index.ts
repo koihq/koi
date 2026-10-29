@@ -6,6 +6,7 @@ export * from './AuthRes';
 export * from './BillingAllowanceRequest';
 export * from './BillingCatalog';
 export * from './BillingChange';
+export * from './BillingConfirmCheckoutRequest';
 export * from './BillingQuote';
 export * from './BillingRedirect';
 export * from './BillingStatus';

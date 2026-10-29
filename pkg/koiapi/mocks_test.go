@@ -6,6 +6,7 @@ package koiapi
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/koihq/koi/pkg/koidomain"
@@ -441,6 +442,72 @@ func (_c *MockBillingCommander_Checkout_Call) RunAndReturn(run func(context1 con
 	return _c
 }
 
+// ConfirmCheckout provides a mock function for the type MockBillingCommander
+func (_mock *MockBillingCommander) ConfirmCheckout(context1 context.Context, s string) (koidomain.BillingStatus, error) {
+	ret := _mock.Called(context1, s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConfirmCheckout")
+	}
+
+	var r0 koidomain.BillingStatus
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (koidomain.BillingStatus, error)); ok {
+		return returnFunc(context1, s)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) koidomain.BillingStatus); ok {
+		r0 = returnFunc(context1, s)
+	} else {
+		r0 = ret.Get(0).(koidomain.BillingStatus)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(context1, s)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBillingCommander_ConfirmCheckout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfirmCheckout'
+type MockBillingCommander_ConfirmCheckout_Call struct {
+	*mock.Call
+}
+
+// ConfirmCheckout is a helper method to define mock.On call
+//   - context1 context.Context
+//   - s string
+func (_e *MockBillingCommander_Expecter) ConfirmCheckout(context1 interface{}, s interface{}) *MockBillingCommander_ConfirmCheckout_Call {
+	return &MockBillingCommander_ConfirmCheckout_Call{Call: _e.mock.On("ConfirmCheckout", context1, s)}
+}
+
+func (_c *MockBillingCommander_ConfirmCheckout_Call) Run(run func(context1 context.Context, s string)) *MockBillingCommander_ConfirmCheckout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBillingCommander_ConfirmCheckout_Call) Return(billingStatus koidomain.BillingStatus, err error) *MockBillingCommander_ConfirmCheckout_Call {
+	_c.Call.Return(billingStatus, err)
+	return _c
+}
+
+func (_c *MockBillingCommander_ConfirmCheckout_Call) RunAndReturn(run func(context1 context.Context, s string) (koidomain.BillingStatus, error)) *MockBillingCommander_ConfirmCheckout_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Portal provides a mock function for the type MockBillingCommander
 func (_mock *MockBillingCommander) Portal(context1 context.Context) (string, error) {
 	ret := _mock.Called(context1)
@@ -554,6 +621,63 @@ func (_c *MockBillingCommander_ProcessEvent_Call) Return(err error) *MockBilling
 }
 
 func (_c *MockBillingCommander_ProcessEvent_Call) RunAndReturn(run func(context1 context.Context, billingEvent koidomain.BillingEvent) error) *MockBillingCommander_ProcessEvent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReconcilePendingCheckouts provides a mock function for the type MockBillingCommander
+func (_mock *MockBillingCommander) ReconcilePendingCheckouts(context1 context.Context, time1 time.Time) error {
+	ret := _mock.Called(context1, time1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReconcilePendingCheckouts")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, time.Time) error); ok {
+		r0 = returnFunc(context1, time1)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockBillingCommander_ReconcilePendingCheckouts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReconcilePendingCheckouts'
+type MockBillingCommander_ReconcilePendingCheckouts_Call struct {
+	*mock.Call
+}
+
+// ReconcilePendingCheckouts is a helper method to define mock.On call
+//   - context1 context.Context
+//   - time1 time.Time
+func (_e *MockBillingCommander_Expecter) ReconcilePendingCheckouts(context1 interface{}, time1 interface{}) *MockBillingCommander_ReconcilePendingCheckouts_Call {
+	return &MockBillingCommander_ReconcilePendingCheckouts_Call{Call: _e.mock.On("ReconcilePendingCheckouts", context1, time1)}
+}
+
+func (_c *MockBillingCommander_ReconcilePendingCheckouts_Call) Run(run func(context1 context.Context, time1 time.Time)) *MockBillingCommander_ReconcilePendingCheckouts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBillingCommander_ReconcilePendingCheckouts_Call) Return(err error) *MockBillingCommander_ReconcilePendingCheckouts_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockBillingCommander_ReconcilePendingCheckouts_Call) RunAndReturn(run func(context1 context.Context, time1 time.Time) error) *MockBillingCommander_ReconcilePendingCheckouts_Call {
 	_c.Call.Return(run)
 	return _c
 }

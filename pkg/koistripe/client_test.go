@@ -111,6 +111,7 @@ func TestHostedCheckoutKeepsOrganizationAndCustomerIdentifiers(t *testing.T) {
 			"line_items[0][quantity]":   "10",
 			"managed_payments[enabled]": "true",
 			"subscription_data[metadata][organization_id]": "org_uuid",
+			"success_url": "https://koi.example/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
 		} {
 			if got := r.Form.Get(key); got != want {
 				t.Errorf("%s = %q, want %q", key, got, want)

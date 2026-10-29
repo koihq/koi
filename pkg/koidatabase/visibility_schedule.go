@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/koihq/koi/pkg/koiauth"
 	"github.com/koihq/koi/pkg/koidomain"
@@ -201,8 +202,20 @@ func (r *GormVisibilityRepository) schedule(ctx context.Context, brand *koidomai
 	if err != nil {
 		return err
 	}
+	// Serialize the first-run decision across brands in the same organization.
+	var organization koidomain.Organization
+	if err := r.db.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).First(&organization, "id = ?", brand.OrganizationID).Error; err != nil {
+		return mapDBError(err)
+	}
+	var existing int64
+	if err := r.db.WithContext(ctx).Model(&koidomain.VisibilityRun{}).
+		Joins("JOIN brands ON brands.id = visibility_runs.brand_id").
+		Where("brands.organization_id = ?", brand.OrganizationID).Count(&existing).Error; err != nil {
+		return err
+	}
 	run := &koidomain.VisibilityRun{
 		BrandID:       brand.ID,
+		FastStart:     existing == 0,
 		ScheduledFor:  &slot,
 		BrandSnapshot: brand.Snapshot(),
 		Engines:       koidomain.VisibilityEngines(),

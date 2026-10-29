@@ -89,6 +89,79 @@ func (s *billingService) Subscription(ctx context.Context) (BillingStatus, error
 	return status, nil
 }
 
+func (s *billingService) ConfirmCheckout(ctx context.Context, sessionID string) (BillingStatus, error) {
+	organization, err := s.store.BillingRepo().OrganizationForUser(ctx)
+	if err != nil {
+		return BillingStatus{}, err
+	}
+	if sessionID == "" {
+		return BillingStatus{}, Validation(FieldError{Field: "sessionId", Code: FieldInvalid})
+	}
+	if err := s.reconcileCheckout(ctx, organization.ID, sessionID); err != nil {
+		return BillingStatus{}, err
+	}
+	return s.Subscription(ctx)
+}
+
+func (s *billingService) ReconcilePendingCheckouts(ctx context.Context, now time.Time) error {
+	checkouts, err := s.store.BillingRepo().PendingCheckouts(ctx, now.Add(-time.Minute), 20)
+	if err != nil {
+		return err
+	}
+	var issues error
+	for _, checkout := range checkouts {
+		if err := s.reconcileCheckout(ctx, checkout.OrganizationID, checkout.SessionID); err != nil {
+			issues = errors.Join(issues, err)
+			if touchErr := s.store.BillingRepo().TouchCheckout(ctx, checkout.ID); touchErr != nil {
+				issues = errors.Join(issues, touchErr)
+			}
+		}
+	}
+	return issues
+}
+
+func (s *billingService) reconcileCheckout(ctx context.Context, organizationID uuid.UUID, sessionID string) error {
+	return s.store.Atomic(ctx, func(store Store) error {
+		repo := store.BillingRepo()
+		organization, err := repo.LockOrganization(ctx, organizationID)
+		if err != nil {
+			return err
+		}
+		checkout, err := repo.CheckoutBySession(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		if checkout.OrganizationID != organizationID {
+			return ErrNotFound
+		}
+		if checkout.Completed || checkout.Retired {
+			return nil
+		}
+		remote, err := s.gateway.RetrieveCheckout(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		switch remote.Status {
+		case "complete":
+			if err := validateCheckout(organization, checkout, remote.CustomerID, remote.OrganizationID, remote.SubscriptionID); err != nil {
+				return err
+			}
+			return s.completeCheckout(ctx, repo, organization, checkout, remote.SubscriptionID)
+		case "expired":
+			return repo.RetireCheckout(ctx, checkout.ID)
+		default:
+			return repo.TouchCheckout(ctx, checkout.ID)
+		}
+	})
+}
+
+func (s *billingService) completeCheckout(ctx context.Context, repo BillingRepository, organization *Organization, checkout *BillingCheckoutSession, subscriptionID string) error {
+	if err := repo.CompleteCheckout(ctx, checkout, subscriptionID); err != nil {
+		return err
+	}
+	return s.refresh(ctx, repo, organization, subscriptionID)
+}
+
 func (s *billingService) ProductAccess(ctx context.Context, organizationID uuid.UUID) (bool, error) {
 	return s.store.BillingRepo().ProductAccess(ctx, organizationID)
 }
@@ -195,11 +268,8 @@ func (s *billingService) Checkout(ctx context.Context, quantity int) (string, er
 				if err := validateCheckout(locked, checkout, remote.CustomerID, remote.OrganizationID, remote.SubscriptionID); err != nil {
 					return err
 				}
-				if err := repo.CompleteCheckout(ctx, checkout, remote.SubscriptionID); err != nil {
-					return err
-				}
 				completed = true
-				return s.refresh(ctx, repo, locked, remote.SubscriptionID)
+				return s.completeCheckout(ctx, repo, locked, checkout, remote.SubscriptionID)
 			}
 			if remote.Status != "expired" {
 				return ErrBillingCheckoutPending
@@ -403,9 +473,7 @@ func (s *billingService) ProcessEvent(ctx context.Context, event BillingEvent) e
 			if err := validateCheckout(locked, checkout, event.CustomerID, event.OrganizationID, event.SubscriptionID); err != nil {
 				return err
 			}
-			if err := repo.CompleteCheckout(ctx, checkout, event.SubscriptionID); err != nil {
-				return err
-			}
+			return s.completeCheckout(ctx, repo, locked, checkout, event.SubscriptionID)
 		} else {
 			if _, err := repo.CompletedCheckout(ctx, organization.ID, event.SubscriptionID); errors.Is(err, ErrNotFound) {
 				return nil // Checkout's event will fetch the current state after association.

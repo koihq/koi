@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/api/apiProvider";
 import type { Generation, GenerationMode } from "@/api/generations.api";
-import { capabilitiesOptions, invalidateProduct } from "@/lib/queries";
+import { capabilitiesOptions, generationOptions, invalidateProduct } from "@/lib/queries";
 import { generationKey, trackingKey } from "@/lib/query-keys";
 
 export function generationPollDelay(
@@ -24,9 +24,7 @@ export function useGeneration(brandID: string) {
   const capabilities = useQuery(capabilitiesOptions(api));
 
   const runs = useQuery({
-    queryKey: generationKey(brandID),
-    queryFn: ({ signal }) => api.generations.list(brandID, { signal }),
-    retry: false,
+    ...generationOptions(api, brandID),
     refetchIntervalInBackground: false,
     refetchInterval: (query) =>
       generationPollDelay(query.state.data?.items[0]?.state, query.state.fetchFailureCount, jitter),

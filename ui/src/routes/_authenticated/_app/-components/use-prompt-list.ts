@@ -14,7 +14,12 @@ type PromptSearch = {
   status: string;
 };
 
-export function usePromptList(brandID: string, scope: VisibilityScope, search: PromptSearch) {
+export function usePromptList(
+  brandID: string,
+  scope: VisibilityScope,
+  search: PromptSearch,
+  collecting: boolean,
+) {
   const api = useApi();
   const page = Math.max(1, search.page);
   const confirmed =
@@ -30,11 +35,13 @@ export function usePromptList(brandID: string, scope: VisibilityScope, search: P
   const live = useQuery({
     ...promptListOptions(api, brandID, { ...params, confirmed }),
     enabled: search.status !== "past",
+    refetchInterval: collecting ? 5_000 : false,
   });
   const history = useQuery({
     queryKey: [...runKey(brandID), "past-prompts", params],
     enabled: search.status === "past",
     queryFn: ({ signal }) => api.runs.historicalPrompts(brandID, params, { signal }),
+    refetchInterval: collecting ? 5_000 : false,
   });
   const active = search.status === "past" ? history : live;
 

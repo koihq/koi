@@ -3,6 +3,7 @@ package koiapp
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ import (
 type visibilityStore interface {
 	BeginVisibilityAttempt(context.Context, uuid.UUID, int64, int) (*koidomain.VisibilityRun, []koidomain.VisibilityResult, error)
 	ContactVisibilityTask(context.Context, uuid.UUID, int, *koidomain.VisibilityResult, time.Time) error
+	BeginSyncVisibilityTask(context.Context, uuid.UUID, int, *koidomain.VisibilityResult, time.Time) error
 	SaveVisibilityTask(context.Context, uuid.UUID, int, uuid.UUID, string) error
 	SaveVisibilityResult(context.Context, uuid.UUID, int, koidomain.VisibilityResult) error
 	FinishVisibilityAttempt(context.Context, uuid.UUID, int) error
@@ -24,16 +26,18 @@ type visibilityStore interface {
 type visibilityProvider interface {
 	Submit(context.Context, koidomain.VisibilityResult, string) (string, error)
 	Poll(context.Context, string, koidomain.EngineID) (*koidomain.CollectedAnswer, error)
+	Fetch(context.Context, koidomain.VisibilityResult, string) (*koidomain.CollectedAnswer, error)
 }
 
 type visibilityWorker struct {
 	river.WorkerDefaults[koidatabase.VisibilityJobArgs]
-	store    visibilityStore
-	provider visibilityProvider
+	store     visibilityStore
+	provider  visibilityProvider
+	syncSlots chan struct{}
 }
 
 func (w *visibilityWorker) Timeout(*river.Job[koidatabase.VisibilityJobArgs]) time.Duration {
-	return time.Minute
+	return 7 * time.Minute
 }
 
 func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs]) error {
@@ -43,6 +47,9 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	}
 	if run == nil {
 		return nil
+	}
+	if run.FastStart {
+		return w.workSync(ctx, job, run, cells)
 	}
 
 	passStarted := time.Now()
@@ -150,6 +157,97 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[koidatabase.
 	}
 
 	return nil
+}
+
+func (w *visibilityWorker) workSync(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs], run *koidomain.VisibilityRun, cells []koidomain.VisibilityResult) error {
+	if len(cells) == 0 {
+		return w.store.FinishVisibilityAttempt(ctx, run.ID, job.Attempt)
+	}
+	if len(cells) > 4 {
+		cells = cells[:4]
+	}
+
+	var group sync.WaitGroup
+	errorsFound := make(chan error, len(cells))
+	for _, cell := range cells {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			if err := w.syncCell(ctx, job, run, cell); err != nil {
+				errorsFound <- err
+			}
+		}()
+	}
+	group.Wait()
+	close(errorsFound)
+	for err := range errorsFound {
+		return w.fail(ctx, job, err)
+	}
+	return river.JobSnooze(10 * time.Second)
+}
+
+func (w *visibilityWorker) syncCell(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs], run *koidomain.VisibilityRun, cell koidomain.VisibilityResult) error {
+	now := time.Now().UTC()
+	code := ""
+	var answer *koidomain.CollectedAnswer
+	if now.Sub(run.CreatedAt) >= 23*time.Hour {
+		code = "cloro_deadline"
+	} else if run.ErrorCode != nil && (*run.ErrorCode == "cloro_credits" || *run.ErrorCode == "cloro_authentication") {
+		code = *run.ErrorCode
+	} else if cell.SyncAttempts >= 2 {
+		code = "cloro_unavailable"
+	} else {
+		if w.syncSlots != nil {
+			select {
+			case w.syncSlots <- struct{}{}:
+				defer func() { <-w.syncSlots }()
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		if err := w.store.ContactVisibilityTask(ctx, run.ID, job.Attempt, &cell, now); err != nil {
+			return err
+		}
+		if err := w.store.BeginSyncVisibilityTask(ctx, run.ID, job.Attempt, &cell, now); err != nil {
+			return err
+		}
+		var err error
+		answer, err = w.provider.Fetch(ctx, cell, run.BrandSnapshot.Country)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			failure := collectionFailure(err)
+			if failure.Retryable && cell.SyncAttempts < 2 {
+				return nil
+			}
+			code = failure.Code
+			if failure.AccountWide {
+				if err := w.store.RecordVisibilityFailure(ctx, run.ID, job.ID, job.Attempt, code, false); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	fetchedAt := time.Now().UTC()
+	cell.FetchedAt = &fetchedAt
+	cell.Sources = []string{}
+	outcome := koidomain.OutcomeError
+	if code != "" {
+		cell.ErrorCode = &code
+	} else {
+		cell.RawAnswer = answer.Text
+		cell.AnswerMarkdown = answer.Markdown
+		cell.NamedEntities = answer.Entities
+		cell.ProviderCredits = answer.CreditsCharged
+		if answer.Sources != nil {
+			cell.Sources = answer.Sources
+		}
+		outcome = koidomain.ScoreVisibility(run.BrandSnapshot, answer.Text, answer.Sources)
+	}
+	cell.Outcome = &outcome
+	return w.store.SaveVisibilityResult(ctx, run.ID, job.Attempt, cell)
 }
 
 func (w *visibilityWorker) fail(ctx context.Context, job *river.Job[koidatabase.VisibilityJobArgs], cause error) error {

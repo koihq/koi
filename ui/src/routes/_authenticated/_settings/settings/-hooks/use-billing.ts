@@ -37,7 +37,7 @@ export function billingSelection(status: BillingStatus | undefined, firstOption:
   return status?.subscription?.pendingQuantity ?? status?.subscription?.quantity ?? firstOption;
 }
 
-export function useBilling(checkoutReturned: boolean, organizationID: string) {
+export function useBilling(checkoutReturned: boolean, organizationID: string, sessionID?: string) {
   const api = useApi();
   const queryClient = useQueryClient();
   const request = useRef<{ quantity: number; key: string } | null>(null);
@@ -69,6 +69,19 @@ export function useBilling(checkoutReturned: boolean, organizationID: string) {
         ? 2000
         : false,
     refetchIntervalInBackground: false,
+  });
+
+  const confirmation = useQuery({
+    queryKey: [...subscriptionKey, "checkout-confirmation", sessionID],
+    queryFn: async () => {
+      const status = await api.billing.confirmCheckout(sessionID ?? "");
+      await queryClient.cancelQueries({ queryKey: subscriptionKey, exact: true });
+      queryClient.setQueryData(subscriptionKey, status);
+      return status;
+    },
+    enabled: Boolean(checkoutReturned && sessionID && !pollExpired),
+    retry: false,
+    refetchInterval: (query) => (!pollExpired && !query.state.data?.promptLimit ? 2_000 : false),
   });
 
   const update = useMutation({
@@ -104,6 +117,7 @@ export function useBilling(checkoutReturned: boolean, organizationID: string) {
   return {
     catalog,
     subscription,
+    confirmation,
     update,
     checkout,
     portal,

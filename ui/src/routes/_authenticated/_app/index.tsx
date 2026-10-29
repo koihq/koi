@@ -72,10 +72,20 @@ export const Route = createFileRoute("/_authenticated/_app/")({
 
 function Home() {
   const { t, i18n } = useTranslation("home");
-  const { brand } = Route.useRouteContext();
+  const { brand, draftStartFailed } = Route.useRouteContext();
   const { draftStart } = Route.useSearch();
   const api = useApi();
   const tracking = useTracking(brand.id);
+  const latestRun = useQuery({
+    queryKey: [...promptKey(brand.id), "latest-run"],
+    queryFn: ({ signal }) => api.runs.list(brand.id, 1, 1, { signal }),
+    enabled: Boolean(tracking.data?.startedAt),
+    refetchInterval: (query) => {
+      const state = query.state.data?.items[0]?.state;
+      return state === "queued" || state === "running" ? 5_000 : false;
+    },
+  });
+  const collecting = ["queued", "running"].includes(latestRun.data?.items[0]?.state ?? "");
   const [graph, setGraph] = useQueryStates(graphSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
@@ -97,6 +107,7 @@ function Home() {
   const summary = useQuery({
     queryKey: [...promptKey(brand.id), "visibility-summary", scope],
     queryFn: ({ signal }) => api.runs.summary(brand.id, scope, { signal }),
+    refetchInterval: collecting ? 5_000 : false,
   });
   const hasConfirmedPrompts = summary.data?.hasConfirmedPrompts;
   const comparison = summary.data?.competitors.find(
@@ -440,7 +451,8 @@ function Home() {
       <MemoPromptManager
         brandID={brand.id}
         scope={scope}
-        draftStartFailed={draftStart === "failed"}
+        collecting={collecting}
+        draftStartFailed={draftStartFailed || draftStart === "failed"}
       />
     </div>
   );

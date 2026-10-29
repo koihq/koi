@@ -8,6 +8,7 @@ import {
   brandsKey,
   capabilitiesKey,
   competitorKey,
+  generationKey,
   promptKey,
   runKey,
   trackingKey,
@@ -37,6 +38,20 @@ export const billingOptions = (api: Api, organizationId: string) =>
     queryFn: ({ signal }) => api.billing.subscription({ signal }),
     staleTime: 10_000,
   });
+export const generationOptions = (api: Api, brandId: string) =>
+  queryOptions({
+    queryKey: generationKey(brandId),
+    queryFn: ({ signal }) => api.generations.list(brandId, { signal }),
+    retry: false,
+  });
+
+export async function ensureInitialGeneration(api: Api, queryClient: QueryClient, brandId: string) {
+  const runs = await queryClient.fetchQuery(generationOptions(api, brandId));
+  if (runs.items.length > 0) return;
+
+  await api.generations.create({ brandId, mode: "initial" }, `setup-${brandId}`);
+  await queryClient.invalidateQueries({ queryKey: generationKey(brandId), exact: true });
+}
 export const promptListOptions = (api: Api, brandId: string, params: PromptListParams) =>
   queryOptions({
     queryKey: [...promptKey(brandId), "list", params],

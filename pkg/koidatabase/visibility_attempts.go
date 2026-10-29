@@ -110,6 +110,35 @@ func (s *Store) ContactVisibilityTask(ctx context.Context, runID uuid.UUID, atte
 	})
 }
 
+func (s *Store) BeginSyncVisibilityTask(ctx context.Context, runID uuid.UUID, attempt int, result *koidomain.VisibilityResult, now time.Time) error {
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := lockVisibilityAttempt(tx, runID, attempt); err != nil {
+			return err
+		}
+
+		updates := map[string]any{"checked_at": now, "sync_attempts": result.SyncAttempts + 1}
+		if result.SubmittedAt == nil {
+			updates["submitted_at"] = now
+		}
+		updated := tx.Model(&koidomain.VisibilityResult{}).
+			Where("id = ? AND run_id = ? AND outcome IS NULL AND sync_attempts = ?", result.ID, runID, result.SyncAttempts).
+			Updates(updates)
+		if updated.Error != nil {
+			return updated.Error
+		}
+		if updated.RowsAffected != 1 {
+			return errors.New("sync visibility attempt changed")
+		}
+
+		result.SyncAttempts++
+		result.CheckedAt = &now
+		if result.SubmittedAt == nil {
+			result.SubmittedAt = &now
+		}
+		return nil
+	})
+}
+
 func (s *Store) SaveVisibilityTask(ctx context.Context, runID uuid.UUID, attempt int, cellID uuid.UUID, taskID string) error {
 	if taskID == "" {
 		return errors.New("missing Cloro task ID")

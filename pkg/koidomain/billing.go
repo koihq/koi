@@ -149,6 +149,7 @@ type BillingGateway interface {
 	ValidatePrice(context.Context, string) error
 	CreateCustomer(context.Context, string) (string, error)
 	CreateCheckout(context.Context, BillingCheckoutInput) (BillingCheckout, error)
+	RetrieveCheckout(context.Context, string) (BillingCheckout, error)
 	ExpireCheckout(context.Context, string) (BillingCheckout, error)
 	CreatePortal(context.Context, string, string) (string, error)
 	GetSubscription(context.Context, string) (BillingSnapshot, error)
@@ -168,6 +169,8 @@ type BillingRepository interface {
 	ReserveCheckout(context.Context, uuid.UUID, string, string, int) (*BillingCheckoutSession, error)
 	Checkout(context.Context, uuid.UUID) (*BillingCheckoutSession, error)
 	CheckoutBySession(context.Context, string) (*BillingCheckoutSession, error)
+	PendingCheckouts(context.Context, time.Time, int) ([]BillingCheckoutSession, error)
+	TouchCheckout(context.Context, uuid.UUID) error
 	CompletedCheckout(context.Context, uuid.UUID, string) (*BillingCheckoutSession, error)
 	FinalizeCheckout(context.Context, uuid.UUID, string, string, time.Time) error
 	RetireCheckout(context.Context, uuid.UUID) error
@@ -182,6 +185,8 @@ type BillingRepository interface {
 
 type BillingCommander interface {
 	Checkout(context.Context, int) (string, error)
+	ConfirmCheckout(context.Context, string) (BillingStatus, error)
+	ReconcilePendingCheckouts(context.Context, time.Time) error
 	ChangeAllowance(context.Context, int, string) (BillingChange, error)
 	Portal(context.Context) (string, error)
 	ProcessEvent(context.Context, BillingEvent) error

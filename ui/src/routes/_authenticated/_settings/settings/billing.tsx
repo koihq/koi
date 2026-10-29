@@ -21,9 +21,12 @@ export const Route = createFileRoute("/_authenticated/_settings/settings/billing
   beforeLoad: async ({ context }) => {
     if (!context.capabilities.cloudBilling) throw notFound();
   },
-  validateSearch: (search: Record<string, unknown>): { checkout?: "success" | "cancel" } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { checkout?: "success" | "cancel"; sessionId?: string } => ({
     checkout:
       search.checkout === "success" || search.checkout === "cancel" ? search.checkout : undefined,
+    sessionId: typeof search.session_id === "string" ? search.session_id : undefined,
   }),
   component: BillingSettings,
 });
@@ -32,7 +35,7 @@ function BillingSettings() {
   const { t, i18n } = useTranslation("billing");
   const search = Route.useSearch();
   const { me } = Route.useRouteContext();
-  const billing = useBilling(search.checkout === "success", me.organization.id);
+  const billing = useBilling(search.checkout === "success", me.organization.id, search.sessionId);
   const [selected, setSelected] = useState<string | null>(null);
   const { subscription, catalog, update, checkout, portal } = billing;
   const record = subscription.data?.subscription;
@@ -55,7 +58,7 @@ function BillingSettings() {
   const paymentURL =
     !billing.paymentExpired &&
     (record?.paymentUrl || (billing.awaitingConfirmation ? billing.change?.paymentUrl : undefined));
-  const error = update.error ?? checkout.error ?? portal.error;
+  const error = update.error ?? checkout.error ?? portal.error ?? billing.confirmation.error;
   const price = quote
     ? new Intl.NumberFormat(i18n.language, {
         style: "currency",

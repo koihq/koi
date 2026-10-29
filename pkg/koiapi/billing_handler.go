@@ -29,6 +29,7 @@ func (h *BillingHandler) Routes() func(chi.Router) {
 		r.Get("/quote", h.Quote)
 		r.Get("/subscription", h.Subscription)
 		r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/checkout", h.Checkout)
+		r.With(middlewares.DecodeBody[confirmCheckoutRequest]()).Post("/confirm-checkout", h.ConfirmCheckout)
 		r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/change-allowance", h.ChangeAllowance)
 		r.Post("/portal", h.Portal)
 	}
@@ -36,6 +37,9 @@ func (h *BillingHandler) Routes() func(chi.Router) {
 
 type allowanceRequest struct {
 	Prompts int `json:"prompts"`
+}
+type confirmCheckoutRequest struct {
+	SessionID string `json:"sessionId"`
 }
 type billingRedirect struct {
 	URL string `json:"url"`
@@ -85,6 +89,15 @@ func (h *BillingHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	apiresponse.JSON(w, r, http.StatusOK, billingRedirect{URL: url})
+}
+
+func (h *BillingHandler) ConfirmCheckout(w http.ResponseWriter, r *http.Request) {
+	status, err := h.commander.ConfirmCheckout(r.Context(), middlewares.Body[confirmCheckoutRequest](r).SessionID)
+	if err != nil {
+		apiresponse.WriteDomainError(w, r, err)
+		return
+	}
+	apiresponse.JSON(w, r, http.StatusOK, BillingStatusToResponse(&status))
 }
 
 func (h *BillingHandler) ChangeAllowance(w http.ResponseWriter, r *http.Request) {

@@ -30,6 +30,11 @@ import {
     BillingChangeToJSON,
 } from '../models/BillingChange';
 import {
+    type BillingConfirmCheckoutRequest,
+    BillingConfirmCheckoutRequestFromJSON,
+    BillingConfirmCheckoutRequestToJSON,
+} from '../models/BillingConfirmCheckoutRequest';
+import {
     type BillingQuote,
     BillingQuoteFromJSON,
     BillingQuoteToJSON,
@@ -57,6 +62,10 @@ export interface BillingChangeAllowanceRequest {
 
 export interface BillingCheckoutRequest {
     billingAllowanceRequest: BillingAllowanceRequest;
+}
+
+export interface BillingConfirmCheckoutOperationRequest {
+    billingConfirmCheckoutRequest: BillingConfirmCheckoutRequest;
 }
 
 export interface BillingQuoteRequest {
@@ -137,6 +146,27 @@ export interface BillingApiInterface {
     /**
      */
     billingCheckout(requestParameters: BillingCheckoutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingRedirect>;
+
+    /**
+     * Creates request options for billingConfirmCheckout without sending the request
+     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest
+     * @throws {RequiredError}
+     * @memberof BillingApiInterface
+     */
+    billingConfirmCheckoutRequestOpts(requestParameters: BillingConfirmCheckoutOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     *
+     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillingApiInterface
+     */
+    billingConfirmCheckoutRaw(requestParameters: BillingConfirmCheckoutOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillingStatus>>;
+
+    /**
+     */
+    billingConfirmCheckout(requestParameters: BillingConfirmCheckoutOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingStatus>;
 
     /**
      * Creates request options for billingPortal without sending the request
@@ -360,6 +390,51 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
      */
     async billingCheckout(requestParameters: BillingCheckoutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingRedirect> {
         const response = await this.billingCheckoutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for billingConfirmCheckout without sending the request
+     */
+    async billingConfirmCheckoutRequestOpts(requestParameters: BillingConfirmCheckoutOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['billingConfirmCheckoutRequest'] == null) {
+            throw new runtime.RequiredError(
+                'billingConfirmCheckoutRequest',
+                'Required parameter "billingConfirmCheckoutRequest" was null or undefined when calling billingConfirmCheckout().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/v1/billing/confirm-checkout`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BillingConfirmCheckoutRequestToJSON(requestParameters['billingConfirmCheckoutRequest']),
+        };
+    }
+
+    /**
+     */
+    async billingConfirmCheckoutRaw(requestParameters: BillingConfirmCheckoutOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillingStatus>> {
+        const requestOptions = await this.billingConfirmCheckoutRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillingStatusFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async billingConfirmCheckout(requestParameters: BillingConfirmCheckoutOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingStatus> {
+        const response = await this.billingConfirmCheckoutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

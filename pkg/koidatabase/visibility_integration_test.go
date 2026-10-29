@@ -96,6 +96,7 @@ func TestVisibilityScheduleAndReviewInvalidation(t *testing.T) {
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
 	run := finishVisibilityReviews(t, store, ctx, brand.ID)
 	require.Equal(t, int64(4), run.TotalResults)
+	require.True(t, run.FastStart)
 	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
 	require.Equal(t, status.StartedAt.Add(24*time.Hour), *status.NextRunAt)
@@ -122,6 +123,7 @@ func TestVisibilityScheduleAndReviewInvalidation(t *testing.T) {
 	require.Equal(t, int64(2), runs.TotalItems)
 	current, err := store.VisibilityRepo().Active(ctx, brand.ID)
 	require.NoError(t, err)
+	require.False(t, current.FastStart)
 	require.Equal(t, anchor.Add(24*time.Hour), *current.ScheduledFor)
 	require.NoError(t, db.Model(current).Update("state", koidomain.VisibilitySucceeded).Error)
 
@@ -162,6 +164,38 @@ func TestVisibilityScheduleAndReviewInvalidation(t *testing.T) {
 	require.ErrorIs(t, store.PromptRepo().Delete(stranger, prompts.Items[0].ID), koidomain.ErrNotFound)
 	_, err = store.VisibilityRepo().Get(stranger, run.ID)
 	require.ErrorIs(t, err, koidomain.ErrNotFound)
+}
+
+func TestOnlyFirstOrganizationRunUsesFastStart(t *testing.T) {
+	_, store, ctx, first := liveVisibilityFixture(t, true)
+	second := &koidomain.Brand{
+		OrganizationID: first.OrganizationID,
+		Name:           "Second",
+		Domain:         "second.dev",
+		Country:        "US",
+	}
+	require.NoError(t, store.BrandRepo().Create(ctx, second))
+	_, err := koidomain.NewPromptCommander(store).Create(ctx, second.ID, koidomain.PromptParams{Text: "Best tools?"})
+	require.NoError(t, err)
+	for _, brand := range []*koidomain.Brand{first, second} {
+		require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"))
+	}
+
+	var group sync.WaitGroup
+	errors := make(chan error, 2)
+	for _, brand := range []*koidomain.Brand{first, second} {
+		group.Go(func() { errors <- store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors") })
+	}
+	group.Wait()
+	close(errors)
+	for err := range errors {
+		require.NoError(t, err)
+	}
+	firstRun, err := store.VisibilityRepo().Active(ctx, first.ID)
+	require.NoError(t, err)
+	secondRun, err := store.VisibilityRepo().Active(ctx, second.ID)
+	require.NoError(t, err)
+	require.NotEqual(t, firstRun.FastStart, secondRun.FastStart)
 }
 
 func TestVisibilityCellsResumeAndPreserveAnswers(t *testing.T) {

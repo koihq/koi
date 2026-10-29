@@ -70,6 +70,17 @@ func (g *billingTestGateway) ExpireCheckout(_ context.Context, id string) (koido
 	}
 	return koidomain.BillingCheckout{}, errors.New("missing session")
 }
+
+func (g *billingTestGateway) RetrieveCheckout(_ context.Context, id string) (koidomain.BillingCheckout, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, session := range g.sessions {
+		if session.ID == id {
+			return session, nil
+		}
+	}
+	return koidomain.BillingCheckout{}, errors.New("missing session")
+}
 func (g *billingTestGateway) GetSubscription(context.Context, string) (koidomain.BillingSnapshot, error) {
 	g.mu.Lock()
 	snapshot, hook := g.snapshot, g.beforeRead
@@ -216,6 +227,98 @@ func TestBillingWebhookIdentityReplayAndEntitlement(t *testing.T) {
 	require.Equal(t, 100, subscription.Quantity)
 	require.NoError(t, f.db.First(f.organization, "id = ?", f.organization.ID).Error)
 	require.NotNil(t, f.organization.TrialUsedAt)
+}
+
+func TestBillingCheckoutConfirmationWithoutWebhook(t *testing.T) {
+	f := newBillingFixture(t)
+	_, err := f.commander.Checkout(f.ctx, 25)
+	require.NoError(t, err)
+	var checkout koidomain.BillingCheckoutSession
+	require.NoError(t, f.db.First(&checkout).Error)
+
+	status, err := f.commander.ConfirmCheckout(f.ctx, checkout.SessionID)
+	require.NoError(t, err)
+	require.Zero(t, status.PromptLimit)
+	otherOrg := &koidomain.Organization{Name: "Other"}
+	require.NoError(t, f.db.Create(otherOrg).Error)
+	otherUser := &koidomain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
+	require.NoError(t, f.db.Create(otherUser).Error)
+	require.NoError(t, f.db.Create(&koidomain.Membership{
+		UserID: otherUser.ID, OrganizationID: otherOrg.ID, Role: koidomain.RoleOwner,
+	}).Error)
+	otherCtx := testIdentity(t, f.store, otherUser.ID)
+	_, err = f.commander.ConfirmCheckout(otherCtx, checkout.SessionID)
+	require.ErrorIs(t, err, koidomain.ErrNotFound)
+	trialEnd := time.Now().Add(7 * 24 * time.Hour)
+	f.gateway.snapshot.Status = "trialing"
+	f.gateway.snapshot.TrialEnd = &trialEnd
+	for key, session := range f.gateway.sessions {
+		session.Status = "complete"
+		session.SubscriptionID = f.gateway.snapshot.ID
+		f.gateway.sessions[key] = session
+	}
+	status, err = f.commander.ConfirmCheckout(f.ctx, checkout.SessionID)
+	require.NoError(t, err)
+	require.Equal(t, 5, status.PromptLimit)
+	require.NoError(t, f.commander.ProcessEvent(f.ctx, koidomain.BillingEvent{
+		ID: "evt_late", CheckoutID: checkout.SessionID, CustomerID: "cus_test",
+		OrganizationID: f.organization.ID.String(), SubscriptionID: "sub_test",
+	}))
+	var count int64
+	require.NoError(t, f.db.Model(&koidomain.BillingSubscription{}).Count(&count).Error)
+	require.EqualValues(t, 1, count)
+}
+
+func TestBillingMaintenanceRecoversCompletedCheckout(t *testing.T) {
+	f := newBillingFixture(t)
+	_, err := f.commander.Checkout(f.ctx, 25)
+	require.NoError(t, err)
+	var checkout koidomain.BillingCheckoutSession
+	require.NoError(t, f.db.First(&checkout).Error)
+	for key, session := range f.gateway.sessions {
+		session.Status = "complete"
+		session.SubscriptionID = f.gateway.snapshot.ID
+		f.gateway.sessions[key] = session
+	}
+	require.NoError(t, f.db.Model(&checkout).Update("updated_at", time.Now().Add(-2*time.Minute)).Error)
+	require.NoError(t, f.commander.ReconcilePendingCheckouts(f.ctx, time.Now()))
+	allowed, err := f.repo.ProductAccess(f.ctx, f.organization.ID)
+	require.NoError(t, err)
+	require.True(t, allowed)
+}
+
+func TestBillingWebhookAndConfirmationRace(t *testing.T) {
+	f := newBillingFixture(t)
+	_, err := f.commander.Checkout(f.ctx, 25)
+	require.NoError(t, err)
+	var checkout koidomain.BillingCheckoutSession
+	require.NoError(t, f.db.First(&checkout).Error)
+	for key, session := range f.gateway.sessions {
+		session.Status = "complete"
+		session.SubscriptionID = f.gateway.snapshot.ID
+		f.gateway.sessions[key] = session
+	}
+
+	var group sync.WaitGroup
+	errors := make(chan error, 2)
+	group.Go(func() {
+		_, err := f.commander.ConfirmCheckout(f.ctx, checkout.SessionID)
+		errors <- err
+	})
+	group.Go(func() {
+		errors <- f.commander.ProcessEvent(f.ctx, koidomain.BillingEvent{
+			ID: "evt_race", CheckoutID: checkout.SessionID, CustomerID: "cus_test",
+			OrganizationID: f.organization.ID.String(), SubscriptionID: "sub_test",
+		})
+	})
+	group.Wait()
+	close(errors)
+	for err := range errors {
+		require.NoError(t, err)
+	}
+	var count int64
+	require.NoError(t, f.db.Model(&koidomain.BillingSubscription{}).Count(&count).Error)
+	require.EqualValues(t, 1, count)
 }
 
 func TestBillingConcurrentCheckoutAndFinalization(t *testing.T) {

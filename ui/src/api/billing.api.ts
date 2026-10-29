@@ -6,6 +6,8 @@ export function createBillingApi(api: BillingApi) {
     quote: (prompts: number) => api.billingQuote({ prompts }),
     subscription: (init?: RequestInit) => api.billingSubscription(init),
     checkout: (prompts: number) => api.billingCheckout({ billingAllowanceRequest: { prompts } }),
+    confirmCheckout: (sessionId: string) =>
+      api.billingConfirmCheckout({ billingConfirmCheckoutRequest: { sessionId } }),
     changeAllowance: (prompts: number, idempotencyKey: string) =>
       api.billingChangeAllowance({ idempotencyKey, billingAllowanceRequest: { prompts } }),
     portal: () => api.billingPortal(),

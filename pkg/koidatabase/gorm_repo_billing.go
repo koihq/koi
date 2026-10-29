@@ -150,6 +150,18 @@ func (r *BillingRepository) CheckoutBySession(ctx context.Context, sessionID str
 	return &checkout, mapDBError(err)
 }
 
+func (r *BillingRepository) PendingCheckouts(ctx context.Context, before time.Time, limit int) ([]koidomain.BillingCheckoutSession, error) {
+	var checkouts []koidomain.BillingCheckoutSession
+	err := r.db.WithContext(ctx).Where("NOT completed AND NOT retired AND url <> '' AND updated_at < ?", before).
+		Order("updated_at ASC, id ASC").Limit(limit).Find(&checkouts).Error
+	return checkouts, err
+}
+
+func (r *BillingRepository) TouchCheckout(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Model(&koidomain.BillingCheckoutSession{}).
+		Where("id = ? AND NOT completed AND NOT retired", id).Update("updated_at", time.Now().UTC()).Error
+}
+
 func (r *BillingRepository) CompletedCheckout(ctx context.Context, orgID uuid.UUID, subscriptionID string) (*koidomain.BillingCheckoutSession, error) {
 	var checkout koidomain.BillingCheckoutSession
 	err := r.db.WithContext(ctx).Where("organization_id = ? AND stripe_subscription_id = ? AND completed", orgID, subscriptionID).Take(&checkout).Error

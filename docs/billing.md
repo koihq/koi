@@ -112,6 +112,11 @@ Checkout URL or supplies a price or entitlement. A durable database reservation 
 retries reuse the same session and finalization accepts the same session repeatedly.
 Choosing a different allowance expires the open session before replacing it. If payment
 wins the race with expiration, Koi reconciles that subscription and prevents a second purchase.
+The success redirect includes the Stripe Checkout Session ID. Koi verifies that saved session
+directly with Stripe and reconciles it when complete. The maintenance worker also checks
+unfinished sessions, so a closed browser or a missing local webhook listener does not strand
+a completed checkout. These paths use the same organization lock and validation as webhook
+processing; the redirect alone never grants access.
 
 `checkout.session.completed` records the subscription ID only when the signed event's
 session ID, customer ID and organization ID match the reserved session and organization.
@@ -169,6 +174,10 @@ change requests and processed events; there are no historical schema migrations.
 
 Each visibility result records the engine, collector, submission time and, when
 Cloro supplies `X-Credits-Charged` on the completed task response, the credits charged.
+The first visibility run of an organization uses synchronous Cloro requests for faster
+initial results; subsequent runs use async tasks. Cloro currently charges two extra
+credits per synchronous request. A timed-out synchronous request may have completed
+at Cloro, so its one allowed retry can consume credits twice.
 This supports internal execution and credit reports without affecting the customer
 price. Cloro credits are the provider cost unit; converting them to money requires
 the operator's current Cloro plan and invoice because its plans have monthly credit

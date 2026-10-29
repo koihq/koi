@@ -289,8 +289,9 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey)
 				}
 				river.AddWorker(workers, &visibilityWorker{
-					store:    koidatabase.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud"),
-					provider: a.cloroProvider,
+					store:     koidatabase.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud"),
+					provider:  a.cloroProvider,
+					syncSlots: make(chan struct{}, a.cfg.WorkerConcurrency),
 				})
 			}
 		}
@@ -319,6 +320,9 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		}
 		maintenance.store = koidatabase.NewStore(db, riverClient).
 			WithLiveCollection(a.cfg.CloroAPIKey != "").WithCloudMode(a.cfg.DeploymentMode == "cloud")
+		if a.cfg.DeploymentMode == "cloud" {
+			maintenance.billing = koidomain.NewBillingCommander(maintenance.store, koistripe.New(a.cfg.StripeSecretKey), a.cfg.StripePriceID, a.cfg.PublicURL)
+		}
 		if err := riverClient.Start(context.Background()); err != nil {
 			return fmt.Errorf("start river client: %w", err)
 		}
