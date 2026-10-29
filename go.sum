@@ -229,6 +229,8 @@ github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/resend/resend-go/v4 v4.9.0 h1:xas0dtKSUvhi8z8OEZO1U/TreyxzXV9WJqFLgIZ1/XQ=
+github.com/resend/resend-go/v4 v4.9.0/go.mod h1:96jCV9Fb2HoQAnPOgGXURcbBZxCtLrul8e5iwKJ/E/g=
 github.com/riverqueue/river v0.47.0 h1:j8HOEyiOE8gRRhVS2wllKams372TH1WWiH6xCakXHqc=
 github.com/riverqueue/river v0.47.0/go.mod h1:Wgmwx475ZBd8lQnNrJgyG2DWH7BfyNiSAtv0rC9bJBQ=
 github.com/riverqueue/river/riverdriver v0.47.0 h1:qU8VkjdMl9plqeRg57SxsDUM/i/eECaSYejZ7HynC60=

@@ -29,6 +29,7 @@ import (
 	"github.com/koihq/koi/pkg/koiproviders/cloro"
 	"github.com/koihq/koi/pkg/koiproviders/logodev"
 	"github.com/koihq/koi/pkg/koiproviders/openrouter"
+	resendprovider "github.com/koihq/koi/pkg/koiproviders/resend"
 	"github.com/koihq/koi/pkg/koistripe"
 )
 
@@ -40,6 +41,8 @@ type Config struct {
 	SessionLifetime     time.Duration
 	OpenRouterAPIKey    string
 	CloroAPIKey         string
+	ResendAPIKey        string
+	EmailFrom           string
 	WorkerConcurrency   int
 	ProviderTimeout     time.Duration
 	DBMaxOpenConns      int
@@ -82,6 +85,11 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("KOI_DEPLOYMENT_MODE must be selfhosted or cloud")
 	}
 	cloroAPIKey := strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY"))
+	resendAPIKey := strings.TrimSpace(os.Getenv("KOI_RESEND_API_KEY"))
+	emailFrom := strings.TrimSpace(os.Getenv("KOI_EMAIL_FROM"))
+	if (resendAPIKey == "") != (emailFrom == "") {
+		return Config{}, fmt.Errorf("KOI_RESEND_API_KEY and KOI_EMAIL_FROM must be set together")
+	}
 	stripeSecretKey := strings.TrimSpace(os.Getenv("KOI_STRIPE_SECRET_KEY"))
 	stripeWebhookSecret := strings.TrimSpace(os.Getenv("KOI_STRIPE_WEBHOOK_SECRET"))
 	stripePriceID := strings.TrimSpace(os.Getenv("KOI_STRIPE_PRICE_ID"))
@@ -136,6 +144,8 @@ func LoadConfig() (Config, error) {
 		SessionLifetime:     sessionLifetime,
 		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
 		CloroAPIKey:         cloroAPIKey,
+		ResendAPIKey:        resendAPIKey,
+		EmailFrom:           emailFrom,
 		WorkerConcurrency:   workerConcurrency,
 		ProviderTimeout:     providerTimeout,
 		DBMaxOpenConns:      dbMaxOpenConns,
@@ -270,7 +280,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 	var riverClient *river.Client[*sql.Tx]
 	workers := a.workers
-	if sqlDB != nil && (a.cfg.OpenRouterAPIKey != "" || a.cfg.CloroAPIKey != "") {
+	if sqlDB != nil && (a.cfg.OpenRouterAPIKey != "" || a.cfg.CloroAPIKey != "" || a.cfg.ResendAPIKey != "") {
 		queues := map[string]river.QueueConfig{}
 		if workers == nil {
 			workers = river.NewWorkers()
@@ -294,6 +304,12 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					syncSlots: make(chan struct{}, a.cfg.WorkerConcurrency),
 				})
 			}
+			if a.cfg.ResendAPIKey != "" {
+				river.AddWorker(workers, &welcomeWorker{
+					store:  koidatabase.NewStore(db),
+					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
+				})
+			}
 		}
 		maintenance := &maintenanceWorker{}
 		river.AddWorker(workers, maintenance)
@@ -303,6 +319,9 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		}
 		if a.cfg.CloroAPIKey != "" {
 			queues["visibility"] = river.QueueConfig{MaxWorkers: a.cfg.WorkerConcurrency}
+		}
+		if a.cfg.ResendAPIKey != "" {
+			queues["email"] = river.QueueConfig{MaxWorkers: 1}
 		}
 		config := &river.Config{
 			Queues:          queues,
@@ -329,6 +348,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 	liveCollection := a.cfg.CloroAPIKey != "" && riverClient != nil
 	store := koidatabase.NewStore(db, riverClient).
+		WithWelcomeEmail(a.cfg.ResendAPIKey != "").
 		WithLiveCollection(liveCollection).WithCloudMode(a.cfg.DeploymentMode == "cloud")
 	var handler http.Handler
 	if a.cfg.DeploymentMode == "cloud" {

@@ -3,6 +3,7 @@ package koidomain
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -109,6 +110,10 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if err := c.store.EnqueueWelcomeEmail(ctx, me.User.ID); err != nil {
+		slog.Warn("welcome email enqueue failed", "user_id", me.User.ID, "err", err)
 	}
 
 	return me, nil

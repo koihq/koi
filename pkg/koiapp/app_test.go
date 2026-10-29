@@ -47,6 +47,23 @@ func TestLoadConfig(t *testing.T) {
 	require.Equal(t, 3, cfg.DBMaxOpenConns)
 }
 
+func TestLoadConfigWelcomeEmailPair(t *testing.T) {
+	t.Setenv("KOI_PORT", ":8080")
+	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
+	t.Setenv("KOI_SESSION_SECRET", "test-secret")
+	t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
+	t.Setenv("KOI_RESEND_API_KEY", "test-key")
+	t.Setenv("KOI_EMAIL_FROM", "")
+
+	_, err := LoadConfig()
+	require.ErrorContains(t, err, "KOI_EMAIL_FROM")
+
+	t.Setenv("KOI_EMAIL_FROM", "Koi <hello@mail.example.com>")
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	require.Equal(t, "test-key", cfg.ResendAPIKey)
+}
+
 func TestLoadConfigRequiredValues(t *testing.T) {
 	for _, tc := range []struct {
 		mode string
