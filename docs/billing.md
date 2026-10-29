@@ -91,9 +91,11 @@ After creating and validating the Price:
    local Vite development use `http://localhost:5173`; for a hosted environment use
    HTTPS. In development Vite proxies `/api` to the Go server.
 
-Required Cloud settings: `KOI_STRIPE_SECRET_KEY`, `KOI_STRIPE_WEBHOOK_SECRET`,
-`KOI_STRIPE_PRICE_ID`, `KOI_PUBLIC_URL`. The default self-hosted mode ignores them.
-Cloud mode also needs a Koi-operated `KOI_CLORO_API_KEY` to collect answers.
+Cloud mode requires `KOI_CLORO_API_KEY`, `KOI_STRIPE_SECRET_KEY`,
+`KOI_STRIPE_WEBHOOK_SECRET`, `KOI_STRIPE_PRICE_ID`, and `KOI_PUBLIC_URL` in
+addition to the common `KOI_PORT`, `KOI_DATABASE_URL`, and `KOI_SESSION_SECRET`.
+The default self-hosted mode does not require Cloro or Stripe credentials.
+Startup checks that the Cloro key is present, but does not contact Cloro to verify it.
 
 The account must be activated separately for live payments, with Stripe's business
 verification, payout and tax settings completed in its Dashboard. Use live API keys,

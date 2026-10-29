@@ -81,12 +81,14 @@ func LoadConfig() (Config, error) {
 	if mode != "selfhosted" && mode != "cloud" {
 		return Config{}, fmt.Errorf("KOI_DEPLOYMENT_MODE must be selfhosted or cloud")
 	}
+	cloroAPIKey := strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY"))
 	stripeSecretKey := strings.TrimSpace(os.Getenv("KOI_STRIPE_SECRET_KEY"))
 	stripeWebhookSecret := strings.TrimSpace(os.Getenv("KOI_STRIPE_WEBHOOK_SECRET"))
 	stripePriceID := strings.TrimSpace(os.Getenv("KOI_STRIPE_PRICE_ID"))
 	publicURL := strings.TrimSpace(os.Getenv("KOI_PUBLIC_URL"))
-	if mode == "cloud" && (stripeSecretKey == "" || stripeWebhookSecret == "" || stripePriceID == "" || publicURL == "") {
-		return Config{}, fmt.Errorf("cloud mode requires KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID and KOI_PUBLIC_URL")
+	if mode == "cloud" && (cloroAPIKey == "" || stripeSecretKey == "" || stripeWebhookSecret == "" ||
+		stripePriceID == "" || publicURL == "") {
+		return Config{}, fmt.Errorf("cloud mode requires KOI_CLORO_API_KEY, KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID and KOI_PUBLIC_URL")
 	}
 	if mode == "cloud" {
 		publicURL = strings.TrimRight(publicURL, "/")
@@ -118,6 +120,13 @@ func LoadConfig() (Config, error) {
 			return Config{}, fmt.Errorf("KOI_PROVIDER_TIMEOUT must be a positive duration")
 		}
 	}
+	if level := strings.ToLower(strings.TrimSpace(os.Getenv("KOI_LOG_LEVEL"))); level != "" &&
+		level != "debug" && level != "info" && level != "warn" && level != "warning" && level != "error" {
+		return Config{}, fmt.Errorf("KOI_LOG_LEVEL must be debug, info, warn, warning or error")
+	}
+	if format := strings.ToLower(strings.TrimSpace(os.Getenv("KOI_LOG_FORMAT"))); format != "" && format != "text" && format != "json" {
+		return Config{}, fmt.Errorf("KOI_LOG_FORMAT must be text or json")
+	}
 
 	return Config{
 		DeploymentMode:      mode,
@@ -126,7 +135,7 @@ func LoadConfig() (Config, error) {
 		SessionSecret:       sessionSecret,
 		SessionLifetime:     sessionLifetime,
 		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
-		CloroAPIKey:         strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY")),
+		CloroAPIKey:         cloroAPIKey,
 		WorkerConcurrency:   workerConcurrency,
 		ProviderTimeout:     providerTimeout,
 		DBMaxOpenConns:      dbMaxOpenConns,
@@ -153,7 +162,7 @@ func positiveIntEnv(key string, fallback int) (int, error) {
 
 func requireEnv(key string) (string, error) {
 	v, ok := os.LookupEnv(key)
-	if !ok || v == "" {
+	if !ok || strings.TrimSpace(v) == "" {
 		return "", fmt.Errorf("required env %s is not set", key)
 	}
 
@@ -181,7 +190,7 @@ func NewKoiApp() (*App, error) {
 func initLogger() {
 	level := slog.LevelInfo
 
-	switch strings.ToLower(os.Getenv("KOI_LOG_LEVEL")) {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("KOI_LOG_LEVEL"))) {
 	case "debug":
 		level = slog.LevelDebug
 	case "warn", "warning":
@@ -192,7 +201,7 @@ func initLogger() {
 
 	opts := &slog.HandlerOptions{Level: level}
 	var h slog.Handler
-	if strings.EqualFold(os.Getenv("KOI_LOG_FORMAT"), "json") {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("KOI_LOG_FORMAT")), "json") {
 		h = slog.NewJSONHandler(os.Stderr, opts)
 	} else {
 		h = slog.NewTextHandler(os.Stderr, opts)

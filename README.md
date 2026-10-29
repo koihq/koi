@@ -12,6 +12,7 @@ make dev
 ```
 
 Set `KOI_SESSION_SECRET` in `.env` to a random value (`openssl rand -base64 32`).
+It is currently required by configuration but is not used by the session manager.
 Live visibility collection requires a Cloro account and `KOI_CLORO_API_KEY`, including
 self-hosted installations. OpenRouter is optional: set `KOI_OPENROUTER_API_KEY` to enable
 onboarding research and prompt/competitor drafting. Without it, curate these lists manually.
