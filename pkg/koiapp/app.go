@@ -37,6 +37,7 @@ type Config struct {
 	HTTPAddr            string
 	DatabaseURL         string
 	SessionSecret       string
+	SessionLifetime     time.Duration
 	OpenRouterAPIKey    string
 	CloroAPIKey         string
 	WorkerConcurrency   int
@@ -64,6 +65,15 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+
+	sessionLifetime := 8 * time.Hour
+	if raw, ok := os.LookupEnv("KOI_SESSION_LIFETIME"); ok {
+		sessionLifetime, err = time.ParseDuration(raw)
+		if err != nil || sessionLifetime <= 0 {
+			return Config{}, fmt.Errorf("KOI_SESSION_LIFETIME must be a positive duration")
+		}
+	}
+
 	mode := strings.TrimSpace(os.Getenv("KOI_DEPLOYMENT_MODE"))
 	if mode == "" {
 		mode = "selfhosted"
@@ -114,6 +124,7 @@ func LoadConfig() (Config, error) {
 		HTTPAddr:            httpAddr,
 		DatabaseURL:         databaseURL,
 		SessionSecret:       sessionSecret,
+		SessionLifetime:     sessionLifetime,
 		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
 		CloroAPIKey:         strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY")),
 		WorkerConcurrency:   workerConcurrency,
@@ -233,7 +244,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 
 	sess := scs.New()
-	sess.Lifetime = 30 * 24 * time.Hour
+	sess.Lifetime = a.cfg.SessionLifetime
 	sess.Cookie.Name = "koi_session"
 	sess.Cookie.HttpOnly = true
 	sess.Cookie.SameSite = http.SameSiteLaxMode

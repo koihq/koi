@@ -31,6 +31,7 @@ func TestRunRiverMigrationsAndShutdown(t *testing.T) {
 	cfg := Config{
 		DatabaseURL:       scopedDSN,
 		SessionSecret:     "test-secret",
+		SessionLifetime:   8 * time.Hour,
 		WorkerConcurrency: 2,
 		ProviderTimeout:   45 * time.Second,
 		DBMaxOpenConns:    2,

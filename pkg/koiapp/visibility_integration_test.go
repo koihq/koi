@@ -130,6 +130,7 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	cfg := Config{
 		DatabaseURL:       testdb.URL(t),
 		SessionSecret:     "test-secret",
+		SessionLifetime:   8 * time.Hour,
 		WorkerConcurrency: 2,
 		ProviderTimeout:   45 * time.Second,
 		DBMaxOpenConns:    4,

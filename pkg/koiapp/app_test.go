@@ -15,7 +15,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
 	t.Setenv("KOI_SESSION_SECRET", "test-secret")
 
-	for _, key := range []string{"KOI_OPENROUTER_API_KEY", "KOI_WORKER_CONCURRENCY", "KOI_PROVIDER_TIMEOUT", "KOI_DB_MAX_OPEN_CONNS"} {
+	for _, key := range []string{"KOI_SESSION_LIFETIME", "KOI_OPENROUTER_API_KEY", "KOI_WORKER_CONCURRENCY", "KOI_PROVIDER_TIMEOUT", "KOI_DB_MAX_OPEN_CONNS"} {
 		t.Setenv(key, "")
 		require.NoError(t, os.Unsetenv(key))
 	}
@@ -23,17 +23,20 @@ func TestLoadConfig(t *testing.T) {
 	cfg, err := LoadConfig()
 	require.NoError(t, err)
 	require.Equal(t, 4, cfg.WorkerConcurrency)
+	require.Equal(t, 8*time.Hour, cfg.SessionLifetime)
 	require.Equal(t, 3*time.Minute, cfg.ProviderTimeout)
 	require.Equal(t, 12, cfg.DBMaxOpenConns)
 	require.Empty(t, cfg.OpenRouterAPIKey)
 
 	t.Setenv("KOI_OPENROUTER_API_KEY", " test-key ")
+	t.Setenv("KOI_SESSION_LIFETIME", "12h")
 	t.Setenv("KOI_WORKER_CONCURRENCY", "2")
 	t.Setenv("KOI_PROVIDER_TIMEOUT", "1m15s")
 	t.Setenv("KOI_DB_MAX_OPEN_CONNS", "3")
 	cfg, err = LoadConfig()
 	require.NoError(t, err)
 	require.Equal(t, "test-key", cfg.OpenRouterAPIKey)
+	require.Equal(t, 12*time.Hour, cfg.SessionLifetime)
 	require.Equal(t, 2, cfg.WorkerConcurrency)
 	require.Equal(t, 75*time.Second, cfg.ProviderTimeout)
 	require.Equal(t, 3, cfg.DBMaxOpenConns)
@@ -41,6 +44,10 @@ func TestLoadConfig(t *testing.T) {
 
 func TestLoadConfigRejectsInvalidValues(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
+		{"KOI_SESSION_LIFETIME", ""},
+		{"KOI_SESSION_LIFETIME", "0s"},
+		{"KOI_SESSION_LIFETIME", "-1h"},
+		{"KOI_SESSION_LIFETIME", "8"},
 		{"KOI_WORKER_CONCURRENCY", ""},
 		{"KOI_WORKER_CONCURRENCY", "0"},
 		{"KOI_WORKER_CONCURRENCY", "10001"},

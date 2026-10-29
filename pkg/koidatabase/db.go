@@ -13,6 +13,7 @@ import (
 
 func Open(dsn string) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		NowFunc: func() time.Time { return time.Now().UTC() },
 		Logger: logger.New(log.New(os.Stderr, "", log.LstdFlags), logger.Config{
 			SlowThreshold:             time.Second,
 			LogLevel:                  logger.Warn,
