@@ -3,6 +3,7 @@ package koiapi
 import (
 	"context"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 
@@ -34,6 +35,11 @@ func NewCloudServer(store koidomain.Store, sess *scs.SessionManager, searcher ko
 }
 
 func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager, searcher koidomain.CompanySearcher, aiDrafting, liveCollection bool, billing *BillingHandler) http.Handler {
+	logoKey := strings.TrimSpace(os.Getenv("VITE_LOGODEV_PUBLISHABLE_KEY"))
+	if !strings.HasPrefix(logoKey, "pk_") {
+		logoKey = ""
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middlewares.RequestIDHeader)
@@ -63,7 +69,13 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 				r.Route("/billing", billing.Routes())
 			}
 			r.Get("/capabilities", func(w http.ResponseWriter, req *http.Request) {
-				apiresponse.JSON(w, req, http.StatusOK, map[string]bool{"competitorSearch": searcher != nil, "aiDrafting": aiDrafting, "liveCollection": liveCollection, "cloudBilling": billing != nil})
+				apiresponse.JSON(w, req, http.StatusOK, map[string]any{
+					"competitorSearch":      searcher != nil,
+					"aiDrafting":            aiDrafting,
+					"liveCollection":        liveCollection,
+					"cloudBilling":          billing != nil,
+					"logoDevPublishableKey": logoKey,
+				})
 			})
 			var billingGuard func(http.Handler) http.Handler
 			if billing != nil {
