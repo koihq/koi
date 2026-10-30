@@ -24,6 +24,8 @@ export * from './CompetitorRequest';
 export * from './CompetitorRes';
 export * from './CompetitorVisibility';
 export * from './CountryOption';
+export * from './Credential';
+export * from './CredentialPage';
 export * from './CredentialsReq';
 export * from './Envelope';
 export * from './ErrorBody';

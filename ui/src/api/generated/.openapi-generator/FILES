@@ -3,6 +3,7 @@ apis/BillingApi.ts
 apis/BrandsApi.ts
 apis/CapabilitiesApi.ts
 apis/CompetitorsApi.ts
+apis/CredentialsApi.ts
 apis/GenerationsApi.ts
 apis/HealthApi.ts
 apis/PromptsApi.ts
@@ -32,6 +33,8 @@ models/CompetitorRequest.ts
 models/CompetitorRes.ts
 models/CompetitorVisibility.ts
 models/CountryOption.ts
+models/Credential.ts
+models/CredentialPage.ts
 models/CredentialsReq.ts
 models/Envelope.ts
 models/ErrorBody.ts

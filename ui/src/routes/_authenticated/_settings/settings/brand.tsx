@@ -20,12 +20,16 @@ import { brandsKey } from "@/lib/query-keys";
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/brand")({
   beforeLoad: async ({ context }) => {
+    if (!context.brand) throw redirect({ to: "/setup" });
+
     if (context.capabilities.cloudBilling) {
       const billing = await context.queryClient.fetchQuery(
         billingOptions(context.api, context.me.organization.id),
       );
       if (billing.promptLimit === 0) throw redirect({ to: "/settings/billing" });
     }
+
+    return { brand: context.brand };
   },
   component: BrandSettings,
 });

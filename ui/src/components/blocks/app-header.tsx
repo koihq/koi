@@ -68,6 +68,9 @@ export function AppHeader({ brand }: { brand: Brand }) {
             <DropdownMenuItem render={<Link to="/settings/brand" />}>
               {t("header.settings")}
             </DropdownMenuItem>
+            <DropdownMenuItem render={<Link to="/settings/connections" />}>
+              {t("header.connections")}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => changeTheme(theme === "dark" ? "light" : "dark")}>
               {t(theme === "dark" ? "header.lightMode" : "header.darkMode")}
             </DropdownMenuItem>

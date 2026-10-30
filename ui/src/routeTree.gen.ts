@@ -27,6 +27,7 @@ import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAppPromptsPromptIdRouteImport } from './routes/_authenticated/_app/prompts/$promptId'
 import { Route as AuthenticatedSettingsSettingsBillingRouteImport } from './routes/_authenticated/_settings/settings/billing'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
+import { Route as AuthenticatedSettingsSettingsConnectionsRouteImport } from './routes/_authenticated/_settings/settings/connections'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -119,6 +120,12 @@ const AuthenticatedSettingsSettingsBrandRoute =
     path: '/settings/brand',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsSettingsConnectionsRoute =
+  AuthenticatedSettingsSettingsConnectionsRouteImport.update({
+    id: '/settings/connections',
+    path: '/settings/connections',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedAppIndexRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/settings/connections': typeof AuthenticatedSettingsSettingsConnectionsRoute
   '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/settings/connections': typeof AuthenticatedSettingsSettingsConnectionsRoute
   '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRoutesById {
@@ -172,6 +181,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/_authenticated/_settings/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/_authenticated/_settings/settings/connections': typeof AuthenticatedSettingsSettingsConnectionsRoute
   '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRouteTypes {
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/prompts/$promptId'
     | '/settings/billing'
     | '/settings/brand'
+    | '/settings/connections'
     | '/competitors/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -207,6 +218,7 @@ export interface FileRouteTypes {
     | '/prompts/$promptId'
     | '/settings/billing'
     | '/settings/brand'
+    | '/settings/connections'
     | '/competitors'
   id:
     | '__root__'
@@ -227,6 +239,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/prompts/$promptId'
     | '/_authenticated/_settings/settings/billing'
     | '/_authenticated/_settings/settings/brand'
+    | '/_authenticated/_settings/settings/connections'
     | '/_authenticated/_app/competitors/'
   fileRoutesById: FileRoutesById
 }
@@ -365,6 +378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsSettingsBrandRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/_settings/settings/connections': {
+      id: '/_authenticated/_settings/settings/connections'
+      path: '/settings/connections'
+      fullPath: '/settings/connections'
+      preLoaderRoute: typeof AuthenticatedSettingsSettingsConnectionsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
   }
 }
 
@@ -386,6 +406,7 @@ const AuthenticatedAppRouteWithChildren =
 interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsSettingsBillingRoute: typeof AuthenticatedSettingsSettingsBillingRoute
   AuthenticatedSettingsSettingsBrandRoute: typeof AuthenticatedSettingsSettingsBrandRoute
+  AuthenticatedSettingsSettingsConnectionsRoute: typeof AuthenticatedSettingsSettingsConnectionsRoute
 }
 
 const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
@@ -393,6 +414,8 @@ const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
     AuthenticatedSettingsSettingsBillingRoute,
   AuthenticatedSettingsSettingsBrandRoute:
     AuthenticatedSettingsSettingsBrandRoute,
+  AuthenticatedSettingsSettingsConnectionsRoute:
+    AuthenticatedSettingsSettingsConnectionsRoute,
 }
 
 const AuthenticatedSettingsRouteWithChildren =

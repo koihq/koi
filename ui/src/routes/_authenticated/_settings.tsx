@@ -1,12 +1,15 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { AppHeader } from "@/components/blocks/app-header";
+import { KoiMark } from "@/components/blocks/koi-mark";
 import { RouteLoadError } from "@/components/blocks/route-load-error";
 
 export const Route = createFileRoute("/_authenticated/_settings")({
-  beforeLoad: ({ context }) => {
-    if (!context.brand) throw redirect({ to: "/setup" });
+  beforeLoad: ({ context, location }) => {
+    if (!context.brand && location.pathname !== "/settings/connections") {
+      throw redirect({ to: "/setup" });
+    }
 
     return { brand: context.brand };
   },
@@ -26,13 +29,21 @@ function SettingsLayout() {
       >
         {t("skip")}
       </a>
-      <AppHeader brand={brand} />
+      {brand ? (
+        <AppHeader brand={brand} />
+      ) : (
+        <header className="mx-auto flex w-full max-w-[1376px] items-center px-4 pt-5 pb-6 sm:px-7 sm:pt-7 sm:pb-10">
+          <Link to="/setup" aria-label="Koi">
+            <KoiMark className="size-8" />
+          </Link>
+        </header>
+      )}
       <main
         id="settings-content"
         tabIndex={-1}
         className="mx-auto w-full max-w-[1320px] px-4 pb-10 sm:px-7"
       >
-        <Outlet key={brand.id} />
+        <Outlet key={brand?.id ?? "account"} />
       </main>
     </div>
   );

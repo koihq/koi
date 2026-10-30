@@ -1,0 +1,18 @@
+{
+  "title": "Agent access",
+  "description": "Review and revoke apps connected through Koi.",
+  "cancel": "Cancel",
+  "retry": "Retry",
+  "pagination": "Agent access pages",
+  "emptyConnections": "No connected apps yet.",
+  "revoke": "Revoke",
+  "revokeTitle": "Revoke access?",
+  "revokeDescription": "This connection will stop working immediately.",
+  "loading": "Loading access…",
+  "loadError": "Could not load access. Try again.",
+  "revokeError": "Could not revoke access. Try again.",
+  "expires": "Expires {date}",
+  "page": "Page {current} of {total}",
+  "previous": "Previous",
+  "next": "Next"
+}

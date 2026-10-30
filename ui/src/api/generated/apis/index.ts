@@ -6,6 +6,7 @@ export * from './BillingApi';
 export * from './BrandsApi';
 export * from './CapabilitiesApi';
 export * from './CompetitorsApi';
+export * from './CredentialsApi';
 export * from './GenerationsApi';
 export * from './HealthApi';
 export * from './PromptsApi';
