@@ -6,6 +6,7 @@ servers:
   - url: /
 tags:
   - name: auth
+  - name: credentials
   - name: brands
   - name: prompts
   - name: competitors
@@ -215,6 +216,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/CapabilitiesResponse"
         "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/credentials:
+    get:
+      tags: [credentials]
+      operationId: listCredentials
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: OAuth connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialPage"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/credentials/{id}:
+    delete:
+      tags: [credentials]
+      operationId: revokeCredential
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Revoked
+        default:
           $ref: "#/components/responses/Error"
   /api/v1/auth/signup:
     post:
@@ -1726,6 +1763,28 @@ components:
           items:
             type: string
             format: uri
+    Credential:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        clientId: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    CredentialPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Credential"
+        totalItems: { type: integer, format: int64 }
+        totalPages: { type: integer, format: int64 }
+        currentPage: { type: integer }
+        hasNext: { type: boolean }
+        hasPrev: { type: boolean }
     CredentialsReq:
       type: object
       required: [email, password]

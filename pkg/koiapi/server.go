@@ -13,6 +13,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-chi/render"
 	"github.com/google/uuid"
+	"github.com/modelcontextprotocol/go-sdk/auth"
+	"github.com/modelcontextprotocol/go-sdk/oauthex"
 
 	"github.com/koihq/koi/pkg/koiapi/middlewares"
 	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
@@ -55,6 +57,22 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 	r.Use(sess.LoadAndSave)
 
 	r.Get("/health", NewHealthHandler(store).Get)
+	var credentials koidomain.CredentialService
+	if store.CredentialRepo() != nil {
+		credentials = koidomain.NewCredentialService(store)
+		r.Handle("/mcp", bearerIdentity(store, credentials, newMCPHandler(store, searcher, aiDrafting, billing)))
+		oauth := &oauthHandler{store: credentials, domain: store, sess: sess, origin: oauthOrigin()}
+		metadata := auth.ProtectedResourceMetadataHandler(&oauthex.ProtectedResourceMetadata{Resource: oauth.resourceURL(), AuthorizationServers: []string{oauth.origin}, ScopesSupported: []string{"koi:read", "koi:write"}, BearerMethodsSupported: []string{"header"}})
+		r.Handle("/.well-known/oauth-protected-resource", metadata)
+		r.Handle("/.well-known/oauth-protected-resource/mcp", metadata)
+		r.Get("/.well-known/oauth-authorization-server", oauth.serverMetadata)
+		r.Get("/.well-known/oauth-authorization-server/oauth", oauth.serverMetadata)
+		r.Post("/oauth/register", oauth.register)
+		r.Get("/oauth/authorize", oauth.authorize)
+		r.Post("/oauth/authorize", oauth.authorizePost)
+		r.Post("/oauth/token", oauth.token)
+		r.Post("/oauth/revoke", oauth.revoke)
+	}
 	authenticate := middlewares.Authenticate(sess, func(ctx context.Context, userID uuid.UUID) (koiauth.Identity, error) {
 		return koidomain.ResolveIdentity(ctx, store, userID)
 	})
@@ -65,6 +83,9 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 		}
 		r.Group(func(r chi.Router) {
 			r.Use(authenticate)
+			if credentials != nil {
+				r.Mount("/credentials", credentialRoutes(credentials))
+			}
 			if billing != nil {
 				r.Route("/billing", billing.Routes())
 			}

@@ -2935,6 +2935,52 @@ func (_c *MockStore_CompetitorRepo_Call) RunAndReturn(run func() koidomain.Compe
 	return _c
 }
 
+// CredentialRepo provides a mock function for the type MockStore
+func (_mock *MockStore) CredentialRepo() koidomain.CredentialRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for CredentialRepo")
+	}
+
+	var r0 koidomain.CredentialRepository
+	if returnFunc, ok := ret.Get(0).(func() koidomain.CredentialRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(koidomain.CredentialRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_CredentialRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CredentialRepo'
+type MockStore_CredentialRepo_Call struct {
+	*mock.Call
+}
+
+// CredentialRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) CredentialRepo() *MockStore_CredentialRepo_Call {
+	return &MockStore_CredentialRepo_Call{Call: _e.mock.On("CredentialRepo")}
+}
+
+func (_c *MockStore_CredentialRepo_Call) Run(run func()) *MockStore_CredentialRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_CredentialRepo_Call) Return(credentialRepository koidomain.CredentialRepository) *MockStore_CredentialRepo_Call {
+	_c.Call.Return(credentialRepository)
+	return _c
+}
+
+func (_c *MockStore_CredentialRepo_Call) RunAndReturn(run func() koidomain.CredentialRepository) *MockStore_CredentialRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EnqueueWelcomeEmail provides a mock function for the type MockStore
 func (_mock *MockStore) EnqueueWelcomeEmail(context1 context.Context, uUID uuid.UUID) error {
 	ret := _mock.Called(context1, uUID)

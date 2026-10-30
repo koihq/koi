@@ -90,6 +90,10 @@ func (s *Store) MembershipRepo() koidomain.MembershipRepository {
 	return NewGormMembershipRepository(s.db)
 }
 
+func (s *Store) CredentialRepo() koidomain.CredentialRepository {
+	return NewGormCredentialRepository(s.db)
+}
+
 func (s *Store) BillingRepo() koidomain.BillingRepository {
 	return NewBillingRepository(s.db)
 }
