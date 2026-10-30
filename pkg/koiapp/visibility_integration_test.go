@@ -154,9 +154,12 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	base := "http://" + address + "/api/v1"
 	visibilityHTTP(t, client, http.MethodPost, base+"/auth/signup",
 		`{"email":"visibility-`+uuid.NewString()+`@example.com","password":"password123"}`, 201, nil)
-	var capabilities map[string]bool
+	var capabilities struct {
+		AIDrafting     bool `json:"aiDrafting"`
+		LiveCollection bool `json:"liveCollection"`
+	}
 	visibilityHTTP(t, client, http.MethodGet, base+"/capabilities", "", 200, &capabilities)
-	require.False(t, capabilities["aiDrafting"])
+	require.False(t, capabilities.AIDrafting)
 	var brand koiapi.BrandRes
 	visibilityHTTP(t, client, http.MethodPost, base+"/brands",
 		`{"name":"Koi","domain":"koi.dev","country":"IT"}`, 201, &brand)
@@ -176,7 +179,7 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	var runs koidomain.Page[koidomain.VisibilityRun]
 	visibilityHTTP(t, client, http.MethodGet, base+"/runs?brandId="+brand.ID.String(), "", 200, &runs)
 	require.Empty(t, runs.Items)
-	require.False(t, capabilities["liveCollection"])
+	require.False(t, capabilities.LiveCollection)
 
 	cancel()
 	require.NoError(t, waitApp(t, done))
