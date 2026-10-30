@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Competitor, UpdateCompetitor } from "@/api/competitors.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
+import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
 import { TrackingReview } from "@/components/blocks/tracking-review";
@@ -54,6 +55,69 @@ function CompetitorPage() {
   function update(id: string, request: UpdateCompetitor) {
     return mutations.update.mutateAsync({ id, request }).then(() => undefined);
   }
+
+  const columns: DataTableColumn<Competitor>[] = [
+    {
+      id: "name",
+      header: t("name"),
+      cell: (item) => <BrandPill name={item.name} domain={item.domain} />,
+    },
+    {
+      id: "identity",
+      header: t("domain"),
+      cellClassName: "max-w-64 whitespace-normal break-all text-muted-foreground",
+      cell: (item) => item.domain || item.githubRepo || t("competitorIdentityNeeded"),
+    },
+    {
+      id: "status",
+      header: t("sourceStatus"),
+      cell: (item) =>
+        `${t(item.source)}${t("statusSeparator")}${t(item.confirmed ? "confirmed" : "unconfirmed")}`,
+    },
+    {
+      id: "actions",
+      header: t("actions"),
+      headClassName: "text-end",
+      cellClassName: "text-end",
+      cell: (item) => (
+        <div className="inline-flex items-center gap-2">
+          {!item.domain && !item.githubRepo && (
+            <Button variant="ghost" size="sm" onClick={() => edit(item)}>
+              {t("addIdentity")}
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label={t("home:dashboard.competitorActions", { name: item.name })}
+              className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <HugeiconsIcon icon={MoreHorizontalIcon} size={18} aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!item.confirmed && (item.domain || item.githubRepo) && (
+                <DropdownMenuItem
+                  disabled={pending}
+                  onClick={() => mutations.confirm.mutate(item.id)}
+                >
+                  {t("confirm")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem disabled={pending} onClick={() => edit(item)}>
+                {t("edit")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={pending}
+                onClick={() => remove(item)}
+              >
+                {t(item.source === "observed" && !item.confirmed ? "dismiss" : "delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="pb-24">
@@ -121,61 +185,12 @@ function CompetitorPage() {
         ) : list.competitors.isPending || list.competitors.isPlaceholderData ? (
           <p className="py-8 text-sm text-muted-foreground">{t("loading")}</p>
         ) : items.length ? (
-          <ul className="grid gap-1">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex min-h-[68px] items-center justify-between gap-4 rounded-md p-2 hover:bg-muted focus-within:bg-muted"
-              >
-                <div className="min-w-0">
-                  <BrandPill name={item.name} domain={item.domain} />
-                  <p className="text-xs font-normal text-muted-foreground mt-2 break-all">
-                    {item.domain || item.githubRepo || t("competitorIdentityNeeded")}
-                  </p>
-                  {item.source === "observed" && !item.confirmed && (
-                    <p className="text-xs font-normal text-muted-foreground mt-1">
-                      {t("observed")}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  {!item.domain && !item.githubRepo && (
-                    <Button variant="ghost" size="sm" onClick={() => edit(item)}>
-                      {t("addIdentity")}
-                    </Button>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      aria-label={t("home:dashboard.competitorActions", { name: item.name })}
-                      className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <HugeiconsIcon icon={MoreHorizontalIcon} size={18} aria-hidden="true" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {!item.confirmed && (item.domain || item.githubRepo) && (
-                        <DropdownMenuItem
-                          disabled={pending}
-                          onClick={() => mutations.confirm.mutate(item.id)}
-                        >
-                          {t("confirm")}
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem disabled={pending} onClick={() => edit(item)}>
-                        {t("edit")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        disabled={pending}
-                        onClick={() => remove(item)}
-                      >
-                        {t(item.source === "observed" && !item.confirmed ? "dismiss" : "delete")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <DataTable
+            ariaLabel={t("competitors")}
+            data={items}
+            columns={columns}
+            getRowId={(item) => item.id}
+          />
         ) : (
           <p className="py-8 text-sm text-muted-foreground">
             {list.table.q || list.table.status !== "all"

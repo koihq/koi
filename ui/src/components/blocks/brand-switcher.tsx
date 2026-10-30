@@ -68,7 +68,12 @@ export function BrandSwitcher({ brand }: { brand: Brand }) {
           title={brand.name}
           className="inline-flex max-w-full items-center gap-2 rounded-full p-1 pe-3 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <BrandIcon name={brand.name} domain={brand.domain} className="size-6" />
+          <BrandIcon
+            name={brand.name}
+            domain={brand.domain}
+            lookupLogo={false}
+            className="size-6"
+          />
           <span className="max-w-40 truncate text-sm">{brand.name}</span>
         </ComboboxTrigger>
         <ComboboxContent className="w-80 max-w-[calc(100vw-32px)]">
@@ -89,7 +94,7 @@ export function BrandSwitcher({ brand }: { brand: Brand }) {
           <ComboboxList>
             {search.items.map((item) => (
               <ComboboxItem key={item.id} value={item}>
-                <BrandIcon name={item.name} domain={item.domain} />
+                <BrandIcon name={item.name} domain={item.domain} lookupLogo={false} />
                 <span className="min-w-0 flex-1 pe-4">
                   <span className="block truncate" title={item.name}>
                     {item.name}
