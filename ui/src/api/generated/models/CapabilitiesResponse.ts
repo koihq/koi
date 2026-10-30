@@ -44,6 +44,12 @@ export interface CapabilitiesResponse {
      * @memberof CapabilitiesResponse
      */
     aiDrafting: boolean;
+    /**
+     * Logo.dev publishable key for browser image requests; empty when unavailable.
+     * @type {string}
+     * @memberof CapabilitiesResponse
+     */
+    logoDevPublishableKey: string;
 }
 
 /**
@@ -54,6 +60,7 @@ export function instanceOfCapabilitiesResponse(value: object): value is Capabili
     if (!('liveCollection' in value) || value['liveCollection'] === undefined) return false;
     if (!('competitorSearch' in value) || value['competitorSearch'] === undefined) return false;
     if (!('aiDrafting' in value) || value['aiDrafting'] === undefined) return false;
+    if (!('logoDevPublishableKey' in value) || value['logoDevPublishableKey'] === undefined) return false;
     return true;
 }
 
@@ -71,6 +78,7 @@ export function CapabilitiesResponseFromJSONTyped(json: any, ignoreDiscriminator
         'liveCollection': json['liveCollection'],
         'competitorSearch': json['competitorSearch'],
         'aiDrafting': json['aiDrafting'],
+        'logoDevPublishableKey': json['logoDevPublishableKey'],
     };
 }
 
@@ -89,6 +97,7 @@ export function CapabilitiesResponseToJSONTyped(value?: CapabilitiesResponse | n
         'liveCollection': value['liveCollection'],
         'competitorSearch': value['competitorSearch'],
         'aiDrafting': value['aiDrafting'],
+        'logoDevPublishableKey': value['logoDevPublishableKey'],
     };
 }
 

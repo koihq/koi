@@ -1,6 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "cn";
 import { useState } from "react";
+import { useApi } from "@/api/apiProvider";
 import { useDarkMode } from "@/hooks/use-dark-mode";
+import { capabilitiesOptions } from "@/lib/queries";
 
 type LogoAppearance = {
   fit?: "image" | "symbol";
@@ -57,6 +60,7 @@ export function BrandIcon({
   className?: string;
 }) {
   const dark = useDarkMode();
+  const capabilities = useQuery(capabilitiesOptions(useApi()));
   const {
     fit = "symbol",
     background,
@@ -66,7 +70,7 @@ export function BrandIcon({
     src ??
     logoDevURL(
       domain,
-      import.meta.env.VITE_LOGODEV_PUBLISHABLE_KEY,
+      capabilities.data?.logoDevPublishableKey,
       theme ?? (dark ? "dark" : "light"),
     );
   const logoKey = src ?? domain.toLowerCase();

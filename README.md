@@ -19,7 +19,16 @@ onboarding research and prompt/competitor drafting. Without it, curate these lis
 
 Logo.dev keys are optional: without them, add competitors by name and domain in the UI
 and use initial-letter icons. Set `LOGODEV_SECRET_KEY` to enable company search;
-set `VITE_LOGODEV_PUBLISHABLE_KEY` before building the UI to show logos.
+set `VITE_LOGODEV_PUBLISHABLE_KEY` in the running instance to show logos.
+The publishable `pk_` key is sent to the browser through the capabilities API;
+keep `LOGODEV_SECRET_KEY` on the server only. A missing publishable key keeps
+initial-letter icons, including in self-hosted installations.
+
+Welcome emails are optional. Verify a sending domain in Resend, then set both
+`KOI_RESEND_API_KEY` and `KOI_EMAIL_FROM` (for example, `Koi <hello@mail.example.com>`).
+Set `KOI_PUBLIC_URL` to the browser origin to include a “Set up your brand” link;
+without it, the email has no link. Each self-hosted instance uses its own Resend
+account and credentials. Without the Resend variables, signup works without email.
 
 Dev serves the UI with Vite HMR at `http://localhost:5173` and the API (Air) at `:8080`. Vite proxies `/health` and `/api` to the API. Check `GET http://localhost:5173/health` — `{ "status": "ok", "db": "ok"|"down" }`.
 

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 	"gorm.io/gorm"
 
@@ -16,6 +17,7 @@ var errNoDatabase = errors.New("database not connected")
 type Store struct {
 	liveCollection bool
 	cloudMode      bool
+	welcomeEmail   bool
 	db             *gorm.DB
 	enqueueClient  *river.Client[*sql.Tx]
 }
@@ -48,8 +50,32 @@ func (s *Store) Atomic(ctx context.Context, fn func(koidomain.Store) error) erro
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return fn(&Store{db: tx, enqueueClient: s.enqueueClient, liveCollection: s.liveCollection, cloudMode: s.cloudMode})
+		return fn(&Store{db: tx, enqueueClient: s.enqueueClient, liveCollection: s.liveCollection, cloudMode: s.cloudMode, welcomeEmail: s.welcomeEmail})
 	})
+}
+
+type WelcomeJobArgs struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (WelcomeJobArgs) Kind() string { return "koi_welcome_email" }
+
+func (s *Store) WithWelcomeEmail(enabled bool) *Store {
+	s.welcomeEmail = enabled
+	return s
+}
+
+func (s *Store) EnqueueWelcomeEmail(ctx context.Context, userID uuid.UUID) error {
+	if !s.welcomeEmail || s.enqueueClient == nil {
+		return nil
+	}
+
+	_, err := s.enqueueClient.Insert(ctx, WelcomeJobArgs{UserID: userID}, &river.InsertOpts{
+		Queue:       "email",
+		MaxAttempts: 3,
+	})
+
+	return err
 }
 
 func (s *Store) UserRepo() koidomain.UserRepository {

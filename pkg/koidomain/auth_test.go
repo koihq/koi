@@ -59,6 +59,7 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	d.users.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignUserID)
 	d.orgs.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignOrgID)
 	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
+	d.store.EXPECT().EnqueueWelcomeEmail(mock.Anything, mock.Anything).Return(nil)
 
 	me, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
 		Email:    "You@Example.com",
@@ -84,6 +85,23 @@ func TestSignup_DuplicateEmail(t *testing.T) {
 	})
 
 	require.ErrorIs(t, err, ErrEmailTaken)
+}
+
+func TestSignup_QueueFailureDoesNotFailSignup(t *testing.T) {
+	d := newAuthDeps(t)
+	d.mockAtomic()
+	d.users.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignUserID)
+	d.orgs.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignOrgID)
+	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
+	d.store.EXPECT().EnqueueWelcomeEmail(mock.Anything, mock.Anything).Return(errors.New("queue unavailable"))
+
+	me, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
+		Email:    "you@example.com",
+		Password: "password1",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "you@example.com", me.User.Email)
 }
 
 func TestLogin_WrongPasswordAndUnknownEmail(t *testing.T) {

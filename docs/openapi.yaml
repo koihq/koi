@@ -1774,7 +1774,7 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling]
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey]
       properties:
         cloudBilling:
           type: boolean
@@ -1784,6 +1784,9 @@ components:
           type: boolean
         aiDrafting:
           type: boolean
+        logoDevPublishableKey:
+          type: string
+          description: Logo.dev publishable key for browser image requests; empty when unavailable.
     BillingAllowanceRequest:
       type: object
       required: [prompts]

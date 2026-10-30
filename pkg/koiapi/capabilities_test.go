@@ -25,6 +25,8 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 		searcher        koidomain.CompanySearcher
 		searchEnabled   bool
 		draftingEnabled bool
+		logoKey         string
+		expectedLogoKey string
 	}{
 		{
 			name: "unconfigured",
@@ -38,8 +40,19 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 			name:            "drafting configured",
 			draftingEnabled: true,
 		},
+		{
+			name:            "publishable logo key",
+			logoKey:         "pk_test",
+			expectedLogoKey: "pk_test",
+		},
+		{
+			name:    "secret logo key is not exposed",
+			logoKey: "sk_test",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("VITE_LOGODEV_PUBLISHABLE_KEY", tc.logoKey)
+
 			sess := scs.New()
 			sess.Cookie.Name = "koi_session"
 			app := NewServer(sessionStore(t), sess, tc.searcher, tc.draftingEnabled)
@@ -69,13 +82,15 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 			resp.Body.Close()
 			resp = doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/capabilities", "")
 			var body struct {
-				CompetitorSearch bool `json:"competitorSearch"`
-				AIDrafting       bool `json:"aiDrafting"`
+				CompetitorSearch      bool   `json:"competitorSearch"`
+				AIDrafting            bool   `json:"aiDrafting"`
+				LogoDevPublishableKey string `json:"logoDevPublishableKey"`
 			}
 			readJSON(t, resp, &body)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 			require.Equal(t, tc.searchEnabled, body.CompetitorSearch)
 			require.Equal(t, tc.draftingEnabled, body.AIDrafting)
+			require.Equal(t, tc.expectedLogoKey, body.LogoDevPublishableKey)
 		})
 	}
 }
