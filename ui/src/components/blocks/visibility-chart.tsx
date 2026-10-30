@@ -62,7 +62,12 @@ function endpointLabel(
       >
         <div className="flex h-7 w-[72px] items-center justify-center gap-1 rounded-full bg-(--signal-pill) text-xs font-medium text-foreground tabular-nums">
           {otherRate !== null && (
-            <BrandIcon name={brand.name} domain={brand.domain} className="size-3" />
+            <BrandIcon
+              name={brand.name}
+              domain={brand.domain}
+              lookupLogo={isComparison}
+              className="size-3"
+            />
           )}
           <span>{`${rate.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}</span>
         </div>

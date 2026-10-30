@@ -50,17 +50,19 @@ export function BrandIcon({
   name,
   domain = "",
   src,
+  lookupLogo = true,
   appearance,
   className,
 }: {
   name: string;
   domain?: string;
   src?: string;
+  lookupLogo?: boolean;
   appearance?: LogoAppearance;
   className?: string;
 }) {
   const dark = useDarkMode();
-  const capabilities = useQuery(capabilitiesOptions(useApi()));
+  const capabilities = useQuery({ ...capabilitiesOptions(useApi()), enabled: lookupLogo && !src });
   const {
     fit = "symbol",
     background,
@@ -68,11 +70,13 @@ export function BrandIcon({
   } = { ...logoOverrides[domain.toLowerCase()], ...appearance };
   const logoURL =
     src ??
-    logoDevURL(
-      domain,
-      capabilities.data?.logoDevPublishableKey,
-      theme ?? (dark ? "dark" : "light"),
-    );
+    (lookupLogo
+      ? logoDevURL(
+          domain,
+          capabilities.data?.logoDevPublishableKey,
+          theme ?? (dark ? "dark" : "light"),
+        )
+      : null);
   const logoKey = src ?? domain.toLowerCase();
   const [failedLogoKey, setFailedLogoKey] = useState<string>();
   const showLogo = logoURL !== null && failedLogoKey !== logoKey;

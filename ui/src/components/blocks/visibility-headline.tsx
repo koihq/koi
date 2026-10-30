@@ -64,7 +64,12 @@ export function VisibilityHeadline({
           { subject: competitor, value: comparisonRate },
         ].map(({ subject, value }) => (
           <span key={subject.id} className="inline-flex items-center gap-2 whitespace-nowrap">
-            <BrandIcon name={subject.name} domain={subject.domain} className="size-6" />
+            <BrandIcon
+              name={subject.name}
+              domain={subject.domain}
+              lookupLogo={subject.id !== brand.id}
+              className="size-6"
+            />
             <strong className="text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums">
               <RateValue value={value} locale={locale} animated={animated} />
             </strong>

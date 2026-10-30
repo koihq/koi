@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
+import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
@@ -41,14 +42,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
@@ -364,6 +357,73 @@ export function PromptManager({
       </div>
     ) : null;
 
+  const columns: DataTableColumn<PromptRow>[] = [
+    {
+      id: "select",
+      header: visibleLiveIDs.length > 0 && (
+        <PromptSelectCheckbox
+          label={t("home:dashboard.selectPage")}
+          checked={selectedVisible.length === visibleLiveIDs.length}
+          indeterminate={
+            selectedVisible.length > 0 && selectedVisible.length < visibleLiveIDs.length
+          }
+          onChange={(checked) =>
+            setSelected((current) =>
+              checked
+                ? [...new Set([...current, ...visibleLiveIDs])]
+                : current.filter((id) => !visibleLiveIDs.includes(id)),
+            )
+          }
+        />
+      ),
+      headClassName: `${promptHeadClass} w-[4%] text-center`,
+      cellClassName: `${promptCellClass} rounded-s-md text-center`,
+      cell: (row) =>
+        !row.past && (
+          <PromptSelectCheckbox
+            label={t("home:dashboard.selectPrompt", { text: row.text })}
+            checked={selectedVisible.includes(row.id)}
+            onChange={() => select(row.id)}
+          />
+        ),
+    },
+    {
+      id: "prompt",
+      header: t("prompt"),
+      headClassName: `${promptHeadClass} w-[31%]`,
+      cellClassName: promptCellClass,
+      cell: renderPrompt,
+    },
+    {
+      id: "rate",
+      header: t("home:dashboard.yourRate"),
+      headClassName: `${promptHeadClass} w-[23%]`,
+      cellClassName: promptCellClass,
+      cell: renderRate,
+    },
+    {
+      id: "engines",
+      header: t("home:dashboard.byEngine"),
+      headClassName: `${promptHeadClass} w-[14%]`,
+      cellClassName: promptCellClass,
+      cell: renderEngines,
+    },
+    {
+      id: "brands",
+      header: t("home:dashboard.mostMentionedBrands"),
+      headClassName: `${promptHeadClass} w-[19%]`,
+      cellClassName: promptCellClass,
+      cell: renderBrands,
+    },
+    {
+      id: "actions",
+      header: t("actions"),
+      headClassName: `${promptHeadClass} w-[9%]`,
+      cellClassName: `${promptCellClass} rounded-e-md`,
+      cell: renderActions,
+    },
+  ];
+
   return (
     <section
       id="prompts"
@@ -501,74 +561,16 @@ export function PromptManager({
         ) : (
           <>
             <div className="hidden min-[1101px]:block">
-              <Table
-                aria-label={t("tableLabel")}
+              <DataTable
+                ariaLabel={t("tableLabel")}
                 className="prompt-table table-fixed border-separate border-spacing-y-1"
-              >
-                <TableHeader>
-                  <TableRow className="border-0 hover:bg-transparent">
-                    <TableHead className={`${promptHeadClass} w-[4%] text-center`}>
-                      {visibleLiveIDs.length > 0 && (
-                        <PromptSelectCheckbox
-                          label={t("home:dashboard.selectPage")}
-                          checked={
-                            visibleLiveIDs.length > 0 &&
-                            selectedVisible.length === visibleLiveIDs.length
-                          }
-                          indeterminate={
-                            selectedVisible.length > 0 &&
-                            selectedVisible.length < visibleLiveIDs.length
-                          }
-                          onChange={(checked) =>
-                            setSelected((current) =>
-                              checked
-                                ? [...new Set([...current, ...visibleLiveIDs])]
-                                : current.filter((id) => !visibleLiveIDs.includes(id)),
-                            )
-                          }
-                        />
-                      )}
-                    </TableHead>
-                    <TableHead className={`${promptHeadClass} w-[31%]`}>{t("prompt")}</TableHead>
-                    <TableHead className={`${promptHeadClass} w-[23%]`}>
-                      {t("home:dashboard.yourRate")}
-                    </TableHead>
-                    <TableHead className={`${promptHeadClass} w-[14%]`}>
-                      {t("home:dashboard.byEngine")}
-                    </TableHead>
-                    <TableHead className={`${promptHeadClass} w-[19%]`}>
-                      {t("home:dashboard.mostMentionedBrands")}
-                    </TableHead>
-                    <TableHead className={`${promptHeadClass} w-[9%]`}>{t("actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visible.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="group border-0 transition-none hover:bg-transparent"
-                      data-selected={selectedVisible.includes(row.id) || undefined}
-                    >
-                      <TableCell className={`${promptCellClass} rounded-s-md text-center`}>
-                        {!row.past && (
-                          <PromptSelectCheckbox
-                            label={t("home:dashboard.selectPrompt", { text: row.text })}
-                            checked={selectedVisible.includes(row.id)}
-                            onChange={() => select(row.id)}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell className={promptCellClass}>{renderPrompt(row)}</TableCell>
-                      <TableCell className={promptCellClass}>{renderRate(row)}</TableCell>
-                      <TableCell className={promptCellClass}>{renderEngines(row)}</TableCell>
-                      <TableCell className={promptCellClass}>{renderBrands(row)}</TableCell>
-                      <TableCell className={`${promptCellClass} rounded-e-md`}>
-                        {renderActions(row)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                headerRowClassName="border-0 hover:bg-transparent"
+                data={visible}
+                columns={columns}
+                getRowId={(row) => row.id}
+                rowClassName={() => "group border-0 transition-none hover:bg-transparent"}
+                isRowSelected={(row) => selectedVisible.includes(row.id)}
+              />
             </div>
             {visibleLiveIDs.length > 0 && (
               <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground min-[1101px]:hidden">
