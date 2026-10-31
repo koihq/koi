@@ -1833,7 +1833,7 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey]
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey, mcpUrl]
       properties:
         cloudBilling:
           type: boolean
@@ -1843,6 +1843,9 @@ components:
           type: boolean
         aiDrafting:
           type: boolean
+        mcpUrl:
+          type: string
+          description: Public MCP endpoint URL for this instance.
         logoDevPublishableKey:
           type: string
           description: Logo.dev publishable key for browser image requests; empty when unavailable.

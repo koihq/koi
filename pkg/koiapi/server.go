@@ -61,7 +61,7 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 	if store.CredentialRepo() != nil {
 		credentials = koidomain.NewCredentialService(store)
 		r.Handle("/mcp", bearerIdentity(store, credentials, newMCPHandler(store, searcher, aiDrafting, billing)))
-		oauth := &oauthHandler{store: credentials, domain: store, sess: sess, origin: oauthOrigin()}
+		oauth := &oauthHandler{store: credentials, sess: sess, origin: oauthOrigin()}
 		metadata := auth.ProtectedResourceMetadataHandler(&oauthex.ProtectedResourceMetadata{Resource: oauth.resourceURL(), AuthorizationServers: []string{oauth.origin}, ScopesSupported: []string{"koi:read", "koi:write"}, BearerMethodsSupported: []string{"header"}})
 		r.Handle("/.well-known/oauth-protected-resource", metadata)
 		r.Handle("/.well-known/oauth-protected-resource/mcp", metadata)
@@ -69,7 +69,8 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 		r.Get("/.well-known/oauth-authorization-server/oauth", oauth.serverMetadata)
 		r.Post("/oauth/register", oauth.register)
 		r.Get("/oauth/authorize", oauth.authorize)
-		r.Post("/oauth/authorize", oauth.authorizePost)
+		r.Get("/api/v1/oauth/consent", oauth.consent)
+		r.Post("/api/v1/oauth/consent", oauth.authorizePost)
 		r.Post("/oauth/token", oauth.token)
 		r.Post("/oauth/revoke", oauth.revoke)
 	}
@@ -95,6 +96,7 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 					"aiDrafting":            aiDrafting,
 					"liveCollection":        liveCollection,
 					"cloudBilling":          billing != nil,
+					"mcpUrl":                oauthOrigin() + "/mcp",
 					"logoDevPublishableKey": logoKey,
 				})
 			})

@@ -1,0 +1,14 @@
+{
+  "retry": "Retry",
+  "signInHint": "Sign in to review {client}\u2019s request to connect to Koi.",
+  "title": "Connect {client} to Koi?",
+  "signedIn": "Signed in as {email}",
+  "permissionsTitle": "This app can:",
+  "read": "Read your brands, prompts, competitors, and results.",
+  "write": "Change your brands, prompts, and competitors; use available billing tools.",
+  "returnTo": "You will return to {host}.",
+  "allow": "Allow access",
+  "deny": "Deny",
+  "unavailable": "This connection request is unavailable. Start again from your agent.",
+  "failed": "Could not complete this request. Try again."
+}

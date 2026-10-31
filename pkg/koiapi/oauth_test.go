@@ -5,12 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -145,7 +143,8 @@ func TestOAuthAuthorizationCodePKCEAndRevocation(t *testing.T) {
 	store.clients["client-1"] = &koidomain.OAuthClient{ID: "client-1", Name: "Test client", RedirectURIs: []string{"https://client.example/cb"}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /oauth/authorize", h.authorize)
-	mux.HandleFunc("POST /oauth/authorize", h.authorizePost)
+	mux.HandleFunc("GET /api/v1/oauth/consent", h.consent)
+	mux.HandleFunc("POST /api/v1/oauth/consent", h.authorizePost)
 	mux.HandleFunc("POST /oauth/token", h.token)
 	mux.HandleFunc("POST /oauth/revoke", h.revoke)
 	mux.HandleFunc("GET /test-session", func(w http.ResponseWriter, r *http.Request) {
@@ -165,16 +164,33 @@ func TestOAuthAuthorizationCodePKCEAndRevocation(t *testing.T) {
 	q := url.Values{"client_id": {"client-1"}, "redirect_uri": {"https://client.example/cb"}, "response_type": {"code"}, "code_challenge_method": {"S256"}, "code_challenge": {challenge}, "state": {"opaque"}, "scope": {"koi:read"}}
 	response, err = client.Get(server.URL + "/oauth/authorize?" + q.Encode())
 	require.NoError(t, err)
-	body, _ := io.ReadAll(response.Body)
-	response.Body.Close()
-	require.Equal(t, 200, response.StatusCode)
-	csrf := regexp.MustCompile(`name="csrf" value="([^"]+)"`).FindSubmatch(body)
-	require.Len(t, csrf, 2)
-	response, err = client.PostForm(server.URL+"/oauth/authorize", url.Values{"csrf": {string(csrf[1])}, "action": {"approve"}})
-	require.NoError(t, err)
 	response.Body.Close()
 	require.Equal(t, 303, response.StatusCode)
-	redirect, err := url.Parse(response.Header.Get("Location"))
+	require.Equal(t, "http://localhost:8080/oauth/consent", response.Header.Get("Location"))
+	response, err = client.Get(server.URL + "/api/v1/oauth/consent")
+	require.NoError(t, err)
+	var consent struct {
+		CSRF       string `json:"csrf"`
+		ClientName string `json:"clientName"`
+	}
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&consent))
+	response.Body.Close()
+	require.Equal(t, "Test client", consent.ClientName)
+	badPayload, _ := json.Marshal(map[string]string{"csrf": "wrong", "action": "approve"})
+	bad, err := client.Post(server.URL+"/api/v1/oauth/consent", "application/json", strings.NewReader(string(badPayload)))
+	require.NoError(t, err)
+	bad.Body.Close()
+	require.Equal(t, 400, bad.StatusCode)
+	payload, _ := json.Marshal(map[string]string{"csrf": consent.CSRF, "action": "approve"})
+	response, err = client.Post(server.URL+"/api/v1/oauth/consent", "application/json", strings.NewReader(string(payload)))
+	require.NoError(t, err)
+	var decision struct {
+		RedirectURL string `json:"redirectUrl"`
+	}
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&decision))
+	response.Body.Close()
+	require.Equal(t, 200, response.StatusCode)
+	redirect, err := url.Parse(decision.RedirectURL)
 	require.NoError(t, err)
 	code := redirect.Query().Get("code")
 	require.NotEmpty(t, code)
@@ -198,6 +214,23 @@ func TestOAuthAuthorizationCodePKCEAndRevocation(t *testing.T) {
 	require.NoError(t, err)
 	replay.Body.Close()
 	require.Equal(t, 400, replay.StatusCode)
+	response, err = client.Get(server.URL + "/oauth/authorize?" + q.Encode())
+	require.NoError(t, err)
+	response.Body.Close()
+	require.Equal(t, 303, response.StatusCode)
+	response, err = client.Get(server.URL + "/api/v1/oauth/consent")
+	require.NoError(t, err)
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&consent))
+	response.Body.Close()
+	denyPayload, _ := json.Marshal(map[string]string{"csrf": consent.CSRF, "action": "deny"})
+	response, err = client.Post(server.URL+"/api/v1/oauth/consent", "application/json", strings.NewReader(string(denyPayload)))
+	require.NoError(t, err)
+	require.NoError(t, json.NewDecoder(response.Body).Decode(&decision))
+	response.Body.Close()
+	deniedURL, err := url.Parse(decision.RedirectURL)
+	require.NoError(t, err)
+	require.Equal(t, "access_denied", deniedURL.Query().Get("error"))
+	require.Equal(t, "opaque", deniedURL.Query().Get("state"))
 	revoke, err := client.PostForm(server.URL+"/oauth/revoke", url.Values{"token": {tokens.AccessToken}})
 	require.NoError(t, err)
 	revoke.Body.Close()

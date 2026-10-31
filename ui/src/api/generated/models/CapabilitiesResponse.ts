@@ -45,6 +45,12 @@ export interface CapabilitiesResponse {
      */
     aiDrafting: boolean;
     /**
+     * Public MCP endpoint URL for this instance.
+     * @type {string}
+     * @memberof CapabilitiesResponse
+     */
+    mcpUrl: string;
+    /**
      * Logo.dev publishable key for browser image requests; empty when unavailable.
      * @type {string}
      * @memberof CapabilitiesResponse
@@ -60,6 +66,7 @@ export function instanceOfCapabilitiesResponse(value: object): value is Capabili
     if (!('liveCollection' in value) || value['liveCollection'] === undefined) return false;
     if (!('competitorSearch' in value) || value['competitorSearch'] === undefined) return false;
     if (!('aiDrafting' in value) || value['aiDrafting'] === undefined) return false;
+    if (!('mcpUrl' in value) || value['mcpUrl'] === undefined) return false;
     if (!('logoDevPublishableKey' in value) || value['logoDevPublishableKey'] === undefined) return false;
     return true;
 }
@@ -78,6 +85,7 @@ export function CapabilitiesResponseFromJSONTyped(json: any, ignoreDiscriminator
         'liveCollection': json['liveCollection'],
         'competitorSearch': json['competitorSearch'],
         'aiDrafting': json['aiDrafting'],
+        'mcpUrl': json['mcpUrl'],
         'logoDevPublishableKey': json['logoDevPublishableKey'],
     };
 }
@@ -97,6 +105,7 @@ export function CapabilitiesResponseToJSONTyped(value?: CapabilitiesResponse | n
         'liveCollection': value['liveCollection'],
         'competitorSearch': value['competitorSearch'],
         'aiDrafting': value['aiDrafting'],
+        'mcpUrl': value['mcpUrl'],
         'logoDevPublishableKey': value['logoDevPublishableKey'],
     };
 }

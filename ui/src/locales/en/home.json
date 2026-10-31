@@ -27,7 +27,7 @@
     "noBrands": "No matching brands.",
     "brandActivationError": "Unable to switch brand. Open the selector to try again.",
     "settings": "Settings",
-    "connections": "Agent access",
+    "connections": "MCP",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
     "signOutError": "Unable to sign out. Try again."

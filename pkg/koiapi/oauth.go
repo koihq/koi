@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -24,7 +23,6 @@ import (
 
 type oauthHandler struct {
 	store  koidomain.CredentialService
-	domain koidomain.Store
 	sess   *scs.SessionManager
 	origin string
 }
@@ -39,6 +37,12 @@ func oauthOrigin() string {
 	return "http://localhost:8080"
 }
 func (h *oauthHandler) resourceURL() string { return h.origin + "/mcp" }
+func oauthUIOrigin() string {
+	if v := strings.TrimRight(os.Getenv("KOI_PUBLIC_URL"), "/"); v != "" {
+		return v
+	}
+	return oauthOrigin()
+}
 func oauthJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -212,20 +216,47 @@ func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
 	}
 	h.sess.Put(r.Context(), "oauth_csrf", csrf)
 	h.sess.Put(r.Context(), "oauth_query", r.URL.RawQuery)
-	userID := h.sess.GetString(r.Context(), "user_id")
-	data := struct {
-		ClientName, CSRF string
-		SignedIn         bool
-	}{ClientName: client.Name, CSRF: csrf, SignedIn: userID != ""}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	_ = consentPage.Execute(w, data)
+	http.Redirect(w, r, oauthUIOrigin()+"/oauth/consent", http.StatusSeeOther)
 }
 
-var consentPage = template.Must(template.New("oauth").Parse(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Connect to Koi</title><main style="max-width:28rem;margin:4rem auto;font:16px system-ui"><h1>Connect to Koi</h1><p>{{.ClientName}} requests access to your Koi account. It can read and change your brands, prompts and competitors, and use billing tools in Cloud.</p><form method="post" action="/oauth/authorize"><input type="hidden" name="csrf" value="{{.CSRF}}">{{if not .SignedIn}}<label>Email <input name="email" type="email" required autocomplete="email"></label><br><label>Password <input name="password" type="password" required autocomplete="current-password"></label><br><button name="action" value="login">Sign in and continue</button> <button name="action" value="signup">Create account and continue</button>{{else}}<button name="action" value="approve">Allow access</button> <button name="action" value="deny">Deny</button>{{end}}</form></main></html>`))
+func (h *oauthHandler) consent(w http.ResponseWriter, r *http.Request) {
+	raw := h.sess.GetString(r.Context(), "oauth_query")
+	if raw == "" {
+		oauthError(w, 400, "invalid_request")
+		return
+	}
+	q, err := url.ParseQuery(raw)
+	if err != nil {
+		oauthError(w, 400, "invalid_request")
+		return
+	}
+	client, err := h.client(r.Context(), q.Get("client_id"))
+	if err != nil || client == nil || !redirectAllowed(client.RedirectURIs, q.Get("redirect_uri")) {
+		oauthError(w, 400, "invalid_request")
+		return
+	}
+	scope := q.Get("scope")
+	if scope == "" {
+		scope = "koi:read koi:write"
+	}
+	_, signedIn := h.sess.Get(r.Context(), "user_id").(string)
+	oauthJSON(w, 200, map[string]any{"clientName": client.Name, "scopes": strings.Fields(scope), "signedIn": signedIn, "csrf": h.sess.GetString(r.Context(), "oauth_csrf"), "redirectHost": redirectHost(q.Get("redirect_uri"))})
+}
+
+func redirectHost(raw string) string {
+	u, _ := url.Parse(raw)
+	if u == nil {
+		return ""
+	}
+	return u.Host
+}
 
 func (h *oauthHandler) authorizePost(w http.ResponseWriter, r *http.Request) {
-	if e := r.ParseForm(); e != nil || r.Form.Get("csrf") == "" || subtle.ConstantTimeCompare([]byte(r.Form.Get("csrf")), []byte(h.sess.GetString(r.Context(), "oauth_csrf"))) != 1 {
+	var body struct {
+		CSRF   string `json:"csrf"`
+		Action string `json:"action"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.CSRF == "" || subtle.ConstantTimeCompare([]byte(body.CSRF), []byte(h.sess.GetString(r.Context(), "oauth_csrf"))) != 1 || (body.Action != "approve" && body.Action != "deny") {
 		oauthError(w, 400, "invalid_request")
 		return
 	}
@@ -242,33 +273,15 @@ func (h *oauthHandler) authorizePost(w http.ResponseWriter, r *http.Request) {
 	}
 	id, e := uuid.Parse(h.sess.GetString(r.Context(), "user_id"))
 	if e != nil || id == uuid.Nil {
-		action := r.Form.Get("action")
-		var me *koidomain.Me
-		if action == "login" {
-			me, e = koidomain.NewAuthCommander(h.domain).Login(r.Context(), r.Form.Get("email"), r.Form.Get("password"))
-		} else if action == "signup" {
-			me, e = koidomain.NewAuthCommander(h.domain).Signup(r.Context(), koidomain.SignupParams{Email: r.Form.Get("email"), Password: r.Form.Get("password")})
-		} else {
-			oauthError(w, 400, "invalid_request")
-			return
-		}
-		if e != nil {
-			http.Error(w, "Sign in failed", 401)
-			return
-		}
-		id = me.User.ID
-		h.sess.Put(r.Context(), "user_id", id.String())
-		http.Redirect(w, r, "/oauth/authorize?"+raw, http.StatusSeeOther)
+		oauthError(w, 401, "unauthorized")
 		return
 	}
-	h.sess.Remove(r.Context(), "oauth_csrf")
-	h.sess.Remove(r.Context(), "oauth_query")
 	redirect, _ := url.Parse(q.Get("redirect_uri"))
 	params := redirect.Query()
 	if q.Get("state") != "" {
 		params.Set("state", q.Get("state"))
 	}
-	if r.Form.Get("action") != "approve" {
+	if body.Action != "approve" {
 		params.Set("error", "access_denied")
 	} else {
 		code, e := koidomain.RandomCredential()
@@ -287,8 +300,10 @@ func (h *oauthHandler) authorizePost(w http.ResponseWriter, r *http.Request) {
 		}
 		params.Set("code", code)
 	}
+	h.sess.Remove(r.Context(), "oauth_csrf")
+	h.sess.Remove(r.Context(), "oauth_query")
 	redirect.RawQuery = params.Encode()
-	http.Redirect(w, r, redirect.String(), http.StatusSeeOther)
+	oauthJSON(w, 200, map[string]string{"redirectUrl": redirect.String()})
 }
 func (h *oauthHandler) issueTokens(w http.ResponseWriter, r *http.Request, userID uuid.UUID, clientID, name, scope string, connectionID uuid.UUID) {
 	tokens, err := h.store.IssueTokens(r.Context(), userID, clientID, name, scope, h.resourceURL(), connectionID)

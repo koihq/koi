@@ -85,12 +85,14 @@ func TestCapabilitiesReflectOptionalSearch(t *testing.T) {
 				CompetitorSearch      bool   `json:"competitorSearch"`
 				AIDrafting            bool   `json:"aiDrafting"`
 				LogoDevPublishableKey string `json:"logoDevPublishableKey"`
+				MCPURL                string `json:"mcpUrl"`
 			}
 			readJSON(t, resp, &body)
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 			require.Equal(t, tc.searchEnabled, body.CompetitorSearch)
 			require.Equal(t, tc.draftingEnabled, body.AIDrafting)
 			require.Equal(t, tc.expectedLogoKey, body.LogoDevPublishableKey)
+			require.Equal(t, oauthOrigin()+"/mcp", body.MCPURL)
 		})
 	}
 }

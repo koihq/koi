@@ -12,10 +12,12 @@ export function CredentialsForm({
   intent,
   passwordComplete,
   onSubmit,
+  onSwitchIntent,
 }: {
   intent: "sign-in" | "sign-up";
   passwordComplete: "current-password" | "new-password";
   onSubmit: (body: CredentialsReq) => Promise<void>;
+  onSwitchIntent?: () => void;
 }) {
   const { t } = useTranslation("auth");
   const [error, setError] = useState<string | null>(null);
@@ -79,18 +81,28 @@ export function CredentialsForm({
         </FieldGroup>
       </form>
       <p className="mt-6 text-sm text-muted-foreground">
-        <Trans
-          t={t}
-          i18nKey={intent === "sign-in" ? "signIn.alt" : "signUp.alt"}
-          components={{
-            action: (
-              <Link
-                to={intent === "sign-in" ? "/sign-up" : "/sign-in"}
-                className="text-foreground underline-offset-4 hover:underline"
-              />
-            ),
-          }}
-        />
+        {onSwitchIntent ? (
+          <button
+            type="button"
+            className="underline-offset-4 hover:underline"
+            onClick={onSwitchIntent}
+          >
+            {intent === "sign-in" ? t("signUp.title") : t("signIn.title")}
+          </button>
+        ) : (
+          <Trans
+            t={t}
+            i18nKey={intent === "sign-in" ? "signIn.alt" : "signUp.alt"}
+            components={{
+              action: (
+                <Link
+                  to={intent === "sign-in" ? "/sign-up" : "/sign-in"}
+                  className="text-foreground underline-offset-4 hover:underline"
+                />
+              ),
+            }}
+          />
+        )}
       </p>
     </>
   );

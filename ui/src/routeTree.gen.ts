@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/_app'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/_settings'
 import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
+import { Route as OauthConsentRouteImport } from './routes/oauth/consent'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/_app/index'
@@ -44,6 +45,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 const DevUiRouteRoute = DevUiRouteRouteImport.update({
   id: '/dev/ui',
   path: '/dev/ui',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInIndexRoute = SignInIndexRouteImport.update({
@@ -130,6 +136,7 @@ const AuthenticatedSettingsSettingsConnectionsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedAppIndexRoute
   '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/oauth/consent': typeof OauthConsentRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedAppIndexRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/sign-in': typeof SignInIndexRoute
   '/sign-up': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/dev/ui': typeof DevUiRouteRouteWithChildren
   '/_authenticated/_app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/_settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/oauth/consent': typeof OauthConsentRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dev/ui'
+    | '/oauth/consent'
     | '/sign-in/'
     | '/sign-up/'
     | '/dev/ui/button'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/oauth/consent'
     | '/sign-in'
     | '/sign-up'
     | '/dev/ui/button'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/dev/ui'
     | '/_authenticated/_app'
     | '/_authenticated/_settings'
+    | '/oauth/consent'
     | '/sign-in/'
     | '/sign-up/'
     | '/dev/ui/button'
@@ -246,6 +258,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   DevUiRouteRoute: typeof DevUiRouteRouteWithChildren
+  OauthConsentRoute: typeof OauthConsentRoute
   SignInIndexRoute: typeof SignInIndexRoute
   SignUpIndexRoute: typeof SignUpIndexRoute
 }
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/dev/ui'
       fullPath: '/dev/ui'
       preLoaderRoute: typeof DevUiRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/': {
@@ -464,6 +484,7 @@ const DevUiRouteRouteWithChildren = DevUiRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   DevUiRouteRoute: DevUiRouteRouteWithChildren,
+  OauthConsentRoute: OauthConsentRoute,
   SignInIndexRoute: SignInIndexRoute,
   SignUpIndexRoute: SignUpIndexRoute,
 }
