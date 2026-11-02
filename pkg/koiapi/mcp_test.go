@@ -17,6 +17,8 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: server.URL, DisableStandaloneSSE: true}, nil)
 	require.NoError(t, err)
 	defer session.Close()
+	require.Contains(t, session.InitializeResult().Instructions, "brands_list")
+	require.Contains(t, session.InitializeResult().Instructions, "idempotencyKey")
 	tools, err := session.ListTools(context.Background(), nil)
 	require.NoError(t, err)
 	names := make(map[string]bool)
@@ -34,6 +36,14 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 			require.True(t, ok)
 			require.Contains(t, properties, "days")
 			require.Contains(t, properties, "engines")
+		}
+		if tool.Name == "analysis_summary" {
+			require.True(t, tool.Annotations.ReadOnlyHint)
+			require.Contains(t, tool.Description, "default 30")
+		}
+		if tool.Name == "generations_create" {
+			require.False(t, tool.Annotations.ReadOnlyHint)
+			require.Contains(t, tool.Description, "generations_get")
 		}
 	}
 	require.False(t, names["billing_checkout"])

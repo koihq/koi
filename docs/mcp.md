@@ -16,6 +16,18 @@ Koi publishes OAuth protected-resource metadata at `/.well-known/oauth-protected
 
 Plugin or marketplace packages should point at this same endpoint. No host-specific product implementation is needed. Dots requires verification through a published plugin; Grok Bot needs a separate compatibility check before support is advertised.
 
+## Agent skills
+
+The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes two optional [Agent Skills](https://agentskills.io/specification) for coding agents: `koi-brief` prepares an evidence-based Markdown visibility brief, and `koi-setup` guides brand, prompt, and competitor setup. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
+
+From the agent's working directory, install either or both skills from the [Koi repository](https://github.com/koihq/koi):
+
+```bash
+npx skills add koihq/koi --skill koi-brief --skill koi-setup
+```
+
+The skills CLI prompts for the target agent and project or user-wide scope. Then connect that agent to **your instance's** `/mcp` URL using the instructions above and complete OAuth. For self-hosted Koi, use your own host; the skills contain no Koi Cloud endpoint or credentials. In clients without installable Agent Skills, use the MCP tools directly. Server instructions and tool descriptions remain available, subject to client support.
+
 ## UI action → MCP tool
 
 | UI action | MCP tool |

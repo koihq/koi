@@ -172,7 +172,10 @@ func addMCPTool[In any](server *mcp.Server, name, description string, readOnly b
 }
 
 func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, aiDrafting bool, billing *BillingHandler) http.Handler {
-	server := mcp.NewServer(&mcp.Implementation{Name: "koi", Version: "1.0.0"}, nil)
+	server := mcp.NewServer(
+		&mcp.Implementation{Name: "koi", Version: "1.0.0"},
+		&mcp.ServerOptions{Instructions: "Koi measures a brand's visibility in AI answers. Use brands_list to find the brand and pass its explicit brandId to brand-scoped tools; the browser's active brand does not scope MCP calls. analysis_summary aggregates a selected period and engines, while runs_results contains individual answers and citations; distinguish observed results from recommendations. Drafting is asynchronous: after generations_create, check generations_get with the returned ID. Reuse the same idempotencyKey when retrying generations_create or billing_change_allowance. Billing tools are available only on Koi Cloud."},
+	)
 	brands := koidomain.NewBrandQuerier(store)
 	brandCommands := koidomain.NewBrandCommander(store)
 	prompts := koidomain.NewPromptQuerier(store)
@@ -196,7 +199,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 	}) (any, error) {
 		return koidomain.SearchSupportedCountries(in.Query), nil
 	})
-	addMCPTool(server, "brands_list", "List brands in your organization", true, billing, false, func(ctx context.Context, in struct {
+	addMCPTool(server, "brands_list", "Find brands in your organization by name, domain, or repository; returns a page (default 1, 10 items)", true, billing, false, func(ctx context.Context, in struct {
 		Page     int    `json:"page,omitempty"`
 		PageSize int    `json:"pageSize,omitempty"`
 		Query    string `json:"query,omitempty"`
@@ -232,7 +235,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		}
 		return BrandToResponse(v), nil
 	})
-	addMCPTool(server, "prompts_list", "List prompts for a brand", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
+	addMCPTool(server, "prompts_list", "List current prompts for brandId; paginated (default page 1, 10 items)", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
@@ -286,7 +289,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		}
 		return map[string]bool{"confirmed": true}, promptCommands.ConfirmAll(ctx, in.BrandID.UUID())
 	})
-	addMCPTool(server, "competitors_list", "List competitors for a brand", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
+	addMCPTool(server, "competitors_list", "List current competitors for brandId; paginated (default page 1, 10 items)", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
@@ -346,7 +349,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		}
 		return map[string]bool{"confirmed": true}, competitorCommands.ConfirmAll(ctx, in.BrandID.UUID())
 	})
-	addMCPTool(server, "generations_create", "Start an AI drafting job. Provide a stable idempotencyKey for retries", false, billing, true, func(ctx context.Context, in mcpGenerationCreate) (any, error) {
+	addMCPTool(server, "generations_create", "Start an asynchronous prompt or competitor drafting job for brandId; returns an ID to check with generations_get. Reuse idempotencyKey on retries", false, billing, true, func(ctx context.Context, in mcpGenerationCreate) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
@@ -411,7 +414,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		}
 		return publicVisibilityStatus(v), nil
 	})
-	addMCPTool(server, "runs_results", "List collected answers and citations for a run", true, billing, true, func(ctx context.Context, in struct {
+	addMCPTool(server, "runs_results", "List individual answers and citations for run ID; paginated (default page 1, 10 items)", true, billing, true, func(ctx context.Context, in struct {
 		ID       mcpUUID `json:"id"`
 		Page     int     `json:"page,omitempty"`
 		PageSize int     `json:"pageSize,omitempty"`
@@ -426,7 +429,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		}
 		return mapPage(v, VisibilityResultToResponse), nil
 	})
-	addMCPTool(server, "analysis_summary", "Get visibility analysis for a brand", true, billing, true, func(ctx context.Context, in mcpAnalysis) (any, error) {
+	addMCPTool(server, "analysis_summary", "Aggregate visibility for brandId over days (7, 30, or 90; default 30) and selected engines (default all); empty results are not evidence of visibility", true, billing, true, func(ctx context.Context, in mcpAnalysis) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
@@ -436,7 +439,7 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		}
 		return analytics.Summary(ctx, in.BrandID.UUID(), days, engines)
 	})
-	addMCPTool(server, "prompt_visibility", "Get visibility analysis for a historical prompt", true, billing, true, func(ctx context.Context, in mcpPromptVisibility) (any, error) {
+	addMCPTool(server, "prompt_visibility", "Analyze a historical prompt for brandId over days (7, 30, or 90; default 30) and selected engines (default all)", true, billing, true, func(ctx context.Context, in mcpPromptVisibility) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
