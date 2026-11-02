@@ -6,6 +6,8 @@ servers:
   - url: /
 tags:
   - name: auth
+  - name: oauth
+  - name: credentials
   - name: brands
   - name: prompts
   - name: competitors
@@ -14,6 +16,37 @@ tags:
   - name: generations
   - name: visibility
 paths:
+  /api/v1/oauth/consent:
+    get:
+      tags: [oauth]
+      operationId: getOAuthConsent
+      responses:
+        "200":
+          description: Pending OAuth authorization request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConsent"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [oauth]
+      operationId: decideOAuthConsent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthConsentDecision"
+      responses:
+        "200":
+          description: OAuth client redirect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConsentRedirect"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/visibility/summary:
     get:
       tags: [visibility]
@@ -215,6 +248,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/CapabilitiesResponse"
         "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/credentials:
+    get:
+      tags: [credentials]
+      operationId: listCredentials
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: OAuth connections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialPage"
+        default:
+          $ref: "#/components/responses/Error"
+  /api/v1/credentials/{id}:
+    delete:
+      tags: [credentials]
+      operationId: revokeCredential
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Revoked
+        default:
           $ref: "#/components/responses/Error"
   /api/v1/auth/signup:
     post:
@@ -1171,6 +1240,37 @@ components:
           schema:
             $ref: "#/components/schemas/Envelope"
   schemas:
+    OAuthConsent:
+      type: object
+      required: [clientName, scopes, signedIn, csrf, redirectHost]
+      properties:
+        clientName:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        signedIn:
+          type: boolean
+        csrf:
+          type: string
+        redirectHost:
+          type: string
+    OAuthConsentDecision:
+      type: object
+      required: [csrf, action]
+      properties:
+        csrf:
+          type: string
+        action:
+          type: string
+          enum: [approve, deny]
+    OAuthConsentRedirect:
+      type: object
+      required: [redirectUrl]
+      properties:
+        redirectUrl:
+          type: string
     BrandRequestScope:
       type: object
       required: [brandId]
@@ -1726,6 +1826,28 @@ components:
           items:
             type: string
             format: uri
+    Credential:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        clientId: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    CredentialPage:
+      type: object
+      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Credential"
+        totalItems: { type: integer, format: int64 }
+        totalPages: { type: integer, format: int64 }
+        currentPage: { type: integer }
+        hasNext: { type: boolean }
+        hasPrev: { type: boolean }
     CredentialsReq:
       type: object
       required: [email, password]
@@ -1774,7 +1896,7 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey]
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey, mcpUrl]
       properties:
         cloudBilling:
           type: boolean
@@ -1784,6 +1906,9 @@ components:
           type: boolean
         aiDrafting:
           type: boolean
+        mcpUrl:
+          type: string
+          description: Public MCP endpoint URL for this instance.
         logoDevPublishableKey:
           type: string
           description: Logo.dev publishable key for browser image requests; empty when unavailable.

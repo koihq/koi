@@ -50,7 +50,9 @@ func TestSPAFallback(t *testing.T) {
 }
 
 func TestEmbeddedSPARouting(t *testing.T) {
-	handler := NewServer(NewMockStore(t), scs.New(), nil, false)
+	store := NewMockStore(t)
+	store.EXPECT().CredentialRepo().Return(nil)
+	handler := NewServer(store, scs.New(), nil, false)
 	for _, route := range []string{"/prompts", "/competitors", "/mentions", "/settings/brand"} {
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, route, nil))

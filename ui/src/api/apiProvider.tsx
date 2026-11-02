@@ -4,8 +4,10 @@ import { createBillingApi } from "@/api/billing.api";
 import { createBrandsApi } from "@/api/brands.api";
 import { createCapabilitiesApi } from "@/api/capabilities.api";
 import { createCompetitorsApi } from "@/api/competitors.api";
+import { createCredentialsApi } from "@/api/credentials.api";
 import { createGenerationsApi } from "@/api/generations.api";
 import { createHealthApi } from "@/api/health.api";
+import { createOAuthApi } from "@/api/oauth.api";
 import { createPromptsApi } from "@/api/prompts.api";
 import { createRunsApi } from "@/api/runs.api";
 import { createApiClient } from "@/api/shared/apiClient";
@@ -21,8 +23,10 @@ export function createApi() {
     prompts: createPromptsApi(client.prompts),
     runs: createRunsApi(client.runs),
     competitors: createCompetitorsApi(client.competitors),
+    credentials: createCredentialsApi(client.credentials),
     generations: createGenerationsApi(client.generations),
     health: createHealthApi(client.health),
+    oauth: createOAuthApi(client.oauth),
   };
 }
 

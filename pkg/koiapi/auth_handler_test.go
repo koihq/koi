@@ -257,5 +257,6 @@ func (sessionMembershipRepository) GetByUserID(_ context.Context, userID uuid.UU
 func sessionStore(t *testing.T) *MockStore {
 	store := NewMockStore(t)
 	store.EXPECT().MembershipRepo().Return(sessionMembershipRepository{})
+	store.EXPECT().CredentialRepo().Return(nil)
 	return store
 }

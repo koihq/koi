@@ -16,6 +16,7 @@ type Store interface {
 	OrganizationRepo() OrganizationRepository
 	MembershipRepo() MembershipRepository
 	BillingRepo() BillingRepository
+	CredentialRepo() CredentialRepository
 	BrandRepo() BrandRepository
 	PromptRepo() PromptRepository
 	CompetitorRepo() CompetitorRepository

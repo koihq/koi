@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/_app'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/_settings'
 import { Route as DevUiRouteRouteImport } from './routes/dev/ui/route'
+import { Route as OauthConsentRouteImport } from './routes/oauth/consent'
 import { Route as SignInIndexRouteImport } from './routes/sign-in/index'
 import { Route as SignUpIndexRouteImport } from './routes/sign-up/index'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/_app/index'
@@ -27,6 +28,7 @@ import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_
 import { Route as AuthenticatedAppPromptsPromptIdRouteImport } from './routes/_authenticated/_app/prompts/$promptId'
 import { Route as AuthenticatedSettingsSettingsBillingRouteImport } from './routes/_authenticated/_settings/settings/billing'
 import { Route as AuthenticatedSettingsSettingsBrandRouteImport } from './routes/_authenticated/_settings/settings/brand'
+import { Route as AuthenticatedSettingsSettingsConnectionsRouteImport } from './routes/_authenticated/_settings/settings/connections'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -43,6 +45,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 const DevUiRouteRoute = DevUiRouteRouteImport.update({
   id: '/dev/ui',
   path: '/dev/ui',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInIndexRoute = SignInIndexRouteImport.update({
@@ -119,10 +126,17 @@ const AuthenticatedSettingsSettingsBrandRoute =
     path: '/settings/brand',
     getParentRoute: () => AuthenticatedSettingsRoute,
   } as any)
+const AuthenticatedSettingsSettingsConnectionsRoute =
+  AuthenticatedSettingsSettingsConnectionsRouteImport.update({
+    id: '/settings/connections',
+    path: '/settings/connections',
+    getParentRoute: () => AuthenticatedSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedAppIndexRoute
   '/dev/ui': typeof DevUiRouteRouteWithChildren
+  '/oauth/consent': typeof OauthConsentRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -135,10 +149,12 @@ export interface FileRoutesByFullPath {
   '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/settings/connections': typeof AuthenticatedSettingsSettingsConnectionsRoute
   '/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthenticatedAppIndexRoute
+  '/oauth/consent': typeof OauthConsentRoute
   '/sign-in': typeof SignInIndexRoute
   '/sign-up': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -151,6 +167,7 @@ export interface FileRoutesByTo {
   '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
   '/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/settings/connections': typeof AuthenticatedSettingsSettingsConnectionsRoute
   '/competitors': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRoutesById {
@@ -159,6 +176,7 @@ export interface FileRoutesById {
   '/dev/ui': typeof DevUiRouteRouteWithChildren
   '/_authenticated/_app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/_settings': typeof AuthenticatedSettingsRouteWithChildren
+  '/oauth/consent': typeof OauthConsentRoute
   '/sign-in/': typeof SignInIndexRoute
   '/sign-up/': typeof SignUpIndexRoute
   '/dev/ui/button': typeof DevUiButtonRoute
@@ -172,6 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/_app/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
   '/_authenticated/_settings/settings/billing': typeof AuthenticatedSettingsSettingsBillingRoute
   '/_authenticated/_settings/settings/brand': typeof AuthenticatedSettingsSettingsBrandRoute
+  '/_authenticated/_settings/settings/connections': typeof AuthenticatedSettingsSettingsConnectionsRoute
   '/_authenticated/_app/competitors/': typeof AuthenticatedAppCompetitorsIndexRoute
 }
 export interface FileRouteTypes {
@@ -179,6 +198,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dev/ui'
+    | '/oauth/consent'
     | '/sign-in/'
     | '/sign-up/'
     | '/dev/ui/button'
@@ -191,10 +211,12 @@ export interface FileRouteTypes {
     | '/prompts/$promptId'
     | '/settings/billing'
     | '/settings/brand'
+    | '/settings/connections'
     | '/competitors/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/oauth/consent'
     | '/sign-in'
     | '/sign-up'
     | '/dev/ui/button'
@@ -207,6 +229,7 @@ export interface FileRouteTypes {
     | '/prompts/$promptId'
     | '/settings/billing'
     | '/settings/brand'
+    | '/settings/connections'
     | '/competitors'
   id:
     | '__root__'
@@ -214,6 +237,7 @@ export interface FileRouteTypes {
     | '/dev/ui'
     | '/_authenticated/_app'
     | '/_authenticated/_settings'
+    | '/oauth/consent'
     | '/sign-in/'
     | '/sign-up/'
     | '/dev/ui/button'
@@ -227,12 +251,14 @@ export interface FileRouteTypes {
     | '/_authenticated/_app/prompts/$promptId'
     | '/_authenticated/_settings/settings/billing'
     | '/_authenticated/_settings/settings/brand'
+    | '/_authenticated/_settings/settings/connections'
     | '/_authenticated/_app/competitors/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   DevUiRouteRoute: typeof DevUiRouteRouteWithChildren
+  OauthConsentRoute: typeof OauthConsentRoute
   SignInIndexRoute: typeof SignInIndexRoute
   SignUpIndexRoute: typeof SignUpIndexRoute
 }
@@ -265,6 +291,13 @@ declare module '@tanstack/react-router' {
       path: '/dev/ui'
       fullPath: '/dev/ui'
       preLoaderRoute: typeof DevUiRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in/': {
@@ -365,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsSettingsBrandRouteImport
       parentRoute: typeof AuthenticatedSettingsRoute
     }
+    '/_authenticated/_settings/settings/connections': {
+      id: '/_authenticated/_settings/settings/connections'
+      path: '/settings/connections'
+      fullPath: '/settings/connections'
+      preLoaderRoute: typeof AuthenticatedSettingsSettingsConnectionsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRoute
+    }
   }
 }
 
@@ -386,6 +426,7 @@ const AuthenticatedAppRouteWithChildren =
 interface AuthenticatedSettingsRouteChildren {
   AuthenticatedSettingsSettingsBillingRoute: typeof AuthenticatedSettingsSettingsBillingRoute
   AuthenticatedSettingsSettingsBrandRoute: typeof AuthenticatedSettingsSettingsBrandRoute
+  AuthenticatedSettingsSettingsConnectionsRoute: typeof AuthenticatedSettingsSettingsConnectionsRoute
 }
 
 const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
@@ -393,6 +434,8 @@ const AuthenticatedSettingsRouteChildren: AuthenticatedSettingsRouteChildren = {
     AuthenticatedSettingsSettingsBillingRoute,
   AuthenticatedSettingsSettingsBrandRoute:
     AuthenticatedSettingsSettingsBrandRoute,
+  AuthenticatedSettingsSettingsConnectionsRoute:
+    AuthenticatedSettingsSettingsConnectionsRoute,
 }
 
 const AuthenticatedSettingsRouteWithChildren =
@@ -441,6 +484,7 @@ const DevUiRouteRouteWithChildren = DevUiRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   DevUiRouteRoute: DevUiRouteRouteWithChildren,
+  OauthConsentRoute: OauthConsentRoute,
   SignInIndexRoute: SignInIndexRoute,
   SignUpIndexRoute: SignUpIndexRoute,
 }

@@ -98,7 +98,7 @@ func LoadConfig() (Config, error) {
 		stripePriceID == "" || publicURL == "") {
 		return Config{}, fmt.Errorf("cloud mode requires KOI_CLORO_API_KEY, KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID and KOI_PUBLIC_URL")
 	}
-	if mode == "cloud" {
+	if publicURL != "" {
 		publicURL = strings.TrimRight(publicURL, "/")
 		parsed, err := url.Parse(publicURL)
 		if err != nil || parsed.Host == "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
@@ -268,7 +268,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	sess.Cookie.HttpOnly = true
 	sess.Cookie.SameSite = http.SameSiteLaxMode
 	sess.Cookie.Path = "/"
-	sess.Cookie.Secure = a.cfg.DeploymentMode == "cloud" && strings.HasPrefix(a.cfg.PublicURL, "https://")
+	sess.Cookie.Secure = strings.HasPrefix(a.cfg.PublicURL, "https://")
 	sess.Cookie.Persist = true
 	if sqlDB != nil {
 		sess.Store = postgresstore.New(sqlDB)

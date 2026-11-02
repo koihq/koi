@@ -20,6 +20,9 @@ func (sessionRow) TableName() string { return "sessions" }
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&koidomain.User{},
+		&koidomain.Credential{},
+		&koidomain.OAuthClient{},
+		&koidomain.OAuthCode{},
 		&koidomain.Organization{},
 		&koidomain.BillingSubscription{},
 		&koidomain.BillingCheckoutSession{},

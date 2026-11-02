@@ -31,6 +31,9 @@ func (w *maintenanceWorker) Work(ctx context.Context, _ *river.Job[maintenanceAr
 	if err := w.store.DispatchVisibility(ctx, time.Now().UTC()); err != nil {
 		return err
 	}
+	if err := w.store.CredentialRepo().CleanupExpired(ctx, time.Now().UTC()); err != nil {
+		return err
+	}
 	if w.billing != nil {
 		return w.billing.ReconcilePendingCheckouts(ctx, time.Now().UTC())
 	}

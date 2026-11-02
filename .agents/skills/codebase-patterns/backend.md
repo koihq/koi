@@ -32,6 +32,8 @@ Shared HTTP responses live in `koiapi/response` (import alias `apiresponse`). Sm
 
 ## Handler pattern (`pkg/koiapi/`)
 
+Before adding a route or MCP tool, find the nearest existing operation and trace its callers. When an operation exists on both HTTP and MCP, reuse value validation and domain error codes, then test the same defaults, invalid values, and results on both surfaces. For example, `analysis_summary` and `prompt_visibility` must accept the same visibility `days` and `engines` as the HTTP routes. For OAuth changes, test the complete browser flow with one hostname, distinct public hostnames, and localhost on different ports.
+
 Handlers receive domain interfaces. `server.go` applies authentication once to the
 protected route group and injects the identity resolver. Resource handlers do not
 receive the session manager; auth and brand preference handlers still manage cookies
