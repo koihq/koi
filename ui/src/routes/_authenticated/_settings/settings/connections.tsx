@@ -164,12 +164,16 @@ function ConnectionsSettings() {
           <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
             {capabilities.isPending ? (
               <output className="text-sm text-muted-foreground">{t("loadingUrl")}</output>
-            ) : capabilities.isError || !mcpUrl ? (
+            ) : capabilities.isError ? (
               <p role="alert" className="text-sm text-destructive">
                 {t("urlError")}{" "}
                 <Button variant="link" onClick={() => void capabilities.refetch()}>
                   {t("retry")}
                 </Button>
+              </p>
+            ) : !mcpUrl ? (
+              <p role="alert" className="text-sm text-muted-foreground">
+                {t("urlNotConfigured")}
               </p>
             ) : (
               <>

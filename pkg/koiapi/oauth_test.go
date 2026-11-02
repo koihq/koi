@@ -28,6 +28,37 @@ func TestOAuthOriginSeparatesMCPFromBrowserInDev(t *testing.T) {
 	require.Equal(t, "http://localhost:5173", oauthOrigin())
 }
 
+func TestOAuthConsentUsesTheSessionHostname(t *testing.T) {
+	t.Setenv("KOI_PUBLIC_URL", "http://localhost:5173")
+	require.Equal(t, "http://localhost:5173", oauthUIOrigin("http://localhost:8080"))
+	t.Setenv("KOI_PUBLIC_URL", "https://app.example.com")
+	require.Equal(t, "https://mcp.example.com", oauthUIOrigin("https://mcp.example.com"))
+}
+
+func TestPublicMCPURLRequiresConfigurationForRemoteRequests(t *testing.T) {
+	t.Setenv("KOI_PUBLIC_URL", "")
+	t.Setenv("KOI_MCP_PUBLIC_URL", "")
+	local := httptest.NewRequest(http.MethodGet, "http://localhost:8080/api/v1/capabilities", nil)
+	remote := httptest.NewRequest(http.MethodGet, "https://koi.example.com/api/v1/capabilities", nil)
+	require.Equal(t, "http://localhost:8080/mcp", publicMCPURL(local))
+	require.Empty(t, publicMCPURL(remote))
+
+	recorder := httptest.NewRecorder()
+	requireConfiguredRemoteMCP(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(recorder, remote)
+	require.Equal(t, http.StatusServiceUnavailable, recorder.Code)
+
+	t.Setenv("KOI_MCP_PUBLIC_URL", "https://mcp.example.com")
+	require.Equal(t, "https://mcp.example.com/mcp", publicMCPURL(remote))
+}
+
+func TestPKCEVerifierAlphabet(t *testing.T) {
+	require.True(t, validVerifier(strings.Repeat("v", 41)+".~"))
+	require.False(t, validChallenge(strings.Repeat("v", 41)+".~"))
+	require.False(t, validVerifier(strings.Repeat("v", 42)+"!"))
+}
+
 func TestOAuthLoopbackRedirectAllowsOnlyPortChange(t *testing.T) {
 	registered := []string{"http://127.0.0.1/callback/client", "https://app.example/callback"}
 
@@ -158,7 +189,7 @@ func TestOAuthAuthorizationCodePKCEAndRevocation(t *testing.T) {
 	response, err := client.Get(server.URL + "/test-session")
 	require.NoError(t, err)
 	response.Body.Close()
-	verifier := strings.Repeat("v", 43)
+	verifier := strings.Repeat("v", 41) + ".~"
 	sum := sha256.Sum256([]byte(verifier))
 	challenge := base64.RawURLEncoding.EncodeToString(sum[:])
 	q := url.Values{"client_id": {"client-1"}, "redirect_uri": {"https://client.example/cb"}, "response_type": {"code"}, "code_challenge_method": {"S256"}, "code_challenge": {challenge}, "state": {"opaque"}, "scope": {"koi:read"}}

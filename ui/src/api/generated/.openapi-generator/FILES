@@ -6,6 +6,7 @@ apis/CompetitorsApi.ts
 apis/CredentialsApi.ts
 apis/GenerationsApi.ts
 apis/HealthApi.ts
+apis/OauthApi.ts
 apis/PromptsApi.ts
 apis/VisibilityApi.ts
 apis/index.ts
@@ -49,6 +50,9 @@ models/HealthResponse.ts
 models/HistoricalPrompt.ts
 models/HistoricalPromptPage.ts
 models/MeRes.ts
+models/OAuthConsent.ts
+models/OAuthConsentDecision.ts
+models/OAuthConsentRedirect.ts
 models/OrgRes.ts
 models/PromptHistoryRun.ts
 models/PromptHistoryRunPage.ts

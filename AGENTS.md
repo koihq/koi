@@ -54,7 +54,8 @@ compatibility migrations for earlier development schemas or historical job kinds
 - For a branch, PR, or uncommitted UI diff, use `.agents/skills/interface-review` instead.
 - `ui/` uses **pnpm**. Do not add `package-lock.json` or `yarn.lock`. Imports use `@/` (not `#/`).
 - Before an agent runs pnpm install, add, or update, check `pnpm --dir ui store path`. If it resolves inside this repo, request escalation so pnpm can use the normal user store; never set `store-dir` inside this repo.
-- Cookie session auth (email/password, `koi_session`). `KOI_SESSION_SECRET` is required (`openssl rand -base64 32`). Browse `:5173` during `make dev`. Dual-surface CLI/MCP comes later.
+- Cookie session auth (email/password, `koi_session`). `KOI_SESSION_SECRET` is required (`openssl rand -base64 32`). Browse `:5173` during `make dev`. Remote MCP and OAuth are available; CLI comes later.
+- Before adding an endpoint, MCP tool, or UI API wrapper, find the closest existing implementation. Compare contracts, validation, errors, auth, and tests across affected surfaces; follow `codebase-patterns` for the specific checks.
 
 ## API and implementation conventions
 

@@ -28,10 +28,10 @@ func NewVisibilityHandler(q koidomain.VisibilityQuerier, analytics ...*koidomain
 }
 
 func visibilityScope(r *http.Request) (int, []koidomain.EngineID, error) {
-	days := 30
+	days := 0
 	if raw := r.URL.Query().Get("days"); raw != "" {
 		value, err := strconv.Atoi(raw)
-		if err != nil || value != 7 && value != 30 && value != 90 {
+		if err != nil || value == 0 {
 			return 0, nil, koidomain.Validation(koidomain.FieldError{Field: "days", Code: koidomain.FieldInvalid})
 		}
 		days = value
@@ -40,12 +40,26 @@ func visibilityScope(r *http.Request) (int, []koidomain.EngineID, error) {
 	if raw := r.URL.Query().Get("engines"); raw != "" {
 		for _, part := range strings.Split(raw, ",") {
 			engine := koidomain.EngineID(part)
-			if !slices.Contains(koidomain.VisibilityEngines(), engine) {
-				return 0, nil, koidomain.Validation(koidomain.FieldError{Field: "engines", Code: koidomain.FieldInvalid})
-			}
-			if !slices.Contains(engines, engine) {
-				engines = append(engines, engine)
-			}
+			engines = append(engines, engine)
+		}
+	}
+	return visibilityScopeValues(days, engines)
+}
+
+func visibilityScopeValues(days int, selected []koidomain.EngineID) (int, []koidomain.EngineID, error) {
+	if days == 0 {
+		days = 30
+	}
+	if days != 7 && days != 30 && days != 90 {
+		return 0, nil, koidomain.Validation(koidomain.FieldError{Field: "days", Code: koidomain.FieldInvalid})
+	}
+	var engines []koidomain.EngineID
+	for _, engine := range selected {
+		if !slices.Contains(koidomain.VisibilityEngines(), engine) {
+			return 0, nil, koidomain.Validation(koidomain.FieldError{Field: "engines", Code: koidomain.FieldInvalid})
+		}
+		if !slices.Contains(engines, engine) {
+			engines = append(engines, engine)
 		}
 	}
 	return days, engines, nil

@@ -9,5 +9,6 @@ export * from './CompetitorsApi';
 export * from './CredentialsApi';
 export * from './GenerationsApi';
 export * from './HealthApi';
+export * from './OauthApi';
 export * from './PromptsApi';
 export * from './VisibilityApi';

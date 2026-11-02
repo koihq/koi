@@ -21,6 +21,8 @@ Import alias is `@/*` → `src/*` (tsconfig `baseUrl` + `paths`). Do not use `#/
 
 ## API layer (`src/api/`)
 
+For every product HTTP call, update OpenAPI first and use the generated client with the shared configuration. Do not add a parallel `fetch` wrapper. Before adding route loading state, look for existing `queryOptions`, keys, and equivalent flows; keep initial load and retry on one code path.
+
 SDK/client instances are created **once** by `createApi()` in `main.tsx` and passed into thin per-entity wrappers. Entity files never construct the HTTP client themselves.
 
 - `featureName.api.ts` — Entity types, Create/Update types, ListParams, and `createFeatureNameApi(client)` wrapper that receives a pre-built client.

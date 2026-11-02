@@ -26,7 +26,7 @@ export function createApi() {
     credentials: createCredentialsApi(client.credentials),
     generations: createGenerationsApi(client.generations),
     health: createHealthApi(client.health),
-    oauth: createOAuthApi(),
+    oauth: createOAuthApi(client.oauth),
   };
 }
 

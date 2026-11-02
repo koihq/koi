@@ -100,6 +100,12 @@ type mcpPromptHistory struct {
 	Page     int     `json:"page,omitempty"`
 	PageSize int     `json:"pageSize,omitempty"`
 }
+type mcpPromptVisibility struct {
+	BrandID  mcpUUID              `json:"brandId"`
+	PromptID mcpUUID              `json:"promptId"`
+	Days     int                  `json:"days,omitempty"`
+	Engines  []koidomain.EngineID `json:"engines,omitempty"`
+}
 type mcpQuote struct {
 	Prompts int `json:"prompts"`
 }
@@ -120,10 +126,13 @@ func mcpPageParams(page, size int) (koidomain.PageParams, error) {
 		page = 1
 	}
 	if size == 0 {
-		size = 20
+		size = 10
 	}
-	if page < 1 || size < 1 || size > 100 {
+	if page < 1 {
 		return koidomain.PageParams{}, koidomain.Validation(koidomain.FieldError{Field: "page", Code: koidomain.FieldInvalid})
+	}
+	if size < 1 || size > 100 {
+		return koidomain.PageParams{}, koidomain.Validation(koidomain.FieldError{Field: "pageSize", Code: koidomain.FieldInvalid})
 	}
 	return koidomain.PageParams{Page: page, PageSize: size}, nil
 }
@@ -421,22 +430,24 @@ func newMCPHandler(store koidomain.Store, searcher koidomain.CompanySearcher, ai
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
-		if in.Days == 0 {
-			in.Days = 30
+		days, engines, err := visibilityScopeValues(in.Days, in.Engines)
+		if err != nil {
+			return nil, err
 		}
-		if in.Days != 7 && in.Days != 30 && in.Days != 90 {
-			return nil, fmt.Errorf("days must be 7, 30 or 90")
-		}
-		return analytics.Summary(ctx, in.BrandID.UUID(), in.Days, in.Engines)
+		return analytics.Summary(ctx, in.BrandID.UUID(), days, engines)
 	})
-	addMCPTool(server, "prompt_visibility", "Get visibility analysis for a historical prompt", true, billing, true, func(ctx context.Context, in mcpPromptHistory) (any, error) {
+	addMCPTool(server, "prompt_visibility", "Get visibility analysis for a historical prompt", true, billing, true, func(ctx context.Context, in mcpPromptVisibility) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
+		}
+		days, engines, err := visibilityScopeValues(in.Days, in.Engines)
+		if err != nil {
+			return nil, err
 		}
 		if _, e := visibility.ListPromptRuns(ctx, in.BrandID.UUID(), in.PromptID.UUID(), koidomain.PageParams{Page: 1, PageSize: 1}); e != nil {
 			return nil, e
 		}
-		byPrompt, _, e := analytics.Aggregate(ctx, in.BrandID.UUID(), []uuid.UUID{in.PromptID.UUID()}, 30, nil)
+		byPrompt, _, e := analytics.Aggregate(ctx, in.BrandID.UUID(), []uuid.UUID{in.PromptID.UUID()}, days, engines)
 		if e != nil {
 			return nil, e
 		}

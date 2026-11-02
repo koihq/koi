@@ -6,6 +6,7 @@ servers:
   - url: /
 tags:
   - name: auth
+  - name: oauth
   - name: credentials
   - name: brands
   - name: prompts
@@ -15,6 +16,37 @@ tags:
   - name: generations
   - name: visibility
 paths:
+  /api/v1/oauth/consent:
+    get:
+      tags: [oauth]
+      operationId: getOAuthConsent
+      responses:
+        "200":
+          description: Pending OAuth authorization request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConsent"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      tags: [oauth]
+      operationId: decideOAuthConsent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OAuthConsentDecision"
+      responses:
+        "200":
+          description: OAuth client redirect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OAuthConsentRedirect"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/visibility/summary:
     get:
       tags: [visibility]
@@ -1208,6 +1240,37 @@ components:
           schema:
             $ref: "#/components/schemas/Envelope"
   schemas:
+    OAuthConsent:
+      type: object
+      required: [clientName, scopes, signedIn, csrf, redirectHost]
+      properties:
+        clientName:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        signedIn:
+          type: boolean
+        csrf:
+          type: string
+        redirectHost:
+          type: string
+    OAuthConsentDecision:
+      type: object
+      required: [csrf, action]
+      properties:
+        csrf:
+          type: string
+        action:
+          type: string
+          enum: [approve, deny]
+    OAuthConsentRedirect:
+      type: object
+      required: [redirectUrl]
+      properties:
+        redirectUrl:
+          type: string
     BrandRequestScope:
       type: object
       required: [brandId]

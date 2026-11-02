@@ -60,13 +60,13 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 	var credentials koidomain.CredentialService
 	if store.CredentialRepo() != nil {
 		credentials = koidomain.NewCredentialService(store)
-		r.Handle("/mcp", bearerIdentity(store, credentials, newMCPHandler(store, searcher, aiDrafting, billing)))
+		r.Handle("/mcp", requireConfiguredRemoteMCP(bearerIdentity(store, credentials, newMCPHandler(store, searcher, aiDrafting, billing))))
 		oauth := &oauthHandler{store: credentials, sess: sess, origin: oauthOrigin()}
 		metadata := auth.ProtectedResourceMetadataHandler(&oauthex.ProtectedResourceMetadata{Resource: oauth.resourceURL(), AuthorizationServers: []string{oauth.origin}, ScopesSupported: []string{"koi:read", "koi:write"}, BearerMethodsSupported: []string{"header"}})
-		r.Handle("/.well-known/oauth-protected-resource", metadata)
-		r.Handle("/.well-known/oauth-protected-resource/mcp", metadata)
-		r.Get("/.well-known/oauth-authorization-server", oauth.serverMetadata)
-		r.Get("/.well-known/oauth-authorization-server/oauth", oauth.serverMetadata)
+		r.Handle("/.well-known/oauth-protected-resource", requireConfiguredRemoteMCP(metadata))
+		r.Handle("/.well-known/oauth-protected-resource/mcp", requireConfiguredRemoteMCP(metadata))
+		r.With(requireConfiguredRemoteMCP).Get("/.well-known/oauth-authorization-server", oauth.serverMetadata)
+		r.With(requireConfiguredRemoteMCP).Get("/.well-known/oauth-authorization-server/oauth", oauth.serverMetadata)
 		r.Post("/oauth/register", oauth.register)
 		r.Get("/oauth/authorize", oauth.authorize)
 		r.Get("/api/v1/oauth/consent", oauth.consent)
@@ -96,7 +96,7 @@ func buildHTTPServerWithBilling(store koidomain.Store, sess *scs.SessionManager,
 					"aiDrafting":            aiDrafting,
 					"liveCollection":        liveCollection,
 					"cloudBilling":          billing != nil,
-					"mcpUrl":                oauthOrigin() + "/mcp",
+					"mcpUrl":                publicMCPURL(req),
 					"logoDevPublishableKey": logoKey,
 				})
 			})

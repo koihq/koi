@@ -18,6 +18,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/google/uuid"
+	apiresponse "github.com/koihq/koi/pkg/koiapi/response"
 	"github.com/koihq/koi/pkg/koidomain"
 )
 
@@ -28,20 +29,49 @@ type oauthHandler struct {
 }
 
 func oauthOrigin() string {
+	if v := configuredOAuthOrigin(); v != "" {
+		return v
+	}
+	return "http://localhost:8080"
+}
+func configuredOAuthOrigin() string {
 	if v := strings.TrimRight(os.Getenv("KOI_MCP_PUBLIC_URL"), "/"); v != "" {
 		return v
 	}
 	if v := strings.TrimRight(os.Getenv("KOI_PUBLIC_URL"), "/"); v != "" {
 		return v
 	}
-	return "http://localhost:8080"
+	return ""
 }
 func (h *oauthHandler) resourceURL() string { return h.origin + "/mcp" }
-func oauthUIOrigin() string {
+func oauthUIOrigin(mcpOrigin string) string {
 	if v := strings.TrimRight(os.Getenv("KOI_PUBLIC_URL"), "/"); v != "" {
-		return v
+		mcpURL, mcpErr := url.Parse(mcpOrigin)
+		uiURL, uiErr := url.Parse(v)
+		if mcpErr == nil && uiErr == nil && mcpURL.Scheme == uiURL.Scheme && mcpURL.Hostname() == uiURL.Hostname() {
+			return v
+		}
 	}
-	return oauthOrigin()
+	return mcpOrigin
+}
+func publicMCPURL(r *http.Request) string {
+	if origin := configuredOAuthOrigin(); origin != "" {
+		return origin + "/mcp"
+	}
+	requestURL, err := url.Parse("http://" + r.Host)
+	if err == nil && loopbackHost(requestURL.Hostname()) {
+		return oauthOrigin() + "/mcp"
+	}
+	return ""
+}
+func requireConfiguredRemoteMCP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if publicMCPURL(r) == "" {
+			oauthError(w, http.StatusServiceUnavailable, "public_url_required")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 func oauthJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -190,6 +220,17 @@ func validChallenge(s string) bool {
 	}
 	return true
 }
+func validVerifier(s string) bool {
+	if len(s) < 43 || len(s) > 128 {
+		return false
+	}
+	for _, c := range s {
+		if c > 127 || !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_' || c == '.' || c == '~') {
+			return false
+		}
+	}
+	return true
+}
 func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	id := q.Get("client_id")
@@ -216,23 +257,23 @@ func (h *oauthHandler) authorize(w http.ResponseWriter, r *http.Request) {
 	}
 	h.sess.Put(r.Context(), "oauth_csrf", csrf)
 	h.sess.Put(r.Context(), "oauth_query", r.URL.RawQuery)
-	http.Redirect(w, r, oauthUIOrigin()+"/oauth/consent", http.StatusSeeOther)
+	http.Redirect(w, r, oauthUIOrigin(h.origin)+"/oauth/consent", http.StatusSeeOther)
 }
 
 func (h *oauthHandler) consent(w http.ResponseWriter, r *http.Request) {
 	raw := h.sess.GetString(r.Context(), "oauth_query")
 	if raw == "" {
-		oauthError(w, 400, "invalid_request")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrValidation)
 		return
 	}
 	q, err := url.ParseQuery(raw)
 	if err != nil {
-		oauthError(w, 400, "invalid_request")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrValidation)
 		return
 	}
 	client, err := h.client(r.Context(), q.Get("client_id"))
 	if err != nil || client == nil || !redirectAllowed(client.RedirectURIs, q.Get("redirect_uri")) {
-		oauthError(w, 400, "invalid_request")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrValidation)
 		return
 	}
 	scope := q.Get("scope")
@@ -257,23 +298,23 @@ func (h *oauthHandler) authorizePost(w http.ResponseWriter, r *http.Request) {
 		Action string `json:"action"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.CSRF == "" || subtle.ConstantTimeCompare([]byte(body.CSRF), []byte(h.sess.GetString(r.Context(), "oauth_csrf"))) != 1 || (body.Action != "approve" && body.Action != "deny") {
-		oauthError(w, 400, "invalid_request")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrValidation)
 		return
 	}
 	raw := h.sess.GetString(r.Context(), "oauth_query")
 	q, e := url.ParseQuery(raw)
 	if e != nil {
-		oauthError(w, 400, "invalid_request")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrValidation)
 		return
 	}
 	client, e := h.client(r.Context(), q.Get("client_id"))
 	if e != nil || client == nil || !redirectAllowed(client.RedirectURIs, q.Get("redirect_uri")) {
-		oauthError(w, 400, "invalid_request")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrValidation)
 		return
 	}
 	id, e := uuid.Parse(h.sess.GetString(r.Context(), "user_id"))
 	if e != nil || id == uuid.Nil {
-		oauthError(w, 401, "unauthorized")
+		apiresponse.WriteDomainError(w, r, koidomain.ErrUnauthorized)
 		return
 	}
 	redirect, _ := url.Parse(q.Get("redirect_uri"))
@@ -286,7 +327,7 @@ func (h *oauthHandler) authorizePost(w http.ResponseWriter, r *http.Request) {
 	} else {
 		code, e := koidomain.RandomCredential()
 		if e != nil {
-			oauthError(w, 500, "server_error")
+			apiresponse.WriteDomainError(w, r, e)
 			return
 		}
 		scope := q.Get("scope")
@@ -295,7 +336,7 @@ func (h *oauthHandler) authorizePost(w http.ResponseWriter, r *http.Request) {
 		}
 		record := &koidomain.OAuthCode{Hash: koidomain.HashCredential(code), UserID: id, ClientID: client.ID, ClientName: client.Name, RedirectURI: q.Get("redirect_uri"), Challenge: q.Get("code_challenge"), Scope: scope, ExpiresAt: time.Now().Add(5 * time.Minute)}
 		if e := h.store.CreateCode(r.Context(), record); e != nil {
-			oauthError(w, 500, "server_error")
+			apiresponse.WriteDomainError(w, r, e)
 			return
 		}
 		params.Set("code", code)
@@ -338,7 +379,7 @@ func (h *oauthHandler) token(w http.ResponseWriter, r *http.Request) {
 		verifier := r.Form.Get("code_verifier")
 		hash := sha256.Sum256([]byte(verifier))
 		challenge := base64.RawURLEncoding.EncodeToString(hash[:])
-		if !validChallenge(verifier) || subtle.ConstantTimeCompare([]byte(challenge), []byte(code.Challenge)) != 1 {
+		if !validVerifier(verifier) || subtle.ConstantTimeCompare([]byte(challenge), []byte(code.Challenge)) != 1 {
 			oauthError(w, 400, "invalid_grant")
 			return
 		}

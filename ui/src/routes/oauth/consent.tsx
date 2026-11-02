@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { OAuthConsent } from "@/api/oauth.api";
@@ -21,7 +21,7 @@ function Consent() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     setError("");
     try {
       const data = await api.oauth.consent();
@@ -30,17 +30,11 @@ function Consent() {
     } catch {
       setError(t("unavailable"));
     }
-  }
+  }, [api, t]);
 
   useEffect(() => {
-    void api.oauth
-      .consent()
-      .then(async (data) => {
-        setConsent(data);
-        if (data.signedIn) setEmail((await api.auth.me()).email);
-      })
-      .catch(() => setError(t("unavailable")));
-  }, [api, t]);
+    void load();
+  }, [load]);
 
   async function decide(action: "approve" | "deny") {
     if (!consent || pending) return;

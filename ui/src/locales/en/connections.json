@@ -20,6 +20,7 @@
   "agent": "Agent",
   "serverStep": "Use this MCP server URL and choose OAuth authentication.",
   "urlError": "Could not load the MCP URL.",
+  "urlNotConfigured": "Set KOI_PUBLIC_URL or KOI_MCP_PUBLIC_URL to a public HTTPS origin to connect a remote agent.",
   "reviewHint": "Your agent will open Koi to request access. Review the permissions before allowing it.",
   "connectedTitle": "Connected apps",
   "copyUrl": "Copy URL",

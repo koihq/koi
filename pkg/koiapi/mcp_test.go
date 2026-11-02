@@ -26,5 +26,15 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 	for _, name := range []string{"brands_list", "prompts_create", "competitors_list", "generations_create", "runs_results", "analysis_summary"} {
 		require.True(t, names[name], name)
 	}
+	for _, tool := range tools.Tools {
+		if tool.Name == "prompt_visibility" {
+			schema, ok := tool.InputSchema.(map[string]any)
+			require.True(t, ok)
+			properties, ok := schema["properties"].(map[string]any)
+			require.True(t, ok)
+			require.Contains(t, properties, "days")
+			require.Contains(t, properties, "engines")
+		}
+	}
 	require.False(t, names["billing_checkout"])
 }
