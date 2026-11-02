@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { PromptListParams } from "@/api/prompts.api";
-import { promptListOptions } from "@/lib/queries";
-import { runKey } from "@/lib/query-keys";
+import { keepPreviousDataForScope, promptListOptions } from "@/lib/queries";
+import { promptKey, runKey } from "@/lib/query-keys";
 import type { VisibilityScope } from "@/lib/visibility";
 
 type PromptSearch = {
@@ -34,11 +34,13 @@ export function usePromptList(
   };
   const live = useQuery({
     ...promptListOptions(api, brandID, { ...params, confirmed }),
+    placeholderData: keepPreviousDataForScope(promptKey(brandID)),
     enabled: search.status !== "past",
     refetchInterval: collecting ? 5_000 : false,
   });
   const history = useQuery({
     queryKey: [...runKey(brandID), "past-prompts", params],
+    placeholderData: keepPreviousDataForScope(runKey(brandID)),
     enabled: search.status === "past",
     queryFn: ({ signal }) => api.runs.historicalPrompts(brandID, params, { signal }),
     refetchInterval: collecting ? 5_000 : false,

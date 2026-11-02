@@ -392,8 +392,14 @@ for (const rates of [
       if (!bounds) throw new Error("Chart has no bounds");
       await page.mouse.move(bounds.x + bounds.width * 0.4, bounds.y + bounds.height / 2);
       await expect(chart.locator(".signal-active-marker")).toHaveCount(rates[1] === null ? 0 : 2);
-      await expect(own).toHaveAttribute("stroke-opacity", "0.2");
+      await expect(own).toHaveAttribute("stroke-opacity", rates[1] === null ? "1" : "0.2");
       if (rates[1] !== null) {
+        for (const stroke of ["4", "1.75"]) {
+          const paths = chart.locator(`.recharts-line-curve[stroke-width="${stroke}"]`);
+          await expect(paths).toHaveCount(2);
+          expect(await paths.nth(1).getAttribute("d")).toBe(await paths.first().getAttribute("d"));
+          await expect(paths.nth(1)).toHaveCSS("clip-path", /url\(.+\)/);
+        }
         const marker = chart.locator(".signal-active-marker").first();
         await expect(marker).toHaveCSS("transition-duration", "0.14s");
         await page.emulateMedia({ reducedMotion: "reduce" });
@@ -444,5 +450,51 @@ for (const theme of ["light", "dark"]) {
     await expect(account).toBeFocused();
     await page.mouse.move(0, 0);
     await page.locator("header").screenshot({ path: testInfo.outputPath("header.png") });
+  });
+}
+
+for (const rates of [
+  [null, null, 75],
+  [75, null, null],
+  [75, null, 50],
+]) {
+  test(`sparse chart preserves data while hovering empty days: ${rates.join(",")}`, async ({
+    page,
+  }) => {
+    const { state } = await mockWorkspace(page, rates, true);
+    state.started = false;
+    state.run.state = "succeeded";
+    for (const path of ["/?compareId=rival", "/prompts/prompt-0?compareId=rival"]) {
+      await page.goto(path);
+      const chart = page.locator('[data-slot="chart"]').first();
+      const panel = chart.locator("xpath=ancestor::section[1]");
+      const heading = panel.locator("strong").first();
+      await expect(heading).toBeVisible();
+      const summary = `- strong: ${(rates.at(-1) ?? 50).toFixed(1).split("").join(" ")} %`;
+      const dots = chart.locator(".recharts-reference-dot circle");
+      await expect(dots).toHaveCount(rates.filter((rate) => rate !== null).length * 2);
+      const bounds = await chart.boundingBox();
+      if (!bounds) throw new Error("Missing chart bounds");
+      await page.mouse.move(bounds.x + bounds.width * 0.4, bounds.y + bounds.height / 2);
+      await expect(heading).toMatchAriaSnapshot(summary);
+      await expect(chart.locator(".signal-active-marker")).toHaveCount(0);
+      await expect(dots).toHaveCount(rates.filter((rate) => rate !== null).length * 2);
+      // Inspect an actual reading, then return to the gap.
+      const point = await dots.first().boundingBox();
+      if (!point) throw new Error("Missing isolated point");
+      await page.mouse.move(point.x + point.width / 2, point.y + point.height / 2);
+      await expect(chart.locator(".signal-active-marker")).toHaveCount(2);
+      await page.mouse.move(bounds.x + bounds.width * 0.4, bounds.y + bounds.height / 2);
+      await expect(heading).toMatchAriaSnapshot(summary);
+      await expect(dots).toHaveCount(rates.filter((rate) => rate !== null).length * 2);
+      // Keyboard inspection also visits only recorded days.
+      const slider = panel.locator("input[type=range]");
+      await slider.focus();
+      await expect(slider).not.toHaveAttribute("aria-valuetext", /No data/);
+      await slider.press("ArrowLeft");
+      await expect(slider).not.toHaveAttribute("aria-valuetext", /No data/);
+      await slider.press("Escape");
+      await expect(heading).toMatchAriaSnapshot(summary);
+    }
   });
 }

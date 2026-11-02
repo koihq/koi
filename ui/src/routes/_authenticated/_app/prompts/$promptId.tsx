@@ -15,6 +15,7 @@ import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine, VisibilityResult, VisibilityRunStatus } from "@/api/generated";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
+import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import {
 import { useCollection, useRefreshAfterCollection } from "@/hooks/use-collection";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { answerMessageKey, getAnswerState, isCollecting } from "@/lib/answer-state";
+import { keepPreviousDataForScope } from "@/lib/queries";
 import { promptKey, runKey } from "@/lib/query-keys";
 import { safeSourceURL } from "@/lib/source-url";
 import {
@@ -89,6 +91,7 @@ function PromptDetail() {
     queryKey: [...runKey(brand.id), "prompt", promptId, search.page],
     queryFn: ({ signal }) =>
       api.runs.promptHistory(brand.id, promptId, search.page, 10, { signal }),
+    placeholderData: keepPreviousDataForScope([...runKey(brand.id), "prompt", promptId]),
     refetchInterval: (query) =>
       collecting || query.state.data?.items.some((item) => isCollecting(item.run)) ? 5_000 : false,
   });
@@ -99,6 +102,7 @@ function PromptDetail() {
     retry: 1,
     queryKey: [...runKey(brand.id), "prompt-visibility", promptId, search.days],
     queryFn: ({ signal }) => api.runs.promptVisibility(brand.id, promptId, scope, { signal }),
+    placeholderData: keepPreviousDataForScope([...runKey(brand.id), "prompt-visibility", promptId]),
     refetchInterval: collecting || historyCollecting ? 5_000 : false,
   });
 
@@ -177,13 +181,19 @@ function PromptDetail() {
       )}
       <div className="grid gap-4 min-[801px]:grid-cols-[minmax(0,1fr)_332px]">
         <section
-          className="min-w-0 rounded-lg bg-surface p-4 sm:p-7 min-[801px]:min-h-[412px]"
+          className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7 min-[801px]:min-h-[412px]"
+          aria-busy={visibility.isFetching}
+          data-refreshing={visibility.isFetching && Boolean(visibility.data)}
           aria-labelledby="detail-visibility-heading"
           onPointerDownCapture={(event) =>
             setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
           }
           onKeyDownCapture={() => setInspectionInput("keyboard")}
         >
+          <QueryRefreshIndicator
+            active={visibility.isFetching}
+            label={t("home:dashboard.loading")}
+          />
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 id="detail-visibility-heading" className="text-base font-bold">
@@ -246,12 +256,12 @@ function PromptDetail() {
               scopeKey={`${brand.id}:${promptId}:${search.days}:${search.compareId}`}
             />
           ) : (
-            <p className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
+            <p className="group-data-[refreshing=true]/refresh:opacity-50 grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
               {t("home:detail.noAnswers")}
             </p>
           )}
           {series.length > 0 && (
-            <p className="text-xs font-normal text-muted-foreground flex justify-between">
+            <p className="text-xs font-normal text-muted-foreground flex justify-between group-data-[refreshing=true]/refresh:opacity-50">
               <time dateTime={series[0].date.toISOString()}>
                 {series[0].date.toLocaleDateString(i18n.language)}
               </time>
@@ -262,8 +272,10 @@ function PromptDetail() {
           )}
         </section>
         <aside
-          className="min-w-0 rounded-lg bg-surface p-5 min-[801px]:min-h-[412px]"
+          className="group/refresh min-w-0 rounded-lg bg-surface p-5 min-[801px]:min-h-[412px]"
           aria-labelledby="detail-compare-heading"
+          aria-busy={visibility.isFetching}
+          data-refreshing={visibility.isFetching && Boolean(visibility.data)}
         >
           <h2 id="detail-compare-heading" className="mb-4 text-base font-bold">
             {t("home:detail.compareWith")}
@@ -286,10 +298,10 @@ function PromptDetail() {
                 <span className="justify-self-start">
                   <BrandPill name={competitor.name} domain={competitor.domain} />
                 </span>
-                <span className="tabular-nums">
+                <span className="tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
                   {rivalRate === null ? "—" : `${rivalRate.toFixed(1)}%`}
                 </span>
-                <small className="col-span-full text-xs text-muted-foreground">
+                <small className="col-span-full text-xs text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
                   {rivalRate !== null && rate !== null
                     ? t("home:detail.comparisonGap", {
                         points: Math.abs(rivalRate - rate).toFixed(1),
@@ -308,7 +320,16 @@ function PromptDetail() {
         </aside>
       </div>
 
-      <section className="mt-8 min-w-0" aria-labelledby="run-history-heading">
+      <section
+        className="group/refresh relative mt-8 min-w-0"
+        aria-labelledby="run-history-heading"
+        aria-busy={history.isFetching}
+        data-refreshing={history.isFetching && Boolean(history.data)}
+      >
+        <QueryRefreshIndicator
+          active={history.isFetching}
+          label={t("home:detail.loadingAnswers")}
+        />
         <div className="flex items-center justify-between">
           <h2 id="run-history-heading" className="text-base font-bold">
             {t("home:detail.runHistory")}
@@ -341,7 +362,7 @@ function PromptDetail() {
             <Table
               aria-label={t("home:detail.runHistory")}
               scrollHint={t("common:tableScrollHint")}
-              className="w-full min-w-[680px] table-fixed border-collapse"
+              className="w-full min-w-[680px] table-fixed border-collapse group-data-[refreshing=true]/refresh:opacity-50"
             >
               <TableHeader>
                 <TableRow>

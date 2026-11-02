@@ -8,6 +8,7 @@ import { BrandPill } from "@/components/blocks/brand-pill";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
+import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import { Button } from "@/components/ui/button";
 import {
@@ -140,9 +141,12 @@ function CompetitorPage() {
         {t("home:dashboard.backToVisibility")}
       </Link>
       <section
-        className="min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+        className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+        aria-busy={list.competitors.isFetching}
+        data-refreshing={list.competitors.isFetching && Boolean(list.competitors.data)}
         aria-labelledby="competitors-heading"
       >
+        <QueryRefreshIndicator active={list.competitors.isFetching} label={t("loading")} />
         <div className="mb-4 flex items-center justify-between gap-4">
           <h1 id="competitors-heading" ref={heading} tabIndex={-1} className="text-base font-bold">
             {t("competitors")}
@@ -202,12 +206,12 @@ function CompetitorPage() {
               {t("retry")}
             </Button>
           </p>
-        ) : list.competitors.isPending || list.competitors.isPlaceholderData ? (
+        ) : list.competitors.isPending ? (
           <p className="py-8 text-sm text-muted-foreground">{t("loading")}</p>
         ) : items.length ? (
           <DataTable
             ariaLabel={t("competitors")}
-            className="min-w-[640px] table-fixed"
+            className="min-w-[640px] table-fixed group-data-[refreshing=true]/refresh:opacity-50"
             data={items}
             columns={columns}
             getRowId={(item) => item.id}

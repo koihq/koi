@@ -6,6 +6,7 @@ import {
   capabilitiesOptions,
   clearAccountCache,
   ensureInitialGeneration,
+  keepPreviousDataForScope,
   promptListOptions,
 } from "@/lib/queries";
 import { runPromptBatch } from "@/routes/_authenticated/_app/-components/use-prompt-bulk-actions";
@@ -121,4 +122,13 @@ describe("brand pagination and account changes", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(client.getQueryCache().getAll()).toEqual([]);
   });
+});
+
+it("retains filtered data only within the same brand and resource", () => {
+  const retain = keepPreviousDataForScope(["brands", "a", "runs", "prompt", "one"]);
+  const data = { items: ["saved"] };
+  expect(retain(data, { queryKey: ["brands", "a", "runs", "prompt", "one", 1] })).toBe(data);
+  expect(retain(data, { queryKey: ["brands", "b", "runs", "prompt", "one", 1] })).toBeUndefined();
+  expect(retain(data, { queryKey: ["brands", "a", "runs", "prompt", "two", 1] })).toBeUndefined();
+  expect(retain(data, undefined)).toBeUndefined();
 });

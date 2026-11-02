@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   type DotProps,
@@ -7,6 +7,7 @@ import {
   Line,
   LineChart,
   ReferenceDot,
+  useXAxisScale,
   XAxis,
   YAxis,
 } from "recharts";
@@ -87,6 +88,19 @@ function ActiveMarker({ cx, cy, fill }: DotProps) {
   );
 }
 
+function InspectionClip({ id, day }: { id: string; day: string }) {
+  const scale = useXAxisScale();
+  const x = scale?.(day);
+
+  return (
+    <defs>
+      <clipPath id={id}>
+        <rect x={-4} y={0} width={Math.max(0, x ?? 0) + 4} height={HEIGHT} />
+      </clipPath>
+    </defs>
+  );
+}
+
 export function VisibilityChart({
   series,
   comparison,
@@ -110,6 +124,7 @@ export function VisibilityChart({
 }) {
   const { t } = useTranslation("home");
   const figure = useRef<HTMLElement>(null);
+  const clipId = useId();
   const previousScope = useRef(scopeKey);
   const [width, setWidth] = useState(320);
   const activeIndex = inspected === null ? null : clamp(inspected, 0, series.length - 1);
@@ -123,11 +138,13 @@ export function VisibilityChart({
         day: point.date.toISOString(),
         own: point.rate,
         other: comparison[index]?.rate ?? null,
-        ownPast: activeIndex !== null && index <= activeIndex ? point.rate : null,
-        otherPast:
-          activeIndex !== null && index <= activeIndex ? (comparison[index]?.rate ?? null) : null,
       })),
-    [series, comparison, activeIndex],
+    [series, comparison],
+  );
+  const availableIndices = useMemo(
+    () =>
+      data.flatMap((point, index) => (point.own !== null || point.other !== null ? [index] : [])),
+    [data],
   );
   const selected = activeIndex === null ? null : data[activeIndex];
   const selectedDate = activeIndex === null ? null : series[activeIndex]?.date;
@@ -191,14 +208,16 @@ export function VisibilityChart({
       0,
       lastIndex,
     );
-    if (index !== inspected || input !== inspectionInput) onInspect(index, input);
+    const point = data[index];
+    const next = point && (point.own !== null || point.other !== null) ? index : null;
+    if (next !== inspected || input !== inspectionInput) onInspect(next, input);
   }
 
   return (
     <figure
       ref={figure}
       data-motion={inspectionInput === "pointer"}
-      className="relative -mx-4 mt-6 sm:-mx-7"
+      className="relative -mx-4 mt-6 sm:-mx-7 group-data-[refreshing=true]/refresh:opacity-50"
     >
       <ChartContainer
         config={chartConfig}
@@ -263,10 +282,12 @@ export function VisibilityChart({
               />
             )}
           </Line>
-          {activeIndex !== null && (
+          {selected && (
             <>
+              <InspectionClip id={clipId} day={selected.day} />
               <Line
-                dataKey="otherPast"
+                dataKey="other"
+                style={{ clipPath: `url(#${clipId})` }}
                 type="monotone"
                 stroke="var(--color-other)"
                 strokeWidth={1.75}
@@ -277,7 +298,8 @@ export function VisibilityChart({
                 connectNulls={false}
               />
               <Line
-                dataKey="ownPast"
+                dataKey="own"
+                style={{ clipPath: `url(#${clipId})` }}
                 type="monotone"
                 stroke="var(--color-own)"
                 strokeWidth={4}
@@ -290,39 +312,39 @@ export function VisibilityChart({
               />
             </>
           )}
+          {series.map((point, index) =>
+            index !== activeIndex &&
+            point.rate !== null &&
+            series[index - 1]?.rate == null &&
+            series[index + 1]?.rate == null ? (
+              <ReferenceDot
+                key={`own-${point.date.toISOString()}`}
+                x={point.date.toISOString()}
+                y={point.rate}
+                r={index === lastIndex ? 6 : 3}
+                fill="var(--color-own)"
+                stroke="none"
+              />
+            ) : null,
+          )}
+          {comparison.map((point, index) =>
+            index !== activeIndex &&
+            point.rate !== null &&
+            comparison[index - 1]?.rate == null &&
+            comparison[index + 1]?.rate == null ? (
+              <ReferenceDot
+                key={`other-${point.date.toISOString()}`}
+                x={point.date.toISOString()}
+                y={point.rate}
+                r={index === lastIndex ? 6 : 3}
+                fill="var(--color-other)"
+                stroke="none"
+              />
+            ) : null,
+          )}
           {activeIndex === null ? (
             <>
-              {series.map((point, index) =>
-                index < lastIndex &&
-                point.rate !== null &&
-                (index === 0 || series[index - 1].rate === null) &&
-                series[index + 1].rate === null ? (
-                  <ReferenceDot
-                    key={`own-${point.date.toISOString()}`}
-                    x={point.date.toISOString()}
-                    y={point.rate}
-                    r={3}
-                    fill="var(--color-own)"
-                    stroke="none"
-                  />
-                ) : null,
-              )}
-              {comparison.map((point, index) =>
-                index < lastIndex &&
-                point.rate !== null &&
-                (index === 0 || comparison[index - 1].rate === null) &&
-                comparison[index + 1].rate === null ? (
-                  <ReferenceDot
-                    key={`other-${point.date.toISOString()}`}
-                    x={point.date.toISOString()}
-                    y={point.rate}
-                    r={3}
-                    fill="var(--color-other)"
-                    stroke="none"
-                  />
-                ) : null,
-              )}
-              {last && last.rate !== null && (
+              {last && last.rate !== null && series[lastIndex - 1]?.rate != null && (
                 <ReferenceDot
                   x={last.date.toISOString()}
                   y={last.rate}
@@ -332,7 +354,7 @@ export function VisibilityChart({
                   strokeWidth={2}
                 />
               )}
-              {otherLast && otherLast.rate !== null && (
+              {otherLast && otherLast.rate !== null && comparison[lastIndex - 1]?.rate != null && (
                 <ReferenceDot
                   x={otherLast.date.toISOString()}
                   y={otherLast.rate}
@@ -370,11 +392,18 @@ export function VisibilityChart({
         <input
           type="range"
           min={0}
-          max={lastIndex}
-          value={activeIndex ?? lastIndex}
+          max={Math.max(0, availableIndices.length - 1)}
+          disabled={availableIndices.length === 0}
+          value={
+            activeIndex === null
+              ? Math.max(0, availableIndices.length - 1)
+              : Math.max(0, availableIndices.indexOf(activeIndex))
+          }
           aria-valuetext={readout}
-          onFocus={() => onInspect(activeIndex ?? lastIndex, "keyboard")}
-          onChange={(event) => onInspect(Number(event.target.value), "keyboard")}
+          onFocus={() => onInspect(activeIndex ?? availableIndices.at(-1) ?? null, "keyboard")}
+          onChange={(event) =>
+            onInspect(availableIndices[Number(event.target.value)] ?? null, "keyboard")
+          }
           onKeyDown={(event) => {
             if (event.key === "Escape") onInspect(null, "keyboard");
           }}

@@ -1,8 +1,9 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { useApi } from "@/api/apiProvider";
 import { usePageClamp } from "@/hooks/use-page-clamp";
 import { useTableState } from "@/hooks/use-table-state";
+import { keepPreviousDataForScope } from "@/lib/queries";
 import { competitorKey } from "@/lib/query-keys";
 
 export function useCompetitorList(brandID: string) {
@@ -19,7 +20,7 @@ export function useCompetitorList(brandID: string) {
   const competitors = useQuery({
     queryKey: [...competitorKey(brandID), params],
     queryFn: ({ signal }) => api.competitors.list({ brandId: brandID, ...params }, { signal }),
-    placeholderData: keepPreviousData,
+    placeholderData: keepPreviousDataForScope(competitorKey(brandID)),
     enabled: table.q === table.debouncedQuery,
   });
 

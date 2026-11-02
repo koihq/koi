@@ -58,7 +58,9 @@ export function VisibilityHeadline({
 }) {
   if (paired && competitor) {
     return (
-      <div className={`${variant === "detail" ? "mt-4 " : ""}flex flex-wrap items-center gap-5`}>
+      <div
+        className={`${variant === "detail" ? "mt-4 group-data-[refreshing=true]/refresh:opacity-50 " : ""}flex flex-wrap items-center gap-5`}
+      >
         {[
           { subject: brand, value: rate },
           { subject: competitor, value: comparisonRate },
@@ -81,7 +83,7 @@ export function VisibilityHeadline({
 
   return (
     <strong
-      className={`${variant === "detail" ? "mt-4 block " : "whitespace-nowrap "}text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums`}
+      className={`${variant === "detail" ? "mt-4 block group-data-[refreshing=true]/refresh:opacity-50 " : "whitespace-nowrap "}text-[36px] leading-[1.1] font-medium tracking-[-0.025em] tabular-nums`}
     >
       <RateValue value={rate} locale={locale} animated={animated} />
     </strong>

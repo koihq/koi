@@ -263,3 +263,124 @@ test("brand selection remains usable at 320px", async ({ page }, testInfo) => {
   await popup.getByRole("option", { name: /Brand 000/ }).click();
   await expect(page.getByLabel("Active brand: Brand 000", { exact: true })).toBeVisible();
 });
+
+for (const detail of [false, true]) {
+  for (const width of [1440, 960, 390, 320]) {
+    test(`${detail ? "detail" : "home"} retains chart geometry while filters load at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(
+        (theme) => localStorage.setItem("koi:theme:v1", theme),
+        width === 960 || width === 320 ? "dark" : "light",
+      );
+      if (width === 320) await page.emulateMedia({ reducedMotion: "reduce" });
+      await mockProduct(page);
+      await page.goto(detail ? "/prompts/prompt" : "/");
+      const panel = page.locator(
+        detail
+          ? 'section[aria-labelledby="detail-visibility-heading"]'
+          : 'section[aria-labelledby="signal-heading"]',
+      );
+      const range = panel.getByRole("button", { name: "7D", exact: true });
+      await expect(panel).toHaveAttribute("aria-busy", "false");
+      await expect(panel.locator(".recharts-surface").first()).toBeVisible();
+      const bounds = await panel.boundingBox();
+      const controlBounds = await range.boundingBox();
+      const promptRows = page.locator("#prompts");
+      const promptHeight = detail ? 0 : (await promptRows.boundingBox())?.height;
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route("**/api/v1/**", async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        if (path.includes("visibility") || path === "/api/v1/prompts") await gate;
+        await route.fallback();
+      });
+      try {
+        await range.click();
+        await expect(panel).toHaveAttribute("aria-busy", "true");
+        await expect(panel.locator("figure")).toHaveCSS("opacity", "0.5");
+        await expect(range).toHaveCSS("opacity", "1");
+        await expect(panel).toHaveCSS("opacity", "1");
+        await expect(panel.locator(".recharts-surface").first()).toBeVisible();
+        expect((await panel.boundingBox())?.height).toBe(bounds?.height);
+        expect((await range.boundingBox())?.y).toBe(controlBounds?.y);
+        if (!detail) {
+          await expect(promptRows).toHaveAttribute("aria-busy", "true");
+          expect((await promptRows.boundingBox())?.height).toBe(promptHeight);
+          await expect(promptRows.locator(width >= 1101 ? "table" : "ul")).toHaveCSS(
+            "opacity",
+            "0.5",
+          );
+          // Rapid changes must keep the chart present too.
+          await panel.getByRole("button", { name: "ChatGPT", exact: true }).click();
+          expect((await panel.boundingBox())?.height).toBe(bounds?.height);
+          await panel.getByRole("button", { name: /Rival 000/ }).click();
+          await expect(panel.locator(".recharts-surface").first()).toBeVisible();
+        }
+      } finally {
+        release();
+      }
+      await expect(panel).toHaveAttribute("aria-busy", "false");
+      await expect(panel.locator("figure")).toHaveCSS("opacity", "1");
+      await expect(panel.getByRole("button", { name: "7D", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+  }
+}
+
+test("competitor search keeps the existing table while its request is pending", async ({
+  page,
+}) => {
+  await mockProduct(page);
+  await page.route("**/api/v1/competitors?*", async (route) => {
+    await route.fulfill({
+      json: {
+        items: [
+          {
+            id: "rival",
+            brandId: "brand-120",
+            name: "Rival",
+            domain: "rival.example",
+            confirmed: true,
+            source: "manual",
+          },
+        ],
+        totalItems: 1,
+        totalPages: 1,
+        currentPage: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+  });
+  await page.goto("/competitors");
+  const panel = page.locator('section[aria-labelledby="competitors-heading"]');
+  const table = panel.getByRole("table");
+  await expect(table).toBeVisible();
+  const height = (await panel.boundingBox())?.height;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/competitors?*", async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  try {
+    await panel.getByRole("textbox").fill("Rival");
+    await expect(panel).toHaveAttribute("aria-busy", "true");
+    await expect(table).toBeVisible();
+    await expect(table).toHaveCSS("opacity", "0.5");
+    await expect(panel.getByRole("textbox")).toHaveCSS("opacity", "1");
+    expect((await panel.boundingBox())?.height).toBe(height);
+  } finally {
+    release();
+  }
+  await expect(panel).toHaveAttribute("aria-busy", "false");
+  await expect(table).toHaveCSS("opacity", "1");
+});

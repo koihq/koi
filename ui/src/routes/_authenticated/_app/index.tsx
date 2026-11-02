@@ -22,12 +22,14 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
 import { BrandPill } from "@/components/blocks/brand-pill";
+import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { TrackingSummary } from "@/components/blocks/tracking-review";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCollection } from "@/hooks/use-collection";
+import { keepPreviousDataForScope } from "@/lib/queries";
 import { promptKey } from "@/lib/query-keys";
 import {
   engines,
@@ -97,6 +99,7 @@ function Home() {
   const summary = useQuery({
     queryKey: [...promptKey(brand.id), "visibility-summary", scope],
     queryFn: ({ signal }) => api.runs.summary(brand.id, scope, { signal }),
+    placeholderData: keepPreviousDataForScope(promptKey(brand.id)),
     refetchInterval: collecting ? 5_000 : false,
   });
   const hasConfirmedPrompts = summary.data?.hasConfirmedPrompts;
@@ -152,13 +155,16 @@ function Home() {
     <div className="grid gap-6 pb-24">
       <h1 className="sr-only">{t("dashboard.title")}</h1>
       <section
-        className="min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+        className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+        aria-busy={summary.isFetching}
+        data-refreshing={summary.isFetching && Boolean(summary.data)}
         aria-labelledby="signal-heading"
         onPointerDownCapture={(event) =>
           setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
         }
         onKeyDownCapture={() => setInspectionInput("keyboard")}
       >
+        <QueryRefreshIndicator active={summary.isFetching} label={t("dashboard.loading")} />
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
             <time
@@ -189,7 +195,7 @@ function Home() {
                 </Button>
               </p>
             ) : (
-              <div className="mt-4 flex flex-wrap items-baseline gap-2 text-[13px]">
+              <div className="mt-4 flex flex-wrap items-baseline gap-2 text-[13px] group-data-[refreshing=true]/refresh:opacity-50">
                 <VisibilityHeadline
                   brand={brand}
                   competitor={comparison}
@@ -339,7 +345,7 @@ function Home() {
         </div>
 
         {summary.isSuccess && rate === null ? (
-          <div className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
+          <div className="group-data-[refreshing=true]/refresh:opacity-50 grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
             <p>
               {t(
                 hasConfirmedPrompts ? "dashboard.noCompletedAnswers" : "dashboard.emptyDescription",
@@ -366,7 +372,7 @@ function Home() {
         ) : null}
 
         <div className="mt-4 flex items-center justify-between gap-4">
-          <span className="text-xs font-normal text-muted-foreground">
+          <span className="text-xs font-normal text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
             {series.length > 0 &&
               `${series[0].date.toLocaleDateString(i18n.language, { month: "short", day: "numeric" })} – ${series.at(-1)?.date.toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}`}
           </span>
@@ -422,11 +428,11 @@ function Home() {
                   <span className="min-w-0 justify-self-start max-[359px]:col-span-2">
                     <BrandPill name={competitor.name} domain={competitor.domain} />
                   </span>
-                  <span className="text-end tabular-nums max-[359px]:text-start">
+                  <span className="text-end tabular-nums max-[359px]:text-start group-data-[refreshing=true]/refresh:opacity-50">
                     {rivalRate === null ? "—" : `${rivalRate.toFixed(1)}%`}
                   </span>
                   <span
-                    className={`text-end tabular-nums ${gap === null ? "" : gap > 0 ? "text-negative" : "text-positive"}`}
+                    className={`group-data-[refreshing=true]/refresh:opacity-50 text-end tabular-nums ${gap === null ? "" : gap > 0 ? "text-negative" : "text-positive"}`}
                   >
                     {gap === null ? "—" : `${gap > 0 ? "+" : ""}${gap.toFixed(1)} pp`}
                   </span>

@@ -16,6 +16,7 @@ import { DataTable, type DataTableColumn } from "@/components/blocks/data-table"
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
+import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import {
   AlertDialog,
@@ -195,10 +196,15 @@ export function PromptManager({
   const pending = Object.values(mutations).some((mutation) => mutation.isPending) || bulkPending;
 
   useEffect(() => {
-    if (active.isSuccess && page > Math.max(1, totalPages)) {
+    if (
+      active.isSuccess &&
+      !active.isPlaceholderData &&
+      !active.isFetching &&
+      page > Math.max(1, totalPages)
+    ) {
       void setSearch({ page: Math.max(1, totalPages) }, { history: "replace" });
     }
-  }, [active.isSuccess, page, setSearch, totalPages]);
+  }, [active.isSuccess, active.isPlaceholderData, active.isFetching, page, setSearch, totalPages]);
 
   useEffect(() => {
     if (previousPage.current === page) return;
@@ -428,8 +434,11 @@ export function PromptManager({
     <section
       id="prompts"
       aria-labelledby="prompts-heading"
-      className="min-w-0 rounded-lg bg-surface p-4 sm:p-7 scroll-mt-8"
+      className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7 scroll-mt-8"
+      aria-busy={active.isFetching}
+      data-refreshing={active.isFetching && Boolean(active.data)}
     >
+      <QueryRefreshIndicator active={active.isFetching} label={t("loading")} />
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 id="prompts-heading" ref={heading} tabIndex={-1} className="text-[13px] font-medium">
           {t("prompts")}
@@ -568,7 +577,7 @@ export function PromptManager({
             <div className="hidden min-[1101px]:block">
               <DataTable
                 ariaLabel={t("tableLabel")}
-                className="prompt-table table-fixed border-separate border-spacing-y-1"
+                className="prompt-table table-fixed border-separate border-spacing-y-1 group-data-[refreshing=true]/refresh:opacity-50"
                 headerRowClassName="border-0 hover:bg-transparent"
                 data={visible}
                 columns={columns}
@@ -596,7 +605,7 @@ export function PromptManager({
                 {t("home:dashboard.selectPage")}
               </div>
             )}
-            <ul className="grid gap-1 min-[1101px]:hidden">
+            <ul className="grid gap-1 min-[1101px]:hidden group-data-[refreshing=true]/refresh:opacity-50">
               {visible.map((row) => (
                 <li
                   key={row.id}

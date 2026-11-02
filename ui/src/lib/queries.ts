@@ -85,3 +85,9 @@ export async function clearAccountCache(queryClient: QueryClient) {
   await queryClient.cancelQueries();
   queryClient.clear();
 }
+
+// Retain filtered results only while viewing the same brand/resource.
+export function keepPreviousDataForScope(scope: readonly string[]) {
+  return <T>(data: T | undefined, query: { queryKey: readonly unknown[] } | undefined) =>
+    scope.every((part, index) => query?.queryKey[index] === part) ? data : undefined;
+}
