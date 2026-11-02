@@ -1,5 +1,6 @@
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Table,
   TableBody,
@@ -36,6 +37,7 @@ export function DataTable<T>({
   rowClassName?: (row: T) => string;
   isRowSelected?: (row: T) => boolean;
 }) {
+  const { t } = useTranslation("common");
   const table = useReactTable({
     data,
     columns: columns.map(
@@ -51,7 +53,7 @@ export function DataTable<T>({
   });
 
   return (
-    <Table aria-label={ariaLabel} className={className}>
+    <Table scrollHint={t("tableScrollHint")} aria-label={ariaLabel} className={className}>
       <TableHeader>
         {table.getHeaderGroups().map((group) => (
           <TableRow key={group.id} className={headerRowClassName}>

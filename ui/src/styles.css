@@ -232,7 +232,7 @@
         opacity 160ms ease;
     }
 
-    [data-slot="button"]:active:not([aria-haspopup]) {
+    [data-slot="button"]:active:not([aria-haspopup]):not(:focus-visible) {
       transform: scale(0.97);
     }
   }

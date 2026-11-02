@@ -30,7 +30,8 @@
     "connections": "MCP",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
-    "signOutError": "Unable to sign out. Try again."
+    "signOutError": "Unable to sign out. Try again.",
+    "account": "Account"
   },
   "dashboard": {
     "title": "Visibility",

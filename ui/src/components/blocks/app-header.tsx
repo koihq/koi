@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Brand } from "@/api/brands.api";
 import { BrandSwitcher } from "@/components/blocks/brand-switcher";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,21 +44,27 @@ export function AppHeader({ brand }: { brand: Brand }) {
       <BrandSwitcher key={brand.id} brand={brand} />
 
       <div className="flex shrink-0 items-center gap-3">
-        <Link
-          to="/competitors"
-          aria-label="Competitors"
-          title="Competitors"
-          className="grid size-8 place-items-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        <Button
+          variant="ghost"
+          size="circle-sm"
+          render={<Link to="/competitors" />}
+          nativeButton={false}
+          role="link"
+          aria-label={t("dashboard.competitors")}
+          title={t("dashboard.competitors")}
+          className="text-muted-foreground"
         >
-          <HugeiconsIcon icon={UserMultipleIcon} size={18} aria-hidden="true" />
-        </Link>
+          <HugeiconsIcon icon={UserMultipleIcon} className="size-[18px]" aria-hidden="true" />
+        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger
-            aria-label="Account"
-            className="grid size-8 place-items-center rounded-full border border-border text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label={t("header.account")}
+            render={
+              <Button variant="icon-outline" size="circle-sm" className="text-muted-foreground" />
+            }
           >
-            <HugeiconsIcon icon={UserIcon} size={18} aria-hidden="true" />
+            <HugeiconsIcon icon={UserIcon} className="size-[18px]" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8}>
             {capabilities.data?.cloudBilling && (

@@ -1,4 +1,5 @@
 {
   "brand": "Koi",
-  "working": "Working…"
+  "working": "Working…",
+  "tableScrollHint": "Scroll horizontally to see all columns."
 }

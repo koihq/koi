@@ -41,7 +41,7 @@ function SettingsLayout() {
       <main
         id="settings-content"
         tabIndex={-1}
-        className="mx-auto w-full max-w-[1320px] px-4 pb-10 sm:px-7"
+        className="mx-auto w-full max-w-[1376px] px-4 pb-10 sm:px-7"
       >
         <Outlet key={brand?.id ?? "account"} />
       </main>

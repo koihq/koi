@@ -52,6 +52,72 @@ make test
 
 The React app lives in `ui/` (pnpm). `make ui-build` writes the Vite bundle to `pkg/web/dist` (gitignored); Go embeds it. `make dev`, `make run`, and `make test` build the UI first if that output is missing.
 
+## Demo data
+
+With local Postgres running (`make compose-up`), seed a dedicated demo account:
+
+```bash
+make seed-demo
+```
+
+Log in at `http://localhost:5173` with **demo@koi.local** / **KoiDemo2026!**.
+Use the existing brand selector to switch between these US-market examples:
+
+| Brand | Dataset |
+| --- | --- |
+| Koi · Storico | 180 daily collections, 32 current prompts, 2 historical-only prompts, 6 competitors |
+| Koi · Vuoto | Brand profile only; no prompts, competitors, or collections |
+| Koi · Prima raccolta | 5 confirmed prompts, 4 competitors, one completed collection today (20 answers) |
+
+The populated example includes 26 active confirmed prompts, 3 inactive prompts,
+and 3 unconfirmed drafts. Inactive and deleted prompts have answers only in the
+first 90 days. Four engines, citations, mentions, misses, simulated provider
+errors, and varying trends exercise pagination, filters, prompt history, and
+7/30/90-day comparisons. Days without observations have no rate, rather than 0%.
+The demo account represents all three brand states; the empty brand starts after
+brand creation, and the first-collection brand starts after configuration.
+
+Repeated seeding preserves existing scenarios and creates missing ones. To restore
+all three demo brands and move their dates to today:
+
+```bash
+make seed-demo-reset
+```
+
+Reset replaces only those three brands and their contents, including edits made
+inside them. It preserves the account, login, sessions, other brands, and other
+users. An occupied demo email or unexpected organization aborts without changes.
+Keep this account for local development; its password is public.
+
+The Go command loads `.env`, requires only `KOI_DATABASE_URL`, and initializes the
+current schema. It works in `selfhosted` mode (the default) and rejects `cloud`.
+If your local `.env` uses cloud mode for billing tests, prefix the seed/reset and
+app commands with `KOI_DEPLOYMENT_MODE=selfhosted` to use these offline examples
+without changing that file.
+Start the app normally with `make dev`. Seeding needs no UI build, running API,
+Cloro, OpenRouter, Logo.dev, or other service credentials. All results use the
+`stub` collector and disclose that their answers are simulated. No jobs, welcome
+emails, provider requests, or future collections are scheduled, even if Cloro is
+configured. The full and first-collection brands deliberately have no next run;
+normal collection-availability messages still reflect the instance configuration.
+
+### Dataset sources
+
+Product identities and broad capabilities were checked on **2026-11-02** against
+the [Koi repository](https://github.com/koihq/koi),
+[Profound](https://www.tryprofound.com/), [Peec AI](https://peec.ai/),
+[OtterlyAI](https://otterly.ai/), [Scrunch](https://scrunch.com/),
+[AthenaHQ](https://athenahq.ai/), and [Rankscale](https://rankscale.ai/).
+The first-collection brand uses the first four competitors. Koi uses its GitHub
+repository identity without an invented website domain. Brand snapshots retain
+the name `Koi`; selector names add scenario labels.
+
+The dataset in `internal/demoseed/dataset.go` contains original illustrative
+answers, not copied vendor text or engine transcripts. Dates, recommendations,
+citations, rankings, trends, and metrics are simulated, not evidence of actual
+engine behavior. Generation is deterministic relative to the seed date, and the
+existing visibility scorer derives outcomes from the saved text and source URLs.
+
 ## Workers and scheduling
 
 River runs jobs from Postgres; queue discovery polls approximately every second with jitter.

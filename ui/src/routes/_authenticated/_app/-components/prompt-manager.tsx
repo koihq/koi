@@ -442,7 +442,12 @@ export function PromptManager({
         />
       </div>
       <div className="[&:not(:empty)]:mb-3">
-        <TrackingReview brandID={brandID} kind="prompts" disabled={pending} />
+        <TrackingReview
+          brandID={brandID}
+          kind="prompts"
+          disabled={pending}
+          showTrackingError={false}
+        />
       </div>
       {mutations.confirm.isError && (
         <p role="alert" className="mb-3 text-sm text-destructive">

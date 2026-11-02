@@ -42,7 +42,8 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 
 | Need | Use |
 | --- | --- |
-| Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| icon \| icon-xs \| icon-sm \| icon-lg` |
+| Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| icon \| icon-xs \| icon-sm \| icon-lg \| circle \| circle-sm \| pill` |
+| Checkbox | `Checkbox` with checked/indeterminate states; 16px box and 28px hit target |
 | Text field | `Input` + `Field` / `FieldLabel` / `FieldError` / `FieldGroup` |
 | Searchable choice | `Combobox` / `ComboboxInput` / `ComboboxContent` / `ComboboxItem` |
 | Action menu | `DropdownMenu` / `DropdownMenuTrigger` / `DropdownMenuContent` / `DropdownMenuItem` |
@@ -54,13 +55,13 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 | Structural split | `Separator` â€” **one split**, never as grouping. Do not put `FieldSeparator` between form fields |
 | Data chart | `ChartContainer` / `ChartTooltip` with Recharts series |
 
-`FieldGroup` gap is the default grouping. Do not add `Card`, `Table`, or `Tabs` until a product screen needs the behavior.
+`FieldGroup` gap is the default grouping. Do not add `Card` for grouping. Product data tables use the installed `Table` primitives.
 
 Authenticated navigation uses `AppHeader`: one brand link, competitors, account menu, theme, and sign out. The old Sidebar remains in the repository only for unused legacy code until cleanup.
 
 ## Authenticated shell baseline
 
-The compact header and main share a 1320px max width. Side padding is 16px on mobile and 28px from `sm`. Header actions use 40px hit targets. The brand icon is 28px. A single structural border around the signal separates it from the canvas. Keep focus rings separate from borders.
+The compact header and main share a 1376px outer max width (1320px content after desktop padding). Side padding is 16px on mobile and 28px from `sm`. Header actions use 40px hit targets. The brand icon remains compact. A single structural border around the signal separates it from the canvas. Keep focus rings separate from borders.
 
 ## Motion contract
 
@@ -72,8 +73,20 @@ Tokens live in `ui/src/styles.css`. Button press is on `[data-slot="button"]` â€
 
 | Primitive | Motion |
 | --- | --- |
-| `Button` | Press: `:active` `scale(0.97)` at **160ms** `var(--ease-out)`, keep `:not([aria-haspopup])`. Color/hover: **160ms** `ease`, no hover scale. Reduced motion: no scale on `:active` |
+| `Button` | Press: `:active` `scale(0.97)` at **160ms** `var(--ease-out)`, keep `:not([aria-haspopup]):not(:focus-visible)`. Color/hover: **160ms** `ease`, no hover scale. Reduced motion: no scale on `:active` |
 | `Input` | `transition-colors ease` only. No press scale |
 | `Label`, `Field`, `Separator` | None |
 
 Do not animate theme flips, keyboard actions, or page navigation. Do not add popover/tooltip/modal recipes until those primitives exist.
+
+## Current production decisions
+
+See `docs/design-system.md` for the current contract and historical exploration provenance.
+Competitors retain the four-column table. Checkbox uses shadcn with a 28px hit target.
+Input and Textarea use 16px below `sm`; preserve their desktop density. Button `circle`
+and `pill` sizes provide 40px targets without route-level size overrides. Tables with
+overflow use a localized hint and keyboard-focusable scroll container.
+
+Header account/competitor controls use `circle-sm`: 32px visible, 40px hit target.
+Account uses `icon-outline` for a transparent idle background in both themes.
+Summary owns the shared visibility-chart style, including detail and boundary values.

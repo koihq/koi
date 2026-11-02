@@ -9,10 +9,10 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
-import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
+import type { VisibilityEngine, VisibilityResult, VisibilityRunStatus } from "@/api/generated";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
@@ -25,7 +25,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useCollection, useRefreshAfterCollection } from "@/hooks/use-collection";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
+import { answerMessageKey, getAnswerState, isCollecting } from "@/lib/answer-state";
 import { promptKey, runKey } from "@/lib/query-keys";
 import { safeSourceURL } from "@/lib/source-url";
 import {
@@ -56,11 +66,12 @@ export const Route = createFileRoute("/_authenticated/_app/prompts/$promptId")({
 });
 
 function PromptDetail() {
-  const { t, i18n } = useTranslation(["home", "management", "visibility"]);
+  const { t, i18n } = useTranslation(["home", "management", "visibility", "common"]);
   const { brand } = Route.useRouteContext();
   const { promptId } = Route.useParams();
   const api = useApi();
   const mutations = usePromptMutations(brand.id);
+  const { collecting } = useCollection(brand.id);
   const [search, setSearch] = useQueryStates(detailSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
@@ -74,14 +85,21 @@ function PromptDetail() {
     queryFn: ({ signal }) => api.prompts.getById(promptId, { signal }),
   });
   const history = useQuery({
+    retry: 1,
     queryKey: [...runKey(brand.id), "prompt", promptId, search.page],
     queryFn: ({ signal }) =>
       api.runs.promptHistory(brand.id, promptId, search.page, 10, { signal }),
+    refetchInterval: (query) =>
+      collecting || query.state.data?.items.some((item) => isCollecting(item.run)) ? 5_000 : false,
   });
+  const historyCollecting = history.data?.items.some((item) => isCollecting(item.run)) ?? false;
+  useRefreshAfterCollection(brand.id, history.data?.items.map((item) => item.run) ?? []);
   const scope: VisibilityScope = { days: search.days, engines: [] };
   const visibility = useQuery({
+    retry: 1,
     queryKey: [...runKey(brand.id), "prompt-visibility", promptId, search.days],
     queryFn: ({ signal }) => api.runs.promptVisibility(brand.id, promptId, scope, { signal }),
+    refetchInterval: collecting || historyCollecting ? 5_000 : false,
   });
 
   const runs = history.data?.items ?? [];
@@ -89,8 +107,11 @@ function PromptDetail() {
   const result = run?.results.find((item) => item.engine === search.responseEngine);
   const title = prompt.data?.text ?? runs[0]?.results[0]?.promptText;
   const comparison = visibility.data?.competitors.find((item) => item.id === search.compareId);
-  const series = visibilitySeries(visibility.data);
-  const comparedSeries = comparison ? visibilitySeries(visibility.data, comparison.id) : [];
+  const series = useMemo(() => visibilitySeries(visibility.data), [visibility.data]);
+  const comparedSeries = useMemo(
+    () => (comparison ? visibilitySeries(visibility.data, comparison.id) : []),
+    [visibility.data, comparison],
+  );
   const rate = visibilityRate(visibility.data);
   const comparisonRate = comparison
     ? visibilityRate(visibility.data, undefined, comparison.id)
@@ -105,10 +126,10 @@ function PromptDetail() {
   const metricComparisonRate =
     inspected === null ? comparisonRate : (comparedSeries[inspected]?.rate ?? null);
 
-  function inspect(index: number | null, input: InspectionInput) {
+  const inspect = useCallback((index: number | null, input: InspectionInput) => {
     setInspectionInput(input);
     setInspected(index);
-  }
+  }, []);
 
   function openRun(id: string, trigger: HTMLButtonElement, engine?: VisibilityEngine) {
     runTrigger.current = trigger;
@@ -116,7 +137,7 @@ function PromptDetail() {
   }
 
   return (
-    <article className="grid gap-6 pb-24">
+    <article className="grid min-w-0 grid-cols-1 gap-6 pb-24">
       <Link
         to="/"
         hash="prompts"
@@ -146,21 +167,29 @@ function PromptDetail() {
         <p className="text-xs font-normal text-muted-foreground">{t("home:dashboard.draft")}</p>
       )}
 
+      {visibility.isError && visibility.data && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("home:dashboard.loadError")}{" "}
+          <Button variant="link" onClick={() => void visibility.refetch()}>
+            {t("home:dashboard.retry")}
+          </Button>
+        </p>
+      )}
       <div className="grid gap-4 min-[801px]:grid-cols-[minmax(0,1fr)_332px]">
         <section
-          className="min-w-0 rounded-lg bg-surface p-5 min-[801px]:min-h-[412px]"
+          className="min-w-0 rounded-lg bg-surface p-4 sm:p-7 min-[801px]:min-h-[412px]"
           aria-labelledby="detail-visibility-heading"
           onPointerDownCapture={(event) =>
             setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
           }
           onKeyDownCapture={() => setInspectionInput("keyboard")}
         >
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 id="detail-visibility-heading" className="text-base font-bold">
                 {t("home:dashboard.aiVisibility")}
               </h2>
-              {visibility.isSuccess && (
+              {visibility.data && (
                 <VisibilityHeadline
                   brand={brand}
                   competitor={comparison}
@@ -178,24 +207,26 @@ function PromptDetail() {
             </div>
             <fieldset className="flex gap-0.5" aria-label={t("home:dashboard.range")}>
               {([7, 30, 90] as const).map((days) => (
-                <button
+                <Button
                   key={days}
                   type="button"
                   aria-pressed={search.days === days}
-                  className="min-h-10 min-w-10 rounded-full px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  variant="ghost"
+                  size="pill"
+                  className="text-muted-foreground"
                   onClick={() => {
                     void setSearch({ days }, { history: "push" });
                     setInspected(null);
                   }}
                 >
                   {`${days}D`}
-                </button>
+                </Button>
               ))}
             </fieldset>
           </div>
           {visibility.isPending ? (
             <p className="py-8 text-sm text-muted-foreground">{t("home:dashboard.loading")}</p>
-          ) : visibility.isError ? (
+          ) : visibility.isError && !visibility.data ? (
             <p role="alert" className="py-8 text-sm">
               {t("home:dashboard.loadError")}{" "}
               <Button variant="link" onClick={() => void visibility.refetch()}>
@@ -212,7 +243,7 @@ function PromptDetail() {
               inspectionInput={inspectionInput}
               onInspect={inspect}
               locale={i18n.language}
-              variant="detail"
+              scopeKey={`${brand.id}:${promptId}:${search.days}:${search.compareId}`}
             />
           ) : (
             <p className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
@@ -277,7 +308,7 @@ function PromptDetail() {
         </aside>
       </div>
 
-      <section className="mt-8" aria-labelledby="run-history-heading">
+      <section className="mt-8 min-w-0" aria-labelledby="run-history-heading">
         <div className="flex items-center justify-between">
           <h2 id="run-history-heading" className="text-base font-bold">
             {t("home:detail.runHistory")}
@@ -286,7 +317,15 @@ function PromptDetail() {
             {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
           </span>
         </div>
-        {history.isError ? (
+        {history.isError && history.data && (
+          <p role="alert" className="text-sm text-destructive">
+            {t("home:detail.loadError")}{" "}
+            <Button variant="link" onClick={() => void history.refetch()}>
+              {t("home:detail.retry")}
+            </Button>
+          </p>
+        )}
+        {history.isError && !history.data ? (
           <p role="alert" className="py-8 text-sm text-destructive">
             {t("home:detail.loadError")}{" "}
             <Button variant="link" onClick={() => void history.refetch()}>
@@ -298,22 +337,26 @@ function PromptDetail() {
         ) : runs.length === 0 ? (
           <p className="py-8 text-sm text-muted-foreground">{t("home:detail.noAnswers")}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="mt-5 w-full min-w-[680px] table-fixed border-collapse">
-              <thead>
-                <tr>
-                  <th className="w-40 p-2 text-start text-xs font-normal text-muted-foreground">
+          <div className="mt-5 min-w-0">
+            <Table
+              aria-label={t("home:detail.runHistory")}
+              scrollHint={t("common:tableScrollHint")}
+              className="w-full min-w-[680px] table-fixed border-collapse"
+            >
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-40 p-2 text-start text-xs font-normal text-muted-foreground">
                     {t("home:detail.runDate")}
-                  </th>
-                  <th className="p-2 text-start text-xs font-normal text-muted-foreground">
+                  </TableHead>
+                  <TableHead className="p-2 text-start text-xs font-normal text-muted-foreground">
                     {t("home:detail.engineResults")}
-                  </th>
-                  <th className="w-[220px] p-2 text-start text-xs font-normal text-muted-foreground">
+                  </TableHead>
+                  <TableHead className="w-[220px] p-2 text-start text-xs font-normal text-muted-foreground">
                     {t("home:detail.competitorsFound")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {runs.map((item) => {
                   const found = [
                     ...new Map(
@@ -323,8 +366,8 @@ function PromptDetail() {
                     ).values(),
                   ];
                   return (
-                    <tr key={item.run.id}>
-                      <td className="border-t border-border px-2 py-3 align-top text-[13px]">
+                    <TableRow key={item.run.id}>
+                      <TableCell className="border-t border-border px-2 py-3 align-top text-[13px]">
                         <button
                           type="button"
                           className="grid gap-0.5 text-start hover:underline"
@@ -340,12 +383,12 @@ function PromptDetail() {
                             })}
                           </small>
                         </button>
-                      </td>
-                      <td className="border-t border-border px-2 py-3 align-top text-[13px]">
+                      </TableCell>
+                      <TableCell className="border-t border-border px-2 py-3 align-top text-[13px]">
                         <div className="flex flex-wrap gap-1.5">
                           {engines.map((engine) => {
                             const cell = item.results.find((entry) => entry.engine === engine.id);
-                            const status = cell?.outcome ?? (cell?.errorCode ? "error" : "pending");
+                            const status = getAnswerState(item.run, engine.id, cell);
                             return (
                               <button
                                 key={engine.id}
@@ -354,18 +397,16 @@ function PromptDetail() {
                                 onClick={(event) =>
                                   openRun(item.run.id, event.currentTarget, engine.id)
                                 }
-                                aria-label={`${engine.name}: ${t(`visibility:outcomes.${status}`, { defaultValue: status })}`}
+                                aria-label={`${engine.name}: ${t(`visibility:outcomes.${status}`)}`}
                               >
                                 <BrandPill name={engine.name} domain={engine.domain} iconOnly />
-                                <span>
-                                  {t(`visibility:outcomes.${status}`, { defaultValue: status })}
-                                </span>
+                                <span>{t(`visibility:outcomes.${status}`)}</span>
                               </button>
                             );
                           })}
                         </div>
-                      </td>
-                      <td className="border-t border-border px-2 py-3 align-top text-[13px]">
+                      </TableCell>
+                      <TableCell className="border-t border-border px-2 py-3 align-top text-[13px]">
                         <div className="flex flex-wrap gap-1.5">
                           {found.length ? (
                             found.map((appearance) => (
@@ -383,12 +424,12 @@ function PromptDetail() {
                             <span className="text-xs font-normal text-muted-foreground">{"—"}</span>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
         {history.data && history.data.totalPages > 1 && (
@@ -457,16 +498,20 @@ function PromptDetail() {
                       }
                     >
                       <BrandPill name={engine.name} domain={engine.domain} />
-                      <span>{cell?.outcome ?? "Pending"}</span>
+                      <span>
+                        {t(`visibility:outcomes.${getAnswerState(run.run, engine.id, cell)}`)}
+                      </span>
                     </button>
                   );
                 })}
               </fieldset>
               {result ? (
-                <Answer result={result} />
+                <Answer result={result} run={run.run} />
               ) : (
                 <p className="py-8 text-sm text-muted-foreground">
-                  {t("home:detail.pendingAnswer")}
+                  {t(
+                    `visibility:answerMessages.${answerMessageKey(getAnswerState(run.run, search.responseEngine))}`,
+                  )}
                 </p>
               )}
             </>
@@ -492,15 +537,16 @@ function PromptDetail() {
   );
 }
 
-function Answer({ result }: { result: VisibilityResult }) {
+function Answer({ result, run }: { result: VisibilityResult; run: VisibilityRunStatus }) {
   const { t } = useTranslation(["home", "visibility"]);
+  const state = getAnswerState(run, result.engine, result);
   return (
     <div className="grid min-h-[300px] min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
       <article className="min-w-0 rounded-md bg-surface p-5">
         <div className="flex items-center justify-between gap-3">
           <strong>{t(`visibility:engines.${result.engine}`)}</strong>
           <span className="text-xs font-normal text-muted-foreground">
-            {result.outcome ? t(`visibility:outcomes.${result.outcome}`) : t("visibility:pending")}
+            {t(`visibility:outcomes.${state}`)}
           </span>
         </div>
         {result.errorCode && (
@@ -509,10 +555,7 @@ function Answer({ result }: { result: VisibilityResult }) {
           </p>
         )}
         <p className="mt-6 whitespace-pre-wrap break-words text-sm leading-7">
-          {result.rawAnswer ||
-            (result.outcome === "miss"
-              ? t("home:detail.noMention")
-              : t("home:detail.pendingAnswer"))}
+          {result.rawAnswer || t(`visibility:answerMessages.${answerMessageKey(state)}`)}
         </p>
         {result.appearances.length > 0 && (
           <div className="mt-8">

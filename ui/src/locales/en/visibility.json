@@ -47,7 +47,10 @@
     "cited": "Cited",
     "mentioned": "Mentioned",
     "miss": "Miss",
-    "error": "Error"
+    "error": "Error",
+    "pending": "Pending",
+    "not-collected": "Not collected",
+    "not-requested": "Not requested"
   },
   "description": "See whether engine answers mention your brand or cite its website. Open a result to inspect the answer and sources.",
   "finishReview": "Finish review",
@@ -77,5 +80,12 @@
     "entity": "Named entity",
     "link": "Product link"
   },
-  "reviewBilling": "Review billing"
+  "reviewBilling": "Review billing",
+  "answerMessages": {
+    "pending": "This answer is still being collected.",
+    "not-collected": "This run ended without collecting an answer for this engine. Check the next scheduled run.",
+    "not-requested": "This engine was not included in this run.",
+    "error": "This answer could not be collected. Check the next scheduled run.",
+    "empty": "No answer was returned."
+  }
 }

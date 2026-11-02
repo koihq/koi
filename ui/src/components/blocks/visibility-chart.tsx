@@ -97,7 +97,6 @@ export function VisibilityChart({
   onInspect,
   locale,
   scopeKey,
-  variant = "home",
 }: {
   series: VisibilityPoint[];
   comparison: VisibilityPoint[];
@@ -108,7 +107,6 @@ export function VisibilityChart({
   onInspect: (index: number | null, input: InspectionInput) => void;
   locale?: string;
   scopeKey?: string;
-  variant?: "home" | "detail";
 }) {
   const { t } = useTranslation("home");
   const figure = useRef<HTMLElement>(null);
@@ -200,7 +198,7 @@ export function VisibilityChart({
     <figure
       ref={figure}
       data-motion={inspectionInput === "pointer"}
-      className={variant === "detail" ? "relative -mx-5 mt-5 mb-2" : "relative -mx-4 mt-6 sm:-mx-7"}
+      className="relative -mx-4 mt-6 sm:-mx-7"
     >
       <ChartContainer
         config={chartConfig}
@@ -226,7 +224,8 @@ export function VisibilityChart({
       >
         <LineChart data={data} margin={{ top: 16, right: 0, bottom: 16, left: 0 }}>
           <XAxis dataKey="day" hide height={0} padding={{ right: rightPadding }} />
-          <YAxis hide width={0} domain={[0, 100]} allowDataOverflow />
+          {/* Rates are bounded to 0–100. Clipping at the domain edge cuts the 4px stroke in half. */}
+          <YAxis hide width={0} domain={[0, 100]} />
           <Line
             dataKey="other"
             type="monotone"

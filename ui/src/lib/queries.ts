@@ -2,6 +2,7 @@ import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import type { Api } from "@/api/apiProvider";
 import type { BrandListParams } from "@/api/brands.api";
 import type { PromptListParams } from "@/api/prompts.api";
+import { isCollecting } from "@/lib/answer-state";
 import {
   accountKey,
   billingSubscriptionKey,
@@ -43,6 +44,14 @@ export const generationOptions = (api: Api, brandId: string) =>
     queryKey: generationKey(brandId),
     queryFn: ({ signal }) => api.generations.list(brandId, { signal }),
     retry: false,
+  });
+
+export const latestRunOptions = (api: Api, brandId: string) =>
+  queryOptions({
+    queryKey: [...runKey(brandId), "latest"],
+    queryFn: ({ signal }) => api.runs.list(brandId, 1, 1, { signal }),
+    refetchInterval: (query) => (isCollecting(query.state.data?.items[0]) ? 5_000 : 60_000),
+    refetchIntervalInBackground: false,
   });
 
 export async function ensureInitialGeneration(api: Api, queryClient: QueryClient, brandId: string) {

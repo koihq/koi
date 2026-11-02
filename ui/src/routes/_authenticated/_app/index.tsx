@@ -27,7 +27,7 @@ import { type InspectionInput, VisibilityChart } from "@/components/blocks/visib
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useTracking } from "@/hooks/use-tracking";
+import { useCollection } from "@/hooks/use-collection";
 import { promptKey } from "@/lib/query-keys";
 import {
   engines,
@@ -75,17 +75,7 @@ function Home() {
   const { brand, draftStartFailed } = Route.useRouteContext();
   const { draftStart } = Route.useSearch();
   const api = useApi();
-  const tracking = useTracking(brand.id);
-  const latestRun = useQuery({
-    queryKey: [...promptKey(brand.id), "latest-run"],
-    queryFn: ({ signal }) => api.runs.list(brand.id, 1, 1, { signal }),
-    enabled: Boolean(tracking.data?.startedAt),
-    refetchInterval: (query) => {
-      const state = query.state.data?.items[0]?.state;
-      return state === "queued" || state === "running" ? 5_000 : false;
-    },
-  });
-  const collecting = ["queued", "running"].includes(latestRun.data?.items[0]?.state ?? "");
+  const { collecting } = useCollection(brand.id);
   const [graph, setGraph] = useQueryStates(graphSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
@@ -320,13 +310,15 @@ function Home() {
             {engines.map((engine) => {
               const selected = selectedEngines.includes(engine.id);
               return (
-                <button
+                <Button
                   key={engine.id}
                   type="button"
                   title={engine.name}
                   aria-label={engine.name}
                   aria-pressed={selected}
-                  className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  variant="ghost"
+                  size="circle"
+                  className="text-muted-foreground"
                   onClick={() => {
                     const next = selected
                       ? selectedEngines.filter((id) => id !== engine.id)
@@ -335,8 +327,12 @@ function Home() {
                     setInspected(null);
                   }}
                 >
-                  <HugeiconsIcon icon={engineIcons[engine.id]} size={23} aria-hidden="true" />
-                </button>
+                  <HugeiconsIcon
+                    icon={engineIcons[engine.id]}
+                    className="size-[23px]"
+                    aria-hidden="true"
+                  />
+                </Button>
               );
             })}
           </fieldset>
@@ -376,18 +372,20 @@ function Home() {
           </span>
           <fieldset className="flex gap-0.5" aria-label={t("dashboard.range")}>
             {([7, 30, 90] as const).map((days) => (
-              <button
+              <Button
                 key={days}
                 type="button"
                 aria-pressed={graph.days === days}
-                className="min-h-10 min-w-10 rounded-full px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                variant="ghost"
+                size="pill"
+                className="text-muted-foreground"
                 onClick={() => {
                   void setGraph({ days }, { history: "push" });
                   setInspected(null);
                 }}
               >
                 {`${days}D`}
-              </button>
+              </Button>
             ))}
           </fieldset>
         </div>
@@ -443,11 +441,7 @@ function Home() {
         </div>
       </section>
 
-      {tracking.data && hasConfirmedPrompts === false && (
-        <div className="mt-6 border-l-2 border-border pl-4">
-          <TrackingSummary brandID={brand.id} />
-        </div>
-      )}
+      <TrackingSummary brandID={brand.id} showSchedule={hasConfirmedPrompts === false} />
       <MemoPromptManager
         brandID={brand.id}
         scope={scope}

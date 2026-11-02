@@ -12,10 +12,12 @@ export function TrackingReview({
   brandID,
   kind,
   disabled,
+  showTrackingError = true,
 }: {
   brandID: string;
   kind: "prompts" | "competitors";
   disabled: boolean;
+  showTrackingError?: boolean;
 }) {
   const api = useApi();
   const queryClient = useQueryClient();
@@ -30,6 +32,7 @@ export function TrackingReview({
   const reviewed =
     kind === "prompts" ? tracking.data?.promptsReviewed : tracking.data?.competitorsReviewed;
 
+  if (tracking.isError && !showTrackingError) return null;
   if (reviewed && !finish.isError && !tracking.isError) return null;
 
   return (
@@ -54,34 +57,48 @@ export function TrackingReview({
       ) : null}
       {tracking.isError ? (
         <p role="alert" className="text-destructive">
-          {t("trackingError")}
+          {t("trackingError")}{" "}
+          <Button variant="link" onClick={() => void tracking.refetch()}>
+            {t("retry")}
+          </Button>
         </p>
       ) : null}
     </div>
   );
 }
 
-export function TrackingSummary({ brandID }: { brandID: string }) {
+export function TrackingSummary({
+  brandID,
+  showSchedule = true,
+}: {
+  brandID: string;
+  showSchedule?: boolean;
+}) {
   const tracking = useTracking(brandID);
   const { t, i18n } = useTranslation("visibility");
 
   if (tracking.isError) {
     return (
       <p role="alert" className="text-sm text-destructive">
-        {t("trackingError")}
+        {t("trackingError")}{" "}
+        <Button variant="link" onClick={() => void tracking.refetch()}>
+          {t("retry")}
+        </Button>
       </p>
     );
   }
   if (!tracking.data) {
+    if (!showSchedule) return null;
     return <p className="text-sm text-muted-foreground">{t("readinessLoading")}</p>;
   }
 
   const state = tracking.data;
+  if (!showSchedule && !state.blockedReason) return null;
 
   return (
     <div className="space-y-2 text-sm">
-      <p className="text-muted-foreground">{t("cadence")}</p>
-      {state.nextRunAt ? (
+      {showSchedule && <p className="text-muted-foreground">{t("cadence")}</p>}
+      {showSchedule && state.nextRunAt ? (
         <p>{t("nextRunAt", { date: state.nextRunAt.toLocaleString(i18n.language) })}</p>
       ) : null}
       {state.blockedReason ? <p>{t(`blocked.${state.blockedReason}`)}</p> : null}

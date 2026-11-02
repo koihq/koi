@@ -17,6 +17,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { validateTableSearch } from "@/hooks/use-table-state";
 import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
 import { useCompetitorList } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-list";
@@ -60,24 +67,29 @@ function CompetitorPage() {
     {
       id: "name",
       header: t("name"),
+      headClassName: "w-[30%]",
+      cellClassName: "whitespace-normal [overflow-wrap:anywhere]",
       cell: (item) => <BrandPill name={item.name} domain={item.domain} />,
     },
     {
       id: "identity",
       header: t("domain"),
+      headClassName: "w-[25%]",
       cellClassName: "max-w-64 whitespace-normal break-all text-muted-foreground",
       cell: (item) => item.domain || item.githubRepo || t("competitorIdentityNeeded"),
     },
     {
       id: "status",
       header: t("sourceStatus"),
+      headClassName: "w-[25%]",
+      cellClassName: "whitespace-normal",
       cell: (item) =>
         `${t(item.source)}${t("statusSeparator")}${t(item.confirmed ? "confirmed" : "unconfirmed")}`,
     },
     {
       id: "actions",
       header: t("actions"),
-      headClassName: "text-end",
+      headClassName: "w-[20%] text-end",
       cellClassName: "text-end",
       cell: (item) => (
         <div className="inline-flex items-center gap-2">
@@ -151,7 +163,7 @@ function CompetitorPage() {
             {t("mutationError")}
           </p>
         )}
-        <div className="mb-4 flex flex-wrap items-center gap-3 [&>select]:w-[88px]">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <Input
             value={list.table.q}
             onChange={(event) => list.table.setSearch(event.target.value)}
@@ -159,18 +171,26 @@ function CompetitorPage() {
             placeholder={t("searchCompetitors")}
             className="w-full max-w-80"
           />
-          <select
-            aria-label={t("statusLabel")}
+          <Select
             value={list.table.status}
-            onChange={(event) =>
-              list.table.setStatus(event.target.value as typeof list.table.status)
-            }
-            className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
+            items={[
+              { value: "all", label: t("all") },
+              { value: "confirmed", label: t("confirmed") },
+              { value: "unconfirmed", label: t("unconfirmed") },
+            ]}
+            onValueChange={(value) => {
+              if (value !== null) list.table.setStatus(value);
+            }}
           >
-            <option value="all">{t("all")}</option>
-            <option value="confirmed">{t("confirmed")}</option>
-            <option value="unconfirmed">{t("unconfirmed")}</option>
-          </select>
+            <SelectTrigger aria-label={t("statusLabel")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("all")}</SelectItem>
+              <SelectItem value="confirmed">{t("confirmed")}</SelectItem>
+              <SelectItem value="unconfirmed">{t("unconfirmed")}</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="[&>div]:m-0 [&_output:empty]:hidden">
             <GenerationControls brandID={brand.id} mode="competitors" />
           </div>
@@ -187,6 +207,7 @@ function CompetitorPage() {
         ) : items.length ? (
           <DataTable
             ariaLabel={t("competitors")}
+            className="min-w-[640px] table-fixed"
             data={items}
             columns={columns}
             getRowId={(item) => item.id}
@@ -205,16 +226,21 @@ function CompetitorPage() {
               total: Math.max(1, response?.totalPages ?? 0),
             })}
           </span>
-          <select
-            aria-label={t("pageSizeLabel")}
+          <Select
             value={list.table.pageSize}
-            onChange={(event) => list.table.setPageSize(Number(event.target.value) as 10 | 20 | 50)}
-            className="min-h-[34px] rounded-md border border-border bg-background px-3 text-[13px] text-foreground"
+            onValueChange={(value) => {
+              if (value !== null) list.table.setPageSize(value);
+            }}
           >
-            <option value={10}>{"10"}</option>
-            <option value={20}>{"20"}</option>
-            <option value={50}>{"50"}</option>
-          </select>
+            <SelectTrigger aria-label={t("pageSizeLabel")}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={10}>{10}</SelectItem>
+              <SelectItem value={20}>{20}</SelectItem>
+              <SelectItem value={50}>{50}</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex gap-2 sm:ms-auto">
             <Button
               variant="ghost"
