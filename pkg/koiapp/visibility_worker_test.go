@@ -136,12 +136,15 @@ func (p visibilityTestProvider) Poll(ctx context.Context, id string, engine koid
 
 func newVisibilityWorkerFixture() (*visibilityWorkerStore, *river.Job[koidatabase.VisibilityJobArgs]) {
 	runID := uuid.New()
+	brandID := uuid.New()
+	createdAt := time.Now()
 	store := &visibilityWorkerStore{
 		run: &koidomain.VisibilityRun{
 			BaseEntity: koidomain.BaseEntity{
 				ID:        runID,
-				CreatedAt: time.Now(),
+				CreatedAt: createdAt,
 			},
+			BrandID:      brandID,
 			TotalResults: 4,
 			BrandSnapshot: koidomain.BrandSnapshot{
 				Name:    "Koi",
@@ -155,12 +158,14 @@ func newVisibilityWorkerFixture() (*visibilityWorkerStore, *river.Job[koidatabas
 			BaseEntity: koidomain.BaseEntity{
 				ID: uuid.New(),
 			},
-			RunID:      runID,
-			PromptID:   uuid.New(),
-			PromptText: "Best tools?",
-			Engine:     engine,
-			Collector:  koidomain.CollectorCloro,
-			Sources:    []string{},
+			BrandID:      brandID,
+			RunCreatedAt: createdAt,
+			RunID:        runID,
+			PromptID:     uuid.New(),
+			PromptText:   "Best tools?",
+			Engine:       engine,
+			Collector:    koidomain.CollectorCloro,
+			Sources:      []string{},
 		})
 	}
 	job := &river.Job[koidatabase.VisibilityJobArgs]{

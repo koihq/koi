@@ -81,9 +81,12 @@ type VisibilityResult struct {
 	SubmittedAt  *time.Time `json:"-"`
 	SyncAttempts int        `json:"-" gorm:"not null;default:0"`
 	BaseEntity
-	RunID uuid.UUID `json:"run_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:1;index:idx_visibility_results_order,priority:1"`
+	// BrandID and RunCreatedAt copy the parent run so analytics can filter by window without a join.
+	BrandID      uuid.UUID `json:"-" gorm:"type:uuid;not null;index:idx_visibility_results_window,priority:1;index:idx_visibility_results_prompt_window,priority:1"`
+	RunCreatedAt time.Time `json:"-" gorm:"not null;index:idx_visibility_results_window,priority:2;index:idx_visibility_results_prompt_window,priority:3"`
+	RunID        uuid.UUID `json:"run_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:1;index:idx_visibility_results_order,priority:1"`
 	// PromptID is a snapshot identifier, deliberately independent of the live prompt row.
-	PromptID        uuid.UUID               `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2"`
+	PromptID        uuid.UUID               `json:"prompt_id" gorm:"type:uuid;not null;uniqueIndex:idx_visibility_results_cell,priority:2;index:idx_visibility_results_prompt_window,priority:2"`
 	PromptText      string                  `json:"prompt_text" gorm:"not null"`
 	PromptPosition  int                     `json:"prompt_position" gorm:"not null;index:idx_visibility_results_order,priority:2"`
 	Engine          EngineID                `json:"engine" gorm:"type:varchar(32);not null;uniqueIndex:idx_visibility_results_cell,priority:3;index:idx_visibility_results_order,priority:3"`
@@ -104,7 +107,7 @@ type VisibilityResult struct {
 func (VisibilityResult) TableName() string { return "visibility_results" }
 
 func (r VisibilityResult) Validate() error {
-	if r.RunID == uuid.Nil || r.PromptID == uuid.Nil || strings.TrimSpace(r.PromptText) == "" || r.PromptPosition < 0 {
+	if r.RunID == uuid.Nil || r.BrandID == uuid.Nil || r.RunCreatedAt.IsZero() || r.PromptID == uuid.Nil || strings.TrimSpace(r.PromptText) == "" || r.PromptPosition < 0 {
 		return Validation(FieldError{Field: "result", Code: FieldInvalid})
 	}
 

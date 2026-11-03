@@ -143,20 +143,67 @@ func (c Competitor) SharesIdentityURL(other Competitor) bool {
 	return false
 }
 
-func identityURLScore(c Competitor, raw string) int {
+// AppearanceMatcher prepares competitor names and identities once for many cells.
+type AppearanceMatcher struct {
+	competitors []Competitor
+	names       [][]matcherName
+	identities  [][]*url.URL
+	nameIndex   map[string][]int
+}
+
+type matcherName struct {
+	value  string
+	folded string
+}
+
+func NewAppearanceMatcher(competitors []Competitor) *AppearanceMatcher {
+	matcher := &AppearanceMatcher{
+		competitors: competitors,
+		names:       make([][]matcherName, len(competitors)),
+		identities:  make([][]*url.URL, len(competitors)),
+		nameIndex:   map[string][]int{},
+	}
+
+	for i, competitor := range competitors {
+		for _, name := range competitor.Names() {
+			matcher.names[i] = append(matcher.names[i], matcherName{
+				value:  name,
+				folded: foldText(name),
+			})
+
+			key := AppearanceNameKey(name)
+			if !slices.Contains(matcher.nameIndex[key], i) {
+				matcher.nameIndex[key] = append(matcher.nameIndex[key], i)
+			}
+		}
+
+		for _, value := range competitor.IdentityURLs() {
+			identity, err := url.Parse(value)
+			if err == nil {
+				matcher.identities[i] = append(matcher.identities[i], identity)
+			}
+		}
+	}
+
+	return matcher
+}
+
+func parseIdentitySource(raw string) (*url.URL, bool) {
 	source, err := url.Parse(raw)
 	if err != nil || source.User != nil || (source.Scheme != "http" && source.Scheme != "https") {
-		return 0
+		return nil, false
 	}
+
+	return source, true
+}
+
+func identityURLScore(identities []*url.URL, source *url.URL) int {
 	host := strings.TrimPrefix(strings.ToLower(source.Hostname()), "www.")
+	path := strings.ToLower(source.Path)
 	best := 0
-	for _, value := range c.IdentityURLs() {
-		identity, err := url.Parse(value)
-		if err != nil {
-			continue
-		}
+
+	for _, identity := range identities {
 		if identity.Host == "github.com" && identity.Path != "" {
-			path := strings.ToLower(source.Path)
 			if host == identity.Host && (path == identity.Path || strings.HasPrefix(path, identity.Path+"/")) {
 				best = max(best, 1000+len(identity.Path))
 			}
@@ -164,17 +211,29 @@ func identityURLScore(c Competitor, raw string) int {
 			best = max(best, len(identity.Host))
 		}
 	}
+
 	return best
 }
 
 // ResolveObservation returns the most specific URL identity, falling back to exact names.
 // Ambiguous names and URL ties stay unresolved instead of attaching to an arbitrary row.
 func ResolveObservation(observation AppearanceObservation, competitors []Competitor) (int, bool) {
+	return NewAppearanceMatcher(competitors).Resolve(observation)
+}
+
+func (m *AppearanceMatcher) Resolve(observation AppearanceObservation) (int, bool) {
+	sources := make([]*url.URL, 0, len(observation.URLs))
+	for _, link := range observation.URLs {
+		if source, ok := parseIdentitySource(link); ok {
+			sources = append(sources, source)
+		}
+	}
+
 	best, score, tied := -1, 0, false
-	for i, competitor := range competitors {
+	for i := range m.competitors {
 		value := 0
-		for _, link := range observation.URLs {
-			value = max(value, identityURLScore(competitor, link))
+		for _, source := range sources {
+			value = max(value, identityURLScore(m.identities[i], source))
 		}
 		if value > score {
 			best, score, tied = i, value, false
@@ -188,17 +247,20 @@ func ResolveObservation(observation AppearanceObservation, competitors []Competi
 		}
 		return best, false
 	}
-	for i, competitor := range competitors {
-		for _, name := range competitor.Names() {
-			if AppearanceNameKey(name) == AppearanceNameKey(observation.Name) {
-				if best != -1 && best != i {
-					return -1, true
-				}
-				best = i
-			}
-		}
+
+	return m.resolveName(observation.Name)
+}
+
+func (m *AppearanceMatcher) resolveName(name string) (int, bool) {
+	indexes := m.nameIndex[AppearanceNameKey(name)]
+	switch len(indexes) {
+	case 0:
+		return -1, false
+	case 1:
+		return indexes[0], false
+	default:
+		return -1, true
 	}
-	return best, false
 }
 
 func ObservationIsBrand(observation AppearanceObservation, brand BrandSnapshot) bool {
@@ -282,13 +344,18 @@ func appendEvidence(items []AppearanceEvidence, evidence AppearanceEvidence) []A
 
 // MatchAppearances derives current links without changing the original answer or outcome.
 func MatchAppearances(result VisibilityResult, competitors []Competitor, brand BrandSnapshot) []CompetitorAppearance {
+	return NewAppearanceMatcher(competitors).Match(result, brand)
+}
+
+func (m *AppearanceMatcher) Match(result VisibilityResult, brand BrandSnapshot) []CompetitorAppearance {
 	appearances := []CompetitorAppearance{}
 	if result.Outcome == nil || *result.Outcome == OutcomeError {
 		return appearances
 	}
+
 	positions := map[uuid.UUID]int{}
 	add := func(index int, evidence []AppearanceEvidence) {
-		competitor := competitors[index]
+		competitor := m.competitors[index]
 		position, exists := positions[competitor.ID]
 		if !exists {
 			position = len(appearances)
@@ -305,34 +372,39 @@ func MatchAppearances(result VisibilityResult, competitors []Competitor, brand B
 			appearances[position].Evidence = appendEvidence(appearances[position].Evidence, item)
 		}
 	}
-	for i, competitor := range competitors {
-		for _, name := range competitor.Names() {
-			if ScoreVisibility(BrandSnapshot{Name: name}, result.RawAnswer, nil) == OutcomeMentioned {
-				index, _ := ResolveObservation(AppearanceObservation{Name: name}, competitors)
-				if index == i {
-					add(i, []AppearanceEvidence{{Kind: "mention", Value: name}})
-				}
+
+	text := foldText(result.RawAnswer)
+	for i, names := range m.names {
+		for _, name := range names {
+			if !containsWord(text, name.folded) {
+				continue
+			}
+			if index, _ := m.resolveName(name.value); index == i {
+				add(i, []AppearanceEvidence{{Kind: "mention", Value: name.value}})
 			}
 		}
 	}
+
 	for _, source := range result.Sources {
-		index, _ := ResolveObservation(AppearanceObservation{
+		index, _ := m.Resolve(AppearanceObservation{
 			URLs: []string{source},
-		}, competitors)
+		})
 		if index >= 0 {
 			add(index, []AppearanceEvidence{{Kind: "citation", Value: source}})
 		}
 	}
+
 	for _, observation := range result.Observations {
 		if ObservationIsBrand(observation, brand) {
 			continue
 		}
-		index, _ := ResolveObservation(observation, competitors)
+		index, _ := m.Resolve(observation)
 		if index >= 0 {
 			add(index, observation.Evidence)
 		} else {
 			appearances = append(appearances, CompetitorAppearance{Name: observation.Name, Evidence: slices.Clone(observation.Evidence)})
 		}
 	}
+
 	return appearances
 }

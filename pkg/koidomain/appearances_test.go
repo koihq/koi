@@ -1,6 +1,7 @@
 package koidomain
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -56,6 +57,76 @@ func TestAmbiguousAliasesNeedURLIdentity(t *testing.T) {
 	index, ambiguous = ResolveObservation(AppearanceObservation{Name: "Shared", URLs: []string{"https://second.dev"}}, competitors)
 	require.Equal(t, 1, index)
 	require.False(t, ambiguous)
+}
+
+func TestAppearanceMatcherIsReusableAcrossCells(t *testing.T) {
+	cited := OutcomeCited
+	competitors := []Competitor{
+		{
+			BaseEntity: BaseEntity{
+				ID: uuid.New(),
+			},
+			Name: "Acme", Domain: "acme.dev", Aliases: []string{"Shared"},
+		},
+		{
+			BaseEntity: BaseEntity{
+				ID: uuid.New(),
+			},
+			Name: "Other", Domain: "other.dev", Aliases: []string{"Shared"},
+		},
+	}
+	matcher := NewAppearanceMatcher(competitors)
+
+	index, ambiguous := matcher.Resolve(AppearanceObservation{Name: "shared"})
+	require.Equal(t, -1, index)
+	require.True(t, ambiguous)
+	index, ambiguous = matcher.Resolve(AppearanceObservation{URLs: []string{"https://docs.other.dev/x"}})
+	require.Equal(t, 1, index)
+	require.False(t, ambiguous)
+
+	cells := []VisibilityResult{
+		{Outcome: &cited, RawAnswer: "Acme and Shared are options.", Sources: []string{"https://other.dev/"}},
+		{Outcome: &cited, RawAnswer: "Nothing relevant.", Sources: []string{}},
+		{Outcome: &cited, RawAnswer: "Use OTHER.", Sources: []string{"https://acme.dev/"}},
+	}
+	for _, cell := range cells {
+		require.Equal(t, MatchAppearances(cell, competitors, BrandSnapshot{}), matcher.Match(cell, BrandSnapshot{}))
+	}
+
+	first := matcher.Match(cells[0], BrandSnapshot{})
+	require.Len(t, first, 2)
+	require.Equal(t, []AppearanceEvidence{{Kind: "mention", Value: "Acme"}}, first[0].Evidence)
+	require.Equal(t, []AppearanceEvidence{{Kind: "citation", Value: "https://other.dev/"}}, first[1].Evidence)
+}
+
+func BenchmarkAppearanceMatcher(b *testing.B) {
+	mentioned := OutcomeMentioned
+	competitors := []Competitor{}
+	for _, name := range []string{"Profound", "Peec AI", "OtterlyAI", "Scrunch", "AthenaHQ", "Rankscale"} {
+		competitor := Competitor{
+			BaseEntity: BaseEntity{
+				ID: uuid.New(),
+			},
+			Name:   name,
+			Domain: strings.ToLower(strings.ReplaceAll(name, " ", "")) + ".com",
+		}
+		competitor.Normalize()
+		competitors = append(competitors, competitor)
+	}
+	answer := strings.Repeat("Profound and Peec AI are options for AI search visibility monitoring. ", 8) +
+		"Koi tracks brand mentions and citations across four answer engines."
+	cell := VisibilityResult{
+		Outcome:   &mentioned,
+		RawAnswer: answer,
+		Sources:   []string{"https://profound.com/", "https://peecai.com/", "https://github.com/koihq/koi"},
+	}
+
+	for b.Loop() {
+		matcher := NewAppearanceMatcher(competitors)
+		for range 9000 {
+			matcher.Match(cell, BrandSnapshot{Name: "Koi"})
+		}
+	}
 }
 
 func TestConservativeObservationExtraction(t *testing.T) {

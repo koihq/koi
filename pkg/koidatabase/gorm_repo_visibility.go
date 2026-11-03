@@ -105,6 +105,8 @@ func (r *GormVisibilityRepository) CreateAndEnqueue(ctx context.Context, run *ko
 
 	for i := range results {
 		results[i].RunID = run.ID
+		results[i].BrandID = run.BrandID
+		results[i].RunCreatedAt = run.CreatedAt
 		if err := results[i].Validate(); err != nil {
 			return err
 		}
@@ -164,6 +166,7 @@ func (r *GormVisibilityRepository) enrichResults(ctx context.Context, brandID uu
 		return mapDBError(err)
 	}
 
+	matcher := koidomain.NewAppearanceMatcher(competitors)
 	for i := range cells {
 		cell := &cells[i]
 		observations := cell.Observations[:0]
@@ -173,7 +176,7 @@ func (r *GormVisibilityRepository) enrichResults(ctx context.Context, brandID uu
 			}
 		}
 		cell.Observations = observations
-		cell.Appearances = koidomain.MatchAppearances(*cell, competitors, runs[cell.RunID].BrandSnapshot)
+		cell.Appearances = matcher.Match(*cell, runs[cell.RunID].BrandSnapshot)
 	}
 
 	return nil

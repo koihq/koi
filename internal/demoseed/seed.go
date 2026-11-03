@@ -263,6 +263,8 @@ func seedRun(tx *gorm.DB, key string, snapshot koidomain.BrandSnapshot, day, cou
 		for engineIndex, engine := range run.Engines {
 			result := koidomain.VisibilityResult{
 				BaseEntity:     entity(fmt.Sprintf("%s/run/%d/%d/%s", key, day, index, engine), at),
+				BrandID:        run.BrandID,
+				RunCreatedAt:   run.CreatedAt,
 				RunID:          run.ID,
 				PromptID:       demoID(fmt.Sprintf("%s/prompt/%d", key, index)),
 				PromptText:     prompts[index].text,

@@ -15,13 +15,23 @@ type VisibilityMetric struct {
 }
 
 func (m *VisibilityMetric) AddForAnalytics(outcome Outcome) {
-	m.Completed++
+	m.AddOutcomes(outcome, 1)
+}
+
+// AddOutcomes adds count cells with the same outcome and recomputes the rate once.
+func (m *VisibilityMetric) AddOutcomes(outcome Outcome, count int) {
+	if count <= 0 {
+		return
+	}
+
+	m.Completed += count
 	switch outcome {
 	case OutcomeCited:
-		m.Cited++
+		m.Cited += count
 	case OutcomeMentioned:
-		m.Mentioned++
+		m.Mentioned += count
 	}
+
 	rate := 100 * float64(m.Cited+m.Mentioned) / float64(m.Completed)
 	m.Rate = &rate
 }

@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/cases"
 )
@@ -33,27 +34,64 @@ func ScoreVisibility(brand BrandSnapshot, answer string, sources []string) Outco
 		}
 	}
 
-	fold := cases.Fold()
-	name := []rune(fold.String(strings.Join(strings.Fields(brand.Name), " ")))
-	text := []rune(fold.String(strings.Join(strings.Fields(answer), " ")))
-	if len(name) == 0 {
+	name := foldText(brand.Name)
+	if name == "" {
 		return OutcomeMiss
 	}
-	word := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_' }
-	for i := 0; i+len(name) <= len(text); i++ {
-		if string(text[i:i+len(name)]) != string(name) {
-			continue
-		}
-		if i > 0 && word(name[0]) && word(text[i-1]) {
-			continue
-		}
-		end := i + len(name)
-		if end < len(text) && word(name[len(name)-1]) && word(text[end]) {
-			continue
-		}
 
+	if containsWord(foldText(answer), name) {
 		return OutcomeMentioned
 	}
 
 	return OutcomeMiss
+}
+
+// foldText normalizes whitespace and case before name matching.
+func foldText(value string) string {
+	return cases.Fold().String(normalizeWhitespace(value))
+}
+
+func isWordRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsNumber(r) || r == '_'
+}
+
+// containsWord finds a folded name in folded text. A match is rejected when a word-like
+// name edge touches a word-like neighbor, so "koi" does not match inside "koikoi".
+func containsWord(text, name string) bool {
+	if name == "" {
+		return false
+	}
+
+	first, _ := utf8.DecodeRuneInString(name)
+	last, _ := utf8.DecodeLastRuneInString(name)
+	checkBefore := isWordRune(first)
+	checkAfter := isWordRune(last)
+
+	for offset := 0; offset <= len(text)-len(name); {
+		index := strings.Index(text[offset:], name)
+		if index < 0 {
+			return false
+		}
+
+		start := offset + index
+		end := start + len(name)
+		offset = start + 1
+
+		if checkBefore && start > 0 {
+			before, _ := utf8.DecodeLastRuneInString(text[:start])
+			if isWordRune(before) {
+				continue
+			}
+		}
+		if checkAfter && end < len(text) {
+			after, _ := utf8.DecodeRuneInString(text[end:])
+			if isWordRune(after) {
+				continue
+			}
+		}
+
+		return true
+	}
+
+	return false
 }

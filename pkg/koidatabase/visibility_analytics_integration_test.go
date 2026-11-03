@@ -25,6 +25,12 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	run := finishVisibilityReviews(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
+	var persistedRun koidomain.VisibilityRun
+	require.NoError(t, db.First(&persistedRun, "id = ?", run.ID).Error)
+	for _, cell := range cells {
+		require.Equal(t, brand.ID, cell.BrandID)
+		require.True(t, cell.RunCreatedAt.Equal(persistedRun.CreatedAt))
+	}
 	now := time.Now().UTC()
 
 	first := appearanceCell(cells[0], "Acme", "https://acme.dev")
@@ -53,6 +59,7 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	previousCell := cells[0]
 	previousCell.ID = uuid.Nil
 	previousCell.RunID = previousRun.ID
+	previousCell.RunCreatedAt = previousRun.CreatedAt
 	mentioned := koidomain.OutcomeMentioned
 	previousCell.Outcome = &mentioned
 	previousCell.FetchedAt = &now
@@ -101,21 +108,33 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	filtered := read([]koidomain.EngineID{cells[0].Engine})
 	require.Equal(t, 1, filtered.Metric.Completed)
 	require.Equal(t, 1, filtered.Competitors[0].Metric.Cited)
+	require.Equal(t, 1, filtered.Previous.Completed)
+	require.Equal(t, 1, filtered.Previous.Mentioned)
+	otherEngine := read([]koidomain.EngineID{cells[1].Engine})
+	require.Equal(t, 1, otherEngine.Metric.Completed)
+	require.Zero(t, otherEngine.Previous.Completed)
+	require.Nil(t, otherEngine.Previous.Rate)
 	secondPrompt, err := koidomain.NewPromptCommander(store).Create(ctx, brand.ID, koidomain.PromptParams{Text: "Another analytics prompt?"})
 	require.NoError(t, err)
 	var cellQueries atomic.Int32
 	var totalQueries atomic.Int32
-	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("analytics_cell_count", func(tx *gorm.DB) {
+	countQuery := func(tx *gorm.DB) {
 		totalQueries.Add(1)
 		if tx.Statement.Table == "visibility_results" {
 			cellQueries.Add(1)
 		}
-	}))
-	t.Cleanup(func() { _ = db.Callback().Query().Remove("analytics_cell_count") })
+	}
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("analytics_cell_count", countQuery))
+	require.NoError(t, db.Callback().Row().Before("gorm:row").Register("analytics_cell_count", countQuery))
+	t.Cleanup(func() {
+		_ = db.Callback().Query().Remove("analytics_cell_count")
+		_ = db.Callback().Row().Remove("analytics_cell_count")
+	})
 	_, _, err = repo.AggregateVisibility(ctx, brand.ID, []uuid.UUID{promptID, secondPrompt.ID}, 7, nil, now)
 	require.NoError(t, err)
-	require.EqualValues(t, 1, cellQueries.Load())
-	require.EqualValues(t, 2, totalQueries.Load())
+	// Competitors, previous-period counts, current cells, and run snapshots: no per-prompt queries.
+	require.EqualValues(t, 2, cellQueries.Load())
+	require.EqualValues(t, 4, totalQueries.Load())
 	require.NoError(t, db.Model(&koidomain.Prompt{}).Where("id = ?", promptID).
 		Update("confirmed", false).Error)
 	require.Equal(t, 2, read(nil).Metric.Completed)
