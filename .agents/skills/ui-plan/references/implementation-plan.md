@@ -33,7 +33,7 @@ Then explain the useful examples:
 | --- | --- | --- | --- |
 
 Use canonical Mobbin links. Separate observations from hypotheses and chosen reproduction
-values. State where the chosen direction follows Fey, Visitors, or another project
+values. State where the chosen direction follows Fey, Family, Trade Republic, or another project
 reference, and where another pattern better serves this task. Include consequential
 rejected options, rather than every search result.
 

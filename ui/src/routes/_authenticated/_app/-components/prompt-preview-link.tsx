@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatRate } from "@/lib/format";
 import { trendPath } from "@/lib/trend-path";
 import { rate, series as visibilitySeries } from "@/lib/visibility";
 
 export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
-  const { t } = useTranslation("home");
+  const { t, i18n } = useTranslation("home");
   const [open, setOpen] = useState(false);
   const link = (
     <Link
@@ -29,7 +30,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
     .slice(0, 3);
   const width = 320;
-  const height = 96;
+  const height = 64;
   const points = series.map((point, index) =>
     point.rate === null
       ? null
@@ -68,26 +69,21 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
           side="right"
           align="start"
           sideOffset={14}
-          className="flex w-[min(290px,calc(100vw-32px))] max-w-[calc(100vw-32px)] flex-col items-stretch gap-0 overflow-hidden rounded-[12px] border border-[var(--metric-tooltip-border)] [background:linear-gradient(165deg,#ffffff0c,#ffffff02_55%),color-mix(in_srgb,var(--popover)_80%,transparent)]! p-[14px_14px_0] text-foreground shadow-[0_16px_60px_var(--metric-tooltip-shadow)] backdrop-blur-[24px] backdrop-saturate-[130%] animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
+          className="surface-float flex w-72 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-0 overflow-hidden bg-transparent! px-3.5 pt-3.5 pb-0 text-foreground animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="grid gap-1.5">
               <span className="text-xs text-muted-foreground">{t("dashboard.yourRate")}</span>
-              <strong className="text-xl font-medium tabular-nums leading-none">
-                {currentRate === null ? "—" : `${currentRate.toFixed(1)}%`}
+              <strong className="text-section font-semibold tabular-nums">
+                {currentRate === null ? "—" : formatRate(currentRate, i18n.language)}
               </strong>
             </div>
             <div className="grid justify-items-end gap-1.5 text-right">
               <span className="text-xs text-muted-foreground">{t("dashboard.competitors")}</span>
               {rivals.length ? (
-                <span className="pointer-events-none inline-flex pe-2">
+                <span className="pointer-events-none inline-flex gap-1">
                   {rivals.map(({ item }) => (
-                    <span
-                      key={item.id}
-                      className="relative -me-[7px] grid size-6 place-items-center rounded-full bg-surface shadow-[0_0_0_1px_var(--surface)] [&_[data-slot=brand-icon]]:size-4"
-                    >
-                      <BrandPill name={item.name} domain={item.domain} iconOnly />
-                    </span>
+                    <BrandPill key={item.id} name={item.name} domain={item.domain} iconOnly />
                   ))}
                 </span>
               ) : (
@@ -101,7 +97,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
             <svg
               viewBox={`0 0 ${width} ${height}`}
               preserveAspectRatio="none"
-              className="mt-3 -mx-3.5 block h-24 w-[calc(100%+28px)]"
+              className="mt-3 -mx-3.5 block h-16 w-[calc(100%+28px)]"
               role="img"
               aria-label={t("dashboard.chartDescription")}
             >
@@ -128,7 +124,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
               )}
             </svg>
           ) : (
-            <div className="mt-3 -mx-3.5 grid h-24 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
+            <div className="mt-3 -mx-3.5 grid h-16 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
               {t("dashboard.noComparison")}
             </div>
           )}

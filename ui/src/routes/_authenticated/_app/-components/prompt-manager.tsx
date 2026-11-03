@@ -1,9 +1,8 @@
 import {
-  ChatGptIcon,
-  GoogleGeminiIcon,
-  GoogleIcon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
   MoreHorizontalIcon,
-  PerplexityAiIcon,
+  SortingIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link } from "@tanstack/react-router";
@@ -11,9 +10,11 @@ import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQuerySta
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
+import { BrandLabel } from "@/components/blocks/brand-label";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
+import { EngineIcon } from "@/components/blocks/engine-icon";
 import { GenerationControls } from "@/components/blocks/generation-controls";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
@@ -32,7 +33,12 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -46,6 +52,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
+import { formatPoints, formatRate } from "@/lib/format";
 import {
   change,
   engines,
@@ -56,6 +63,7 @@ import {
 import { PromptPreviewLink } from "@/routes/_authenticated/_app/-components/prompt-preview-link";
 import { PromptRateBreakdown } from "@/routes/_authenticated/_app/-components/prompt-rate-breakdown";
 import { PromptSelectCheckbox } from "@/routes/_authenticated/_app/-components/prompt-select-checkbox";
+import { EngineMeterCell } from "./engine-meter";
 import { usePromptBulkActions } from "./use-prompt-bulk-actions";
 import { usePromptList } from "./use-prompt-list";
 
@@ -81,31 +89,22 @@ export const promptSearchParams = {
   descending: parseAsBoolean.withDefault(false).withOptions({ clearOnDefault: true }),
 };
 
-const engineIcons = {
-  chatgpt: ChatGptIcon,
-  perplexity: PerplexityAiIcon,
-  gemini: GoogleGeminiIcon,
-  google_ai_overviews: GoogleIcon,
-};
-
-const rateSegments = Array.from({ length: 32 }, (_, index) => `segment-${index}`);
 const promptHeadClass =
-  "h-auto px-2 py-1.5 text-start text-xs font-normal text-muted-foreground whitespace-normal [overflow-wrap:anywhere]";
+  "h-auto px-3 py-1.5 text-start text-xs font-normal text-muted-foreground whitespace-normal";
 const promptCellClass =
-  "px-2 py-3.5 align-middle text-start text-[13px]/[1.5] whitespace-normal [overflow-wrap:anywhere] group-data-[selected]:bg-signal-pill motion-safe:transition-[background-color] motion-safe:duration-[120ms]";
+  "px-3 py-4 align-middle text-start text-body whitespace-normal [overflow-wrap:anywhere]";
 const promptRowLinkClass =
   "block max-w-2xl text-sm/normal font-medium text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline";
 
-function rateBars(rate: number | null) {
+/** Signed change as a tinted chip: green up, red down. */
+export function DeltaChip({ value, locale }: { value: number | null; locale: string }) {
+  if (value === null) return null;
+
   return (
-    <span className="inline-flex max-w-[140px] items-center gap-0.5" aria-hidden="true">
-      {rateSegments.map((segment, index) => (
-        <span
-          key={segment}
-          className="h-4 w-0.5 flex-[0_0_2px] rounded-[1px] bg-signal-pill data-[filled=true]:bg-positive"
-          data-filled={rate !== null && index < Math.round((rate / 100) * 32)}
-        />
-      ))}
+    <span
+      className={`rounded-sm px-1.5 py-0.5 text-xs tabular-nums ${value > 0 ? "bg-positive/12 text-positive" : value < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
+    >
+      {formatPoints(value, locale)}
     </span>
   );
 }
@@ -154,7 +153,7 @@ export function PromptManager({
   collecting: boolean;
   draftStartFailed?: boolean;
 }) {
-  const { t } = useTranslation(["management", "home"]);
+  const { t, i18n } = useTranslation(["management", "home"]);
   const mutations = usePromptMutations(brandID);
   const [search, setSearch] = useQueryStates(promptSearchParams);
   const [selected, setSelected] = useState<string[]>([]);
@@ -252,45 +251,39 @@ export function PromptManager({
 
   const renderRate = (row: PromptRow) => {
     const currentRate = rate(row.visibility);
-    const currentChange = change(row.visibility);
+
+    if (currentRate === null) {
+      return (
+        <span className="text-xs text-muted-foreground">{t("home:dashboard.noAnswersYet")}</span>
+      );
+    }
+
     return (
-      <div className="grid gap-[3px] text-[13px]">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="tabular-nums">
-            {currentRate === null ? t("home:dashboard.noAnswersYet") : `${currentRate.toFixed(1)}%`}
-          </span>
-          {rateBars(currentRate)}
-        </div>
-        <small
-          className={`text-xs font-normal ${currentChange === null ? "" : currentChange >= 0 ? "text-positive" : "text-negative"}`}
-        >
-          {currentChange === null
-            ? t("home:dashboard.noPreviousData")
-            : `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(1)} points`}
-        </small>
-      </div>
+      <PromptRateBreakdown
+        label={t("home:dashboard.byEngine")}
+        items={engines.map((engine) => ({
+          id: engine.id,
+          name: engine.name,
+          rate: rate(row.visibility, engine.id),
+          icon: <EngineIcon engine={engine.id} />,
+        }))}
+        openOnHover={false}
+      >
+        <EngineMeterCell
+          rate={currentRate}
+          rateFor={(engine) => rate(row.visibility, engine)}
+          locale={i18n.language}
+          change={<DeltaChip value={change(row.visibility)} locale={i18n.language} />}
+        />
+      </PromptRateBreakdown>
     );
   };
 
-  const renderEngines = (row: PromptRow) => (
-    <PromptRateBreakdown
-      label={t("home:dashboard.byEngine")}
-      items={engines.map((engine) => ({
-        id: engine.id,
-        name: engine.name,
-        rate: rate(row.visibility, engine.id),
-        icon: <HugeiconsIcon icon={engineIcons[engine.id]} size={16} aria-hidden="true" />,
-      }))}
-    />
-  );
+  const renderRival = (row: PromptRow) => {
+    if (!row.visibility?.metric.completed) {
+      return <span className="text-xs text-muted-foreground">{t("home:dashboard.noData")}</span>;
+    }
 
-  const renderBrands = (row: PromptRow) => {
-    if (!row.visibility?.metric.completed)
-      return (
-        <span className="text-xs font-normal text-muted-foreground">
-          {t("home:dashboard.noData")}
-        </span>
-      );
     const top = row.visibility.competitors
       .map((competitor) => ({
         competitor,
@@ -299,23 +292,35 @@ export function PromptManager({
       .filter(({ rate: competitorRate }) => competitorRate !== null && competitorRate > 0)
       .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
       .slice(0, 3);
+    const first = top[0];
+
+    if (!first) {
+      return <span className="text-xs text-muted-foreground">{t("home:dashboard.noRival")}</span>;
+    }
+
     return (
       <PromptRateBreakdown
-        label={t("home:dashboard.mostMentionedBrands")}
-        emptyLabel={t("home:dashboard.noBrandMentions")}
-        items={top.map(({ competitor, rate }) => ({
+        label={t("home:dashboard.rivalsByRate")}
+        items={top.map(({ competitor, rate: competitorRate }) => ({
           id: competitor.id,
           name: competitor.name,
-          rate,
+          rate: competitorRate,
           icon: <BrandPill name={competitor.name} domain={competitor.domain} iconOnly />,
         }))}
-      />
+      >
+        <BrandLabel
+          size="sm"
+          name={first.competitor.name}
+          domain={first.competitor.domain}
+          detail={first.rate === null ? "—" : formatRate(first.rate, i18n.language)}
+        />
+      </PromptRateBreakdown>
     );
   };
 
   const renderActions = (row: PromptRow) =>
     row.prompt ? (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {!row.prompt.confirmed && (
           <Button
             variant="ghost"
@@ -382,8 +387,8 @@ export function PromptManager({
           }
         />
       ),
-      headClassName: `${promptHeadClass} w-[4%] text-center`,
-      cellClassName: `${promptCellClass} rounded-s-md text-center`,
+      headClassName: `${promptHeadClass} w-12 text-center`,
+      cellClassName: `${promptCellClass} text-center`,
       cell: (row) =>
         !row.past && (
           <PromptSelectCheckbox
@@ -396,39 +401,49 @@ export function PromptManager({
     {
       id: "prompt",
       header: t("prompt"),
-      headClassName: `${promptHeadClass} w-[31%]`,
+      headClassName: `${promptHeadClass} w-[44%]`,
       cellClassName: promptCellClass,
       cell: renderPrompt,
     },
     {
       id: "rate",
-      header: t("home:dashboard.yourRate"),
-      headClassName: `${promptHeadClass} w-[23%]`,
+      header: t("home:dashboard.visibility"),
+      headClassName: `${promptHeadClass} w-[26%]`,
       cellClassName: promptCellClass,
       cell: renderRate,
     },
     {
-      id: "engines",
-      header: t("home:dashboard.byEngine"),
-      headClassName: `${promptHeadClass} w-[14%]`,
+      id: "rival",
+      header: t("home:dashboard.topRival"),
+      headClassName: `${promptHeadClass} w-[20%]`,
       cellClassName: promptCellClass,
-      cell: renderEngines,
-    },
-    {
-      id: "brands",
-      header: t("home:dashboard.mostMentionedBrands"),
-      headClassName: `${promptHeadClass} w-[19%]`,
-      cellClassName: promptCellClass,
-      cell: renderBrands,
+      cell: renderRival,
     },
     {
       id: "actions",
-      header: t("actions"),
-      headClassName: `${promptHeadClass} w-[9%]`,
-      cellClassName: `${promptCellClass} rounded-e-md`,
+      header: <span className="sr-only">{t("actions")}</span>,
+      headClassName: `${promptHeadClass} w-[10%]`,
+      cellClassName: `${promptCellClass} text-end`,
       cell: renderActions,
     },
   ];
+
+  const totalItems = active.data?.totalItems ?? 0;
+  const firstItem = totalItems === 0 ? 0 : (page - 1) * search.pageSize + 1;
+  const lastItem = Math.min(totalItems, page * search.pageSize);
+  const mutationFailed = mutations.confirm.isError || mutations.update.isError || bulkFailed;
+  const sortOptions = [
+    { value: "original", label: t("home:dashboard.originalOrder") },
+    { value: "prompt", label: t("prompt") },
+    { value: "rate", label: t("home:dashboard.mentionRate") },
+    { value: "change", label: t("home:dashboard.sortChange") },
+  ] as const;
+  const statusOptions = [
+    { value: "all", label: t("all") },
+    { value: "confirmed", label: t("confirmed") },
+    { value: "unconfirmed", label: t("unconfirmed") },
+    { value: "past", label: t("home:history.title") },
+  ] as const;
 
   return (
     <section
@@ -439,18 +454,26 @@ export function PromptManager({
       data-refreshing={active.isFetching && Boolean(active.data)}
     >
       <QueryRefreshIndicator active={active.isFetching} label={t("loading")} />
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 id="prompts-heading" ref={heading} tabIndex={-1} className="text-[13px] font-medium">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 id="prompts-heading" ref={heading} tabIndex={-1} className="text-section font-semibold">
           {t("prompts")}
         </h2>
-        <PromptDialog
-          label={t("addPrompt")}
-          pending={mutations.create.isPending}
-          onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}
-          variant="ghost"
-        />
+        <div className="flex flex-wrap items-center gap-2 [&>div]:m-0 [&_output:empty]:hidden">
+          <GenerationControls
+            brandID={brandID}
+            mode="prompts"
+            setupStartFailed={draftStartFailed}
+            hideSuccessMessage
+          />
+          <PromptDialog
+            label={t("addPrompt")}
+            pending={mutations.create.isPending}
+            onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}
+            variant="outline"
+          />
+        </div>
       </div>
-      <div className="[&:not(:empty)]:mb-3">
+      <div className="[&:not(:empty)]:mb-4">
         <TrackingReview
           brandID={brandID}
           kind="prompts"
@@ -458,65 +481,85 @@ export function PromptManager({
           showTrackingError={false}
         />
       </div>
-      {mutations.confirm.isError && (
-        <p role="alert" className="mb-3 text-sm text-destructive">
-          {t("mutationError")}
-        </p>
-      )}
-      {mutations.update.isError && (
-        <p role="alert" className="mb-3 text-sm text-destructive">
-          {t("mutationError")}
-        </p>
-      )}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
         <Input
+          type="search"
           value={search.q}
           onChange={(event) => changeSearch({ q: event.target.value })}
           placeholder={t("searchPrompts")}
           aria-label={t("searchPrompts")}
-          className="w-full max-w-80"
+          className="w-full sm:max-w-64"
         />
-        <PromptChoice
-          label={t("statusLabel")}
-          value={search.status}
-          options={[
-            { value: "all", label: t("all") },
-            { value: "confirmed", label: t("confirmed") },
-            { value: "unconfirmed", label: t("unconfirmed") },
-            { value: "past", label: t("home:history.title") },
-          ]}
-          onChange={(value) => changeSearch({ status: value as typeof search.status })}
-        />
-        <PromptChoice
-          label={t("home:dashboard.sortPrompts")}
-          value={search.sort}
-          options={[
-            { value: "original", label: t("home:dashboard.originalOrder") },
-            { value: "prompt", label: t("prompt") },
-            { value: "rate", label: t("home:dashboard.mentionRate") },
-            { value: "change", label: t("home:dashboard.sortChange") },
-          ]}
-          onChange={(value) => changeSearch({ sort: value as typeof search.sort })}
-        />
-        {search.sort !== "original" && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => changeSearch({ descending: !search.descending })}
+        <fieldset className="flex flex-wrap gap-0.5" aria-label={t("statusLabel")}>
+          {statusOptions.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              variant="ghost"
+              size="pill"
+              aria-pressed={search.status === option.value}
+              className="text-muted-foreground"
+              onClick={() => changeSearch({ status: option.value })}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </fieldset>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="pill"
+                className="gap-1.5 text-muted-foreground sm:ms-auto"
+              />
+            }
           >
-            {t(search.descending ? "home:dashboard.descending" : "home:dashboard.ascending")}
-          </Button>
-        )}
-        <div className="[&>div]:m-0 [&_output:empty]:hidden">
-          <GenerationControls
-            brandID={brandID}
-            mode="prompts"
-            setupStartFailed={draftStartFailed}
-            hideSuccessMessage
-          />
-        </div>
+            <HugeiconsIcon icon={SortingIcon} data-icon="inline-start" aria-hidden="true" />
+            {search.sort === "original"
+              ? t("home:dashboard.sortBy")
+              : sortOptions.find((option) => option.value === search.sort)?.label}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{t("home:dashboard.sortPrompts")}</DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={search.sort}
+                onValueChange={(value) => changeSearch({ sort: value as typeof search.sort })}
+              >
+                {sortOptions.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuGroup>
+            {search.sort !== "original" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={search.descending ? "descending" : "ascending"}
+                  onValueChange={(value) => changeSearch({ descending: value === "descending" })}
+                >
+                  <DropdownMenuRadioItem value="ascending">
+                    {t("home:dashboard.ascending")}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="descending">
+                    {t("home:dashboard.descending")}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      {mutationFailed && !bulkDeleting && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {bulkFailed ? t("home:dashboard.bulkError") : t("mutationError")}
+        </p>
+      )}
 
       <output className="sr-only" aria-live="polite">
         {selectedVisible.length
@@ -524,7 +567,7 @@ export function PromptManager({
           : ""}
       </output>
       {selectedVisible.length > 0 && (
-        <div className="fixed bottom-[max(24px,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-max max-w-[calc(100vw-32px)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 rounded-[12px] border border-[var(--metric-tooltip-border)] [background:linear-gradient(165deg,#ffffff0c,#ffffff02_55%),color-mix(in_srgb,var(--popover)_80%,transparent)] px-2.5 py-2 text-[13px] text-muted-foreground shadow-[0_16px_60px_var(--metric-tooltip-shadow)] backdrop-blur-[24px] backdrop-saturate-[130%]">
+        <div className="surface-float fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-1 px-2.5 py-2 text-body text-muted-foreground">
           <span className="px-2 text-foreground">
             {t("home:dashboard.selectedCount", { count: selectedVisible.length })}
           </span>
@@ -552,11 +595,6 @@ export function PromptManager({
           </Button>
         </div>
       )}
-      {bulkFailed && !bulkDeleting && (
-        <p role="alert" className="text-sm text-destructive">
-          {t("home:dashboard.bulkError")}
-        </p>
-      )}
 
       <TooltipProvider delay={0}>
         {active.isError ? (
@@ -573,110 +611,87 @@ export function PromptManager({
             {search.q || search.status !== "all" ? t("noStatusResults") : t("promptEmpty")}
           </p>
         ) : (
-          <>
-            <div className="hidden min-[1101px]:block">
+          <div className="@container group-data-[refreshing=true]/refresh:opacity-50">
+            <div className="hidden @4xl:block">
               <DataTable
+                interactive
                 ariaLabel={t("tableLabel")}
-                className="prompt-table table-fixed border-separate border-spacing-y-1 group-data-[refreshing=true]/refresh:opacity-50"
-                headerRowClassName="border-0 hover:bg-transparent"
+                className="table-fixed"
                 data={visible}
                 columns={columns}
                 getRowId={(row) => row.id}
-                rowClassName={() => "group border-0 transition-none hover:bg-transparent"}
                 isRowSelected={(row) => selectedVisible.includes(row.id)}
               />
             </div>
-            {visibleLiveIDs.length > 0 && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground min-[1101px]:hidden">
-                <PromptSelectCheckbox
-                  label={t("home:dashboard.selectPage")}
-                  checked={selectedVisible.length === visibleLiveIDs.length}
-                  indeterminate={
-                    selectedVisible.length > 0 && selectedVisible.length < visibleLiveIDs.length
-                  }
-                  onChange={(checked) =>
-                    setSelected((current) =>
-                      checked
-                        ? [...new Set([...current, ...visibleLiveIDs])]
-                        : current.filter((id) => !visibleLiveIDs.includes(id)),
-                    )
-                  }
-                />
-                {t("home:dashboard.selectPage")}
-              </div>
-            )}
-            <ul className="grid gap-1 min-[1101px]:hidden group-data-[refreshing=true]/refresh:opacity-50">
+            <ul className="list-rows grid gap-0.5 @4xl:hidden">
               {visible.map((row) => (
                 <li
                   key={row.id}
                   data-selected={selectedVisible.includes(row.id) || undefined}
-                  className="min-w-0 rounded-md p-3 data-[selected]:bg-signal-pill"
+                  className="group flex min-w-0 items-start gap-2 rounded-md px-2 py-3 hover:bg-signal-pill data-[selected]:bg-signal-pill"
                 >
-                  <div className="flex items-start gap-3">
-                    {!row.past && (
-                      <PromptSelectCheckbox
-                        label={t("home:dashboard.selectPrompt", { text: row.text })}
-                        checked={selectedVisible.includes(row.id)}
-                        onChange={() => select(row.id)}
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">{renderPrompt(row)}</div>
+                  {!row.past && (
+                    <PromptSelectCheckbox
+                      label={t("home:dashboard.selectPrompt", { text: row.text })}
+                      checked={selectedVisible.includes(row.id)}
+                      onChange={() => select(row.id)}
+                    />
+                  )}
+                  <div className="grid min-w-0 flex-1 gap-2">
+                    {renderPrompt(row)}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {renderRate(row)}
+                      {renderRival(row)}
+                    </div>
                   </div>
-                  <dl className="my-4 grid gap-3">
-                    <div className="grid grid-cols-1 gap-1 min-[441px]:grid-cols-[120px_minmax(0,1fr)] min-[441px]:gap-3">
-                      <dt className="text-xs font-normal text-muted-foreground">
-                        {t("home:dashboard.yourRate")}
-                      </dt>
-                      <dd>{renderRate(row)}</dd>
-                    </div>
-                    <div className="grid grid-cols-1 gap-1 min-[441px]:grid-cols-[120px_minmax(0,1fr)] min-[441px]:gap-3">
-                      <dt className="text-xs font-normal text-muted-foreground">
-                        {t("home:dashboard.byEngine")}
-                      </dt>
-                      <dd>{renderEngines(row)}</dd>
-                    </div>
-                    <div className="grid grid-cols-1 gap-1 min-[441px]:grid-cols-[120px_minmax(0,1fr)] min-[441px]:gap-3">
-                      <dt className="text-xs font-normal text-muted-foreground">
-                        {t("home:dashboard.mostMentionedBrands")}
-                      </dt>
-                      <dd>{renderBrands(row)}</dd>
-                    </div>
-                  </dl>
                   {renderActions(row)}
                 </li>
               ))}
             </ul>
-          </>
+          </div>
         )}
       </TooltipProvider>
-      <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <span className="whitespace-nowrap">
-          {t("home:dashboard.page", { current: page, total: Math.max(1, totalPages) })}
-        </span>
-        <PromptChoice
-          label={t("pageSizeLabel")}
-          value={String(search.pageSize)}
-          options={[10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))}
-          onChange={(value) => changeSearch({ pageSize: Number(value) as 10 | 20 | 50 })}
-        />
-        <div className="flex gap-2 sm:ms-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => void setSearch({ page: page - 1 }, { history: "push" })}
-          >
-            {t("home:dashboard.previous")}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={page >= totalPages}
-            onClick={() => void setSearch({ page: page + 1 }, { history: "push" })}
-          >
-            {t("home:dashboard.next")}
-          </Button>
-        </div>
+      <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground empty:hidden">
+        {totalItems > 0 && (
+          <>
+            <span className="whitespace-nowrap tabular-nums">
+              {t("home:dashboard.pageRange", {
+                start: firstItem,
+                end: lastItem,
+                total: totalItems,
+              })}
+            </span>
+            <PromptChoice
+              label={t("pageSizeLabel")}
+              value={String(search.pageSize)}
+              options={[10, 20, 50].map((value) => ({
+                value: String(value),
+                label: String(value),
+              }))}
+              onChange={(value) => changeSearch({ pageSize: Number(value) as 10 | 20 | 50 })}
+            />
+            <div className="ms-auto flex gap-1">
+              <Button
+                variant="ghost"
+                size="circle-sm"
+                aria-label={t("home:dashboard.previous")}
+                disabled={page <= 1}
+                onClick={() => void setSearch({ page: page - 1 }, { history: "push" })}
+              >
+                <HugeiconsIcon icon={ArrowLeft01Icon} aria-hidden="true" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="circle-sm"
+                aria-label={t("home:dashboard.next")}
+                disabled={page >= totalPages}
+                onClick={() => void setSearch({ page: page + 1 }, { history: "push" })}
+              >
+                <HugeiconsIcon icon={ArrowRight01Icon} aria-hidden="true" />
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       <PromptDialog

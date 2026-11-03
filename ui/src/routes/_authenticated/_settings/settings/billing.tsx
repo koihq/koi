@@ -86,7 +86,7 @@ function BillingSettings() {
 
   return (
     <div className="max-w-2xl pb-24">
-      <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("title")}</h1>
+      <h1 className="text-title font-semibold">{t("title")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{t("description")}</p>
       {billing.awaitingConfirmation && (
         <div className="mt-4 space-y-2 text-sm">

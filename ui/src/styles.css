@@ -1,4 +1,4 @@
-@import "@fontsource-variable/inter";
+@import "@fontsource-variable/hanken-grotesk";
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -29,14 +29,6 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --color-brand: var(--brand);
   --color-surface: var(--surface);
   --color-surface-foreground: var(--surface-foreground);
@@ -45,6 +37,17 @@
   --color-signal-pill: var(--signal-pill);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.5;
+  --text-section: 1rem;
+  --text-section--line-height: 1.4;
+  --text-section--letter-spacing: -0.01em;
+  --text-title: 1.875rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.03em;
+  --text-metric: 2.5rem;
+  --text-metric--line-height: 1.05;
+  --text-metric--letter-spacing: -0.035em;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -55,7 +58,7 @@
 }
 
 :root {
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.625rem;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -91,15 +94,6 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-selected: oklch(0.92 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
@@ -134,15 +128,6 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-selected: oklch(0.34 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
@@ -164,28 +149,83 @@
   }
 }
 
+@utility surface-float {
+  border: 1px solid var(--metric-tooltip-border);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(165deg, #ffffff0c, #ffffff02 55%),
+    color-mix(in srgb, var(--popover) 80%, transparent);
+  box-shadow: 0 16px 60px var(--metric-tooltip-shadow);
+  backdrop-filter: blur(24px) saturate(130%);
+}
+
 @layer components {
+  /* Interactive lists (DataTable `interactive`): no rules, one rounded fill per row. */
+  .list-table {
+    border-collapse: separate;
+    border-spacing: 0 2px;
+  }
+
+  .list-table :is(thead, tbody) tr {
+    border: 0;
+  }
+
+  .list-table thead tr:hover {
+    background: transparent;
+  }
+
+  .list-table tbody tr {
+    transition: opacity 120ms ease;
+  }
+
+  .list-table tbody td {
+    transition: background-color 120ms ease;
+  }
+
+  .list-table tbody td:first-child {
+    border-start-start-radius: var(--radius-md);
+    border-end-start-radius: var(--radius-md);
+  }
+
+  .list-table tbody td:last-child {
+    border-start-end-radius: var(--radius-md);
+    border-end-end-radius: var(--radius-md);
+  }
+
+  .list-table
+    tbody
+    tr:is([data-selected], :focus-within:not(:has(.prompt-check-wrap:focus-within)))
+    td {
+    background: var(--signal-pill);
+  }
+
+  /* Interactive row lists (ul.list-rows): siblings recede while one row is hovered. */
+  .list-rows > * {
+    transition: opacity 120ms ease;
+  }
+
   @media (hover: hover) and (pointer: fine) {
-    .prompt-table tbody tr:hover td {
+    .list-rows:has(> :hover)
+      > :not(:hover):not(:has(:focus-visible)):not(:has([aria-pressed="true"])) {
+      opacity: 0.55;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .list-table tbody tr:hover td {
       background: var(--signal-pill);
     }
 
-    .prompt-table
-      tbody:has(tr:hover)
-      tr:not(:hover):not(:has(:focus-visible)):not([data-selected]) {
+    .list-table tbody:has(tr:hover) tr:not(:hover):not(:has(:focus-visible)):not([data-selected]) {
       opacity: 0.55;
     }
 
-    .prompt-table
+    .list-table
       tbody
       tr:not(:hover):not(:has(:focus-visible)):not([data-selected])
       .prompt-check-wrap {
       opacity: 0;
     }
-  }
-
-  .prompt-table tbody tr:focus-within:not(:has(.prompt-check-wrap:focus-within)) td {
-    background: var(--signal-pill);
   }
 
   .metric-details-tooltip {
@@ -254,10 +294,4 @@ html[data-theme-switching] *::before,
 html[data-theme-switching] *::after {
   /* biome-ignore lint/complexity/noImportantStyles: Theme swaps suppress component transitions for one frame. */
   transition: none !important;
-}
-
-[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-gap"],
-[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-container"],
-[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-group-label"] {
-  transition-duration: 0ms;
 }

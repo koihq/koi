@@ -17,7 +17,6 @@
   "confirm": "Confirm",
   "confirmAll": "Confirm all",
   "confirmAllCount": "Confirm all ({count})",
-  "statusSeparator": " · ",
   "delete": "Delete",
   "edit": "Edit",
   "pausePrompt": "Pause tracking",
@@ -34,7 +33,6 @@
   "deleteCompetitor": "Delete competitor",
   "deletePromptTitle": "Delete prompt?",
   "deleteCompetitorTitle": "Delete competitor?",
-  "sourceStatus": "Source / status",
   "actions": "Actions",
   "manual": "Added manually",
   "drafted": "Drafted by Koi",
@@ -79,7 +77,6 @@
   "draftMoreCompetitors": "Draft more competitors",
   "retryDraft": "Retry drafting",
   "reviewCompetitors": "Review competitors",
-  "startDraftOnPrompts": "Start a first draft on Prompts",
   "draftSubject": {
     "initial": "prompts and competitors",
     "prompts": "prompts",
@@ -111,5 +108,6 @@
   "competitorNameInvalid": "Enter a name.",
   "dismiss": "Dismiss",
   "dismissSuggestionTitle": "Dismiss suggestion?",
-  "dismissSuggestionDescription": "This removes the suggestion and prevents Koi from suggesting this competitor again. Recorded answers stay available."
+  "dismissSuggestionDescription": "This removes the suggestion and prevents Koi from suggesting this competitor again. Recorded answers stay available.",
+  "suggested": "Suggested"
 }

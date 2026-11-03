@@ -27,7 +27,7 @@ export function PromptDialog({
   label: string;
   pending: boolean;
   onSave: (request: CreatePrompt) => Promise<void>;
-  variant?: "default" | "ghost";
+  variant?: "default" | "ghost" | "outline";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;

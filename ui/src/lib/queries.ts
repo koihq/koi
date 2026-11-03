@@ -14,6 +14,7 @@ import {
   runKey,
   trackingKey,
 } from "@/lib/query-keys";
+import type { VisibilityScope } from "@/lib/visibility";
 
 export const accountOptions = (api: Api) =>
   queryOptions({
@@ -65,6 +66,12 @@ export const promptListOptions = (api: Api, brandId: string, params: PromptListP
   queryOptions({
     queryKey: [...promptKey(brandId), "list", params],
     queryFn: ({ signal }) => api.prompts.list({ brandId, ...params }, { signal }),
+  });
+
+export const visibilitySummaryOptions = (api: Api, brandId: string, scope: VisibilityScope) =>
+  queryOptions({
+    queryKey: [...promptKey(brandId), "visibility-summary", scope],
+    queryFn: ({ signal }) => api.runs.summary(brandId, scope, { signal }),
   });
 
 export function invalidateProduct(

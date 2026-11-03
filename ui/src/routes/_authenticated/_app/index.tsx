@@ -1,11 +1,4 @@
-import {
-  ChatGptIcon,
-  GoogleGeminiIcon,
-  GoogleIcon,
-  InformationCircleIcon,
-  PerplexityAiIcon,
-  Settings01Icon,
-} from "@hugeicons/core-free-icons";
+import { InformationCircleIcon, Settings01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow, { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
@@ -17,11 +10,12 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
-import { BrandPill } from "@/components/blocks/brand-pill";
+import { BrandLabel } from "@/components/blocks/brand-label";
+import { EngineIcon } from "@/components/blocks/engine-icon";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { TrackingSummary } from "@/components/blocks/tracking-review";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
@@ -29,7 +23,9 @@ import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCollection } from "@/hooks/use-collection";
-import { keepPreviousDataForScope } from "@/lib/queries";
+import { useFlip } from "@/hooks/use-flip";
+import { formatDay, formatDayRange, formatPoints, formatRate } from "@/lib/format";
+import { keepPreviousDataForScope, visibilitySummaryOptions } from "@/lib/queries";
 import { promptKey } from "@/lib/query-keys";
 import {
   engines,
@@ -49,13 +45,6 @@ const graphSearchParams = {
     .withOptions({ clearOnDefault: true }),
   engines: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   compareId: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
-};
-
-const engineIcons = {
-  chatgpt: ChatGptIcon,
-  perplexity: PerplexityAiIcon,
-  gemini: GoogleGeminiIcon,
-  google_ai_overviews: GoogleIcon,
 };
 
 const MemoPromptManager = memo(PromptManager);
@@ -97,8 +86,7 @@ function Home() {
   );
 
   const summary = useQuery({
-    queryKey: [...promptKey(brand.id), "visibility-summary", scope],
-    queryFn: ({ signal }) => api.runs.summary(brand.id, scope, { signal }),
+    ...visibilitySummaryOptions(api, brand.id, scope),
     placeholderData: keepPreviousDataForScope(promptKey(brand.id)),
     refetchInterval: collecting ? 5_000 : false,
   });
@@ -122,6 +110,8 @@ function Home() {
 
     return { series, comparedSeries, rate, change, rivals, comparisonRate };
   }, [summary.data, comparison]);
+  const rivalList = useRef<HTMLDivElement>(null);
+  useFlip(rivalList, rivals.map(({ competitor }) => competitor.id).join(","));
   const selectedPoint = inspected === null ? undefined : series[inspected];
   const selectedComparisonPoint = inspected === null ? undefined : comparedSeries[inspected];
   const headlineRate = selectedPoint ? selectedPoint.rate : rate;
@@ -151,51 +141,101 @@ function Home() {
     }
   }, []);
 
+  const empty = summary.isSuccess && rate === null;
+
   return (
     <div className="grid gap-6 pb-24">
       <h1 className="sr-only">{t("dashboard.title")}</h1>
-      <section
-        className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7"
-        aria-busy={summary.isFetching}
-        data-refreshing={summary.isFetching && Boolean(summary.data)}
-        aria-labelledby="signal-heading"
-        onPointerDownCapture={(event) =>
-          setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
-        }
-        onKeyDownCapture={() => setInspectionInput("keyboard")}
-      >
-        <QueryRefreshIndicator active={summary.isFetching} label={t("dashboard.loading")} />
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-          <div>
-            <time
-              className="text-xs font-normal text-muted-foreground"
-              dateTime={new Date().toISOString()}
-            >
-              {new Date().toLocaleDateString(i18n.language, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </time>
-            <h2 id="signal-heading" className="mt-0.5 text-xl leading-tight font-bold">
-              {t("dashboard.aiVisibility")}
-            </h2>
-            {summary.isPending ? (
-              <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
-            ) : summary.isError ? (
-              <p role="alert" className="mt-6 text-sm">
-                {t("dashboard.loadError")}{" "}
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    void summary.refetch();
-                  }}
-                >
-                  {t("dashboard.retry")}
-                </Button>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <section
+          className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+          aria-busy={summary.isFetching}
+          data-refreshing={summary.isFetching && Boolean(summary.data)}
+          aria-labelledby="signal-heading"
+          onPointerDownCapture={(event) =>
+            setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
+          }
+          onKeyDownCapture={() => setInspectionInput("keyboard")}
+        >
+          <QueryRefreshIndicator active={summary.isFetching} label={t("dashboard.loading")} />
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="grid gap-0.5">
+              <time
+                className="text-xs font-normal text-muted-foreground"
+                dateTime={new Date().toISOString()}
+              >
+                {new Date().toLocaleDateString(i18n.language, {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </time>
+              <h2 id="signal-heading" className="text-section font-semibold">
+                {t("dashboard.aiVisibility")}
+              </h2>
+            </div>
+            {!empty && (
+              <fieldset className="flex shrink-0 gap-1" aria-label={t("dashboard.filterEngines")}>
+                {engines.map((engine) => {
+                  const selected = selectedEngines.includes(engine.id);
+                  return (
+                    <Button
+                      key={engine.id}
+                      type="button"
+                      title={engine.name}
+                      aria-label={engine.name}
+                      aria-pressed={selected}
+                      variant="ghost"
+                      size="circle"
+                      className="text-muted-foreground"
+                      onClick={() => {
+                        const next = selected
+                          ? selectedEngines.filter((id) => id !== engine.id)
+                          : [...selectedEngines, engine.id];
+                        void setGraph({ engines: next.join(",") }, { history: "push" });
+                        setInspected(null);
+                      }}
+                    >
+                      <EngineIcon engine={engine.id} className="size-5" />
+                    </Button>
+                  );
+                })}
+              </fieldset>
+            )}
+          </div>
+
+          {summary.isPending ? (
+            <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
+          ) : summary.isError ? (
+            <p role="alert" className="mt-6 text-sm">
+              {t("dashboard.loadError")}{" "}
+              <Button
+                variant="link"
+                onClick={() => {
+                  void summary.refetch();
+                }}
+              >
+                {t("dashboard.retry")}
+              </Button>
+            </p>
+          ) : empty ? (
+            <div className="grid min-h-60 content-center justify-items-start gap-4 group-data-[refreshing=true]/refresh:opacity-50">
+              <p className="max-w-[48ch] text-body text-muted-foreground">
+                {t(
+                  hasConfirmedPrompts
+                    ? "dashboard.noCompletedAnswers"
+                    : "dashboard.emptyDescription",
+                )}
               </p>
-            ) : (
-              <div className="mt-4 flex flex-wrap items-baseline gap-2 text-[13px] group-data-[refreshing=true]/refresh:opacity-50">
+              {!hasConfirmedPrompts && (
+                <Button render={<Link to="/" hash="prompts" />} nativeButton={false} size="lg">
+                  {t("dashboard.managePrompts")}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 group-data-[refreshing=true]/refresh:opacity-50">
                 <VisibilityHeadline
                   brand={brand}
                   competitor={comparison}
@@ -208,28 +248,19 @@ function Home() {
                   animated={animateNumbers}
                   variant="home"
                 />
-                {(!comparison || comparisonRate === null) && (
+                {(!comparison || comparisonRate === null) && headlineChange !== null && (
                   <span
-                    className={
-                      headlineChange === null
-                        ? "text-muted-foreground"
-                        : headlineChange >= 0
-                          ? "text-positive"
-                          : "text-negative"
-                    }
+                    className={`rounded-sm px-1.5 py-0.5 text-xs tabular-nums ${headlineChange > 0 ? "bg-positive/12 text-positive" : headlineChange < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
                   >
-                    {headlineChange === null ? (
-                      "—"
-                    ) : (
-                      <NumberFlow
-                        value={Math.abs(headlineChange)}
-                        prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
-                        locales={i18n.language}
-                        format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                        animated={animateNumbers}
-                        className="[--number-flow-mask-height:0.3em]"
-                      />
-                    )}
+                    <NumberFlow
+                      value={Math.abs(headlineChange)}
+                      prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
+                      suffix=" pp"
+                      locales={i18n.language}
+                      format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                      animated={animateNumbers}
+                      className="[--number-flow-mask-height:0.3em]"
+                    />
                   </span>
                 )}
                 {selectedPoint && (
@@ -237,10 +268,7 @@ function Home() {
                     className="text-xs font-normal text-muted-foreground"
                     dateTime={selectedPoint.date.toISOString()}
                   >
-                    {selectedPoint.date.toLocaleDateString(i18n.language, {
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {formatDay(selectedPoint.date, i18n.language)}
                   </time>
                 )}
                 <TooltipProvider delay={350}>
@@ -259,11 +287,7 @@ function Home() {
                   >
                     <TooltipTrigger
                       render={
-                        <Button
-                          variant="ghost"
-                          size="icon-lg"
-                          className="relative -top-[7px] self-end"
-                        />
+                        <Button variant="ghost" size="icon-lg" className="text-muted-foreground" />
                       }
                       aria-label={t("dashboard.metricDetails")}
                       aria-expanded={detailsOpen}
@@ -276,7 +300,7 @@ function Home() {
                       <HugeiconsIcon icon={InformationCircleIcon} size={16} aria-hidden="true" />
                     </TooltipTrigger>
                     <TooltipContent
-                      className="metric-details-tooltip block w-fit max-w-[32ch] rounded-[10px] border border-(--metric-tooltip-border) bg-(--metric-tooltip) p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
+                      className="metric-details-tooltip surface-float block w-fit max-w-[32ch] bg-transparent! p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
                       data-input={inspectionInput}
                       side="bottom"
                       align="start"
@@ -284,10 +308,7 @@ function Home() {
                       <div className="metric-details grid gap-2">
                         <strong className="font-semibold">
                           {selectedPoint
-                            ? selectedPoint.date.toLocaleDateString(i18n.language, {
-                                month: "short",
-                                day: "numeric",
-                              })
+                            ? formatDay(selectedPoint.date, i18n.language)
                             : t("dashboard.metricHeading")}
                         </strong>
                         <p className="text-muted-foreground">
@@ -305,149 +326,120 @@ function Home() {
                               )}
                         </p>
                         <p className="text-muted-foreground">{t("dashboard.metricSavedAnswers")}</p>
+                        <p className="text-muted-foreground">
+                          {t("cadence", { ns: "visibility" })}
+                        </p>
                       </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-            )}
-          </div>
-          <fieldset className="flex shrink-0 gap-1" aria-label={t("dashboard.filterEngines")}>
-            {engines.map((engine) => {
-              const selected = selectedEngines.includes(engine.id);
-              return (
-                <Button
-                  key={engine.id}
-                  type="button"
-                  title={engine.name}
-                  aria-label={engine.name}
-                  aria-pressed={selected}
-                  variant="ghost"
-                  size="circle"
-                  className="text-muted-foreground"
-                  onClick={() => {
-                    const next = selected
-                      ? selectedEngines.filter((id) => id !== engine.id)
-                      : [...selectedEngines, engine.id];
-                    void setGraph({ engines: next.join(",") }, { history: "push" });
-                    setInspected(null);
-                  }}
-                >
-                  <HugeiconsIcon
-                    icon={engineIcons[engine.id]}
-                    className="size-[23px]"
-                    aria-hidden="true"
-                  />
-                </Button>
-              );
-            })}
-          </fieldset>
-        </div>
+              <VisibilityChart
+                series={series}
+                comparison={comparedSeries}
+                brand={brand}
+                competitor={comparison}
+                inspected={inspected}
+                inspectionInput={inspectionInput}
+                onInspect={inspect}
+                locale={i18n.language}
+                scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
+              />
+            </>
+          )}
 
-        {summary.isSuccess && rate === null ? (
-          <div className="group-data-[refreshing=true]/refresh:opacity-50 grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
-            <p>
-              {t(
-                hasConfirmedPrompts ? "dashboard.noCompletedAnswers" : "dashboard.emptyDescription",
-              )}
-            </p>
-            {!hasConfirmedPrompts && (
-              <a href="#prompts" className="underline underline-offset-4">
-                {t("dashboard.managePrompts")}
-              </a>
-            )}
-          </div>
-        ) : rate !== null ? (
-          <VisibilityChart
-            series={series}
-            comparison={comparedSeries}
-            brand={brand}
-            competitor={comparison}
-            inspected={inspected}
-            inspectionInput={inspectionInput}
-            onInspect={inspect}
-            locale={i18n.language}
-            scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
-          />
-        ) : null}
+          {!empty && (
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <span className="text-xs font-normal text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                {series.length > 0 &&
+                  formatDayRange(series[0].date, series[series.length - 1].date, i18n.language)}
+              </span>
+              <fieldset className="flex gap-0.5" aria-label={t("dashboard.range")}>
+                {([7, 30, 90] as const).map((days) => (
+                  <Button
+                    key={days}
+                    type="button"
+                    aria-pressed={graph.days === days}
+                    variant="ghost"
+                    size="pill"
+                    className="text-muted-foreground"
+                    onClick={() => {
+                      void setGraph({ days }, { history: "push" });
+                      setInspected(null);
+                    }}
+                  >
+                    {`${days}D`}
+                  </Button>
+                ))}
+              </fieldset>
+            </div>
+          )}
+        </section>
 
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <span className="text-xs font-normal text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
-            {series.length > 0 &&
-              `${series[0].date.toLocaleDateString(i18n.language, { month: "short", day: "numeric" })} – ${series.at(-1)?.date.toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}`}
-          </span>
-          <fieldset className="flex gap-0.5" aria-label={t("dashboard.range")}>
-            {([7, 30, 90] as const).map((days) => (
-              <Button
-                key={days}
-                type="button"
-                aria-pressed={graph.days === days}
-                variant="ghost"
-                size="pill"
-                className="text-muted-foreground"
-                onClick={() => {
-                  void setGraph({ days }, { history: "push" });
-                  setInspected(null);
-                }}
-              >
-                {`${days}D`}
-              </Button>
-            ))}
-          </fieldset>
-        </div>
-
-        <div className="mt-6 text-[13px]">
-          <div className="flex items-center justify-between">
-            <h3>{t("dashboard.competitors")}</h3>
-            <Link
-              to="/competitors"
-              className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        <aside
+          className="group/refresh min-w-0 rounded-lg bg-surface p-4 sm:p-7 xl:p-5"
+          aria-labelledby="rivals-heading"
+          data-refreshing={summary.isFetching && Boolean(summary.data)}
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 id="rivals-heading" className="text-section font-semibold">
+              {t("dashboard.recommendedInstead")}
+            </h2>
+            <Button
+              variant="ghost"
+              size="circle-sm"
+              render={<Link to="/competitors" />}
+              nativeButton={false}
               aria-label={t("dashboard.manageCompetitors")}
               title={t("dashboard.manageCompetitors")}
+              className="text-muted-foreground"
             >
-              <HugeiconsIcon icon={Settings01Icon} size={16} aria-hidden="true" />
-            </Link>
+              <HugeiconsIcon icon={Settings01Icon} aria-hidden="true" />
+            </Button>
           </div>
           {rivals.length ? (
-            rivals.map(({ competitor, rate: rivalRate }) => {
-              const gap = rivalRate !== null && rate !== null ? rivalRate - rate : null;
-              return (
-                <button
-                  key={competitor.id}
-                  type="button"
-                  aria-pressed={graph.compareId === competitor.id}
-                  onClick={() => {
-                    void setGraph(
-                      { compareId: graph.compareId === competitor.id ? "" : competitor.id },
-                      { history: "push" },
-                    );
-                    setInspected(null);
-                  }}
-                  className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_60px_65px] items-center gap-1.5 rounded-md p-2 text-start hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:grid-cols-[minmax(0,1fr)_76px_88px] sm:gap-4 max-[359px]:grid-cols-[minmax(0,1fr)_auto] max-[359px]:gap-y-2"
-                >
-                  <span className="min-w-0 justify-self-start max-[359px]:col-span-2">
-                    <BrandPill name={competitor.name} domain={competitor.domain} />
-                  </span>
-                  <span className="text-end tabular-nums max-[359px]:text-start group-data-[refreshing=true]/refresh:opacity-50">
-                    {rivalRate === null ? "—" : `${rivalRate.toFixed(1)}%`}
-                  </span>
-                  <span
-                    className={`group-data-[refreshing=true]/refresh:opacity-50 text-end tabular-nums ${gap === null ? "" : gap > 0 ? "text-negative" : "text-positive"}`}
+            <div ref={rivalList} className="list-rows grid gap-0.5">
+              {rivals.map(({ competitor, rate: rivalRate }) => {
+                const gap = rivalRate !== null && rate !== null ? rivalRate - rate : null;
+                return (
+                  <button
+                    key={competitor.id}
+                    data-flip-key={competitor.id}
+                    type="button"
+                    aria-pressed={graph.compareId === competitor.id}
+                    onClick={() => {
+                      void setGraph(
+                        { compareId: graph.compareId === competitor.id ? "" : competitor.id },
+                        { history: "push" },
+                      );
+                      setInspected(null);
+                    }}
+                    className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-md px-2 py-2 text-start text-body hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
-                    {gap === null ? "—" : `${gap > 0 ? "+" : ""}${gap.toFixed(1)} pp`}
-                  </span>
-                </button>
-              );
-            })
+                    <span className="min-w-0 justify-self-start">
+                      <BrandLabel name={competitor.name} domain={competitor.domain} />
+                    </span>
+                    <span className="text-end tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                      {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
+                    </span>
+                    <span
+                      className={`w-20 text-end text-xs tabular-nums group-data-[refreshing=true]/refresh:opacity-50 ${gap === null ? "text-muted-foreground" : gap > 0 ? "text-negative" : "text-positive"}`}
+                    >
+                      {gap === null ? "—" : formatPoints(gap, i18n.language)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           ) : summary.isSuccess ? (
-            <p className="text-xs font-normal text-muted-foreground py-2">
+            <p className="py-2 text-xs font-normal text-muted-foreground">
               {t("dashboard.noCompetitors")}
             </p>
           ) : null}
-        </div>
-      </section>
+        </aside>
+      </div>
 
-      <TrackingSummary brandID={brand.id} showSchedule={hasConfirmedPrompts === false} />
+      {hasConfirmedPrompts && <TrackingSummary brandID={brand.id} showSchedule={false} />}
       <MemoPromptManager
         brandID={brand.id}
         scope={scope}

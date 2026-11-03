@@ -6,6 +6,7 @@ import { useApi } from "@/api/apiProvider";
 import { messageFromUnknown } from "@/api/errors";
 import { Button } from "@/components/ui/button";
 import { useTracking } from "@/hooks/use-tracking";
+import { formatDateTime } from "@/lib/format";
 import { invalidateProduct } from "@/lib/queries";
 
 export function TrackingReview({
@@ -99,7 +100,7 @@ export function TrackingSummary({
     <div className="space-y-2 text-sm">
       {showSchedule && <p className="text-muted-foreground">{t("cadence")}</p>}
       {showSchedule && state.nextRunAt ? (
-        <p>{t("nextRunAt", { date: state.nextRunAt.toLocaleString(i18n.language) })}</p>
+        <p>{t("nextRunAt", { date: formatDateTime(state.nextRunAt, i18n.language) })}</p>
       ) : null}
       {state.blockedReason ? <p>{t(`blocked.${state.blockedReason}`)}</p> : null}
       <div className="flex flex-wrap gap-4">

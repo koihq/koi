@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
+import { formatDay, formatRate } from "@/lib/format";
 
 export type VisibilityPoint = { date: Date; rate: number | null };
 export type InspectionInput = "pointer" | "touch" | "keyboard";
@@ -20,6 +21,7 @@ export type InspectionInput = "pointer" | "touch" | "keyboard";
 type ChartBrand = { name: string; domain?: string };
 
 const HEIGHT = 220;
+const PLOT_INSET = 16;
 const PILL_WIDTH = 72;
 const PILL_HEIGHT = 28;
 const chartConfig = {
@@ -70,7 +72,7 @@ function endpointLabel(
               className="size-3"
             />
           )}
-          <span>{`${rate.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}</span>
+          <span>{formatRate(rate, locale ?? "en")}</span>
         </div>
       </foreignObject>
     );
@@ -149,7 +151,7 @@ export function VisibilityChart({
   const selected = activeIndex === null ? null : data[activeIndex];
   const selectedDate = activeIndex === null ? null : series[activeIndex]?.date;
   const readout = selectedDate
-    ? `${selectedDate.toLocaleDateString(locale, { month: "short", day: "numeric" })}: ${brand.name} ${selected?.own == null ? t("dashboard.noData") : `${selected.own.toFixed(1)}%`}${competitor && selected?.other != null ? `, ${competitor.name} ${selected.other.toFixed(1)}%` : ""}`
+    ? `${formatDay(selectedDate, locale ?? "en")}: ${brand.name} ${selected?.own == null ? t("dashboard.noData") : `${selected.own.toFixed(1)}%`}${competitor && selected?.other != null ? `, ${competitor.name} ${selected.other.toFixed(1)}%` : ""}`
     : undefined;
 
   useEffect(() => {
@@ -241,7 +243,7 @@ export function VisibilityChart({
           onInspect(null, event.pointerType === "touch" ? "touch" : "pointer")
         }
       >
-        <LineChart data={data} margin={{ top: 16, right: 0, bottom: 16, left: 0 }}>
+        <LineChart data={data} margin={{ top: PLOT_INSET, right: 0, bottom: PLOT_INSET, left: 0 }}>
           <XAxis dataKey="day" hide height={0} padding={{ right: rightPadding }} />
           {/* Rates are bounded to 0–100. Clipping at the domain edge cuts the 4px stroke in half. */}
           <YAxis hide width={0} domain={[0, 100]} />

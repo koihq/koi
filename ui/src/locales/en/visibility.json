@@ -75,10 +75,10 @@
   "appearanceUnresolved": "Unresolved name",
   "observedReviewNotice": "Observed suggestions are excluded from Finish review. Confirm each suggestion individually.",
   "evidenceKinds": {
-    "mention": "Named in answer",
-    "citation": "Cited source",
-    "entity": "Named entity",
-    "link": "Product link"
+    "mention": "Named",
+    "citation": "Cited",
+    "entity": "Named",
+    "link": "Linked"
   },
   "reviewBilling": "Review billing",
   "answerMessages": {
@@ -87,5 +87,14 @@
     "not-requested": "This engine was not included in this run.",
     "error": "This answer could not be collected. Check the next scheduled run.",
     "empty": "No answer was returned."
+  },
+  "brandOutcomes": {
+    "cited": "cited",
+    "mentioned": "mentioned",
+    "miss": "not in the answer",
+    "error": "error",
+    "pending": "pending",
+    "not-collected": "not collected",
+    "not-requested": "not requested"
   }
 }

@@ -125,11 +125,6 @@ export function GenerationControls({
               {setupStartFailed ? t("retryDraft") : t("draftInitial")}
             </Button>
           ) : null}
-          {!run && mode === "competitors" ? (
-            <Link to="/" hash="prompts" className="underline underline-offset-4">
-              {t("startDraftOnPrompts")}
-            </Link>
-          ) : null}
           {showMore ? (
             <Button
               type="button"

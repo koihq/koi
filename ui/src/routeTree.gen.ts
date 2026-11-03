@@ -23,7 +23,6 @@ import { Route as DevUiButtonRouteImport } from './routes/dev/ui/button'
 import { Route as DevUiFieldRouteImport } from './routes/dev/ui/field'
 import { Route as DevUiMarkRouteImport } from './routes/dev/ui/mark'
 import { Route as DevUiSeparatorRouteImport } from './routes/dev/ui/separator'
-import { Route as DevUiSidebarRouteImport } from './routes/dev/ui/sidebar'
 import { Route as AuthenticatedAppCompetitorsIndexRouteImport } from './routes/_authenticated/_app/competitors/index'
 import { Route as AuthenticatedAppPromptsPromptIdRouteImport } from './routes/_authenticated/_app/prompts/$promptId'
 import { Route as AuthenticatedSettingsSettingsBillingRouteImport } from './routes/_authenticated/_settings/settings/billing'
@@ -97,11 +96,6 @@ const DevUiSeparatorRoute = DevUiSeparatorRouteImport.update({
   path: '/separator',
   getParentRoute: () => DevUiRouteRoute,
 } as any)
-const DevUiSidebarRoute = DevUiSidebarRouteImport.update({
-  id: '/sidebar',
-  path: '/sidebar',
-  getParentRoute: () => DevUiRouteRoute,
-} as any)
 const AuthenticatedAppCompetitorsIndexRoute =
   AuthenticatedAppCompetitorsIndexRouteImport.update({
     id: '/competitors/',
@@ -143,7 +137,6 @@ export interface FileRoutesByFullPath {
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
   '/dev/ui/separator': typeof DevUiSeparatorRoute
-  '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/setup/': typeof AuthenticatedSetupIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
   '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
@@ -161,7 +154,6 @@ export interface FileRoutesByTo {
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
   '/dev/ui/separator': typeof DevUiSeparatorRoute
-  '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/setup': typeof AuthenticatedSetupIndexRoute
   '/dev/ui': typeof DevUiIndexRoute
   '/prompts/$promptId': typeof AuthenticatedAppPromptsPromptIdRoute
@@ -183,7 +175,6 @@ export interface FileRoutesById {
   '/dev/ui/field': typeof DevUiFieldRoute
   '/dev/ui/mark': typeof DevUiMarkRoute
   '/dev/ui/separator': typeof DevUiSeparatorRoute
-  '/dev/ui/sidebar': typeof DevUiSidebarRoute
   '/_authenticated/_app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/setup/': typeof AuthenticatedSetupIndexRoute
   '/dev/ui/': typeof DevUiIndexRoute
@@ -205,7 +196,6 @@ export interface FileRouteTypes {
     | '/dev/ui/field'
     | '/dev/ui/mark'
     | '/dev/ui/separator'
-    | '/dev/ui/sidebar'
     | '/setup/'
     | '/dev/ui/'
     | '/prompts/$promptId'
@@ -223,7 +213,6 @@ export interface FileRouteTypes {
     | '/dev/ui/field'
     | '/dev/ui/mark'
     | '/dev/ui/separator'
-    | '/dev/ui/sidebar'
     | '/setup'
     | '/dev/ui'
     | '/prompts/$promptId'
@@ -244,7 +233,6 @@ export interface FileRouteTypes {
     | '/dev/ui/field'
     | '/dev/ui/mark'
     | '/dev/ui/separator'
-    | '/dev/ui/sidebar'
     | '/_authenticated/_app/'
     | '/_authenticated/setup/'
     | '/dev/ui/'
@@ -363,13 +351,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiSeparatorRouteImport
       parentRoute: typeof DevUiRouteRoute
     }
-    '/dev/ui/sidebar': {
-      id: '/dev/ui/sidebar'
-      path: '/sidebar'
-      fullPath: '/dev/ui/sidebar'
-      preLoaderRoute: typeof DevUiSidebarRouteImport
-      parentRoute: typeof DevUiRouteRoute
-    }
     '/_authenticated/_app/competitors/': {
       id: '/_authenticated/_app/competitors/'
       path: '/competitors'
@@ -464,7 +445,6 @@ interface DevUiRouteRouteChildren {
   DevUiFieldRoute: typeof DevUiFieldRoute
   DevUiMarkRoute: typeof DevUiMarkRoute
   DevUiSeparatorRoute: typeof DevUiSeparatorRoute
-  DevUiSidebarRoute: typeof DevUiSidebarRoute
   DevUiIndexRoute: typeof DevUiIndexRoute
 }
 
@@ -473,7 +453,6 @@ const DevUiRouteRouteChildren: DevUiRouteRouteChildren = {
   DevUiFieldRoute: DevUiFieldRoute,
   DevUiMarkRoute: DevUiMarkRoute,
   DevUiSeparatorRoute: DevUiSeparatorRoute,
-  DevUiSidebarRoute: DevUiSidebarRoute,
   DevUiIndexRoute: DevUiIndexRoute,
 }
 

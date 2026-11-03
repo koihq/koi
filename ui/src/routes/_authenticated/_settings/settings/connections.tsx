@@ -132,7 +132,7 @@ function ConnectionsSettings() {
 
   return (
     <div className="max-w-2xl pb-24">
-      <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("title")}</h1>
+      <h1 className="text-title font-semibold">{t("title")}</h1>
       <section className="mt-10" aria-labelledby="connect-heading">
         <h2 id="connect-heading" className="text-lg font-medium tracking-tight">
           {t("connectTitle")}

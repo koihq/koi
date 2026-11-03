@@ -1,6 +1,6 @@
 # Koi interface system
 
-The production UI uses Inter Variable, semantic Tailwind tokens, Hugeicons and shadcn
+The production UI uses Hanken Grotesk Variable, semantic Tailwind tokens, Hugeicons and shadcn
 Base UI primitives in `ui/src/components/ui`. Product compositions belong in
 `components/blocks`; routes use these primitives without overriding their control
 size or type scale.
@@ -13,11 +13,10 @@ The historical `home-context` exploration is available in Git at `50a45b7` under
 `plans/ui/tailwind-and-inter.md` supersedes its Calibre typography. The prompt bulk,
 preview and chart plans record later scoped decisions.
 
-The UI consistency correction explicitly retains the four-column competitor table,
-its action menu, filters and server pagination. It supersedes the exploration's
-competitor list. The competitor table retains a 640px minimum width so brand names
-wrap into readable lines rather than single characters; narrow screens scroll within
-the table. The prompt checkbox now uses shadcn; its 16px visual box and 28px
+The competitor table shows name (with an "Unconfirmed" or "Suggested" chip only when
+it applies), domain, 30-day visibility and the gap to the brand, with its action menu,
+status filter and server pagination (`plans/ui/ui-review-2026-11.md`). Narrow containers
+render the same data as stacked rows instead of scrolling the table. The prompt checkbox now uses shadcn; its 16px visual box and 28px
 hit target preserve the approved compact geometry. The specialized visibility chart
 and its native range input remain intentional product compositions.
 
@@ -28,8 +27,9 @@ below `sm` and 28px from `sm`: desktop content is at most 1320px wide. Settings 
 the same geometry. Header actions have 32px visible geometry with 40px hit targets; icons remain compact.
 The account control has a border and a transparent idle background in both themes.
 
-Home presents one full-width visibility signal, then prompt management with a 24px
-gap. Operational collection blockers remain visible with confirmed prompts and with
+Home presents the visibility signal and a "Recommended instead" rival list side by side
+from `xl` (signal ≈2/3, rivals 22rem), stacked below that, then prompt management with a
+24px gap. With no confirmed prompts the signal shows one sentence and one action. Operational collection blockers remain visible with confirmed prompts and with
 existing analytics. Use ordinary text and contextual recovery actions, not another
 metric card. Group content with spacing and alignment. Do not add decorative shadows,
 boxed metadata or separators between ordinary fields.
@@ -56,7 +56,7 @@ The PNG Koi mark is unchanged in both themes; primary actions stay neutral.
   overflowing data; the hint and keyboard-focusable scroll region appear only when
   content actually overflows. `DataTable` supplies this for product lists.
 
-Use Inter throughout; numbers use `tabular-nums`. UI copy lives in locales, including
+Use Hanken Grotesk throughout with the `text-body`, `text-section`, `text-title` and `text-metric` roles; numbers use `tabular-nums`. UI copy lives in locales, including
 answer status labels. Do not expose raw outcome enum values as labels.
 
 ## Collection state
@@ -84,9 +84,23 @@ collection and Safari iOS input zoom require separate environment/device verific
 
 ## Visibility chart contract
 
-Summary is the single chart style for both Home and prompt detail: 220px height,
+Summary is the single chart style for both Home and prompt detail: 220px height with no grid, axes or scale labels (the Family chart: the line, its endpoint and the range control only),
 4px solid primary stroke, 1.75px dashed comparison, shared endpoint pills and
 140ms pointer-marker feedback. Both use the same responsive insets and scope-change
 feedback; detail memoizes series and inspection callback like Home. The domain stays
 0–100 without clipping half the stroke at either boundary. Null values remain gaps.
 Keyboard and reduced-motion inspection remain immediate.
+
+## Lists, evidence and agent hand-off
+
+Product lists share one row language: no rules between rows, one rounded fill on hover,
+focus and selection (`DataTable interactive`, `ul.list-rows`). Re-sorted lists animate
+with `useFlip`. Narrow containers switch tables to stacked rows with the action menu always
+visible; no list hides actions behind horizontal scroll.
+
+The run dialog is the audit layer: the brand outcome stated in words ("Koi cited"), the
+answer with the brand and competitor names underlined in place, competitors with
+de-duplicated evidence kinds, and sources by site with the brand's own site first. "Copy
+for your agent" writes a markdown brief (`lib/agent-brief.ts`) from the saved answer; no
+service is involved, so it works on self-hosted instances. Dialog content uses no inner
+panels so light and dark keep the same hierarchy.

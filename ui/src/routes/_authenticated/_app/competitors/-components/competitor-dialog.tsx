@@ -46,7 +46,7 @@ export function CompetitorDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
-  triggerVariant?: "default" | "ghost";
+  triggerVariant?: "default" | "ghost" | "outline";
 }) {
   const { t } = useTranslation("management");
   const api = useApi();

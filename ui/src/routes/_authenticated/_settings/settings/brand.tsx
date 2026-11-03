@@ -100,7 +100,7 @@ function BrandSettings() {
     <div className="w-full pb-24">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("settings.title")}</h1>
+          <h1 className="text-title font-semibold">{t("settings.title")}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{t("settings.description")}</p>
         </div>
         <Button onClick={() => setDialog({ kind: "create" })}>{t("settings.create")}</Button>

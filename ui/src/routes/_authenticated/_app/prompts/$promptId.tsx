@@ -12,8 +12,9 @@ import {
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
-import type { VisibilityEngine, VisibilityResult, VisibilityRunStatus } from "@/api/generated";
-import { BrandPill } from "@/components/blocks/brand-pill";
+import type { VisibilityEngine } from "@/api/generated";
+import { BrandLabel } from "@/components/blocks/brand-label";
+import { OutcomeLegend } from "@/components/blocks/outcome-mark";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
@@ -26,26 +27,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useCollection, useRefreshAfterCollection } from "@/hooks/use-collection";
+import { useFlip } from "@/hooks/use-flip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
-import { answerMessageKey, getAnswerState, isCollecting } from "@/lib/answer-state";
+import { isCollecting } from "@/lib/answer-state";
+import { formatDateTime, formatDayRange, formatPoints, formatRate } from "@/lib/format";
 import { keepPreviousDataForScope } from "@/lib/queries";
 import { promptKey, runKey } from "@/lib/query-keys";
-import { safeSourceURL } from "@/lib/source-url";
 import {
-  engines,
   type VisibilityScope,
   rate as visibilityRate,
   series as visibilitySeries,
 } from "@/lib/visibility";
+import { CopyForAgent, EngineSwitch, RunAnswer } from "./-components/run-evidence";
+import { RunHistory } from "./-components/run-history";
 
 const detailSearchParams = {
   page: parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true }),
@@ -126,6 +121,8 @@ function PromptDetail() {
       rate: competitor.metric.rate,
     }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
+  const rivalList = useRef<HTMLDivElement>(null);
+  useFlip(rivalList, rivals.map(({ competitor }) => competitor.id).join(","));
   const metricRate = inspected === null ? rate : (series[inspected]?.rate ?? null);
   const metricComparisonRate =
     inspected === null ? comparisonRate : (comparedSeries[inspected]?.rate ?? null);
@@ -135,9 +132,13 @@ function PromptDetail() {
     setInspected(index);
   }, []);
 
-  function openRun(id: string, trigger: HTMLButtonElement, engine?: VisibilityEngine) {
+  function openRun(id: string, trigger: HTMLButtonElement) {
     runTrigger.current = trigger;
-    void setSearch({ runId: id, responseEngine: engine ?? "chatgpt" }, { history: "push" });
+    void setSearch({ runId: id, responseEngine: "chatgpt" }, { history: "push" });
+  }
+
+  function rivalDomain(name: string) {
+    return visibility.data?.competitors.find((candidate) => candidate.name === name)?.domain;
   }
 
   return (
@@ -150,7 +151,7 @@ function PromptDetail() {
         {t("home:detail.allPrompts")}
       </Link>
       <div className="mb-6 flex items-start justify-between gap-6">
-        <h1 className="max-w-[75ch] text-xl leading-[1.4] font-bold tracking-[-0.015em]">
+        <h1 className="max-w-[60ch] text-title font-semibold text-balance">
           {title ??
             t(
               history.isPending || prompt.isPending
@@ -179,9 +180,9 @@ function PromptDetail() {
           </Button>
         </p>
       )}
-      <div className="grid gap-4 min-[801px]:grid-cols-[minmax(0,1fr)_332px]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
         <section
-          className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7 min-[801px]:min-h-[412px]"
+          className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7 "
           aria-busy={visibility.isFetching}
           data-refreshing={visibility.isFetching && Boolean(visibility.data)}
           aria-labelledby="detail-visibility-heading"
@@ -196,7 +197,7 @@ function PromptDetail() {
           />
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 id="detail-visibility-heading" className="text-base font-bold">
+              <h2 id="detail-visibility-heading" className="text-section font-semibold">
                 {t("home:dashboard.aiVisibility")}
               </h2>
               {visibility.data && (
@@ -211,9 +212,6 @@ function PromptDetail() {
                   variant="detail"
                 />
               )}
-              <p className="text-xs font-normal text-muted-foreground">
-                {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
-              </p>
             </div>
             <fieldset className="flex gap-0.5" aria-label={t("home:dashboard.range")}>
               {([7, 30, 90] as const).map((days) => (
@@ -256,62 +254,63 @@ function PromptDetail() {
               scopeKey={`${brand.id}:${promptId}:${search.days}:${search.compareId}`}
             />
           ) : (
-            <p className="group-data-[refreshing=true]/refresh:opacity-50 grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
+            <p className="group-data-[refreshing=true]/refresh:opacity-50 grid min-h-[244px] content-center justify-items-start gap-3 text-body text-muted-foreground">
               {t("home:detail.noAnswers")}
             </p>
           )}
           {series.length > 0 && (
-            <p className="text-xs font-normal text-muted-foreground flex justify-between group-data-[refreshing=true]/refresh:opacity-50">
-              <time dateTime={series[0].date.toISOString()}>
-                {series[0].date.toLocaleDateString(i18n.language)}
-              </time>
-              <time dateTime={series.at(-1)?.date.toISOString()}>
-                {series.at(-1)?.date.toLocaleDateString(i18n.language)}
-              </time>
+            <p className="mt-4 text-xs font-normal text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
+              {formatDayRange(series[0].date, series[series.length - 1].date, i18n.language)}
             </p>
           )}
         </section>
         <aside
-          className="group/refresh min-w-0 rounded-lg bg-surface p-5 min-[801px]:min-h-[412px]"
+          className="group/refresh min-w-0 rounded-lg bg-surface p-5 "
           aria-labelledby="detail-compare-heading"
           aria-busy={visibility.isFetching}
           data-refreshing={visibility.isFetching && Boolean(visibility.data)}
         >
-          <h2 id="detail-compare-heading" className="mb-4 text-base font-bold">
-            {t("home:detail.compareWith")}
-          </h2>
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 id="detail-compare-heading" className="text-section font-semibold">
+              {t("home:detail.compareWith")}
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {t("home:detail.compareAverage", { days: search.days })}
+            </span>
+          </div>
           {rivals.length ? (
-            rivals.map(({ competitor, rate: rivalRate }) => (
-              <button
-                key={competitor.id}
-                type="button"
-                aria-pressed={comparison?.id === competitor.id}
-                className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-md p-2 text-start hover:bg-muted aria-pressed:bg-muted"
-                onClick={() => {
-                  void setSearch(
-                    { compareId: comparison?.id === competitor.id ? "" : competitor.id },
-                    { history: "push" },
-                  );
-                  setInspected(null);
-                }}
-              >
-                <span className="justify-self-start">
-                  <BrandPill name={competitor.name} domain={competitor.domain} />
-                </span>
-                <span className="tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
-                  {rivalRate === null ? "—" : `${rivalRate.toFixed(1)}%`}
-                </span>
-                <small className="col-span-full text-xs text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
-                  {rivalRate !== null && rate !== null
-                    ? t("home:detail.comparisonGap", {
-                        points: Math.abs(rivalRate - rate).toFixed(1),
-                        direction:
-                          rivalRate > rate ? t("home:detail.higher") : t("home:detail.lower"),
-                      })
-                    : t("home:detail.noComparisonData")}
-                </small>
-              </button>
-            ))
+            <div ref={rivalList} className="list-rows grid gap-0.5">
+              {rivals.map(({ competitor, rate: rivalRate }) => (
+                <button
+                  key={competitor.id}
+                  data-flip-key={competitor.id}
+                  type="button"
+                  aria-pressed={comparison?.id === competitor.id}
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md p-2 text-start hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  onClick={() => {
+                    void setSearch(
+                      { compareId: comparison?.id === competitor.id ? "" : competitor.id },
+                      { history: "push" },
+                    );
+                    setInspected(null);
+                  }}
+                >
+                  <span className="justify-self-start">
+                    <BrandLabel name={competitor.name} domain={competitor.domain} />
+                  </span>
+                  <span className="text-body tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                    {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
+                  </span>
+                  <small className="col-span-full text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                    {rivalRate !== null && rate !== null
+                      ? t("home:detail.comparisonGap", {
+                          points: formatPoints(rivalRate - rate, i18n.language),
+                        })
+                      : t("home:detail.noComparisonData")}
+                  </small>
+                </button>
+              ))}
+            </div>
           ) : visibility.isSuccess ? (
             <p className="text-xs font-normal text-muted-foreground">
               {t("home:dashboard.noCompetitors")}
@@ -330,13 +329,14 @@ function PromptDetail() {
           active={history.isFetching}
           label={t("home:detail.loadingAnswers")}
         />
-        <div className="flex items-center justify-between">
-          <h2 id="run-history-heading" className="text-base font-bold">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+          <h2 id="run-history-heading" className="text-section font-semibold">
             {t("home:detail.runHistory")}
+            <span className="ms-2 text-xs font-normal text-muted-foreground tabular-nums">
+              {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
+            </span>
           </h2>
-          <span className="text-xs font-normal text-muted-foreground">
-            {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
-          </span>
+          <OutcomeLegend />
         </div>
         {history.isError && history.data && (
           <p role="alert" className="text-sm text-destructive">
@@ -358,99 +358,8 @@ function PromptDetail() {
         ) : runs.length === 0 ? (
           <p className="py-8 text-sm text-muted-foreground">{t("home:detail.noAnswers")}</p>
         ) : (
-          <div className="mt-5 min-w-0">
-            <Table
-              aria-label={t("home:detail.runHistory")}
-              scrollHint={t("common:tableScrollHint")}
-              className="w-full min-w-[680px] table-fixed border-collapse group-data-[refreshing=true]/refresh:opacity-50"
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-40 p-2 text-start text-xs font-normal text-muted-foreground">
-                    {t("home:detail.runDate")}
-                  </TableHead>
-                  <TableHead className="p-2 text-start text-xs font-normal text-muted-foreground">
-                    {t("home:detail.engineResults")}
-                  </TableHead>
-                  <TableHead className="w-[220px] p-2 text-start text-xs font-normal text-muted-foreground">
-                    {t("home:detail.competitorsFound")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {runs.map((item) => {
-                  const found = [
-                    ...new Map(
-                      item.results
-                        .flatMap((cell) => cell.appearances)
-                        .map((appearance) => [appearance.name, appearance]),
-                    ).values(),
-                  ];
-                  return (
-                    <TableRow key={item.run.id}>
-                      <TableCell className="border-t border-border px-2 py-3 align-top text-[13px]">
-                        <button
-                          type="button"
-                          className="grid gap-0.5 text-start hover:underline"
-                          onClick={(event) => openRun(item.run.id, event.currentTarget)}
-                        >
-                          <time dateTime={item.run.createdAt.toISOString()}>
-                            {item.run.createdAt.toLocaleDateString(i18n.language)}
-                          </time>
-                          <small className="text-muted-foreground">
-                            {item.run.createdAt.toLocaleTimeString(i18n.language, {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </small>
-                        </button>
-                      </TableCell>
-                      <TableCell className="border-t border-border px-2 py-3 align-top text-[13px]">
-                        <div className="flex flex-wrap gap-1.5">
-                          {engines.map((engine) => {
-                            const cell = item.results.find((entry) => entry.engine === engine.id);
-                            const status = getAnswerState(item.run, engine.id, cell);
-                            return (
-                              <button
-                                key={engine.id}
-                                type="button"
-                                className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                                onClick={(event) =>
-                                  openRun(item.run.id, event.currentTarget, engine.id)
-                                }
-                                aria-label={`${engine.name}: ${t(`visibility:outcomes.${status}`)}`}
-                              >
-                                <BrandPill name={engine.name} domain={engine.domain} iconOnly />
-                                <span>{t(`visibility:outcomes.${status}`)}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </TableCell>
-                      <TableCell className="border-t border-border px-2 py-3 align-top text-[13px]">
-                        <div className="flex flex-wrap gap-1.5">
-                          {found.length ? (
-                            found.map((appearance) => (
-                              <BrandPill
-                                key={appearance.name}
-                                name={appearance.name}
-                                domain={
-                                  visibility.data?.competitors.find(
-                                    (candidate) => candidate.name === appearance.name,
-                                  )?.domain
-                                }
-                              />
-                            ))
-                          ) : (
-                            <span className="text-xs font-normal text-muted-foreground">{"—"}</span>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          <div className="group-data-[refreshing=true]/refresh:opacity-50">
+            <RunHistory runs={runs} rivalDomain={rivalDomain} onOpen={openRun} />
           </div>
         )}
         {history.data && history.data.totalPages > 1 && (
@@ -494,48 +403,35 @@ function PromptDetail() {
           className="max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] max-w-[1100px] overflow-y-auto sm:max-w-[1100px]"
           finalFocus={() => runTrigger.current}
         >
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>
-              {run?.run.createdAt.toLocaleString(i18n.language)}
-            </DialogDescription>
+          <DialogHeader className="gap-4 pe-8 sm:flex-row sm:items-start sm:justify-between">
+            <div className="grid gap-1">
+              <DialogTitle className="text-section font-semibold text-balance">{title}</DialogTitle>
+              <DialogDescription className="tabular-nums">
+                {run ? formatDateTime(run.run.createdAt, i18n.language) : null}
+              </DialogDescription>
+            </div>
+            {run && title && (
+              <CopyForAgent brand={brand} prompt={title} run={run.run} result={result} />
+            )}
           </DialogHeader>
           {run ? (
-            <>
-              <fieldset
-                className="flex flex-wrap gap-2"
-                aria-label={t("home:detail.answersByEngine")}
-              >
-                {engines.map((engine) => {
-                  const cell = run.results.find((entry) => entry.engine === engine.id);
-                  return (
-                    <button
-                      key={engine.id}
-                      type="button"
-                      aria-pressed={search.responseEngine === engine.id}
-                      className="flex items-center gap-3 rounded-md border border-border px-3 py-2 text-xs hover:bg-muted aria-pressed:bg-muted"
-                      onClick={() =>
-                        void setSearch({ responseEngine: engine.id }, { history: "replace" })
-                      }
-                    >
-                      <BrandPill name={engine.name} domain={engine.domain} />
-                      <span>
-                        {t(`visibility:outcomes.${getAnswerState(run.run, engine.id, cell)}`)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </fieldset>
-              {result ? (
-                <Answer result={result} run={run.run} />
-              ) : (
-                <p className="py-8 text-sm text-muted-foreground">
-                  {t(
-                    `visibility:answerMessages.${answerMessageKey(getAnswerState(run.run, search.responseEngine))}`,
-                  )}
-                </p>
-              )}
-            </>
+            <div className="grid gap-8">
+              <EngineSwitch
+                run={run.run}
+                results={run.results}
+                selected={search.responseEngine}
+                onSelect={(engine: VisibilityEngine) =>
+                  void setSearch({ responseEngine: engine }, { history: "replace" })
+                }
+              />
+              <RunAnswer
+                brand={brand}
+                run={run.run}
+                result={result}
+                engine={search.responseEngine}
+                rivalDomain={rivalDomain}
+              />
+            </div>
           ) : (
             <p className="py-8 text-sm text-muted-foreground">{t("home:detail.noAnswers")}</p>
           )}
@@ -555,98 +451,5 @@ function PromptDetail() {
         />
       )}
     </article>
-  );
-}
-
-function Answer({ result, run }: { result: VisibilityResult; run: VisibilityRunStatus }) {
-  const { t } = useTranslation(["home", "visibility"]);
-  const state = getAnswerState(run, result.engine, result);
-  return (
-    <div className="grid min-h-[300px] min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-      <article className="min-w-0 rounded-md bg-surface p-5">
-        <div className="flex items-center justify-between gap-3">
-          <strong>{t(`visibility:engines.${result.engine}`)}</strong>
-          <span className="text-xs font-normal text-muted-foreground">
-            {t(`visibility:outcomes.${state}`)}
-          </span>
-        </div>
-        {result.errorCode && (
-          <p role="alert" className="text-sm text-destructive">
-            {t("visibility:error", { code: result.errorCode })}
-          </p>
-        )}
-        <p className="mt-6 whitespace-pre-wrap break-words text-sm leading-7">
-          {result.rawAnswer || t(`visibility:answerMessages.${answerMessageKey(state)}`)}
-        </p>
-        {result.appearances.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-[13px] font-medium">{t("home:detail.appearances")}</h3>
-            <ul className="mt-3 space-y-2 text-sm">
-              {result.appearances.map((appearance) => (
-                <li key={appearance.competitorId ?? appearance.name}>
-                  <span>{appearance.name}</span>
-                  {appearance.evidence.length > 0 && (
-                    <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
-                      {appearance.evidence.map((item) => {
-                        const href =
-                          item.kind === "citation" || item.kind === "link"
-                            ? safeSourceURL(item.value)
-                            : null;
-
-                        return (
-                          <li key={`${item.kind}:${item.value}`} className="break-all">
-                            {`${t(`visibility:evidenceKinds.${item.kind}`)}: `}
-                            {href ? (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline underline-offset-4"
-                              >
-                                {item.value}
-                              </a>
-                            ) : (
-                              item.value
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </article>
-      <aside className="min-w-0 rounded-md bg-surface p-5">
-        <h3 className="text-[13px] font-medium">{t("home:detail.sources")}</h3>
-        {result.sources.length ? (
-          <ul className="mt-4 space-y-3">
-            {[...new Set(result.sources)].map((source) => {
-              const href = safeSourceURL(source);
-              return (
-                <li key={source} className="break-all text-sm">
-                  {href ? (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-4"
-                    >
-                      {source}
-                    </a>
-                  ) : (
-                    source
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="mt-4 text-sm text-muted-foreground">{t("home:detail.noSources")}</p>
-        )}
-      </aside>
-    </div>
   );
 }

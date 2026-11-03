@@ -39,10 +39,12 @@ Establish:
 - The project's chosen visual references and which qualities each governs: composition,
   density, typography, surfaces, interaction, or another named quality.
 
-For Koi, read relevant parts of `docs/agentic-workspace-discovery.md` and
-`docs/fey-visual-system.md` when planning discovery surfaces. Inspect the applicable
-Fey and Visitors explorations in `ui/src/routes/dev/explorations/`. Distinguish chosen
-direction from abandoned variants, proposed behavior, and production conventions.
+For Koi, read `docs/design-system.md` and the References section of
+[product-design](../product-design/SKILL.md) (Fey, Family, Trade Republic). The historical
+`home-context` exploration lives in Git at `50a45b7` under `ui/src/routes/dev/explorations`;
+it is provenance, not a running route. Plans under `plans/ui/` record later scoped decisions.
+Distinguish chosen direction from abandoned variants, proposed behavior, and production
+conventions.
 An exception authorized for an exploration applies to that scope; it is not a global
 design-system change. Current user instructions take precedence over older documents.
 
@@ -60,7 +62,7 @@ has not changed; identify that reuse and research any newly introduced pattern.
 Search these lanes:
 
 1. **Project references.** Look for the relevant view or component in chosen references
-   such as Fey or Visitors. Record a missing match rather than inventing one.
+   such as Fey, Family, or Trade Republic. Record a missing match rather than inventing one.
 2. **The same user job.** Find analogous views and components independent of brand or
    industry. For a page, investigate both overall composition and its decisive controls;
    for a component, investigate the component and enough host context to judge its fit.
