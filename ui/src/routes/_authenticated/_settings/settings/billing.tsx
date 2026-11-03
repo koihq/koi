@@ -115,7 +115,7 @@ function BillingSettings() {
             </Button>
           </p>
         )}
-        <h2 className="text-lg font-medium tracking-tight">{t("currentSubscription")}</h2>
+        <h2 className="text-section font-semibold">{t("currentSubscription")}</h2>
         <p>
           {subscription.isPending
             ? t("loading")

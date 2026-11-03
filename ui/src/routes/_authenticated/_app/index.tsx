@@ -14,6 +14,7 @@ import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
+import { useBrandColor } from "@/components/blocks/brand-icon";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { EngineIcon } from "@/components/blocks/engine-icon";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCollection } from "@/hooks/use-collection";
 import { useFlip } from "@/hooks/use-flip";
+import { brandGlow, brandRowTint } from "@/lib/brand-tint";
 import { formatDay, formatDayRange, formatPoints, formatRate } from "@/lib/format";
 import { keepPreviousDataForScope, visibilitySummaryOptions } from "@/lib/queries";
 import { promptKey } from "@/lib/query-keys";
@@ -94,6 +96,7 @@ function Home() {
   const comparison = summary.data?.competitors.find(
     (competitor) => competitor.id === graph.compareId,
   );
+  const compareColor = useBrandColor(comparison?.domain);
   const { series, comparedSeries, rate, change, rivals, comparisonRate } = useMemo(() => {
     const report = summary.data;
     const series = visibilitySeries(report);
@@ -148,7 +151,8 @@ function Home() {
       <h1 className="sr-only">{t("dashboard.title")}</h1>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section
-          className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7"
+          style={brandGlow(compareColor)}
           aria-busy={summary.isFetching}
           data-refreshing={summary.isFetching && Boolean(summary.data)}
           aria-labelledby="signal-heading"
@@ -160,10 +164,7 @@ function Home() {
           <QueryRefreshIndicator active={summary.isFetching} label={t("dashboard.loading")} />
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="grid gap-0.5">
-              <time
-                className="text-xs font-normal text-muted-foreground"
-                dateTime={new Date().toISOString()}
-              >
+              <time className="text-xs text-muted-foreground" dateTime={new Date().toISOString()}>
                 {new Date().toLocaleDateString(i18n.language, {
                   weekday: "long",
                   month: "long",
@@ -250,7 +251,7 @@ function Home() {
                 />
                 {(!comparison || comparisonRate === null) && headlineChange !== null && (
                   <span
-                    className={`rounded-sm px-1.5 py-0.5 text-xs tabular-nums ${headlineChange > 0 ? "bg-positive/12 text-positive" : headlineChange < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
+                    className={`rounded-chip px-1.5 py-0.5 text-xs tabular-nums ${headlineChange > 0 ? "bg-positive/12 text-positive" : headlineChange < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
                   >
                     <NumberFlow
                       value={Math.abs(headlineChange)}
@@ -265,7 +266,7 @@ function Home() {
                 )}
                 {selectedPoint && (
                   <time
-                    className="text-xs font-normal text-muted-foreground"
+                    className="text-xs text-muted-foreground"
                     dateTime={selectedPoint.date.toISOString()}
                   >
                     {formatDay(selectedPoint.date, i18n.language)}
@@ -300,7 +301,7 @@ function Home() {
                       <HugeiconsIcon icon={InformationCircleIcon} size={16} aria-hidden="true" />
                     </TooltipTrigger>
                     <TooltipContent
-                      className="metric-details-tooltip surface-float block w-fit max-w-[32ch] bg-transparent! p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
+                      className="metric-details-tooltip surface-float block w-fit max-w-[32ch] p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
                       data-input={inspectionInput}
                       side="bottom"
                       align="start"
@@ -344,13 +345,14 @@ function Home() {
                 onInspect={inspect}
                 locale={i18n.language}
                 scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
+                competitorColor={compareColor}
               />
             </>
           )}
 
           {!empty && (
             <div className="mt-4 flex items-center justify-between gap-4">
-              <span className="text-xs font-normal text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+              <span className="text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
                 {series.length > 0 &&
                   formatDayRange(series[0].date, series[series.length - 1].date, i18n.language)}
               </span>
@@ -377,7 +379,7 @@ function Home() {
         </section>
 
         <aside
-          className="group/refresh min-w-0 rounded-lg bg-surface p-4 sm:p-7 xl:p-5"
+          className="group/refresh min-w-0 rounded-panel bg-surface p-4 sm:p-7 xl:p-5"
           aria-labelledby="rivals-heading"
           data-refreshing={summary.isFetching && Boolean(summary.data)}
         >
@@ -407,6 +409,9 @@ function Home() {
                     data-flip-key={competitor.id}
                     type="button"
                     aria-pressed={graph.compareId === competitor.id}
+                    style={
+                      graph.compareId === competitor.id ? brandRowTint(compareColor) : undefined
+                    }
                     onClick={() => {
                       void setGraph(
                         { compareId: graph.compareId === competitor.id ? "" : competitor.id },
@@ -414,12 +419,12 @@ function Home() {
                       );
                       setInspected(null);
                     }}
-                    className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-md px-2 py-2 text-start text-body hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-control px-2 py-2 text-start text-body hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
                     <span className="min-w-0 justify-self-start">
                       <BrandLabel name={competitor.name} domain={competitor.domain} />
                     </span>
-                    <span className="text-end tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                    <span className="text-end font-semibold tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
                       {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
                     </span>
                     <span
@@ -432,9 +437,7 @@ function Home() {
               })}
             </div>
           ) : summary.isSuccess ? (
-            <p className="py-2 text-xs font-normal text-muted-foreground">
-              {t("dashboard.noCompetitors")}
-            </p>
+            <p className="py-2 text-xs text-muted-foreground">{t("dashboard.noCompetitors")}</p>
           ) : null}
         </aside>
       </div>

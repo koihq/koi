@@ -17,6 +17,8 @@ export type DataTableColumn<T> = {
   cell: (row: T) => ReactNode;
   headClassName?: string;
   cellClassName?: string;
+  /** Current sort of a sortable column, exposed as `aria-sort` on its header. */
+  sort?: "ascending" | "descending" | "none";
 };
 
 export function DataTable<T>({
@@ -72,6 +74,7 @@ export function DataTable<T>({
               <TableHead
                 key={header.id}
                 className={columns.find((column) => column.id === header.column.id)?.headClassName}
+                aria-sort={columns.find((column) => column.id === header.column.id)?.sort}
               >
                 {header.isPlaceholder
                   ? null

@@ -1,3 +1,4 @@
+import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
@@ -5,8 +6,10 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Brand, CreateBrand } from "@/api/brands.api";
 import { BrandForm } from "@/components/blocks/brand-form";
-import { BrandIcon } from "@/components/blocks/brand-icon";
+import { BrandLabel } from "@/components/blocks/brand-label";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
+import { PageNav } from "@/components/blocks/page-nav";
+import { RowAction, RowActions } from "@/components/blocks/row-actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,16 +49,21 @@ function BrandSettings() {
   const [dialog, setDialog] = useState<BrandDialog | null>(null);
   const brands = useQuery(brandListOptions(api, brand.organizationId, { page, pageSize: 10 }));
   const items = brands.data?.items ?? [];
+  const headClass = "h-auto px-3 py-1.5 text-xs text-muted-foreground";
+  const cellClass = "px-3 py-3.5 text-body";
   const columns: DataTableColumn<Brand>[] = [
     {
       id: "name",
       header: t("fields.name.label"),
+      headClassName: `${headClass} w-[36%]`,
+      cellClassName: `${cellClass} whitespace-normal [overflow-wrap:anywhere]`,
       cell: (item) => (
-        <span className="inline-flex items-center gap-2">
-          <BrandIcon name={item.name} domain={item.domain} lookupLogo={false} className="size-6" />
-          <span>{item.name}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <BrandLabel name={item.name} domain={item.domain} lookupLogo={false} />
           {item.id === brand.id && (
-            <span className="text-muted-foreground">{t("settings.active")}</span>
+            <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              {t("settings.active")}
+            </span>
           )}
         </span>
       ),
@@ -63,18 +71,30 @@ function BrandSettings() {
     {
       id: "domain",
       header: t("fields.domain.label"),
+      headClassName: `${headClass} w-[32%]`,
+      cellClassName: `${cellClass} whitespace-normal break-all text-muted-foreground`,
       cell: (item) => item.domain || item.githubRepo,
     },
-    { id: "country", header: t("fields.country.label"), cell: (item) => item.country },
+    {
+      id: "country",
+      header: t("fields.country.label"),
+      headClassName: `${headClass} w-[16%]`,
+      cellClassName: `${cellClass} text-muted-foreground`,
+      cell: (item) => item.country,
+    },
     {
       id: "actions",
-      header: t("settings.actions"),
-      headClassName: "text-end",
-      cellClassName: "text-end",
+      header: <span className="sr-only">{t("settings.actions")}</span>,
+      headClassName: `${headClass} w-[16%] text-end`,
+      cellClassName: `${cellClass} text-end`,
       cell: (item) => (
-        <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: "edit", brand: item })}>
-          {t("settings.edit")}
-        </Button>
+        <RowActions>
+          <RowAction
+            label={t("settings.edit")}
+            icon={PencilEdit02Icon}
+            onClick={() => setDialog({ kind: "edit", brand: item })}
+          />
+        </RowActions>
       ),
     },
   ];
@@ -118,38 +138,55 @@ function BrandSettings() {
           <p className="text-sm text-muted-foreground">{t("settings.loading")}</p>
         ) : (
           <>
-            <DataTable
-              ariaLabel={t("settings.title")}
-              data={items}
-              columns={columns}
-              getRowId={(item) => item.id}
+            <div className="@container">
+              <div className="hidden @2xl:block">
+                <DataTable
+                  interactive
+                  ariaLabel={t("settings.title")}
+                  className="table-fixed"
+                  data={items}
+                  columns={columns}
+                  getRowId={(item) => item.id}
+                />
+              </div>
+              <ul className="list-rows grid gap-0.5 @2xl:hidden">
+                {items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="group flex min-w-0 items-center gap-3 rounded-control px-2 py-3 hover:bg-signal-pill"
+                  >
+                    <div className="grid min-w-0 flex-1 gap-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <BrandLabel name={item.name} domain={item.domain} lookupLogo={false} />
+                        {item.id === brand.id && (
+                          <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                            {t("settings.active")}
+                          </span>
+                        )}
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {[item.domain || item.githubRepo, item.country].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    <RowActions>
+                      <RowAction
+                        label={t("settings.edit")}
+                        icon={PencilEdit02Icon}
+                        onClick={() => setDialog({ kind: "edit", brand: item })}
+                      />
+                    </RowActions>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <PageNav
+              page={page}
+              pageSize={10}
+              total={brands.data.totalItems}
+              hasPrev={brands.data.hasPrev}
+              hasNext={brands.data.hasNext}
+              onPage={setPage}
             />
-            {brands.data.totalPages > 1 && (
-              <nav
-                aria-label={t("settings.pagination")}
-                className="mt-5 flex items-center justify-between gap-4 text-xs text-muted-foreground"
-              >
-                <span>{t("settings.page", { current: page, total: brands.data.totalPages })}</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!brands.data.hasPrev}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    {t("settings.previous")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!brands.data.hasNext}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    {t("settings.next")}
-                  </Button>
-                </div>
-              </nav>
-            )}
           </>
         )}
       </div>

@@ -6,8 +6,8 @@ import type { AnswerState } from "@/lib/answer-state";
 import { engines } from "@/lib/visibility";
 
 const tones: Record<AnswerState, string> = {
-  cited: "bg-foreground text-background",
-  mentioned: "bg-foreground/15 text-foreground",
+  cited: "bg-positive text-background",
+  mentioned: "bg-positive/18 text-positive",
   miss: "text-muted-foreground ring-1 ring-inset ring-border",
   error: "text-destructive ring-1 ring-inset ring-destructive/40",
   pending: "text-muted-foreground/60",

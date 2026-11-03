@@ -70,3 +70,53 @@ export function classifyLogo(data: ArrayLike<number>, width: number, height: num
 
   return "symbol";
 }
+
+/**
+ * The logo's brand color as hex, or null when the mark is monochrome (black, white, grey).
+ * Opaque, saturated pixels vote into twelve hue buckets weighted by saturation; the
+ * heaviest bucket's average wins if it covers enough of the mark to be its identity.
+ */
+export function dominantColor(
+  data: ArrayLike<number>,
+  width: number,
+  height: number,
+): string | null {
+  const buckets = Array.from({ length: 12 }, () => ({ weight: 0, r: 0, g: 0, b: 0 }));
+  let opaque = 0;
+
+  for (let index = 0; index < width * height; index++) {
+    const offset = index * 4;
+    if (data[offset + 3] < OPAQUE) continue;
+
+    opaque++;
+
+    const r = data[offset] / 255;
+    const g = data[offset + 1] / 255;
+    const b = data[offset + 2] / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const saturation = max === 0 ? 0 : (max - min) / max;
+
+    if (saturation < 0.35 || max < 0.2) continue;
+
+    const delta = max - min;
+    const hue =
+      max === r ? ((g - b) / delta + 6) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+    const bucket = buckets[Math.floor(hue * 2) % 12];
+
+    bucket.weight += saturation;
+    bucket.r += r * saturation;
+    bucket.g += g * saturation;
+    bucket.b += b * saturation;
+  }
+
+  const best = buckets.reduce((top, bucket) => (bucket.weight > top.weight ? bucket : top));
+  if (opaque === 0 || best.weight / opaque < 0.08) return null;
+
+  const channel = (value: number) =>
+    Math.round((value / best.weight) * 255)
+      .toString(16)
+      .padStart(2, "0");
+
+  return `#${channel(best.r)}${channel(best.g)}${channel(best.b)}`;
+}

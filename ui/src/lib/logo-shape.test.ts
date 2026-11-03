@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyLogo } from "@/lib/logo-shape";
+import { classifyLogo, dominantColor } from "@/lib/logo-shape";
 
 const size = 64;
 
@@ -64,5 +64,32 @@ describe("classifyLogo", () => {
 
   it("falls back to a symbol for tiny images", () => {
     expect(classifyLogo(new Uint8ClampedArray(4 * 4 * 4), 2, 2)).toBe("symbol");
+  });
+});
+
+describe("dominantColor", () => {
+  function solid(rgb: [number, number, number], share = 1) {
+    const data = new Uint8ClampedArray(size * size * 4);
+
+    for (let index = 0; index < size * size; index++) {
+      const colored = index < size * size * share;
+      data.set(colored ? [...rgb, 255] : [0, 0, 0, 255], index * 4);
+    }
+
+    return data;
+  }
+
+  it("returns the brand hue of a colorful mark", () => {
+    expect(dominantColor(solid([79, 70, 229]), size, size)).toBe("#4f46e5");
+  });
+
+  it("returns null for monochrome marks", () => {
+    expect(dominantColor(solid([0, 0, 0]), size, size)).toBeNull();
+    expect(dominantColor(solid([255, 255, 255]), size, size)).toBeNull();
+    expect(dominantColor(solid([128, 128, 128]), size, size)).toBeNull();
+  });
+
+  it("ignores a color that covers only a speck of the mark", () => {
+    expect(dominantColor(solid([220, 38, 38], 0.03), size, size)).toBeNull();
   });
 });

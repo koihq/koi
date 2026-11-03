@@ -13,8 +13,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
+import { useBrandColor } from "@/components/blocks/brand-icon";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { OutcomeLegend } from "@/components/blocks/outcome-mark";
+import { PageNav } from "@/components/blocks/page-nav";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
@@ -31,6 +33,7 @@ import { useCollection, useRefreshAfterCollection } from "@/hooks/use-collection
 import { useFlip } from "@/hooks/use-flip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { isCollecting } from "@/lib/answer-state";
+import { brandGlow, brandRowTint } from "@/lib/brand-tint";
 import { formatDateTime, formatDayRange, formatPoints, formatRate } from "@/lib/format";
 import { keepPreviousDataForScope } from "@/lib/queries";
 import { promptKey, runKey } from "@/lib/query-keys";
@@ -106,6 +109,7 @@ function PromptDetail() {
   const result = run?.results.find((item) => item.engine === search.responseEngine);
   const title = prompt.data?.text ?? runs[0]?.results[0]?.promptText;
   const comparison = visibility.data?.competitors.find((item) => item.id === search.compareId);
+  const compareColor = useBrandColor(comparison?.domain);
   const series = useMemo(() => visibilitySeries(visibility.data), [visibility.data]);
   const comparedSeries = useMemo(
     () => (comparison ? visibilitySeries(visibility.data, comparison.id) : []),
@@ -143,11 +147,7 @@ function PromptDetail() {
 
   return (
     <article className="grid min-w-0 grid-cols-1 gap-6 pb-24">
-      <Link
-        to="/"
-        hash="prompts"
-        className="text-xs font-normal text-muted-foreground hover:text-foreground"
-      >
+      <Link to="/" hash="prompts" className="text-xs text-muted-foreground hover:text-foreground">
         {t("home:detail.allPrompts")}
       </Link>
       <div className="mb-6 flex items-start justify-between gap-6">
@@ -166,10 +166,10 @@ function PromptDetail() {
         )}
       </div>
       {prompt.isError && title && (
-        <p className="text-xs font-normal text-muted-foreground">{t("home:detail.historical")}</p>
+        <p className="text-xs text-muted-foreground">{t("home:detail.historical")}</p>
       )}
       {prompt.data && !prompt.data.confirmed && (
-        <p className="text-xs font-normal text-muted-foreground">{t("home:dashboard.draft")}</p>
+        <p className="text-xs text-muted-foreground">{t("home:dashboard.draft")}</p>
       )}
 
       {visibility.isError && visibility.data && (
@@ -182,7 +182,8 @@ function PromptDetail() {
       )}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
         <section
-          className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7 "
+          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7"
+          style={brandGlow(compareColor)}
           aria-busy={visibility.isFetching}
           data-refreshing={visibility.isFetching && Boolean(visibility.data)}
           aria-labelledby="detail-visibility-heading"
@@ -252,6 +253,7 @@ function PromptDetail() {
               onInspect={inspect}
               locale={i18n.language}
               scopeKey={`${brand.id}:${promptId}:${search.days}:${search.compareId}`}
+              competitorColor={compareColor}
             />
           ) : (
             <p className="group-data-[refreshing=true]/refresh:opacity-50 grid min-h-[244px] content-center justify-items-start gap-3 text-body text-muted-foreground">
@@ -259,13 +261,13 @@ function PromptDetail() {
             </p>
           )}
           {series.length > 0 && (
-            <p className="mt-4 text-xs font-normal text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
+            <p className="mt-4 text-xs text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
               {formatDayRange(series[0].date, series[series.length - 1].date, i18n.language)}
             </p>
           )}
         </section>
         <aside
-          className="group/refresh min-w-0 rounded-lg bg-surface p-5 "
+          className="group/refresh min-w-0 rounded-panel bg-surface p-5"
           aria-labelledby="detail-compare-heading"
           aria-busy={visibility.isFetching}
           data-refreshing={visibility.isFetching && Boolean(visibility.data)}
@@ -286,7 +288,8 @@ function PromptDetail() {
                   data-flip-key={competitor.id}
                   type="button"
                   aria-pressed={comparison?.id === competitor.id}
-                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md p-2 text-start hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  style={comparison?.id === competitor.id ? brandRowTint(compareColor) : undefined}
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-control p-2 text-start hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   onClick={() => {
                     void setSearch(
                       { compareId: comparison?.id === competitor.id ? "" : competitor.id },
@@ -298,7 +301,7 @@ function PromptDetail() {
                   <span className="justify-self-start">
                     <BrandLabel name={competitor.name} domain={competitor.domain} />
                   </span>
-                  <span className="text-body tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                  <span className="text-body font-semibold tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
                     {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
                   </span>
                   <small className="col-span-full text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
@@ -312,9 +315,7 @@ function PromptDetail() {
               ))}
             </div>
           ) : visibility.isSuccess ? (
-            <p className="text-xs font-normal text-muted-foreground">
-              {t("home:dashboard.noCompetitors")}
-            </p>
+            <p className="text-xs text-muted-foreground">{t("home:dashboard.noCompetitors")}</p>
           ) : null}
         </aside>
       </div>
@@ -332,7 +333,7 @@ function PromptDetail() {
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <h2 id="run-history-heading" className="text-section font-semibold">
             {t("home:detail.runHistory")}
-            <span className="ms-2 text-xs font-normal text-muted-foreground tabular-nums">
+            <span className="ms-2 text-xs text-muted-foreground tabular-nums">
               {t("home:detail.runsCount", { count: history.data?.totalItems ?? 0 })}
             </span>
           </h2>
@@ -363,33 +364,14 @@ function PromptDetail() {
           </div>
         )}
         {history.data && history.data.totalPages > 1 && (
-          <div className="mt-6 flex items-center gap-3 text-xs text-muted-foreground">
-            <span>
-              {t("home:dashboard.page", { current: search.page, total: history.data.totalPages })}
-            </span>
-            <div className="ms-auto flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!history.data.hasPrev}
-                onClick={() =>
-                  void setSearch({ page: search.page - 1, runId: "" }, { history: "push" })
-                }
-              >
-                {t("home:dashboard.previous")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!history.data.hasNext}
-                onClick={() =>
-                  void setSearch({ page: search.page + 1, runId: "" }, { history: "push" })
-                }
-              >
-                {t("home:dashboard.next")}
-              </Button>
-            </div>
-          </div>
+          <PageNav
+            page={search.page}
+            pageSize={10}
+            total={history.data.totalItems}
+            hasPrev={history.data.hasPrev}
+            hasNext={history.data.hasNext}
+            onPage={(page) => void setSearch({ page, runId: "" }, { history: "push" })}
+          />
         )}
       </section>
 

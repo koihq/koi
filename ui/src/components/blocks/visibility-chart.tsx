@@ -1,4 +1,12 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   type DotProps,
@@ -26,7 +34,7 @@ const PILL_WIDTH = 72;
 const PILL_HEIGHT = 28;
 const chartConfig = {
   own: { color: "var(--foreground)" },
-  other: { color: "var(--muted-foreground)" },
+  other: { color: "var(--compare-color, var(--muted-foreground))" },
 } satisfies ChartConfig;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -113,6 +121,7 @@ export function VisibilityChart({
   onInspect,
   locale,
   scopeKey,
+  competitorColor,
 }: {
   series: VisibilityPoint[];
   comparison: VisibilityPoint[];
@@ -123,6 +132,8 @@ export function VisibilityChart({
   onInspect: (index: number | null, input: InspectionInput) => void;
   locale?: string;
   scopeKey?: string;
+  /** The compared competitor's brand color, read from its logo. Neutral when absent. */
+  competitorColor?: string | null;
 }) {
   const { t } = useTranslation("home");
   const figure = useRef<HTMLElement>(null);
@@ -219,6 +230,13 @@ export function VisibilityChart({
     <figure
       ref={figure}
       data-motion={inspectionInput === "pointer"}
+      style={
+        competitorColor
+          ? ({
+              "--compare-color": `color-mix(in oklch, ${competitorColor} 80%, var(--foreground))`,
+            } as CSSProperties)
+          : undefined
+      }
       className="relative -mx-4 mt-6 sm:-mx-7 group-data-[refreshing=true]/refresh:opacity-50"
     >
       <ChartContainer
@@ -389,7 +407,7 @@ export function VisibilityChart({
           )}
         </LineChart>
       </ChartContainer>
-      <label className="absolute inset-0 pointer-events-none has-focus-visible:rounded-md has-focus-visible:outline-2 has-focus-visible:outline-offset-4 has-focus-visible:outline-ring">
+      <label className="absolute inset-0 pointer-events-none has-focus-visible:rounded-control has-focus-visible:outline-2 has-focus-visible:outline-offset-4 has-focus-visible:outline-ring">
         <span className="sr-only">{t("dashboard.inspectDay")}</span>
         <input
           type="range"

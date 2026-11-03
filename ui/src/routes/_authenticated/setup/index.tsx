@@ -63,7 +63,7 @@ function Setup() {
     <main className="flex min-h-svh flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
         <KoiMark className="mb-8" />
-        <h1 className="text-2xl font-medium tracking-tight">{t("setup.title")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("setup.title")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{t("setup.description")}</p>
         <div className="mt-8">
           <BrandForm submitLabel={t("setup.submit")} onSubmit={createBrand} />

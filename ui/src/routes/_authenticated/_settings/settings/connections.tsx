@@ -134,7 +134,7 @@ function ConnectionsSettings() {
     <div className="max-w-2xl pb-24">
       <h1 className="text-title font-semibold">{t("title")}</h1>
       <section className="mt-10" aria-labelledby="connect-heading">
-        <h2 id="connect-heading" className="text-lg font-medium tracking-tight">
+        <h2 id="connect-heading" className="text-section font-semibold">
           {t("connectTitle")}
         </h2>
         <fieldset className="mt-5 flex flex-wrap gap-2">
@@ -159,7 +159,7 @@ function ConnectionsSettings() {
             </Button>
           ))}
         </fieldset>
-        <div className="mt-7 rounded-lg bg-muted/40 p-5">
+        <div className="mt-7 rounded-panel bg-muted/40 p-5">
           <p className="text-xs text-muted-foreground">{t("serverUrl")}</p>
           <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
             {capabilities.isPending ? (
@@ -217,7 +217,7 @@ function ConnectionsSettings() {
       </section>
 
       <section className="mt-16" aria-labelledby="connected-heading">
-        <h2 id="connected-heading" className="text-lg font-medium tracking-tight">
+        <h2 id="connected-heading" className="text-section font-semibold">
           {t("connectedTitle")}
         </h2>
 

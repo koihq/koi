@@ -94,7 +94,7 @@ export function EngineMeterCell({
 
   return (
     <>
-      <span className="w-14 text-end tabular-nums">{formatRate(rate, locale)}</span>
+      <span className="w-14 text-end font-semibold tabular-nums">{formatRate(rate, locale)}</span>
       <EngineMeter rateFor={rateFor} active={active} onActiveChange={setActive} />
       <span className="inline-flex min-w-36 items-center">
         {active ? (

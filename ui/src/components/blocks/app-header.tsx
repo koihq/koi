@@ -87,7 +87,7 @@ export function AppHeader({ brand }: { brand: Brand }) {
         {signOutFailed && (
           <p
             role="alert"
-            className="absolute end-4 top-full z-10 rounded-lg bg-popover px-3 py-2 text-xs text-destructive shadow-md sm:end-7"
+            className="absolute end-4 top-full z-10 surface-float px-3 py-2 text-xs text-destructive sm:end-7"
           >
             {t("header.signOutError")}
           </p>

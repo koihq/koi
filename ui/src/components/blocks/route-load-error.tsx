@@ -11,7 +11,7 @@ export function RouteLoadError({ reset }: ErrorComponentProps) {
   return (
     <main className="flex min-h-svh items-center justify-center px-6">
       <div className="max-w-sm text-center">
-        <h1 className="text-2xl font-medium tracking-tight">{t("loadError.title")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("loadError.title")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{t("loadError.description")}</p>
         <Button
           className="mt-4"

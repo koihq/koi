@@ -72,7 +72,7 @@ export function VisibilityHeadline({
               lookupLogo={subject.id !== brand.id}
               className="size-6"
             />
-            <strong className="text-metric font-medium tabular-nums">
+            <strong className="text-metric tabular-nums">
               <RateValue value={value} locale={locale} animated={animated} />
             </strong>
           </span>
@@ -83,7 +83,7 @@ export function VisibilityHeadline({
 
   return (
     <strong
-      className={`${variant === "detail" ? "mt-4 block group-data-[refreshing=true]/refresh:opacity-50 " : "whitespace-nowrap "}text-metric font-medium tabular-nums`}
+      className={`${variant === "detail" ? "mt-4 block group-data-[refreshing=true]/refresh:opacity-50 " : "whitespace-nowrap "}text-metric tabular-nums`}
     >
       <RateValue value={rate} locale={locale} animated={animated} />
     </strong>

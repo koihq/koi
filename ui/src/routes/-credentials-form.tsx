@@ -42,7 +42,7 @@ export function CredentialsForm({
 
   return (
     <>
-      <h1 className="text-2xl font-medium tracking-tight">
+      <h1 className="text-2xl font-semibold tracking-tight">
         {intent === "sign-in" ? t("signIn.title") : t("signUp.title")}
       </h1>
       <form className="mt-8" onSubmit={handleSubmit}>

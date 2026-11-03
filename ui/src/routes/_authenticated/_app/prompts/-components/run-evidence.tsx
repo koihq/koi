@@ -180,7 +180,7 @@ export function RunAnswer({
             {t("visibility:error", { code: result.errorCode })}
           </p>
         )}
-        <p className="mt-6 max-w-[68ch] whitespace-pre-wrap break-words text-sm leading-7 text-foreground">
+        <p className="mt-6 max-w-[68ch] whitespace-pre-wrap break-words text-sm font-normal leading-7 text-foreground">
           {result.rawAnswer
             ? segments.map((segment, index) =>
                 segment.mark ? (

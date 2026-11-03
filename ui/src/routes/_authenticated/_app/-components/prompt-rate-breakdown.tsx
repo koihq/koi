@@ -43,7 +43,7 @@ export function PromptRateBreakdown({
         render={
           <button
             type="button"
-            className="inline-flex min-h-8 cursor-default items-center gap-2 rounded-md text-start text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex min-h-8 cursor-default items-center gap-2 rounded-control text-start text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           />
         }
         aria-label={`${label}: ${items.map((item) => `${item.name} ${percent(item.rate)}`).join(", ")}`}
@@ -75,7 +75,7 @@ export function PromptRateBreakdown({
       <TooltipContent
         side="bottom"
         align="start"
-        className="surface-float grid w-56 max-w-[calc(100vw-2rem)] gap-2 bg-transparent! p-3 text-foreground animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
+        className="surface-float grid w-56 max-w-[calc(100vw-2rem)] gap-2 p-3 text-foreground animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
       >
         <span className="text-xs text-muted-foreground">{label}</span>
         {items.map((item) => (

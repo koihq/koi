@@ -1,5 +1,4 @@
-import { ArrowLeft01Icon, ArrowRight01Icon, MoreHorizontalIcon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon, PencilEdit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -10,28 +9,19 @@ import { BrandLabel } from "@/components/blocks/brand-label";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { GenerationControls } from "@/components/blocks/generation-controls";
+import { PageNav } from "@/components/blocks/page-nav";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
+import { RowAction, RowActions } from "@/components/blocks/row-actions";
+import { SearchToggle } from "@/components/blocks/search-toggle";
+import { StatusTabs } from "@/components/blocks/status-tabs";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { validateTableSearch } from "@/hooks/use-table-state";
 import { formatPoints, formatRate } from "@/lib/format";
 import { visibilitySummaryOptions } from "@/lib/queries";
 import { rate as visibilityRate } from "@/lib/visibility";
 import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
+import { useCompetitorCounts } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-counts";
 import { useCompetitorList } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-list";
 import { useCompetitorMutations } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-mutations";
 
@@ -47,6 +37,7 @@ function CompetitorPage() {
   const summary = useQuery(visibilitySummaryOptions(api, brand.id, { days: 30, engines: [] }));
   const ownRate = visibilityRate(summary.data);
   const list = useCompetitorList(brand.id);
+  const counts = useCompetitorCounts(brand.id);
   const mutations = useCompetitorMutations(brand.id);
   const [editing, setEditing] = useState<Competitor>();
   const [deleting, setDeleting] = useState<Competitor>();
@@ -67,7 +58,7 @@ function CompetitorPage() {
     if (item.confirmed) return null;
 
     return (
-      <span className="rounded-sm bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+      <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
         {t(item.source === "observed" ? "suggested" : "unconfirmed")}
       </span>
     );
@@ -90,7 +81,9 @@ function CompetitorPage() {
     const value = rivalRate(item.id);
 
     return (
-      <span className={`tabular-nums ${value === null ? "text-muted-foreground" : ""}`}>
+      <span
+        className={`tabular-nums ${value === null ? "text-muted-foreground" : "font-semibold"}`}
+      >
         {value === null ? "—" : formatRate(value, i18n.language)}
       </span>
     );
@@ -111,7 +104,7 @@ function CompetitorPage() {
     return mutations.update.mutateAsync({ id, request }).then(() => undefined);
   }
 
-  const headClass = "h-auto px-3 py-1.5 text-xs font-normal text-muted-foreground";
+  const headClass = "h-auto px-3 py-1.5 text-xs text-muted-foreground";
   const cellClass = "px-3 py-3.5 text-body";
   const columns: DataTableColumn<Competitor>[] = [
     {
@@ -157,38 +150,35 @@ function CompetitorPage() {
   ];
 
   function renderActions(item: Competitor) {
+    const identified = Boolean(item.domain || item.githubRepo);
+    const dismissable = item.source === "observed" && !item.confirmed;
+
     return (
-      <div className="inline-flex items-center gap-2">
-        {!item.domain && !item.githubRepo && (
-          <Button variant="ghost" size="sm" onClick={() => edit(item)}>
-            {t("addIdentity")}
-          </Button>
+      <RowActions>
+        {!item.confirmed && identified && (
+          <RowAction
+            persistent
+            label={t("confirm")}
+            icon={Tick02Icon}
+            disabled={pending}
+            onClick={() => mutations.confirm.mutate(item.id)}
+          />
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label={t("home:dashboard.competitorActions", { name: item.name })}
-            className="grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <HugeiconsIcon icon={MoreHorizontalIcon} size={18} aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {!item.confirmed && (item.domain || item.githubRepo) && (
-              <DropdownMenuItem
-                disabled={pending}
-                onClick={() => mutations.confirm.mutate(item.id)}
-              >
-                {t("confirm")}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem disabled={pending} onClick={() => edit(item)}>
-              {t("edit")}
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" disabled={pending} onClick={() => remove(item)}>
-              {t(item.source === "observed" && !item.confirmed ? "dismiss" : "delete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+        <RowAction
+          persistent={!identified}
+          label={t(identified ? "edit" : "addIdentity")}
+          icon={PencilEdit02Icon}
+          disabled={pending}
+          onClick={() => edit(item)}
+        />
+        <RowAction
+          destructive
+          label={t(dismissable ? "dismiss" : "delete")}
+          icon={Delete02Icon}
+          disabled={pending}
+          onClick={() => remove(item)}
+        />
+      </RowActions>
     );
   }
 
@@ -196,27 +186,45 @@ function CompetitorPage() {
     <div className="pb-24">
       <Link
         to="/"
-        className="text-xs font-normal text-muted-foreground mb-6 inline-block hover:text-foreground"
+        className="text-xs text-muted-foreground mb-6 inline-block hover:text-foreground"
       >
         {t("home:dashboard.backToVisibility")}
       </Link>
       <section
-        className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7"
+        className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7"
         aria-busy={list.competitors.isFetching}
         data-refreshing={list.competitors.isFetching && Boolean(list.competitors.data)}
         aria-labelledby="competitors-heading"
       >
         <QueryRefreshIndicator active={list.competitors.isFetching} label={t("loading")} />
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h1
-            id="competitors-heading"
-            ref={heading}
-            tabIndex={-1}
-            className="text-section font-semibold"
-          >
-            {t("competitors")}
-          </h1>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <h1
+              id="competitors-heading"
+              ref={heading}
+              tabIndex={-1}
+              className="text-section font-semibold"
+            >
+              {t("competitors")}
+            </h1>
+            <StatusTabs
+              label={t("statusLabel")}
+              value={list.table.status}
+              options={[
+                { value: "all", label: t("all"), count: counts.all },
+                { value: "confirmed", label: t("confirmed"), count: counts.confirmed },
+                { value: "unconfirmed", label: t("unconfirmed"), count: counts.unconfirmed },
+              ]}
+              onChange={(status) => list.table.setStatus(status)}
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-2 [&>div]:m-0 [&_output:empty]:hidden">
+            <SearchToggle
+              label={t("searchCompetitors")}
+              clearLabel={t("home:dashboard.clearSearch")}
+              value={list.table.q}
+              onChange={(q) => list.table.setSearch(q)}
+            />
             <GenerationControls brandID={brand.id} mode="competitors" />
             <CompetitorDialog
               brandID={brand.id}
@@ -235,31 +243,6 @@ function CompetitorPage() {
             {t("mutationError")}
           </p>
         )}
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-          <Input
-            type="search"
-            value={list.table.q}
-            onChange={(event) => list.table.setSearch(event.target.value)}
-            aria-label={t("searchCompetitors")}
-            placeholder={t("searchCompetitors")}
-            className="w-full sm:max-w-64"
-          />
-          <fieldset className="flex flex-wrap gap-0.5" aria-label={t("statusLabel")}>
-            {(["all", "confirmed", "unconfirmed"] as const).map((status) => (
-              <Button
-                key={status}
-                type="button"
-                variant="ghost"
-                size="pill"
-                aria-pressed={list.table.status === status}
-                className="text-muted-foreground"
-                onClick={() => list.table.setStatus(status)}
-              >
-                {t(status)}
-              </Button>
-            ))}
-          </fieldset>
-        </div>
         {list.competitors.isError ? (
           <p role="alert" className="py-8 text-sm text-destructive">
             {t("loadError")}{" "}
@@ -285,7 +268,7 @@ function CompetitorPage() {
               {items.map((item) => (
                 <li
                   key={item.id}
-                  className="flex min-w-0 items-center gap-3 rounded-md px-2 py-3 hover:bg-signal-pill"
+                  className="group flex min-w-0 items-center gap-3 rounded-control px-2 py-3 hover:bg-signal-pill"
                 >
                   <div className="grid min-w-0 flex-1 gap-1">
                     <span className="flex flex-wrap items-center gap-2">
@@ -309,52 +292,14 @@ function CompetitorPage() {
               : t("competitorEmpty")}
           </p>
         )}
-        {response && response.totalItems > 0 && (
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <span className="whitespace-nowrap tabular-nums">
-              {t("home:dashboard.pageRange", {
-                start: (list.table.page - 1) * list.table.pageSize + 1,
-                end: Math.min(response.totalItems, list.table.page * list.table.pageSize),
-                total: response.totalItems,
-              })}
-            </span>
-            <Select
-              value={list.table.pageSize}
-              onValueChange={(value) => {
-                if (value !== null) list.table.setPageSize(value);
-              }}
-            >
-              <SelectTrigger aria-label={t("pageSizeLabel")}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={10}>{10}</SelectItem>
-                <SelectItem value={20}>{20}</SelectItem>
-                <SelectItem value={50}>{50}</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="ms-auto flex gap-1">
-              <Button
-                variant="ghost"
-                size="circle-sm"
-                aria-label={t("home:dashboard.previous")}
-                disabled={!response.hasPrev}
-                onClick={() => list.table.setPage(list.table.page - 1)}
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} aria-hidden="true" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="circle-sm"
-                aria-label={t("home:dashboard.next")}
-                disabled={!response.hasNext}
-                onClick={() => list.table.setPage(list.table.page + 1)}
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-        )}
+        <PageNav
+          page={list.table.page}
+          pageSize={list.table.pageSize}
+          total={response?.totalItems ?? 0}
+          hasPrev={Boolean(response?.hasPrev)}
+          hasNext={Boolean(response?.hasNext)}
+          onPage={(page) => list.table.setPage(page)}
+        />
       </section>
       {editing && (
         <CompetitorDialog

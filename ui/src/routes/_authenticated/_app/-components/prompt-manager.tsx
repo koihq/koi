@@ -1,10 +1,10 @@
 import {
-  ArrowLeft01Icon,
-  ArrowRight01Icon,
-  MoreHorizontalIcon,
-  SortingIcon,
+  Delete02Icon,
+  PauseIcon,
+  PencilEdit02Icon,
+  PlayIcon,
+  Tick02Icon,
 } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { Link } from "@tanstack/react-router";
 import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useEffect, useRef, useState } from "react";
@@ -16,8 +16,13 @@ import { DataTable, type DataTableColumn } from "@/components/blocks/data-table"
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { EngineIcon } from "@/components/blocks/engine-icon";
 import { GenerationControls } from "@/components/blocks/generation-controls";
+import { PageNav } from "@/components/blocks/page-nav";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
+import { RowAction, RowActions } from "@/components/blocks/row-actions";
+import { SearchToggle } from "@/components/blocks/search-toggle";
+import { type SortDirection, SortHeader } from "@/components/blocks/sort-header";
+import { StatusTabs } from "@/components/blocks/status-tabs";
 import { TrackingReview } from "@/components/blocks/tracking-review";
 import {
   AlertDialog,
@@ -30,25 +35,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
@@ -65,6 +51,7 @@ import { PromptRateBreakdown } from "@/routes/_authenticated/_app/-components/pr
 import { PromptSelectCheckbox } from "@/routes/_authenticated/_app/-components/prompt-select-checkbox";
 import { EngineMeterCell } from "./engine-meter";
 import { usePromptBulkActions } from "./use-prompt-bulk-actions";
+import { usePromptCounts } from "./use-prompt-counts";
 import { usePromptList } from "./use-prompt-list";
 
 type PromptRow = {
@@ -83,18 +70,18 @@ export const promptSearchParams = {
   status: parseAsStringLiteral(["all", "confirmed", "unconfirmed", "past"] as const)
     .withDefault("all")
     .withOptions({ clearOnDefault: true }),
-  sort: parseAsStringLiteral(["original", "prompt", "rate", "change"] as const)
+  sort: parseAsStringLiteral(["original", "prompt", "rate"] as const)
     .withDefault("original")
     .withOptions({ clearOnDefault: true }),
   descending: parseAsBoolean.withDefault(false).withOptions({ clearOnDefault: true }),
 };
 
 const promptHeadClass =
-  "h-auto px-3 py-1.5 text-start text-xs font-normal text-muted-foreground whitespace-normal";
+  "h-auto px-3 py-1.5 text-start text-xs text-muted-foreground whitespace-normal";
 const promptCellClass =
   "px-3 py-4 align-middle text-start text-body whitespace-normal [overflow-wrap:anywhere]";
 const promptRowLinkClass =
-  "block max-w-2xl text-sm/normal font-medium text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline";
+  "block max-w-2xl text-sm/normal font-semibold text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline";
 
 /** Signed change as a tinted chip: green up, red down. */
 export function DeltaChip({ value, locale }: { value: number | null; locale: string }) {
@@ -102,43 +89,10 @@ export function DeltaChip({ value, locale }: { value: number | null; locale: str
 
   return (
     <span
-      className={`rounded-sm px-1.5 py-0.5 text-xs tabular-nums ${value > 0 ? "bg-positive/12 text-positive" : value < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
+      className={`rounded-chip px-1.5 py-0.5 text-xs tabular-nums ${value > 0 ? "bg-positive/12 text-positive" : value < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
     >
       {formatPoints(value, locale)}
     </span>
-  );
-}
-
-function PromptChoice({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Select
-      value={value}
-      items={options}
-      onValueChange={(next) => {
-        if (next !== null) onChange(next);
-      }}
-    >
-      <SelectTrigger aria-label={label}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
@@ -168,6 +122,7 @@ export function PromptManager({
     search,
     collecting,
   );
+  const counts = usePromptCounts(brandID, scope);
   const visible: PromptRow[] =
     search.status === "past"
       ? (history.data?.items ?? []).map((prompt) => ({
@@ -220,6 +175,26 @@ export function PromptManager({
   function changeSearch(patch: Partial<typeof search>) {
     void setSearch({ ...patch, page: 1 }, { history: "replace" });
     setSelected([]);
+  }
+
+  function sortDirection(column: "prompt" | "rate"): SortDirection {
+    if (search.sort !== column) return "none";
+
+    return search.descending ? "descending" : "ascending";
+  }
+
+  /** Each click moves a column through its natural order, its reverse, then back to none. */
+  function cycleSort(column: "prompt" | "rate") {
+    const natural = column === "rate" ? "descending" : "ascending";
+    const current = sortDirection(column);
+
+    if (current === "none") {
+      changeSearch({ sort: column, descending: natural === "descending" });
+    } else if (current === natural) {
+      changeSearch({ sort: column, descending: natural !== "descending" });
+    } else {
+      changeSearch({ sort: "original", descending: false });
+    }
   }
 
   function select(id: string) {
@@ -318,55 +293,51 @@ export function PromptManager({
     );
   };
 
-  const renderActions = (row: PromptRow) =>
-    row.prompt ? (
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {!row.prompt.confirmed && (
-          <Button
-            variant="ghost"
-            size="sm"
+  const renderActions = (row: PromptRow) => {
+    const prompt = row.prompt;
+    if (!prompt) return null;
+
+    return (
+      <RowActions>
+        {!prompt.confirmed && (
+          <RowAction
+            persistent
+            label={t("confirm")}
+            icon={Tick02Icon}
             disabled={pending}
             onClick={() => mutations.confirm.mutate(row.id)}
-          >
-            {t("confirm")}
-          </Button>
+          />
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label={t("home:dashboard.promptActions", { text: row.text })}
-            className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            <HugeiconsIcon icon={MoreHorizontalIcon} size={16} aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled={pending} onClick={() => setEditing(row.prompt)}>
-              {t("edit")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={pending || !row.prompt.confirmed}
-              onClick={() =>
-                mutations.update.mutate({
-                  id: row.id,
-                  request: { inactive: !row.prompt?.inactive },
-                })
-              }
-            >
-              {row.prompt.inactive ? t("resumePrompt") : t("pausePrompt")}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={pending}
-              onClick={() => {
-                trigger.current = document.activeElement as HTMLElement;
-                setDeleting(row.prompt);
-              }}
-            >
-              {t("delete")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    ) : null;
+        <RowAction
+          label={t("edit")}
+          icon={PencilEdit02Icon}
+          disabled={pending}
+          onClick={() => setEditing(prompt)}
+        />
+        {prompt.confirmed && (
+          <RowAction
+            label={prompt.inactive ? t("resumePrompt") : t("pausePrompt")}
+            icon={prompt.inactive ? PlayIcon : PauseIcon}
+            pressed={prompt.inactive}
+            disabled={pending}
+            onClick={() =>
+              mutations.update.mutate({ id: row.id, request: { inactive: !prompt.inactive } })
+            }
+          />
+        )}
+        <RowAction
+          destructive
+          label={t("delete")}
+          icon={Delete02Icon}
+          disabled={pending}
+          onClick={() => {
+            trigger.current = document.activeElement as HTMLElement;
+            setDeleting(prompt);
+          }}
+        />
+      </RowActions>
+    );
+  };
 
   const columns: DataTableColumn<PromptRow>[] = [
     {
@@ -400,14 +371,28 @@ export function PromptManager({
     },
     {
       id: "prompt",
-      header: t("prompt"),
+      header: (
+        <SortHeader
+          label={t("prompt")}
+          direction={sortDirection("prompt")}
+          onSort={() => cycleSort("prompt")}
+        />
+      ),
+      sort: sortDirection("prompt"),
       headClassName: `${promptHeadClass} w-[44%]`,
       cellClassName: promptCellClass,
       cell: renderPrompt,
     },
     {
       id: "rate",
-      header: t("home:dashboard.visibility"),
+      header: (
+        <SortHeader
+          label={t("home:dashboard.visibility")}
+          direction={sortDirection("rate")}
+          onSort={() => cycleSort("rate")}
+        />
+      ),
+      sort: sortDirection("rate"),
       headClassName: `${promptHeadClass} w-[26%]`,
       cellClassName: promptCellClass,
       cell: renderRate,
@@ -429,36 +414,47 @@ export function PromptManager({
   ];
 
   const totalItems = active.data?.totalItems ?? 0;
-  const firstItem = totalItems === 0 ? 0 : (page - 1) * search.pageSize + 1;
-  const lastItem = Math.min(totalItems, page * search.pageSize);
   const mutationFailed = mutations.confirm.isError || mutations.update.isError || bulkFailed;
-  const sortOptions = [
-    { value: "original", label: t("home:dashboard.originalOrder") },
-    { value: "prompt", label: t("prompt") },
-    { value: "rate", label: t("home:dashboard.mentionRate") },
-    { value: "change", label: t("home:dashboard.sortChange") },
-  ] as const;
   const statusOptions = [
-    { value: "all", label: t("all") },
-    { value: "confirmed", label: t("confirmed") },
-    { value: "unconfirmed", label: t("unconfirmed") },
-    { value: "past", label: t("home:history.title") },
+    { value: "all", label: t("all"), count: counts.all },
+    { value: "confirmed", label: t("confirmed"), count: counts.confirmed },
+    { value: "unconfirmed", label: t("unconfirmed"), count: counts.unconfirmed },
+    { value: "past", label: t("home:history.title"), count: counts.past },
   ] as const;
 
   return (
     <section
       id="prompts"
       aria-labelledby="prompts-heading"
-      className="group/refresh relative min-w-0 rounded-lg bg-surface p-4 sm:p-7 scroll-mt-8"
+      className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7 scroll-mt-8"
       aria-busy={active.isFetching}
       data-refreshing={active.isFetching && Boolean(active.data)}
     >
       <QueryRefreshIndicator active={active.isFetching} label={t("loading")} />
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="prompts-heading" ref={heading} tabIndex={-1} className="text-section font-semibold">
-          {t("prompts")}
-        </h2>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <h2
+            id="prompts-heading"
+            ref={heading}
+            tabIndex={-1}
+            className="text-section font-semibold"
+          >
+            {t("prompts")}
+          </h2>
+          <StatusTabs
+            label={t("statusLabel")}
+            value={search.status}
+            options={[...statusOptions]}
+            onChange={(status) => changeSearch({ status })}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2 [&>div]:m-0 [&_output:empty]:hidden">
+          <SearchToggle
+            label={t("searchPrompts")}
+            clearLabel={t("home:dashboard.clearSearch")}
+            value={search.q}
+            onChange={(q) => changeSearch({ q })}
+          />
           <GenerationControls
             brandID={brandID}
             mode="prompts"
@@ -480,79 +476,6 @@ export function PromptManager({
           disabled={pending}
           showTrackingError={false}
         />
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <Input
-          type="search"
-          value={search.q}
-          onChange={(event) => changeSearch({ q: event.target.value })}
-          placeholder={t("searchPrompts")}
-          aria-label={t("searchPrompts")}
-          className="w-full sm:max-w-64"
-        />
-        <fieldset className="flex flex-wrap gap-0.5" aria-label={t("statusLabel")}>
-          {statusOptions.map((option) => (
-            <Button
-              key={option.value}
-              type="button"
-              variant="ghost"
-              size="pill"
-              aria-pressed={search.status === option.value}
-              className="text-muted-foreground"
-              onClick={() => changeSearch({ status: option.value })}
-            >
-              {option.label}
-            </Button>
-          ))}
-        </fieldset>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="pill"
-                className="gap-1.5 text-muted-foreground sm:ms-auto"
-              />
-            }
-          >
-            <HugeiconsIcon icon={SortingIcon} data-icon="inline-start" aria-hidden="true" />
-            {search.sort === "original"
-              ? t("home:dashboard.sortBy")
-              : sortOptions.find((option) => option.value === search.sort)?.label}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>{t("home:dashboard.sortPrompts")}</DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={search.sort}
-                onValueChange={(value) => changeSearch({ sort: value as typeof search.sort })}
-              >
-                {sortOptions.map((option) => (
-                  <DropdownMenuRadioItem key={option.value} value={option.value}>
-                    {option.label}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuGroup>
-            {search.sort !== "original" && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={search.descending ? "descending" : "ascending"}
-                  onValueChange={(value) => changeSearch({ descending: value === "descending" })}
-                >
-                  <DropdownMenuRadioItem value="ascending">
-                    {t("home:dashboard.ascending")}
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="descending">
-                    {t("home:dashboard.descending")}
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {mutationFailed && !bulkDeleting && (
@@ -628,7 +551,7 @@ export function PromptManager({
                 <li
                   key={row.id}
                   data-selected={selectedVisible.includes(row.id) || undefined}
-                  className="group flex min-w-0 items-start gap-2 rounded-md px-2 py-3 hover:bg-signal-pill data-[selected]:bg-signal-pill"
+                  className="group flex min-w-0 items-start gap-2 rounded-control px-2 py-3 hover:bg-signal-pill data-[selected]:bg-signal-pill"
                 >
                   {!row.past && (
                     <PromptSelectCheckbox
@@ -651,48 +574,14 @@ export function PromptManager({
           </div>
         )}
       </TooltipProvider>
-      <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted-foreground empty:hidden">
-        {totalItems > 0 && (
-          <>
-            <span className="whitespace-nowrap tabular-nums">
-              {t("home:dashboard.pageRange", {
-                start: firstItem,
-                end: lastItem,
-                total: totalItems,
-              })}
-            </span>
-            <PromptChoice
-              label={t("pageSizeLabel")}
-              value={String(search.pageSize)}
-              options={[10, 20, 50].map((value) => ({
-                value: String(value),
-                label: String(value),
-              }))}
-              onChange={(value) => changeSearch({ pageSize: Number(value) as 10 | 20 | 50 })}
-            />
-            <div className="ms-auto flex gap-1">
-              <Button
-                variant="ghost"
-                size="circle-sm"
-                aria-label={t("home:dashboard.previous")}
-                disabled={page <= 1}
-                onClick={() => void setSearch({ page: page - 1 }, { history: "push" })}
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} aria-hidden="true" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="circle-sm"
-                aria-label={t("home:dashboard.next")}
-                disabled={page >= totalPages}
-                onClick={() => void setSearch({ page: page + 1 }, { history: "push" })}
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} aria-hidden="true" />
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
+      <PageNav
+        page={page}
+        pageSize={search.pageSize}
+        total={totalItems}
+        hasPrev={page > 1}
+        hasNext={page < totalPages}
+        onPage={(next) => void setSearch({ page: next }, { history: "push" })}
+      />
 
       <PromptDialog
         prompt={editing}

@@ -31,10 +31,10 @@ function AppLayout() {
   const { brand } = Route.useRouteContext();
 
   return (
-    <div className="font-sans text-sm font-medium leading-normal min-h-svh bg-background text-foreground">
+    <div className="font-sans text-sm leading-normal min-h-svh bg-background text-foreground">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-sm focus:bg-popover focus:px-3 focus:py-2 focus:text-foreground"
+        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-chip focus:bg-popover focus:px-3 focus:py-2 focus:text-foreground"
       >
         {t("skip")}
       </a>

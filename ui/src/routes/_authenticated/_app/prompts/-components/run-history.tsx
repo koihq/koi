@@ -37,9 +37,12 @@ export function RunHistory({
               type="button"
               aria-label={t("home:detail.openRun", { date: `${day}, ${time}` })}
               onClick={(event) => onOpen(item.run.id, event.currentTarget)}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2.5 rounded-md px-3 py-3 text-start text-body hover:bg-signal-pill focus-visible:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:grid-cols-[9rem_minmax(0,1fr)_12rem]"
+              className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2.5 rounded-control px-3 py-3 text-start text-body hover:bg-signal-pill focus-visible:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:grid-cols-[9rem_minmax(0,1fr)_12rem]"
             >
-              <time dateTime={item.run.createdAt.toISOString()} className="tabular-nums">
+              <time
+                dateTime={item.run.createdAt.toISOString()}
+                className="font-semibold tabular-nums"
+              >
                 {day}
                 <span className="ms-2 text-muted-foreground">{time}</span>
               </time>

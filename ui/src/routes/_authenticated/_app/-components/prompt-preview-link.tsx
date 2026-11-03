@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
@@ -11,11 +11,12 @@ import { rate, series as visibilitySeries } from "@/lib/visibility";
 export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
   const { t, i18n } = useTranslation("home");
   const [open, setOpen] = useState(false);
+  const areaId = useId();
   const link = (
     <Link
       to="/prompts/$promptId"
       params={{ promptId: prompt.id }}
-      className="block max-w-2xl text-sm/normal font-medium text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline"
+      className="block max-w-2xl text-sm/normal font-semibold text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline"
     >
       {prompt.text}
     </Link>
@@ -30,7 +31,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1))
     .slice(0, 3);
   const width = 320;
-  const height = 64;
+  const height = 96;
   const points = series.map((point, index) =>
     point.rate === null
       ? null
@@ -69,7 +70,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
           side="right"
           align="start"
           sideOffset={14}
-          className="surface-float flex w-72 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-0 overflow-hidden bg-transparent! px-3.5 pt-3.5 pb-0 text-foreground animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
+          className="surface-float flex w-72 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-0 overflow-hidden px-3.5 pt-3.5 pb-0 text-foreground animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="grid gap-1.5">
@@ -97,10 +98,26 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
             <svg
               viewBox={`0 0 ${width} ${height}`}
               preserveAspectRatio="none"
-              className="mt-3 -mx-3.5 block h-16 w-[calc(100%+28px)]"
+              className="mt-3 -mx-3.5 block h-24 w-[calc(100%+28px)]"
               role="img"
               aria-label={t("dashboard.chartDescription")}
             >
+              <defs>
+                <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.16" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {segments.map((segment) =>
+                segment.length > 1 ? (
+                  <path
+                    key={`area-${segment[0].x}`}
+                    d={`${trendPath(segment)} L ${segment[segment.length - 1].x} ${height} L ${segment[0].x} ${height} Z`}
+                    fill={`url(#${areaId})`}
+                    stroke="none"
+                  />
+                ) : null,
+              )}
               {segments.map((segment) =>
                 segment.length > 1 ? (
                   <path
@@ -124,7 +141,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
               )}
             </svg>
           ) : (
-            <div className="mt-3 -mx-3.5 grid h-16 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
+            <div className="mt-3 -mx-3.5 grid h-24 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
               {t("dashboard.noComparison")}
             </div>
           )}
