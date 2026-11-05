@@ -26,32 +26,13 @@ export interface GenerationRequest {
      * @memberof GenerationRequest
      */
     brandId: string;
-    /**
-     * 
-     * @type {GenerationRequestModeEnum}
-     * @memberof GenerationRequest
-     */
-    mode: GenerationRequestModeEnum;
 }
-
-
-/**
- * @export
- */
-export const GenerationRequestModeEnum = {
-    INITIAL: 'initial',
-    PROMPTS: 'prompts',
-    COMPETITORS: 'competitors'
-} as const;
-export type GenerationRequestModeEnum = typeof GenerationRequestModeEnum[keyof typeof GenerationRequestModeEnum];
-
 
 /**
  * Check if a given object implements the GenerationRequest interface.
  */
 export function instanceOfGenerationRequest(value: object): value is GenerationRequest {
     if (!('brandId' in value) || value['brandId'] === undefined) return false;
-    if (!('mode' in value) || value['mode'] === undefined) return false;
     return true;
 }
 
@@ -66,7 +47,6 @@ export function GenerationRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     return {
         
         'brandId': json['brandId'],
-        'mode': json['mode'],
     };
 }
 
@@ -82,7 +62,6 @@ export function GenerationRequestToJSONTyped(value?: GenerationRequest | null, i
     return {
         
         'brandId': value['brandId'],
-        'mode': value['mode'],
     };
 }
 

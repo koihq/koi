@@ -20,12 +20,13 @@ export function usePromptList(
   scope: VisibilityScope,
   search: PromptSearch,
   collecting: boolean,
+  listing: { allStatuses: boolean; enabled: boolean },
 ) {
   const api = useApi();
   const page = Math.max(1, search.page);
   const active = useQuery({
     ...promptListOptions(api, brandID, {
-      ...promptStatusFilters[search.status],
+      ...(listing.allStatuses ? {} : promptStatusFilters[search.status]),
       page,
       pageSize: search.pageSize,
       q: search.q.trim() || undefined,
@@ -33,6 +34,7 @@ export function usePromptList(
       descending: search.descending,
       scope,
     }),
+    enabled: listing.enabled,
     placeholderData: keepPreviousDataForScope(promptKey(brandID)),
     refetchInterval: collecting ? 5_000 : false,
   });

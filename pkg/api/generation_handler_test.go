@@ -42,7 +42,7 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 	base := ts.URL + "/api/v1" + "/generations"
 
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
-		resp := doJSON(t, client, method, base, `{"mode":"initial"}`, brandID)
+		resp := doJSON(t, client, method, base, `{}`, brandID)
 		var body response.Envelope
 		readJSON(t, resp, &body)
 		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -51,15 +51,13 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 
 	brandSession(t, client, ts.URL, userID)
 
-	for _, body := range []string{"{", `{"mode":123}`} {
-		resp := doJSON(t, client, http.MethodPost, base, body, brandID)
-		var result response.Envelope
-		readJSON(t, resp, &result)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		require.Equal(t, domain.CodeInvalidJSON, result.Error.Code)
-	}
+	malformed := doJSON(t, client, http.MethodPost, base, "{", brandID)
+	var result response.Envelope
+	readJSON(t, malformed, &result)
+	require.Equal(t, http.StatusBadRequest, malformed.StatusCode)
+	require.Equal(t, domain.CodeInvalidJSON, result.Error.Code)
 
-	request, err := http.NewRequest(http.MethodPost, base, strings.NewReader(`{"brandId":"`+brandID.String()+`","mode":"initial"}`))
+	request, err := http.NewRequest(http.MethodPost, base, strings.NewReader(`{"brandId":"`+brandID.String()+`"}`))
 	require.NoError(t, err)
 	request.Header.Set("Idempotency-Key", "bad key")
 	resp, err := client.Do(request)
@@ -73,13 +71,12 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 		BaseEntity: domain.BaseEntity{
 			ID: runID,
 		},
-		Mode:  domain.GenerationInitial,
 		State: domain.GenerationQueued,
 	}
-	c.EXPECT().Create(identityIs(userID), brandID, domain.GenerationInitial, mock.MatchedBy(func(key *string) bool {
+	c.EXPECT().Create(identityIs(userID), brandID, mock.MatchedBy(func(key *string) bool {
 		return key != nil && *key == "setup-1"
 	})).Return(run, false, nil)
-	request, err = http.NewRequest(http.MethodPost, base, strings.NewReader(`{"brandId":"`+brandID.String()+`","mode":"initial"}`))
+	request, err = http.NewRequest(http.MethodPost, base, strings.NewReader(`{"brandId":"`+brandID.String()+`"}`))
 	require.NoError(t, err)
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Idempotency-Key", "setup-1")
@@ -90,12 +87,11 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	require.Equal(t, map[string]any{
 		"id":        runID.String(),
-		"mode":      "initial",
 		"state":     "queued",
 		"statusUrl": "/api/v1" + "/generations/" + runID.String(),
 	}, accepted)
-	c.EXPECT().Create(identityIs(userID), brandID, domain.GenerationInitial, mock.Anything).Return(run, true, nil)
-	resp = doJSON(t, client, http.MethodPost, base, `{"mode":"initial"}`, brandID)
+	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything).Return(run, true, nil)
+	resp = doJSON(t, client, http.MethodPost, base, `{}`, brandID)
 	readJSON(t, resp, &accepted)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -115,7 +111,6 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 			CreatedAt: createdAt,
 		},
 		BrandID:   brandID,
-		Mode:      domain.GenerationInitial,
 		State:     domain.GenerationQueued,
 		ModelSlug: "secret-model",
 		BrandSnapshot: domain.BrandSnapshot{
@@ -130,7 +125,6 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, map[string]any{
 		"id":              runID.String(),
-		"mode":            "initial",
 		"state":           "queued",
 		"attempt":         float64(0),
 		"promptCount":     float64(0),
@@ -169,27 +163,15 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 	readJSON(t, resp, &missing)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 
-	c.EXPECT().Create(identityIs(userID), brandID, domain.GenerationInitial, mock.Anything).Return(nil, false,
-		&domain.Error{
-			Code:    domain.CodeGenerationConflict,
-			Message: "generation conflict",
-			RunID:   runID,
-		})
-	resp = doJSON(t, client, http.MethodPost, base, `{"mode":"initial"}`, brandID)
+	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything).Return(nil, false, domain.ErrInitialAlreadyCompleted).Once()
+	resp = doJSON(t, client, http.MethodPost, base, `{}`, brandID)
 	var conflict response.Envelope
 	readJSON(t, resp, &conflict)
 	require.Equal(t, http.StatusConflict, resp.StatusCode)
-	require.Equal(t, domain.CodeGenerationConflict, conflict.Error.Code)
-	require.Equal(t, "/api/v1"+"/generations/"+runID.String(), conflict.Error.StatusURL)
+	require.Equal(t, domain.CodeInitialAlreadyCompleted, conflict.Error.Code)
 
-	c.EXPECT().Create(identityIs(userID), brandID, domain.GenerationPrompts, mock.Anything).Return(nil, false, domain.ErrIdempotencyConflict)
-	resp = doJSON(t, client, http.MethodPost, base, `{"mode":"prompts"}`, brandID)
-	readJSON(t, resp, &conflict)
-	require.Equal(t, http.StatusConflict, resp.StatusCode)
-	require.Equal(t, domain.CodeIdempotencyConflict, conflict.Error.Code)
-
-	c.EXPECT().Create(identityIs(userID), brandID, domain.GenerationCompetitors, mock.Anything).Return(nil, false, domain.ErrFeatureUnavailable)
-	resp = doJSON(t, client, http.MethodPost, base, `{"mode":"competitors"}`, brandID)
+	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything).Return(nil, false, domain.ErrFeatureUnavailable).Once()
+	resp = doJSON(t, client, http.MethodPost, base, `{}`, brandID)
 	readJSON(t, resp, &conflict)
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 	require.Equal(t, domain.CodeFeatureUnavailable, conflict.Error.Code)

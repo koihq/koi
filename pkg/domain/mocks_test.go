@@ -2753,12 +2753,12 @@ func (_c *MockGenerationRepository_Get_Call) RunAndReturn(run func(ctx context.C
 	return _c
 }
 
-// HasSucceededInitial provides a mock function for the type MockGenerationRepository
-func (_mock *MockGenerationRepository) HasSucceededInitial(context1 context.Context, uUID uuid.UUID) (bool, error) {
+// HasSucceeded provides a mock function for the type MockGenerationRepository
+func (_mock *MockGenerationRepository) HasSucceeded(context1 context.Context, uUID uuid.UUID) (bool, error) {
 	ret := _mock.Called(context1, uUID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for HasSucceededInitial")
+		panic("no return value specified for HasSucceeded")
 	}
 
 	var r0 bool
@@ -2779,19 +2779,19 @@ func (_mock *MockGenerationRepository) HasSucceededInitial(context1 context.Cont
 	return r0, r1
 }
 
-// MockGenerationRepository_HasSucceededInitial_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasSucceededInitial'
-type MockGenerationRepository_HasSucceededInitial_Call struct {
+// MockGenerationRepository_HasSucceeded_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasSucceeded'
+type MockGenerationRepository_HasSucceeded_Call struct {
 	*mock.Call
 }
 
-// HasSucceededInitial is a helper method to define mock.On call
+// HasSucceeded is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-func (_e *MockGenerationRepository_Expecter) HasSucceededInitial(context1 interface{}, uUID interface{}) *MockGenerationRepository_HasSucceededInitial_Call {
-	return &MockGenerationRepository_HasSucceededInitial_Call{Call: _e.mock.On("HasSucceededInitial", context1, uUID)}
+func (_e *MockGenerationRepository_Expecter) HasSucceeded(context1 interface{}, uUID interface{}) *MockGenerationRepository_HasSucceeded_Call {
+	return &MockGenerationRepository_HasSucceeded_Call{Call: _e.mock.On("HasSucceeded", context1, uUID)}
 }
 
-func (_c *MockGenerationRepository_HasSucceededInitial_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockGenerationRepository_HasSucceededInitial_Call {
+func (_c *MockGenerationRepository_HasSucceeded_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockGenerationRepository_HasSucceeded_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -2809,12 +2809,12 @@ func (_c *MockGenerationRepository_HasSucceededInitial_Call) Run(run func(contex
 	return _c
 }
 
-func (_c *MockGenerationRepository_HasSucceededInitial_Call) Return(b bool, err error) *MockGenerationRepository_HasSucceededInitial_Call {
+func (_c *MockGenerationRepository_HasSucceeded_Call) Return(b bool, err error) *MockGenerationRepository_HasSucceeded_Call {
 	_c.Call.Return(b, err)
 	return _c
 }
 
-func (_c *MockGenerationRepository_HasSucceededInitial_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (bool, error)) *MockGenerationRepository_HasSucceededInitial_Call {
+func (_c *MockGenerationRepository_HasSucceeded_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (bool, error)) *MockGenerationRepository_HasSucceeded_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4858,69 +4858,6 @@ func (_c *MockVisibilityRepository_CreateAndEnqueue_Call) RunAndReturn(run func(
 	return _c
 }
 
-// FinishReview provides a mock function for the type MockVisibilityRepository
-func (_mock *MockVisibilityRepository) FinishReview(context1 context.Context, uUID uuid.UUID, s string) error {
-	ret := _mock.Called(context1, uUID, s)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FinishReview")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
-		r0 = returnFunc(context1, uUID, s)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockVisibilityRepository_FinishReview_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FinishReview'
-type MockVisibilityRepository_FinishReview_Call struct {
-	*mock.Call
-}
-
-// FinishReview is a helper method to define mock.On call
-//   - context1 context.Context
-//   - uUID uuid.UUID
-//   - s string
-func (_e *MockVisibilityRepository_Expecter) FinishReview(context1 interface{}, uUID interface{}, s interface{}) *MockVisibilityRepository_FinishReview_Call {
-	return &MockVisibilityRepository_FinishReview_Call{Call: _e.mock.On("FinishReview", context1, uUID, s)}
-}
-
-func (_c *MockVisibilityRepository_FinishReview_Call) Run(run func(context1 context.Context, uUID uuid.UUID, s string)) *MockVisibilityRepository_FinishReview_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockVisibilityRepository_FinishReview_Call) Return(err error) *MockVisibilityRepository_FinishReview_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockVisibilityRepository_FinishReview_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, s string) error) *MockVisibilityRepository_FinishReview_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Get provides a mock function for the type MockVisibilityRepository
 func (_mock *MockVisibilityRepository) Get(ctx context.Context, id uuid.UUID) (*VisibilityRun, error) {
 	ret := _mock.Called(ctx, id)
@@ -5051,69 +4988,6 @@ func (_c *MockVisibilityRepository_Inputs_Call) Return(visibilityInputs Visibili
 }
 
 func (_c *MockVisibilityRepository_Inputs_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (VisibilityInputs, error)) *MockVisibilityRepository_Inputs_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// InvalidateReview provides a mock function for the type MockVisibilityRepository
-func (_mock *MockVisibilityRepository) InvalidateReview(ctx context.Context, brandID uuid.UUID, kind string) error {
-	ret := _mock.Called(ctx, brandID, kind)
-
-	if len(ret) == 0 {
-		panic("no return value specified for InvalidateReview")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) error); ok {
-		r0 = returnFunc(ctx, brandID, kind)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockVisibilityRepository_InvalidateReview_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InvalidateReview'
-type MockVisibilityRepository_InvalidateReview_Call struct {
-	*mock.Call
-}
-
-// InvalidateReview is a helper method to define mock.On call
-//   - ctx context.Context
-//   - brandID uuid.UUID
-//   - kind string
-func (_e *MockVisibilityRepository_Expecter) InvalidateReview(ctx interface{}, brandID interface{}, kind interface{}) *MockVisibilityRepository_InvalidateReview_Call {
-	return &MockVisibilityRepository_InvalidateReview_Call{Call: _e.mock.On("InvalidateReview", ctx, brandID, kind)}
-}
-
-func (_c *MockVisibilityRepository_InvalidateReview_Call) Run(run func(ctx context.Context, brandID uuid.UUID, kind string)) *MockVisibilityRepository_InvalidateReview_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockVisibilityRepository_InvalidateReview_Call) Return(err error) *MockVisibilityRepository_InvalidateReview_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockVisibilityRepository_InvalidateReview_Call) RunAndReturn(run func(ctx context.Context, brandID uuid.UUID, kind string) error) *MockVisibilityRepository_InvalidateReview_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5416,6 +5290,63 @@ func (_c *MockVisibilityRepository_PromptsWithResults_Call) Return(uUIDToBool ma
 }
 
 func (_c *MockVisibilityRepository_PromptsWithResults_Call) RunAndReturn(run func(ctx context.Context, brandID uuid.UUID, promptIDs []uuid.UUID) (map[uuid.UUID]bool, error)) *MockVisibilityRepository_PromptsWithResults_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StartTracking provides a mock function for the type MockVisibilityRepository
+func (_mock *MockVisibilityRepository) StartTracking(context1 context.Context, uUID uuid.UUID) error {
+	ret := _mock.Called(context1, uUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartTracking")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(context1, uUID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockVisibilityRepository_StartTracking_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartTracking'
+type MockVisibilityRepository_StartTracking_Call struct {
+	*mock.Call
+}
+
+// StartTracking is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+func (_e *MockVisibilityRepository_Expecter) StartTracking(context1 interface{}, uUID interface{}) *MockVisibilityRepository_StartTracking_Call {
+	return &MockVisibilityRepository_StartTracking_Call{Call: _e.mock.On("StartTracking", context1, uUID)}
+}
+
+func (_c *MockVisibilityRepository_StartTracking_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockVisibilityRepository_StartTracking_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockVisibilityRepository_StartTracking_Call) Return(err error) *MockVisibilityRepository_StartTracking_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockVisibilityRepository_StartTracking_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) error) *MockVisibilityRepository_StartTracking_Call {
 	_c.Call.Return(run)
 	return _c
 }

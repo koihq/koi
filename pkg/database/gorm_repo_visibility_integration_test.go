@@ -18,9 +18,8 @@ func TestVisibilityLargeMatrixEnqueueRollback(t *testing.T) {
 		_, err := domain.NewPromptCommander(store).Create(ctx, brand.ID, domain.CreatePromptParams{Text: fmt.Sprintf("Question %03d?", i)})
 		require.NoError(t, err)
 	}
-	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"))
 	// InsertTx fails after the run and all 404 cells have been inserted.
-	require.Error(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors"))
+	require.Error(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
 	for _, model := range []any{&domain.VisibilityRun{}, &domain.VisibilityResult{}} {
 		var count int64
 		require.NoError(t, db.Model(model).Count(&count).Error)
@@ -44,7 +43,6 @@ func TestVisibilityMatrixSnapshotsRetryOwnershipAndReconciliation(t *testing.T) 
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"))
 	var wg sync.WaitGroup
 	wg.Add(2)
 	runs, errs := make([]*domain.VisibilityRun, 2), make([]error, 2)
@@ -52,7 +50,7 @@ func TestVisibilityMatrixSnapshotsRetryOwnershipAndReconciliation(t *testing.T) 
 	for i := range 2 {
 		go func() {
 			defer wg.Done()
-			errs[i] = store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors")
+			errs[i] = store.VisibilityRepo().StartTracking(ctx, brand.ID)
 			if errs[i] == nil {
 				runs[i], errs[i] = store.VisibilityRepo().Active(ctx, brand.ID)
 			}
@@ -158,7 +156,7 @@ func TestVisibilityMatrixSnapshotsRetryOwnershipAndReconciliation(t *testing.T) 
 	other := &domain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
 	require.NoError(t, store.UserRepo().Create(t.Context(), other))
 	otherCtx := testIdentity(t, store, other.ID)
-	err = store.VisibilityRepo().FinishReview(otherCtx, brand.ID, "prompts")
+	err = store.VisibilityRepo().StartTracking(otherCtx, brand.ID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 	_, err = querier.Get(otherCtx, run.ID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
@@ -171,7 +169,6 @@ func TestVisibilityMatrixSnapshotsRetryOwnershipAndReconciliation(t *testing.T) 
 	require.NoError(t, store.BrandRepo().Create(otherCtx, otherBrand))
 	_, err = querier.ListResults(otherCtx, run.ID, pageParams)
 	require.ErrorIs(t, err, domain.ErrNotFound)
-	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"))
 	tracking, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
 	require.NoError(t, store.DispatchVisibility(ctx, *tracking.NextRunAt))

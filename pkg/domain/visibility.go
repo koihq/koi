@@ -157,17 +157,11 @@ type PromptHistoryRun struct {
 }
 
 // The curated sets a brand owner reviews before tracking starts.
-const (
-	ReviewPrompts     = "prompts"
-	ReviewCompetitors = "competitors"
-)
-
 type VisibilityRepository interface {
 	VisibilityAnalyticsRepository
 	BaseEntityQuerier[VisibilityRun]
 	Lister[VisibilityRun, BrandFilter]
-	FinishReview(context.Context, uuid.UUID, string) error
-	InvalidateReview(ctx context.Context, brandID uuid.UUID, kind string) error
+	StartTracking(context.Context, uuid.UUID) error
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
 	Active(context.Context, uuid.UUID) (*VisibilityRun, error)
 	Inputs(context.Context, uuid.UUID) (VisibilityInputs, error)
@@ -178,11 +172,10 @@ type VisibilityRepository interface {
 }
 
 type TrackingStatus struct {
-	PromptsReviewed     bool       `json:"prompts_reviewed"`
-	CompetitorsReviewed bool       `json:"competitors_reviewed"`
-	StartedAt           *time.Time `json:"started_at"`
-	NextRunAt           *time.Time `json:"next_run_at"`
-	BlockedReason       *string    `json:"blocked_reason"`
+	Confirmed     bool       `json:"confirmed"`
+	StartedAt     *time.Time `json:"started_at"`
+	NextRunAt     *time.Time `json:"next_run_at"`
+	BlockedReason *string    `json:"blocked_reason"`
 }
 
 type VisibilityQuerier interface {

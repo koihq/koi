@@ -60,11 +60,15 @@ a live prompt.
 A prompt with saved results can only be stopped (`inactive: true`), so its history stays
 reachable and resuming continues the same series. `DELETE /prompts/{id}` returns
 `resource_conflict` for such a prompt; `hasResults` tells clients which action applies.
-Stopping or resuming does not reset the prompt review. Editing the text or deleting does.
 
-`POST /prompts/confirm` and `POST /competitors/confirm` accept `{"brandId":"..."}`.
-They finish a review and can enable tracking, so they remain explicit domain
-commands rather than generic CRUD updates.
+`POST /tracking/start` accepts `{"brandId":"..."}`. It confirms the brand's manual and
+drafted rows and starts daily collection, once per brand; repeating it changes nothing.
+It stays an explicit domain command rather than a generic CRUD update. After it, changes
+to either list never block collection and apply from the next scheduled run.
+
+`POST /generations` starts the brand's one draft: at most 5 prompts and every competitor
+it can verify. A failed draft can run again until one succeeds or tracking starts; after
+that it returns `initial_already_completed`.
 
 `POST /brands/{id}/activate` stores a UI preference. It never changes the scope
 of another request. Open forms and separate tabs keep their explicit destinations.
@@ -115,14 +119,13 @@ of another organization.
 Prompt, competitor and generation commands run under `withBrandLock`. Commands on an
 existing child read it again under the lock through `withLockedChild`. Each one
 validates through entity methods such as `Prompt.Update` and `Competitor.Confirm`,
-then writes and invalidates the review in the same transaction. A failure at any step
+then writes in the same transaction. A failure at any step
 rolls back the whole command. `BillingRepository.ReservePromptCapacity` serializes
 prompt activation across an organization on Koi Cloud; self-hosted instances have no
 allowance.
 
-Editing a competitor's identity keeps its review, while adding or removing a reviewed
-competitor invalidates it. Deleting an observed competitor saves a dismissal, so later
-answers do not suggest it again.
+Deleting an observed competitor saves a dismissal, so later answers do not suggest it
+again.
 
 Worker state machines (`visibility_attempts`, `generation_attempts`,
 `visibility_schedule`) keep their transactions in `database`, because they advance

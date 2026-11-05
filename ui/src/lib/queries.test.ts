@@ -25,7 +25,7 @@ describe("query isolation and batch failures", () => {
     await ensureInitialGeneration(api, client, "brand-a");
 
     expect(create).toHaveBeenCalledOnce();
-    expect(create).toHaveBeenCalledWith({ brandId: "brand-a", mode: "initial" }, "setup-brand-a");
+    expect(create).toHaveBeenCalledWith({ brandId: "brand-a" }, "setup-brand-a");
   });
   it("deduplicates shared capabilities and retains explicit brand cache keys", async () => {
     const client = new QueryClient();

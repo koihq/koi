@@ -19,7 +19,6 @@ type Body struct {
 	Code      string              `json:"code"`
 	Message   string              `json:"message"`
 	Fields    []domain.FieldError `json:"fields,omitempty"`
-	StatusURL string              `json:"statusUrl,omitempty"`
 }
 
 func JSON(w http.ResponseWriter, r *http.Request, status int, v any) {

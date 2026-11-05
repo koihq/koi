@@ -72,7 +72,7 @@ export interface GenerationsApiInterface {
     createGenerationRequestOpts(requestParameters: CreateGenerationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+     * Starts the brand\'s one draft, creating a run and River job atomically. An active run is returned instead. A failed draft can run again until tracking starts. A terminal replay of the same idempotency key returns 200.
      * @param {GenerationRequest} generationRequest 
      * @param {string} [idempotencyKey] 
      * @param {*} [options] Override http request option.
@@ -82,7 +82,7 @@ export interface GenerationsApiInterface {
     createGenerationRaw(requestParameters: CreateGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerationAccepted>>;
 
     /**
-     * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+     * Starts the brand\'s one draft, creating a run and River job atomically. An active run is returned instead. A failed draft can run again until tracking starts. A terminal replay of the same idempotency key returns 200.
      */
     createGeneration(requestParameters: CreateGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationAccepted>;
 
@@ -173,7 +173,7 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
     }
 
     /**
-     * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+     * Starts the brand\'s one draft, creating a run and River job atomically. An active run is returned instead. A failed draft can run again until tracking starts. A terminal replay of the same idempotency key returns 200.
      */
     async createGenerationRaw(requestParameters: CreateGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerationAccepted>> {
         const requestOptions = await this.createGenerationRequestOpts(requestParameters);
@@ -183,7 +183,7 @@ export class GenerationsApi extends runtime.BaseAPI implements GenerationsApiInt
     }
 
     /**
-     * Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+     * Starts the brand\'s one draft, creating a run and River job atomically. An active run is returned instead. A failed draft can run again until tracking starts. A terminal replay of the same idempotency key returns 200.
      */
     async createGeneration(requestParameters: CreateGenerationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationAccepted> {
         const response = await this.createGenerationRaw(requestParameters, initOverrides);

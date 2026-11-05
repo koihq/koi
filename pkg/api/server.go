@@ -43,6 +43,7 @@ type services struct {
 	generations        domain.GenerationQuerier
 	generationCommands domain.GenerationCommander
 	visibility         domain.VisibilityQuerier
+	tracking           domain.TrackingCommander
 	analytics          *domain.VisibilityAnalyticsQuerier
 }
 
@@ -58,6 +59,7 @@ func newServices(store domain.Store, options ServerOptions) services {
 		generations:        domain.NewGenerationQuerier(store),
 		generationCommands: domain.NewGenerationCommander(store, options.AIDrafting),
 		visibility:         domain.NewVisibilityQuerier(store),
+		tracking:           domain.NewTrackingCommander(store),
 		analytics:          domain.NewVisibilityAnalyticsQuerier(store),
 	}
 }
@@ -142,11 +144,12 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 			r.Group(func(r chi.Router) {
 				r.Use(billingGuard)
 
-				visibility := NewVisibilityHandler(shared.visibility, shared.analytics)
+				visibility := NewVisibilityHandler(shared.visibility, shared.tracking, shared.analytics)
 
 				r.Route("/prompts", NewPromptHandler(shared.prompts, shared.promptCommands).Routes())
 				r.Route("/competitors", NewCompetitorHandler(shared.competitors, shared.competitorCommands).Routes())
 				r.Get("/tracking", visibility.Tracking())
+				r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/tracking/start", visibility.StartTracking())
 				r.Route("/prompt-history", visibility.HistoryRoutes())
 				r.Get("/visibility/summary", visibility.Summary())
 				r.Route("/runs", visibility.Routes())

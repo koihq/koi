@@ -1,25 +1,41 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type TrackingReadiness struct {
-	CollectionEnabled   bool
-	PromptsReviewed     bool
-	CompetitorsReviewed bool
-	HasPrompts          bool
-	GenerationActive    bool
+	CollectionEnabled bool
+	Confirmed         bool
+	HasPrompts        bool
+}
+
+// TrackingCommander confirms a brand's lists once and starts its daily collection.
+type TrackingCommander interface {
+	Start(context.Context, uuid.UUID) error
+}
+
+type trackingCommander struct{ store Store }
+
+func NewTrackingCommander(store Store) TrackingCommander {
+	return &trackingCommander{store: store}
+}
+
+func (c *trackingCommander) Start(ctx context.Context, brandID uuid.UUID) error {
+	return c.store.VisibilityRepo().StartTracking(ctx, brandID)
 }
 
 func TrackingBlockedReason(r TrackingReadiness) string {
 	switch {
 	case !r.CollectionEnabled:
 		return "collection_unavailable"
-	case !r.PromptsReviewed || !r.CompetitorsReviewed:
-		return "reviews_required"
+	case !r.Confirmed:
+		return "start_required"
 	case !r.HasPrompts:
 		return "prompts_required"
-	case r.GenerationActive:
-		return "generation_active"
 	default:
 		return ""
 	}

@@ -125,7 +125,10 @@ River runs jobs from Postgres; queue discovery polls approximately every second 
 A separate maintenance queue uses one worker and runs on startup, then every minute to
 reconcile interrupted runs and dispatch visibility work.
 
-Finishing both prompt and competitor reviews starts tracking. Each brand runs every 24 hours
+Each brand gets one AI draft: at most 5 prompts and every competitor it can verify. After
+that, add entries by hand or through your agent over MCP. "Start tracking" confirms the lists
+once and starts collection; later changes never pause it and apply from the next check. Each
+brand runs every 24 hours
 from its persisted UTC anchor; missed slots are skipped rather than collected in a burst.
 A visibility job processes cells for approximately 40 seconds, persists Cloro task IDs and
 answers, then snoozes for ten seconds if work remains. Actual resumption also depends on
@@ -137,7 +140,7 @@ without changing saved answers or brand outcomes. Live Cloro entities and leadin
 links to product homepages or repositories provide conservative discovery: two distinct cells
 create an unconfirmed observed suggestion; retries do not count twice. Names found only in
 ordinary prose may be missed. Name-only suggestions need a primary domain or repository before
-individual confirmation. Finish review excludes observed suggestions, and deleting one suppresses
+individual confirmation. Starting tracking excludes observed suggestions, and deleting one suppresses
 its rediscovery for that brand without interrupting tracking.
 
 Generation runs when a job is queued. `KOI_PROVIDER_TIMEOUT` defaults to three minutes per

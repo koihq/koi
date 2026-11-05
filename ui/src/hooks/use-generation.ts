@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useApi } from "@/api/apiProvider";
-import type { Generation, GenerationMode } from "@/api/generations.api";
+import type { Generation } from "@/api/generations.api";
 import { capabilitiesOptions, generationOptions, invalidateProduct } from "@/lib/queries";
 import { generationKey, trackingKey } from "@/lib/query-keys";
 
@@ -45,7 +45,7 @@ export function useGeneration(brandID: string) {
   }, [brandID, queryClient, run]);
 
   const create = useMutation({
-    mutationFn: (mode: GenerationMode) => api.generations.create({ brandId: brandID, mode }),
+    mutationFn: () => api.generations.create({ brandId: brandID }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: generationKey(brandID), exact: true }),
   });

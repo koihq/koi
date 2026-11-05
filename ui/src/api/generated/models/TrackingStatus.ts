@@ -25,13 +25,7 @@ export interface TrackingStatus {
      * @type {boolean}
      * @memberof TrackingStatus
      */
-    promptsReviewed: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof TrackingStatus
-     */
-    competitorsReviewed: boolean;
+    confirmed: boolean;
     /**
      * 
      * @type {Date}
@@ -58,9 +52,8 @@ export interface TrackingStatus {
  */
 export const TrackingStatusBlockedReasonEnum = {
     COLLECTION_UNAVAILABLE: 'collection_unavailable',
-    REVIEWS_REQUIRED: 'reviews_required',
+    START_REQUIRED: 'start_required',
     PROMPTS_REQUIRED: 'prompts_required',
-    GENERATION_ACTIVE: 'generation_active',
     BILLING_INACTIVE_OR_OVER_LIMIT: 'billing_inactive_or_over_limit'
 } as const;
 export type TrackingStatusBlockedReasonEnum = typeof TrackingStatusBlockedReasonEnum[keyof typeof TrackingStatusBlockedReasonEnum];
@@ -70,8 +63,7 @@ export type TrackingStatusBlockedReasonEnum = typeof TrackingStatusBlockedReason
  * Check if a given object implements the TrackingStatus interface.
  */
 export function instanceOfTrackingStatus(value: object): value is TrackingStatus {
-    if (!('promptsReviewed' in value) || value['promptsReviewed'] === undefined) return false;
-    if (!('competitorsReviewed' in value) || value['competitorsReviewed'] === undefined) return false;
+    if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
     if (!('startedAt' in value) || value['startedAt'] === undefined) return false;
     if (!('nextRunAt' in value) || value['nextRunAt'] === undefined) return false;
     if (!('blockedReason' in value) || value['blockedReason'] === undefined) return false;
@@ -88,8 +80,7 @@ export function TrackingStatusFromJSONTyped(json: any, ignoreDiscriminator: bool
     }
     return {
         
-        'promptsReviewed': json['promptsReviewed'],
-        'competitorsReviewed': json['competitorsReviewed'],
+        'confirmed': json['confirmed'],
         'startedAt': (json['startedAt'] == null ? null : new Date(json['startedAt'])),
         'nextRunAt': (json['nextRunAt'] == null ? null : new Date(json['nextRunAt'])),
         'blockedReason': json['blockedReason'],
@@ -107,8 +98,7 @@ export function TrackingStatusToJSONTyped(value?: TrackingStatus | null, ignoreD
 
     return {
         
-        'promptsReviewed': value['promptsReviewed'],
-        'competitorsReviewed': value['competitorsReviewed'],
+        'confirmed': value['confirmed'],
         'startedAt': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
         'nextRunAt': value['nextRunAt'] == null ? value['nextRunAt'] : value['nextRunAt'].toISOString(),
         'blockedReason': value['blockedReason'],

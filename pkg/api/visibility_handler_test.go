@@ -11,11 +11,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/koihq/koi/pkg/api/middlewares"
 	"github.com/koihq/koi/pkg/api/response"
 	"github.com/koihq/koi/pkg/domain"
 )
 
 func newVisibilityTestServer(t *testing.T, q domain.VisibilityQuerier) *httptest.Server {
+	t.Helper()
+
+	return newTrackingTestServer(t, q, NewMockTrackingCommander(t))
+}
+
+func newTrackingTestServer(t *testing.T, q domain.VisibilityQuerier, tracker domain.TrackingCommander) *httptest.Server {
 	t.Helper()
 	sess := scs.New()
 	sess.Cookie.Name = "koi_session"
@@ -25,8 +32,9 @@ func newVisibilityTestServer(t *testing.T, q domain.VisibilityQuerier) *httptest
 		sess.Put(r.Context(), "user_id", chi.URLParam(r, "id"))
 		w.WriteHeader(http.StatusNoContent)
 	})
-	handler := NewVisibilityHandler(q, nil)
+	handler := NewVisibilityHandler(q, tracker, nil)
 	r.With(Authorizer(sess)).Route("/api/v1/runs", handler.Routes())
+	r.With(Authorizer(sess), middlewares.DecodeBody[BrandRequestScope]()).Post("/api/v1/tracking/start", handler.StartTracking())
 	r.With(Authorizer(sess)).Route("/api/v1/prompt-history", handler.HistoryRoutes())
 	ts := httptest.NewServer(r)
 	t.Cleanup(ts.Close)
@@ -198,4 +206,39 @@ func TestVisibilityHandlerPagesAndPendingResults(t *testing.T) {
 	var missing response.Envelope
 	readJSON(t, resp, &missing)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestVisibilityHandlerStartTracking(t *testing.T) {
+	brandID, userID := uuid.New(), uuid.New()
+	tracker := NewMockTrackingCommander(t)
+	ts := newTrackingTestServer(t, NewMockVisibilityQuerier(t), tracker)
+	client := newCookieClient(t)
+	base := ts.URL + "/api/v1/tracking/start"
+
+	body := `{"brandId":"` + brandID.String() + `"}`
+
+	resp := doJSON(t, client, http.MethodPost, base, body)
+	var unauthorized response.Envelope
+	readJSON(t, resp, &unauthorized)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	brandSession(t, client, ts.URL, userID)
+
+	resp = doJSON(t, client, http.MethodPost, base, `{}`)
+	var missing response.Envelope
+	readJSON(t, resp, &missing)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	require.Equal(t, domain.CodeValidation, missing.Error.Code)
+
+	tracker.EXPECT().Start(identityIs(userID), brandID).Return(nil).Once()
+	resp = doJSON(t, client, http.MethodPost, base, body)
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+	resp.Body.Close()
+
+	tracker.EXPECT().Start(identityIs(userID), brandID).Return(domain.Validation(domain.FieldError{Field: "prompts", Code: "empty"})).Once()
+	resp = doJSON(t, client, http.MethodPost, base, body)
+	var invalid response.Envelope
+	readJSON(t, resp, &invalid)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	require.Equal(t, domain.CodeValidation, invalid.Error.Code)
 }

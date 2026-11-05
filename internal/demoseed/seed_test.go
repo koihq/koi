@@ -135,8 +135,7 @@ func TestRunScenarios(t *testing.T) {
 		require.Equal(t, &domain.Page[domain.VisibilityRun]{Items: []domain.VisibilityRun{}, CurrentPage: 1}, runs)
 		tracking, err := store.VisibilityRepo().Tracking(ctx, demoID("empty"))
 		require.NoError(t, err)
-		require.False(t, tracking.PromptsReviewed)
-		require.False(t, tracking.CompetitorsReviewed)
+		require.False(t, tracking.Confirmed)
 		require.Nil(t, tracking.StartedAt)
 	})
 
@@ -170,7 +169,7 @@ func TestRunScenarios(t *testing.T) {
 	t.Run("offline snapshots", func(t *testing.T) {
 		var eligible int64
 		require.NoError(t, db.Model(&domain.Brand{}).Where(`next_visibility_at <= ? OR
-			(visibility_started_at IS NULL AND prompts_reviewed_at IS NOT NULL AND competitors_reviewed_at IS NOT NULL)`, now.AddDate(1, 0, 0)).Count(&eligible).Error)
+			(visibility_started_at IS NULL AND tracking_confirmed_at IS NOT NULL)`, now.AddDate(1, 0, 0)).Count(&eligible).Error)
 		require.Zero(t, eligible)
 		var runs []domain.VisibilityRun
 		require.NoError(t, db.Find(&runs).Error)

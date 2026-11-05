@@ -150,8 +150,7 @@ func seedBrand(tx *gorm.DB, key, name string, days int, now time.Time) error {
 	}
 	if days > 0 {
 		startedAt := now.AddDate(0, 0, 1-days)
-		brand.PromptsReviewedAt = &createdAt
-		brand.CompetitorsReviewedAt = &createdAt
+		brand.TrackingConfirmedAt = &createdAt
 		brand.VisibilityStartedAt = &startedAt
 		// No NextVisibilityAt: snapshots stay offline even with Cloro configured.
 	}

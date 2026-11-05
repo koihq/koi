@@ -253,7 +253,6 @@ type CompetitorCommander interface {
 	Update(context.Context, uuid.UUID, UpdateCompetitorParams) (*Competitor, error)
 	Delete(context.Context, uuid.UUID) error
 	Confirm(context.Context, uuid.UUID) (*Competitor, error)
-	ConfirmAll(context.Context, uuid.UUID) error
 }
 
 type CompetitorQuerier interface {
@@ -294,11 +293,7 @@ func (c *competitorCommander) Create(ctx context.Context, brandID uuid.UUID, par
 			return err
 		}
 
-		if err := tx.CompetitorRepo().Create(ctx, competitor); err != nil {
-			return err
-		}
-
-		return tx.VisibilityRepo().InvalidateReview(ctx, brandID, ReviewCompetitors)
+		return tx.CompetitorRepo().Create(ctx, competitor)
 	})
 	if err != nil {
 		return nil, err
@@ -336,8 +331,7 @@ func (c *competitorCommander) Update(ctx context.Context, id uuid.UUID, params U
 
 func (c *competitorCommander) Delete(ctx context.Context, id uuid.UUID) error {
 	return withLockedChild(ctx, c.store, id, competitorChildren, func(tx Store, _ *Brand, competitor *Competitor) error {
-		observed := competitor.Source == CompetitorSourceObserved
-		if observed {
+		if competitor.Source == CompetitorSourceObserved {
 			observations, err := tx.CompetitorRepo().Observations(ctx, competitor.BrandID)
 			if err != nil {
 				return err
@@ -348,16 +342,7 @@ func (c *competitorCommander) Delete(ctx context.Context, id uuid.UUID) error {
 			}
 		}
 
-		if err := tx.CompetitorRepo().Delete(ctx, id); err != nil {
-			return err
-		}
-
-		// An unconfirmed suggestion was never part of the reviewed set.
-		if observed && !competitor.Confirmed {
-			return nil
-		}
-
-		return tx.VisibilityRepo().InvalidateReview(ctx, competitor.BrandID, ReviewCompetitors)
+		return tx.CompetitorRepo().Delete(ctx, id)
 	})
 }
 
@@ -382,10 +367,6 @@ func (c *competitorCommander) Confirm(ctx context.Context, id uuid.UUID) (*Compe
 	}
 
 	return competitor, nil
-}
-
-func (c *competitorCommander) ConfirmAll(ctx context.Context, brandID uuid.UUID) error {
-	return c.store.VisibilityRepo().FinishReview(ctx, brandID, ReviewCompetitors)
 }
 
 type competitorQuerier struct {

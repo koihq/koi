@@ -11,12 +11,10 @@ func TestTrackingReadinessPrecedence(t *testing.T) {
 	r := TrackingReadiness{}
 	require.Equal(t, "collection_unavailable", TrackingBlockedReason(r))
 	r.CollectionEnabled = true
-	require.Equal(t, "reviews_required", TrackingBlockedReason(r))
-	r.PromptsReviewed, r.CompetitorsReviewed = true, true
+	require.Equal(t, "start_required", TrackingBlockedReason(r))
+	r.Confirmed = true
 	require.Equal(t, "prompts_required", TrackingBlockedReason(r))
-	r.HasPrompts, r.GenerationActive = true, true
-	require.Equal(t, "generation_active", TrackingBlockedReason(r))
-	r.GenerationActive = false
+	r.HasPrompts = true
 	require.Empty(t, TrackingBlockedReason(r))
 }
 

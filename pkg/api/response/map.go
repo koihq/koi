@@ -19,7 +19,7 @@ func MapError(err error) (int, Envelope) {
 		case domain.CodeResourceConflict, domain.CodeEmailTaken, domain.CodeBrandLimitReached, domain.CodePromptLimitReached,
 			domain.CodeBillingConflict, domain.CodeBillingCheckoutPending,
 			domain.CodeBillingSubscriptionExists, domain.CodeBillingPriceMismatch,
-			domain.CodeGenerationConflict, domain.CodeIdempotencyConflict,
+			domain.CodeIdempotencyConflict,
 			domain.CodeInitialAlreadyCompleted, domain.CodeRunNotReady:
 			return http.StatusConflict, envelope(de)
 		case domain.CodeInvalidCredentials, domain.CodeUnauthorized:

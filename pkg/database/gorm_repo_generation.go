@@ -47,7 +47,7 @@ func (r *GormGenerationRepository) Active(ctx context.Context, brandID uuid.UUID
 	})
 }
 
-func (r *GormGenerationRepository) HasSucceededInitial(ctx context.Context, brandID uuid.UUID) (bool, error) {
+func (r *GormGenerationRepository) HasSucceeded(ctx context.Context, brandID uuid.UUID) (bool, error) {
 	db, err := r.query(ctx)
 	if err != nil {
 		return false, err
@@ -55,8 +55,8 @@ func (r *GormGenerationRepository) HasSucceededInitial(ctx context.Context, bran
 
 	var count int64
 
-	err = db.Model(&domain.GenerationRun{}).Where("brand_id = ? AND mode = ? AND state = ?",
-		brandID, domain.GenerationInitial, domain.GenerationSucceeded).Count(&count).Error
+	err = db.Model(&domain.GenerationRun{}).Where("brand_id = ? AND state = ?",
+		brandID, domain.GenerationSucceeded).Count(&count).Error
 
 	return count > 0, mapDBError(err)
 }
@@ -77,15 +77,6 @@ func (r *GormGenerationRepository) CreateAndEnqueue(ctx context.Context, run *do
 		}
 		if limit == 0 {
 			return domain.ErrBillingRequired
-		}
-		if run.Mode == domain.GenerationPrompts {
-			count, err := storedPromptCount(ctx, r.db, brand.OrganizationID)
-			if err != nil {
-				return err
-			}
-			if count >= int64(limit) {
-				return domain.ErrPromptLimitReached
-			}
 		}
 	}
 

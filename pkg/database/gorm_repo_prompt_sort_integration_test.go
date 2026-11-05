@@ -24,7 +24,7 @@ func TestPromptSortPaginatesAfterRanking(t *testing.T) {
 		ids = append(ids, prompt.ID)
 	}
 
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	var cells []domain.VisibilityResult
 	require.NoError(t, db.Where("run_id = ?", run.ID).Find(&cells).Error)
 	positiveByPrompt := map[uuid.UUID]int{

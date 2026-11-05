@@ -31,19 +31,16 @@ func (h *GenerationHandler) Routes() func(chi.Router) {
 
 type CreateGenerationReq struct {
 	BrandRequestScope
-	Mode domain.GenerationMode `json:"mode"`
 }
 
 type GenerationAcceptedRes struct {
 	ID        uuid.UUID              `json:"id"`
-	Mode      domain.GenerationMode  `json:"mode"`
 	State     domain.GenerationState `json:"state"`
 	StatusURL string                 `json:"statusUrl"`
 }
 
 type GenerationRes struct {
 	ID              uuid.UUID              `json:"id"`
-	Mode            domain.GenerationMode  `json:"mode"`
 	State           domain.GenerationState `json:"state"`
 	Attempt         int                    `json:"attempt"`
 	PromptCount     int                    `json:"promptCount"`
@@ -62,7 +59,6 @@ func generationStatusURL(runID uuid.UUID) string {
 func GenerationToRes(run *domain.GenerationRun) GenerationRes {
 	return GenerationRes{
 		ID:              run.ID,
-		Mode:            run.Mode,
 		State:           run.State,
 		Attempt:         run.Attempt,
 		PromptCount:     run.PromptCount,
@@ -93,20 +89,9 @@ func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		key = &values[0]
 	}
 
-	run, terminalReplay, err := h.commander.Create(r.Context(), input.BrandID, input.Mode, key)
+	run, terminalReplay, err := h.commander.Create(r.Context(), input.BrandID, key)
 	if err != nil {
-		status, env := response.MapError(err)
-		if domainErr, ok := err.(*domain.Error); ok && domainErr.RunID != uuid.Nil {
-			env.Error.StatusURL = generationStatusURL(domainErr.RunID)
-		}
-
-		if status == http.StatusInternalServerError {
-			response.WriteDomainError(w, r, err)
-
-			return
-		}
-
-		response.JSON(w, r, status, env)
+		response.WriteDomainError(w, r, err)
 
 		return
 	}
@@ -119,7 +104,6 @@ func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", generationStatusURL(run.ID))
 	response.JSON(w, r, status, GenerationAcceptedRes{
 		ID:        run.ID,
-		Mode:      run.Mode,
 		State:     run.State,
 		StatusURL: generationStatusURL(run.ID),
 	})

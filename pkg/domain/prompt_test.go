@@ -90,12 +90,6 @@ func (d *promptCommandDeps) lockBrand(brandID, organizationID uuid.UUID) {
 	}, nil).Once()
 }
 
-func (d *promptCommandDeps) invalidateReview(brandID uuid.UUID) {
-	d.visibility.EXPECT().InvalidateReview(mock.Anything, brandID, ReviewPrompts).Run(func(context.Context, uuid.UUID, string) {
-		d.steps = append(d.steps, "invalidate")
-	}).Return(nil).Once()
-}
-
 // noResults answers the HasResults lookup every prompt mutation returns with.
 func (d *promptCommandDeps) noResults() {
 	d.visibility.EXPECT().PromptsWithResults(mock.Anything, mock.Anything, mock.Anything).
@@ -122,7 +116,7 @@ func TestPromptUpdateKeepsProvenanceAndConfirmation(t *testing.T) {
 	require.ErrorIs(t, prompt.Update(UpdatePromptParams{Text: &empty}), ErrValidation)
 }
 
-func TestPromptCreateReservesCapacityAndInvalidatesReviewInOrder(t *testing.T) {
+func TestPromptCreateReservesCapacityInOrder(t *testing.T) {
 	d := newPromptCommandDeps(t)
 	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
 	d.lockBrand(brandID, organizationID)
@@ -137,12 +131,11 @@ func TestPromptCreateReservesCapacityAndInvalidatesReviewInOrder(t *testing.T) {
 
 		return nil
 	}).Once()
-	d.invalidateReview(brandID)
 
 	created, err := NewPromptCommander(d.store).Create(t.Context(), brandID, CreatePromptParams{Text: " What   is Koi? "})
 	require.NoError(t, err)
 	require.Equal(t, promptID, created.ID)
-	require.Equal(t, []string{"lock", "capacity", "create", "invalidate"}, d.steps)
+	require.Equal(t, []string{"lock", "capacity", "create"}, d.steps)
 }
 
 func TestPromptCreateChecksTheBrandBeforeValidatingAndStopsAtTheLimit(t *testing.T) {
@@ -165,7 +158,7 @@ func TestPromptCreateChecksTheBrandBeforeValidatingAndStopsAtTheLimit(t *testing
 	require.ErrorIs(t, err, ErrPromptLimitReached)
 }
 
-func TestPromptUpdateReadsUnderLockAndInvalidatesReview(t *testing.T) {
+func TestPromptUpdateReadsUnderLock(t *testing.T) {
 	d := newPromptCommandDeps(t)
 	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
 	stale := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Stale", Source: PromptSourceDrafted}
@@ -179,14 +172,13 @@ func TestPromptUpdateReadsUnderLockAndInvalidatesReview(t *testing.T) {
 		d.steps = append(d.steps, "write")
 	}).Return(nil).Once()
 	d.noResults()
-	d.invalidateReview(brandID)
 
 	text := " New   text "
 	updated, err := NewPromptCommander(d.store).Update(t.Context(), promptID, UpdatePromptParams{Text: &text})
 	require.NoError(t, err)
 	require.Equal(t, "New text", updated.Text)
 	require.True(t, updated.Confirmed, "the update starts from the row read under the lock")
-	require.Equal(t, []string{"lock", "read", "write", "invalidate"}, d.steps)
+	require.Equal(t, []string{"lock", "read", "write"}, d.steps)
 }
 
 func TestPromptUpdateReservesCapacityOnlyWhenReactivating(t *testing.T) {
@@ -214,7 +206,7 @@ func TestPromptUpdateReservesCapacityOnlyWhenReactivating(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPromptEmptyUpdateKeepsTheReview(t *testing.T) {
+func TestPromptEmptyUpdateWrites(t *testing.T) {
 	d := newPromptCommandDeps(t)
 	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
 	prompt := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Q", Source: PromptSourceDrafted}
@@ -227,7 +219,7 @@ func TestPromptEmptyUpdateKeepsTheReview(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPromptConfirmAndConfirmAll(t *testing.T) {
+func TestPromptConfirm(t *testing.T) {
 	d := newPromptCommandDeps(t)
 	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
 	prompt := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Source: PromptSourceDrafted}
@@ -239,9 +231,6 @@ func TestPromptConfirmAndConfirmAll(t *testing.T) {
 	got, err := NewPromptCommander(d.store).Confirm(t.Context(), promptID)
 	require.NoError(t, err)
 	require.True(t, got.Confirmed)
-
-	d.visibility.EXPECT().FinishReview(mock.Anything, brandID, ReviewPrompts).Return(nil).Once()
-	require.NoError(t, NewPromptCommander(d.store).ConfirmAll(t.Context(), brandID))
 }
 
 func TestPromptDeleteInOrderAndUnknownPrompt(t *testing.T) {
@@ -256,10 +245,9 @@ func TestPromptDeleteInOrderAndUnknownPrompt(t *testing.T) {
 	d.prompts.EXPECT().Delete(mock.Anything, promptID).Run(func(context.Context, uuid.UUID) {
 		d.steps = append(d.steps, "delete")
 	}).Return(nil).Once()
-	d.invalidateReview(brandID)
 
 	require.NoError(t, NewPromptCommander(d.store).Delete(t.Context(), promptID))
-	require.Equal(t, []string{"lock", "check", "delete", "invalidate"}, d.steps)
+	require.Equal(t, []string{"lock", "check", "delete"}, d.steps)
 
 	missing := newPromptCommandDeps(t)
 	missing.prompts.EXPECT().Get(mock.Anything, promptID).Return(nil, ErrNotFound).Once()
@@ -288,7 +276,7 @@ func TestPromptUpdateRefusesToStopADraft(t *testing.T) {
 	require.False(t, prompt.Inactive)
 }
 
-func TestPromptStopAndResumeKeepTheReview(t *testing.T) {
+func TestPromptStopAndResume(t *testing.T) {
 	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
 	expect := func(d *promptCommandDeps, prompt *Prompt) {
 		d.prompts.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil).Twice()

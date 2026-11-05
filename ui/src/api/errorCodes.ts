@@ -11,7 +11,6 @@ export const errorCodes = [
   "invalid_json",
   "internal",
   "feature_unavailable",
-  "generation_conflict",
   "idempotency_conflict",
   "initial_already_completed",
   "run_not_ready",

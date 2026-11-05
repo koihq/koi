@@ -53,7 +53,6 @@ func TestMaintenanceRunsWithoutCloro(t *testing.T) {
 	require.NoError(t, db.Create(brand).Error)
 	run := &domain.GenerationRun{
 		BrandID:       brand.ID,
-		Mode:          domain.GenerationPrompts,
 		State:         domain.GenerationRunning,
 		ModelSlug:     "test",
 		BrandSnapshot: brand.Snapshot(),

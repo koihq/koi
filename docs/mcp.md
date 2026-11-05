@@ -34,10 +34,10 @@ The skills CLI prompts for the target agent and project or user-wide scope. Then
 | --- | --- |
 | Account identity | `account_me` |
 | Search countries; list/get/create/update brands | `brands_countries`, `brands_list`, `brands_get`, `brands_create`, `brands_update` |
-| List/get/create/update/confirm prompts, stop or resume them (`prompts_update` with `inactive`), delete those with no saved answers | `prompts_list`, `prompts_get`, `prompts_create`, `prompts_update`, `prompts_delete`, `prompts_confirm`, `prompts_confirm_all` |
-| Search/list/get/create/update/delete/confirm competitors | `competitors_search`, `competitors_list`, `competitors_get`, `competitors_create`, `competitors_update`, `competitors_delete`, `competitors_confirm`, `competitors_confirm_all` |
-| Start/list/get drafting jobs | `generations_create`, `generations_list`, `generations_get` |
-| Tracking; list/get runs and answers | `tracking_get`, `runs_list`, `runs_get`, `runs_results` |
+| List/get/create/update/confirm prompts, stop or resume them (`prompts_update` with `inactive`), delete those with no saved answers | `prompts_list`, `prompts_get`, `prompts_create`, `prompts_update`, `prompts_delete`, `prompts_confirm` |
+| Search/list/get/create/update/delete/confirm competitors | `competitors_search`, `competitors_list`, `competitors_get`, `competitors_create`, `competitors_update`, `competitors_delete`, `competitors_confirm` |
+| Start/list/get the brand's one draft | `generations_create`, `generations_list`, `generations_get` |
+| Start or read tracking; list/get runs and answers | `tracking_start`, `tracking_get`, `runs_list`, `runs_get`, `runs_results` |
 | Visibility summary and prompt history | `analysis_summary`, `prompt_visibility`, `prompt_history_runs` |
 | Cloud catalog/quote/subscription/checkout/allowance/portal | `billing_catalog`, `billing_quote`, `billing_subscription`, `billing_checkout`, `billing_confirm_checkout`, `billing_change_allowance`, `billing_portal` |
 

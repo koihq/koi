@@ -1460,63 +1460,6 @@ func (_c *MockCompetitorCommander_Confirm_Call) RunAndReturn(run func(context1 c
 	return _c
 }
 
-// ConfirmAll provides a mock function for the type MockCompetitorCommander
-func (_mock *MockCompetitorCommander) ConfirmAll(context1 context.Context, uUID uuid.UUID) error {
-	ret := _mock.Called(context1, uUID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ConfirmAll")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(context1, uUID)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockCompetitorCommander_ConfirmAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfirmAll'
-type MockCompetitorCommander_ConfirmAll_Call struct {
-	*mock.Call
-}
-
-// ConfirmAll is a helper method to define mock.On call
-//   - context1 context.Context
-//   - uUID uuid.UUID
-func (_e *MockCompetitorCommander_Expecter) ConfirmAll(context1 interface{}, uUID interface{}) *MockCompetitorCommander_ConfirmAll_Call {
-	return &MockCompetitorCommander_ConfirmAll_Call{Call: _e.mock.On("ConfirmAll", context1, uUID)}
-}
-
-func (_c *MockCompetitorCommander_ConfirmAll_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockCompetitorCommander_ConfirmAll_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockCompetitorCommander_ConfirmAll_Call) Return(err error) *MockCompetitorCommander_ConfirmAll_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockCompetitorCommander_ConfirmAll_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) error) *MockCompetitorCommander_ConfirmAll_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Create provides a mock function for the type MockCompetitorCommander
 func (_mock *MockCompetitorCommander) Create(context1 context.Context, uUID uuid.UUID, createCompetitorParams domain.CreateCompetitorParams) (*domain.Competitor, error) {
 	ret := _mock.Called(context1, uUID, createCompetitorParams)
@@ -1993,8 +1936,8 @@ func (_m *MockGenerationCommander) EXPECT() *MockGenerationCommander_Expecter {
 }
 
 // Create provides a mock function for the type MockGenerationCommander
-func (_mock *MockGenerationCommander) Create(context1 context.Context, uUID uuid.UUID, generationMode domain.GenerationMode, s *string) (*domain.GenerationRun, bool, error) {
-	ret := _mock.Called(context1, uUID, generationMode, s)
+func (_mock *MockGenerationCommander) Create(context1 context.Context, uUID uuid.UUID, s *string) (*domain.GenerationRun, bool, error) {
+	ret := _mock.Called(context1, uUID, s)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -2003,23 +1946,23 @@ func (_mock *MockGenerationCommander) Create(context1 context.Context, uUID uuid
 	var r0 *domain.GenerationRun
 	var r1 bool
 	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.GenerationMode, *string) (*domain.GenerationRun, bool, error)); ok {
-		return returnFunc(context1, uUID, generationMode, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string) (*domain.GenerationRun, bool, error)); ok {
+		return returnFunc(context1, uUID, s)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, domain.GenerationMode, *string) *domain.GenerationRun); ok {
-		r0 = returnFunc(context1, uUID, generationMode, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string) *domain.GenerationRun); ok {
+		r0 = returnFunc(context1, uUID, s)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.GenerationRun)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, domain.GenerationMode, *string) bool); ok {
-		r1 = returnFunc(context1, uUID, generationMode, s)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, *string) bool); ok {
+		r1 = returnFunc(context1, uUID, s)
 	} else {
 		r1 = ret.Get(1).(bool)
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context, uuid.UUID, domain.GenerationMode, *string) error); ok {
-		r2 = returnFunc(context1, uUID, generationMode, s)
+	if returnFunc, ok := ret.Get(2).(func(context.Context, uuid.UUID, *string) error); ok {
+		r2 = returnFunc(context1, uUID, s)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -2034,13 +1977,12 @@ type MockGenerationCommander_Create_Call struct {
 // Create is a helper method to define mock.On call
 //   - context1 context.Context
 //   - uUID uuid.UUID
-//   - generationMode domain.GenerationMode
 //   - s *string
-func (_e *MockGenerationCommander_Expecter) Create(context1 interface{}, uUID interface{}, generationMode interface{}, s interface{}) *MockGenerationCommander_Create_Call {
-	return &MockGenerationCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, generationMode, s)}
+func (_e *MockGenerationCommander_Expecter) Create(context1 interface{}, uUID interface{}, s interface{}) *MockGenerationCommander_Create_Call {
+	return &MockGenerationCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, s)}
 }
 
-func (_c *MockGenerationCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, generationMode domain.GenerationMode, s *string)) *MockGenerationCommander_Create_Call {
+func (_c *MockGenerationCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, s *string)) *MockGenerationCommander_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -2050,19 +1992,14 @@ func (_c *MockGenerationCommander_Create_Call) Run(run func(context1 context.Con
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
-		var arg2 domain.GenerationMode
+		var arg2 *string
 		if args[2] != nil {
-			arg2 = args[2].(domain.GenerationMode)
-		}
-		var arg3 *string
-		if args[3] != nil {
-			arg3 = args[3].(*string)
+			arg2 = args[2].(*string)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
 		)
 	})
 	return _c
@@ -2073,7 +2010,7 @@ func (_c *MockGenerationCommander_Create_Call) Return(generationRun *domain.Gene
 	return _c
 }
 
-func (_c *MockGenerationCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, generationMode domain.GenerationMode, s *string) (*domain.GenerationRun, bool, error)) *MockGenerationCommander_Create_Call {
+func (_c *MockGenerationCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, s *string) (*domain.GenerationRun, bool, error)) *MockGenerationCommander_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2338,63 +2275,6 @@ func (_c *MockPromptCommander_Confirm_Call) Return(prompt *domain.Prompt, err er
 }
 
 func (_c *MockPromptCommander_Confirm_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (*domain.Prompt, error)) *MockPromptCommander_Confirm_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ConfirmAll provides a mock function for the type MockPromptCommander
-func (_mock *MockPromptCommander) ConfirmAll(context1 context.Context, uUID uuid.UUID) error {
-	ret := _mock.Called(context1, uUID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ConfirmAll")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
-		r0 = returnFunc(context1, uUID)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockPromptCommander_ConfirmAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfirmAll'
-type MockPromptCommander_ConfirmAll_Call struct {
-	*mock.Call
-}
-
-// ConfirmAll is a helper method to define mock.On call
-//   - context1 context.Context
-//   - uUID uuid.UUID
-func (_e *MockPromptCommander_Expecter) ConfirmAll(context1 interface{}, uUID interface{}) *MockPromptCommander_ConfirmAll_Call {
-	return &MockPromptCommander_ConfirmAll_Call{Call: _e.mock.On("ConfirmAll", context1, uUID)}
-}
-
-func (_c *MockPromptCommander_ConfirmAll_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockPromptCommander_ConfirmAll_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockPromptCommander_ConfirmAll_Call) Return(err error) *MockPromptCommander_ConfirmAll_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockPromptCommander_ConfirmAll_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) error) *MockPromptCommander_ConfirmAll_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3495,6 +3375,90 @@ func (_c *MockStore_VisibilityRepo_Call) Return(visibilityRepository domain.Visi
 }
 
 func (_c *MockStore_VisibilityRepo_Call) RunAndReturn(run func() domain.VisibilityRepository) *MockStore_VisibilityRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// NewMockTrackingCommander creates a new instance of MockTrackingCommander. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// The first argument is typically a *testing.T value.
+func NewMockTrackingCommander(t interface {
+	mock.TestingT
+	Cleanup(func())
+}) *MockTrackingCommander {
+	mock := &MockTrackingCommander{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
+}
+
+// MockTrackingCommander is an autogenerated mock type for the TrackingCommander type
+type MockTrackingCommander struct {
+	mock.Mock
+}
+
+type MockTrackingCommander_Expecter struct {
+	mock *mock.Mock
+}
+
+func (_m *MockTrackingCommander) EXPECT() *MockTrackingCommander_Expecter {
+	return &MockTrackingCommander_Expecter{mock: &_m.Mock}
+}
+
+// Start provides a mock function for the type MockTrackingCommander
+func (_mock *MockTrackingCommander) Start(context1 context.Context, uUID uuid.UUID) error {
+	ret := _mock.Called(context1, uUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Start")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(context1, uUID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockTrackingCommander_Start_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Start'
+type MockTrackingCommander_Start_Call struct {
+	*mock.Call
+}
+
+// Start is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+func (_e *MockTrackingCommander_Expecter) Start(context1 interface{}, uUID interface{}) *MockTrackingCommander_Start_Call {
+	return &MockTrackingCommander_Start_Call{Call: _e.mock.On("Start", context1, uUID)}
+}
+
+func (_c *MockTrackingCommander_Start_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockTrackingCommander_Start_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockTrackingCommander_Start_Call) Return(err error) *MockTrackingCommander_Start_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTrackingCommander_Start_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) error) *MockTrackingCommander_Start_Call {
 	_c.Call.Return(run)
 	return _c
 }

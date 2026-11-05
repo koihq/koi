@@ -48,7 +48,7 @@ page parameters itself:
 ```go
 r.Get("/", List(competitorFilter, h.querier.List, CompetitorToRes))
 r.Post("/{id}/confirm", Action(h.commander.Confirm, CompetitorToRes))
-r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/confirm", Command(h.confirmAll))
+r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/tracking/start", Command(h.startTracking))
 ```
 
 MCP tools use the same services through `mcpResult` and `mcpPageResult`:
@@ -114,11 +114,15 @@ Business rules live here, not in `database`. Put what an entity can decide alone
 ```go
 func (c *promptCommander) Delete(ctx context.Context, id uuid.UUID) error {
     return withLockedChild(ctx, c.store, id, promptChildren, func(tx Store, _ *Brand, prompt *Prompt) error {
-        if err := tx.PromptRepo().Delete(ctx, id); err != nil {
+        if err := markPromptResults(ctx, tx, prompt.BrandID, prompt); err != nil {
             return err
         }
 
-        return tx.VisibilityRepo().InvalidateReview(ctx, prompt.BrandID, ReviewPrompts)
+        if prompt.HasResults {
+            return ErrResourceConflict
+        }
+
+        return tx.PromptRepo().Delete(ctx, id)
     })
 }
 ```

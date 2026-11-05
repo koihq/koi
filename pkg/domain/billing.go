@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	TrialPromptLimit       = 10
-	TrialInitialDraftLimit = 5
+	TrialPromptLimit        = 10
+	InitialDraftPromptLimit = 5
 )
 
 var (
@@ -221,16 +221,10 @@ func (s BillingSubscription) PromptLimit(now time.Time) int {
 	return 0
 }
 
-// GenerationBudget returns how many drafted prompts a run may store, given the prompts the
-// organization already stores. A trial's initial draft leaves room for the customer's own prompts.
-func (s BillingSubscription) GenerationBudget(now time.Time, mode GenerationMode, stored int) int {
-	available := max(0, s.PromptLimit(now)-stored)
-
-	if mode == GenerationInitial && s.inTrial(now) {
-		return min(available, TrialInitialDraftLimit)
-	}
-
-	return available
+// GenerationBudget returns how many drafted prompts the initial draft may store, given the
+// prompts the organization already stores. It leaves room for the customer's own prompts.
+func (s BillingSubscription) GenerationBudget(now time.Time, stored int) int {
+	return min(max(0, s.PromptLimit(now)-stored), InitialDraftPromptLimit)
 }
 
 func (s BillingSubscription) inTrial(now time.Time) bool {

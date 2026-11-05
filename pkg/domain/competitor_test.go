@@ -154,13 +154,7 @@ func (d *competitorCommandDeps) locked(competitor *Competitor) {
 	d.lockBrand(competitor.BrandID)
 }
 
-func (d *competitorCommandDeps) invalidateReview(brandID uuid.UUID) {
-	d.visibility.EXPECT().InvalidateReview(mock.Anything, brandID, ReviewCompetitors).Run(func(context.Context, uuid.UUID, string) {
-		d.steps = append(d.steps, "invalidate")
-	}).Return(nil).Once()
-}
-
-func TestCompetitorCreateChecksURLsAndInvalidatesReviewInOrder(t *testing.T) {
+func TestCompetitorCreateChecksURLsInOrder(t *testing.T) {
 	d := newCompetitorCommandDeps(t)
 	brandID, competitorID := uuid.New(), uuid.New()
 	d.lockBrand(brandID)
@@ -173,7 +167,6 @@ func TestCompetitorCreateChecksURLsAndInvalidatesReviewInOrder(t *testing.T) {
 
 		return nil
 	}).Once()
-	d.invalidateReview(brandID)
 
 	created, err := NewCompetitorCommander(d.store).Create(t.Context(), brandID, CreateCompetitorParams{
 		Name:   " Acme ",
@@ -181,7 +174,7 @@ func TestCompetitorCreateChecksURLsAndInvalidatesReviewInOrder(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, competitorID, created.ID)
-	require.Equal(t, []string{"lock", "check", "create", "invalidate"}, d.steps)
+	require.Equal(t, []string{"lock", "check", "create"}, d.steps)
 }
 
 func TestCompetitorCreateChecksTheBrandBeforeValidating(t *testing.T) {
@@ -193,7 +186,7 @@ func TestCompetitorCreateChecksTheBrandBeforeValidating(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
-func TestCompetitorUpdateKeepsProvenanceConfirmationAndReview(t *testing.T) {
+func TestCompetitorUpdateKeepsProvenanceAndConfirmation(t *testing.T) {
 	d := newCompetitorCommandDeps(t)
 	competitor := &Competitor{
 		BaseEntity: BaseEntity{ID: uuid.New()},
@@ -206,7 +199,6 @@ func TestCompetitorUpdateKeepsProvenanceConfirmationAndReview(t *testing.T) {
 	d.noOthers(competitor.BrandID)
 	d.competitors.EXPECT().Update(mock.Anything, competitor).Return(nil).Once()
 
-	// No InvalidateReview expectation: the mock fails the test if the review is touched.
 	name := " New   name "
 	updated, err := NewCompetitorCommander(d.store).Update(t.Context(), competitor.ID, UpdateCompetitorParams{Name: &name})
 	require.NoError(t, err)
@@ -255,12 +247,9 @@ func TestCompetitorConfirmRequiresAnIdentityAndUniqueURLs(t *testing.T) {
 	confirmed, err := NewCompetitorCommander(valid.store).Confirm(t.Context(), ready.ID)
 	require.NoError(t, err)
 	require.True(t, confirmed.Confirmed)
-
-	valid.visibility.EXPECT().FinishReview(mock.Anything, brandID, ReviewCompetitors).Return(nil).Once()
-	require.NoError(t, NewCompetitorCommander(valid.store).ConfirmAll(t.Context(), brandID))
 }
 
-func TestCompetitorDeleteDismissesObservedAndInvalidatesOnlyReviewedSets(t *testing.T) {
+func TestCompetitorDeleteDismissesObserved(t *testing.T) {
 	brandID := uuid.New()
 
 	suggestion := newCompetitorCommandDeps(t)
@@ -285,14 +274,12 @@ func TestCompetitorDeleteDismissesObservedAndInvalidatesOnlyReviewedSets(t *test
 	reviewed.competitors.EXPECT().Observations(mock.Anything, brandID).Return(nil, nil).Once()
 	reviewed.competitors.EXPECT().SaveObservations(mock.Anything, mock.Anything).Return(nil).Once()
 	reviewed.competitors.EXPECT().Delete(mock.Anything, confirmedObserved.ID).Return(nil).Once()
-	reviewed.invalidateReview(brandID)
 	require.NoError(t, NewCompetitorCommander(reviewed.store).Delete(t.Context(), confirmedObserved.ID))
 
 	manual := newCompetitorCommandDeps(t)
 	added := &Competitor{BaseEntity: BaseEntity{ID: uuid.New()}, BrandID: brandID, Name: "Acme", Domain: "acme.com", Source: CompetitorSourceManual, Confirmed: true}
 	manual.locked(added)
 	manual.competitors.EXPECT().Delete(mock.Anything, added.ID).Return(nil).Once()
-	manual.invalidateReview(brandID)
 	require.NoError(t, NewCompetitorCommander(manual.store).Delete(t.Context(), added.ID))
 }
 

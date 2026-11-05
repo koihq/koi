@@ -80,12 +80,38 @@ paths:
         "402":
           $ref: "#/components/responses/Error"
         "200":
-          description: Review and daily collection schedule
+          description: Confirmation and daily collection schedule
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrackingStatus"
         default:
+          $ref: "#/components/responses/Error"
+  /api/v1/tracking/start:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequestScope"
+      tags: [visibility]
+      operationId: startVisibilityTracking
+      description: Confirms the brand's manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Tracking confirmed
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
   /api/v1/runs:
     get:
@@ -798,27 +824,6 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/prompts/confirm:
-    post:
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BrandRequestScope"
-      tags: [prompts]
-      operationId: confirmAllPrompts
-      security:
-        - cookieAuth: []
-      responses:
-        "204":
-          description: All prompts confirmed
-        "401":
-          $ref: "#/components/responses/Error"
-        "402":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/Error"
   /api/v1/competitors:
     get:
       tags: [competitors]
@@ -1000,33 +1005,11 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/competitors/confirm:
-    post:
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BrandRequestScope"
-      tags: [competitors]
-      operationId: confirmAllCompetitors
-      description: Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-      security:
-        - cookieAuth: []
-      responses:
-        "204":
-          description: Review finished; observed suggestions remain unchanged
-        "401":
-          $ref: "#/components/responses/Error"
-        "402":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/Error"
   /api/v1/generations:
     post:
       tags: [generations]
       operationId: createGeneration
-      description: Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+      description: Starts the brand's one draft, creating a run and River job atomically. An active run is returned instead. A failed draft can run again until tracking starts. A terminal replay of the same idempotency key returns 200.
       security:
         - cookieAuth: []
       parameters:
@@ -1037,24 +1020,21 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/GenerationRequest"
-            example:
-              mode: initial
       responses:
         "200":
-          description: Terminal run replayed with the same idempotency key and mode
+          description: Terminal run replayed with the same idempotency key
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationAccepted"
         "202":
-          description: New or compatible active run
+          description: New or active run
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationAccepted"
               example:
                 id: 22222222-2222-4222-8222-222222222222
-                mode: initial
                 state: queued
                 statusUrl: /api/v1/generations/22222222-2222-4222-8222-222222222222
         "400":
@@ -1066,7 +1046,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
         "409":
-          description: Active mode conflict, idempotency key reused for another mode, or initial already completed. Active mode conflicts include error.statusUrl.
+          description: The draft already succeeded or tracking has started.
           content:
             application/json:
               schema:
@@ -1114,7 +1094,6 @@ paths:
                 $ref: "#/components/schemas/GenerationStatus"
               example:
                 id: 22222222-2222-4222-8222-222222222222
-                mode: initial
                 state: queued
                 attempt: 0
                 promptCount: 0
@@ -1536,11 +1515,9 @@ components:
           type: boolean
     TrackingStatus:
       type: object
-      required: [promptsReviewed, competitorsReviewed, startedAt, nextRunAt, blockedReason]
+      required: [confirmed, startedAt, nextRunAt, blockedReason]
       properties:
-        promptsReviewed:
-          type: boolean
-        competitorsReviewed:
+        confirmed:
           type: boolean
         startedAt:
           type: string
@@ -1553,7 +1530,7 @@ components:
         blockedReason:
           type: string
           nullable: true
-          enum: [collection_unavailable, reviews_required, prompts_required, generation_active, billing_inactive_or_over_limit]
+          enum: [collection_unavailable, start_required, prompts_required, billing_inactive_or_over_limit]
     BrandRequest:
       type: object
       description: At least one of domain or githubRepo is required.
@@ -2004,24 +1981,18 @@ components:
           format: date-time
     GenerationRequest:
       type: object
-      required: [brandId, mode]
+      required: [brandId]
       properties:
         brandId:
           type: string
           format: uuid
-        mode:
-          type: string
-          enum: [initial, prompts, competitors]
     GenerationAccepted:
       type: object
-      required: [id, mode, state, statusUrl]
+      required: [id, state, statusUrl]
       properties:
         id:
           type: string
           format: uuid
-        mode:
-          type: string
-          enum: [initial, prompts, competitors]
         state:
           type: string
           enum: [queued, running, succeeded, failed]
@@ -2029,14 +2000,11 @@ components:
           type: string
     GenerationStatus:
       type: object
-      required: [id, mode, state, attempt, promptCount, competitorCount, createdAt]
+      required: [id, state, attempt, promptCount, competitorCount, createdAt]
       properties:
         id:
           type: string
           format: uuid
-        mode:
-          type: string
-          enum: [initial, prompts, competitors]
         state:
           type: string
           enum: [queued, running, succeeded, failed]
@@ -2103,9 +2071,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldError"
-        statusUrl:
-          type: string
-          description: Present for generation_conflict to locate the active run.
     FieldError:
       type: object
       required: [field, code]
@@ -2127,7 +2092,6 @@ components:
         - invalid_json
         - internal
         - feature_unavailable
-        - generation_conflict
         - idempotency_conflict
         - initial_already_completed
         - billing_required

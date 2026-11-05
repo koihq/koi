@@ -21,7 +21,7 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	}, domain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	promptID := prompts.Items[0].ID
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
 	var persistedRun domain.VisibilityRun
@@ -203,7 +203,7 @@ func TestVisibilitySummaryIncludesAllConfirmedCompetitorsAndPromptState(t *testi
 
 func TestVisibilityAnalyticsRepositoryScopesCellsWithoutDomainGuard(t *testing.T) {
 	db, store, ctx, brand := liveVisibilityFixture(t, true)
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
 	now := time.Now().UTC()

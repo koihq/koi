@@ -63,8 +63,7 @@ func TestVisibilityTerminalTimeoutAllowsAnotherRun(t *testing.T) {
 	_, err = domain.NewPromptCommander(store).Create(ctx, brand.ID, domain.CreatePromptParams{Text: "Best tools?"})
 	require.NoError(t, err)
 
-	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"))
-	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors"))
+	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
 	run, err := store.VisibilityRepo().Active(ctx, brand.ID)
 	require.NoError(t, err)
 
@@ -169,11 +168,10 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 		require.NoError(t, err)
 		visibilityHTTP(t, client, http.MethodPost, base+"/prompts", string(body), 201, nil)
 	}
-	visibilityHTTP(t, client, http.MethodPost, base+"/prompts/confirm", scopeBody, 204, nil)
-	visibilityHTTP(t, client, http.MethodPost, base+"/competitors/confirm", scopeBody, 204, nil)
+	visibilityHTTP(t, client, http.MethodPost, base+"/tracking/start", scopeBody, 204, nil)
 	var status api.TrackingStatusRes
 	visibilityHTTP(t, client, http.MethodGet, base+"/tracking?brandId="+brand.ID.String(), "", 200, &status)
-	require.True(t, status.PromptsReviewed && status.CompetitorsReviewed)
+	require.True(t, status.Confirmed)
 	require.Equal(t, "collection_unavailable", *status.BlockedReason)
 	require.Nil(t, status.StartedAt)
 	var runs domain.Page[domain.VisibilityRun]

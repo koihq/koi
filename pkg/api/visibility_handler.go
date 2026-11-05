@@ -91,30 +91,29 @@ func PromptHistoryRunToRes(v *domain.PromptHistoryRun) PromptHistoryRunRes {
 }
 
 type TrackingStatusRes struct {
-	PromptsReviewed     bool       `json:"promptsReviewed"`
-	CompetitorsReviewed bool       `json:"competitorsReviewed"`
-	StartedAt           *time.Time `json:"startedAt"`
-	NextRunAt           *time.Time `json:"nextRunAt"`
-	BlockedReason       *string    `json:"blockedReason"`
+	Confirmed     bool       `json:"confirmed"`
+	StartedAt     *time.Time `json:"startedAt"`
+	NextRunAt     *time.Time `json:"nextRunAt"`
+	BlockedReason *string    `json:"blockedReason"`
 }
 
 func TrackingStatusToRes(v *domain.TrackingStatus) TrackingStatusRes {
 	return TrackingStatusRes{
-		PromptsReviewed:     v.PromptsReviewed,
-		CompetitorsReviewed: v.CompetitorsReviewed,
-		StartedAt:           v.StartedAt,
-		NextRunAt:           v.NextRunAt,
-		BlockedReason:       v.BlockedReason,
+		Confirmed:     v.Confirmed,
+		StartedAt:     v.StartedAt,
+		NextRunAt:     v.NextRunAt,
+		BlockedReason: v.BlockedReason,
 	}
 }
 
 type VisibilityHandler struct {
 	querier   domain.VisibilityQuerier
+	tracker   domain.TrackingCommander
 	analytics *domain.VisibilityAnalyticsQuerier
 }
 
-func NewVisibilityHandler(q domain.VisibilityQuerier, analytics *domain.VisibilityAnalyticsQuerier) *VisibilityHandler {
-	return &VisibilityHandler{querier: q, analytics: analytics}
+func NewVisibilityHandler(q domain.VisibilityQuerier, tracker domain.TrackingCommander, analytics *domain.VisibilityAnalyticsQuerier) *VisibilityHandler {
+	return &VisibilityHandler{querier: q, tracker: tracker, analytics: analytics}
 }
 
 func (h *VisibilityHandler) Routes() func(chi.Router) {
@@ -139,6 +138,18 @@ func (h *VisibilityHandler) Tracking() http.HandlerFunc {
 
 func (h *VisibilityHandler) Summary() http.HandlerFunc {
 	return Read(visibilityScopeParams, h.analytics.Summary, identity[domain.VisibilitySummary])
+}
+
+func (h *VisibilityHandler) StartTracking() http.HandlerFunc {
+	return Command(h.startTracking)
+}
+
+func (h *VisibilityHandler) startTracking(ctx context.Context, req BrandRequestScope) error {
+	if err := requireBrand(req.BrandID); err != nil {
+		return err
+	}
+
+	return h.tracker.Start(ctx, req.BrandID)
 }
 
 func (h *VisibilityHandler) tracking(ctx context.Context, filter domain.BrandFilter) (*domain.TrackingStatus, error) {

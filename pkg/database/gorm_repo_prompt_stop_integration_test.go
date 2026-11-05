@@ -26,7 +26,7 @@ func TestPromptWithResultsCanOnlyBeStoppedAndKeepsItsHistory(t *testing.T) {
 	tracked := listed.Items[0]
 	require.False(t, tracked.HasResults, "a prompt no run has recorded can still be deleted")
 
-	finishVisibilityReviews(t, store, ctx, brand.ID)
+	startVisibilityTracking(t, store, ctx, brand.ID)
 
 	current, err := querier.Get(ctx, tracked.ID)
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestPromptWithResultsCanOnlyBeStoppedAndKeepsItsHistory(t *testing.T) {
 
 	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
-	require.True(t, status.PromptsReviewed, "stopping a prompt does not ask for a new review")
+	require.True(t, status.Confirmed, "stopping a prompt does not ask for a new confirmation")
 
 	inputs, err := store.VisibilityRepo().Inputs(ctx, brand.ID)
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestPromptWithResultsCanOnlyBeStoppedAndKeepsItsHistory(t *testing.T) {
 
 	status, err = store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
-	require.True(t, status.PromptsReviewed, "resuming a prompt does not ask for a new review")
+	require.True(t, status.Confirmed, "resuming a prompt does not ask for a new confirmation")
 
 	inputs, err = store.VisibilityRepo().Inputs(ctx, brand.ID)
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestPromptsWithResultsIsScopedToTheBrandOwner(t *testing.T) {
 	require.NoError(t, err)
 	prompt := prompts.Items[0]
 
-	finishVisibilityReviews(t, store, ctx, brand.ID)
+	startVisibilityTracking(t, store, ctx, brand.ID)
 
 	found, err := store.VisibilityRepo().PromptsWithResults(ctx, brand.ID, []uuid.UUID{prompt.ID})
 	require.NoError(t, err)

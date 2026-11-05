@@ -85,7 +85,6 @@ func (h *CompetitorHandler) Routes() func(chi.Router) {
 		r.Get("/", List(competitorFilter, h.querier.List, CompetitorToRes))
 		r.Get("/search", h.Search)
 		r.With(middlewares.DecodeBody[CreateCompetitorReq]()).Post("/", Create(h.create, CompetitorToRes))
-		r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/confirm", Command(h.confirmAll))
 		r.Get("/{id}", Get(h.querier.Get, CompetitorToRes))
 		r.With(middlewares.DecodeBody[UpdateCompetitorReq]()).Patch("/{id}", Update(h.update, CompetitorToRes))
 		r.Delete("/{id}", Delete(h.commander.Delete))
@@ -160,12 +159,4 @@ func (h *CompetitorHandler) update(ctx context.Context, id uuid.UUID, req Update
 		Aliases:        req.Aliases,
 		AdditionalURLs: req.AdditionalURLs,
 	})
-}
-
-func (h *CompetitorHandler) confirmAll(ctx context.Context, req BrandRequestScope) error {
-	if err := requireBrand(req.BrandID); err != nil {
-		return err
-	}
-
-	return h.commander.ConfirmAll(ctx, req.BrandID)
 }

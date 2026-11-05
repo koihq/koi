@@ -13,17 +13,20 @@ import (
 	"github.com/koihq/koi/pkg/domain"
 )
 
-func (r *GormVisibilityRepository) FinishReview(ctx context.Context, brandID uuid.UUID, kind string) error {
-	if !validReviewKind(kind) {
-		return domain.Validation(domain.FieldError{Field: "review", Code: domain.FieldInvalid})
-	}
-
+// StartTracking confirms the brand's lists once and schedules its first run. Later calls change
+// nothing, so a retry never creates an extra run or confirms a later suggestion.
+func (r *GormVisibilityRepository) StartTracking(ctx context.Context, brandID uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		brand, err := NewBrandRepository(tx).LockForUpdate(ctx, brandID)
 		if err != nil {
 			return err
 		}
-		if kind == "prompts" && r.cloudMode {
+
+		if brand.TrackingConfirmedAt != nil {
+			return nil
+		}
+
+		if r.cloudMode {
 			if err := requirePromptCapacity(ctx, tx, brand.OrganizationID, 0); err != nil {
 				return err
 			}
@@ -35,37 +38,33 @@ func (r *GormVisibilityRepository) FinishReview(ctx context.Context, brandID uui
 			return err
 		}
 
-		now := time.Now().UTC()
-		if kind == "prompts" {
-			var count int64
-			if err := tx.Model(&domain.Prompt{}).Where("brand_id = ?", brandID).Count(&count).Error; err != nil {
-				return err
-			}
-
-			if count == 0 {
-				return domain.Validation(domain.FieldError{Field: "prompts", Code: "empty"})
-			}
-
-			if err := tx.Model(&domain.Prompt{}).Where("brand_id = ?", brandID).Update("confirmed", true).Error; err != nil {
-				return err
-			}
-			brand.PromptsReviewedAt = &now
-		} else {
-			if err := tx.Model(&domain.Competitor{}).Where("brand_id = ? AND source <> ?", brandID, domain.CompetitorSourceObserved).Update("confirmed", true).Error; err != nil {
-				return err
-			}
-			brand.CompetitorsReviewedAt = &now
-		}
-
-		if err := tx.Model(brand).Updates(map[string]any{
-			"prompts_reviewed_at":     brand.PromptsReviewedAt,
-			"competitors_reviewed_at": brand.CompetitorsReviewedAt,
-		}).Error; err != nil {
+		var active int64
+		if err := tx.Model(&domain.Prompt{}).Where("brand_id = ? AND NOT inactive", brandID).Count(&active).Error; err != nil {
 			return err
 		}
 
-		// Finishing another review after tracking started never creates an extra run.
-		if brand.VisibilityStartedAt != nil || !r.enabled || r.client == nil {
+		if active == 0 {
+			return domain.Validation(domain.FieldError{Field: "prompts", Code: "empty"})
+		}
+
+		if err := tx.Model(&domain.Prompt{}).Where("brand_id = ?", brandID).Update("confirmed", true).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&domain.Competitor{}).
+			Where("brand_id = ? AND source <> ?", brandID, domain.CompetitorSourceObserved).
+			Update("confirmed", true).Error; err != nil {
+			return err
+		}
+
+		now := time.Now().UTC()
+		brand.TrackingConfirmedAt = &now
+
+		if err := tx.Model(brand).Update("tracking_confirmed_at", now).Error; err != nil {
+			return err
+		}
+
+		if !r.enabled || r.client == nil {
 			return nil
 		}
 
@@ -80,10 +79,9 @@ func (r *GormVisibilityRepository) Tracking(ctx context.Context, brandID uuid.UU
 	}
 
 	status := &domain.TrackingStatus{
-		PromptsReviewed:     brand.PromptsReviewedAt != nil,
-		CompetitorsReviewed: brand.CompetitorsReviewedAt != nil,
-		StartedAt:           brand.VisibilityStartedAt,
-		NextRunAt:           brand.NextVisibilityAt,
+		Confirmed: brand.TrackingConfirmedAt != nil,
+		StartedAt: brand.VisibilityStartedAt,
+		NextRunAt: brand.NextVisibilityAt,
 	}
 
 	reason, err := r.blockedReason(ctx, brand)
@@ -99,11 +97,10 @@ func (r *GormVisibilityRepository) Tracking(ctx context.Context, brandID uuid.UU
 
 func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *domain.Brand) (string, error) {
 	readiness := domain.TrackingReadiness{
-		CollectionEnabled:   r.enabled && r.client != nil,
-		PromptsReviewed:     brand.PromptsReviewedAt != nil,
-		CompetitorsReviewed: brand.CompetitorsReviewedAt != nil,
+		CollectionEnabled: r.enabled && r.client != nil,
+		Confirmed:         brand.TrackingConfirmedAt != nil,
 	}
-	if !readiness.CollectionEnabled || !readiness.PromptsReviewed || !readiness.CompetitorsReviewed {
+	if !readiness.CollectionEnabled || !readiness.Confirmed {
 		return domain.TrackingBlockedReason(readiness), nil
 	}
 	if r.cloudMode {
@@ -119,15 +116,6 @@ func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *dom
 	if err := r.db.WithContext(ctx).Raw("SELECT EXISTS (SELECT 1 FROM prompts WHERE brand_id = ? AND confirmed AND NOT inactive)", brand.ID).Scan(&readiness.HasPrompts).Error; err != nil {
 		return "", err
 	}
-	if !readiness.HasPrompts {
-		return domain.TrackingBlockedReason(readiness), nil
-	}
-
-	_, err := NewGenerationRepository(r.db, r.client, r.cloudMode).Active(ctx, brand.ID)
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return "", err
-	}
-	readiness.GenerationActive = err == nil
 
 	return domain.TrackingBlockedReason(readiness), nil
 }
@@ -140,7 +128,7 @@ func (s *Store) DispatchVisibility(ctx context.Context, now time.Time) error {
 
 	var brands []domain.Brand
 	if err := s.db.WithContext(ctx).Where(`next_visibility_at <= ? OR
-		(visibility_started_at IS NULL AND prompts_reviewed_at IS NOT NULL AND competitors_reviewed_at IS NOT NULL)`, now).
+		(visibility_started_at IS NULL AND tracking_confirmed_at IS NOT NULL)`, now).
 		Find(&brands).Error; err != nil {
 		return err
 	}
@@ -247,30 +235,4 @@ func (r *GormVisibilityRepository) schedule(ctx context.Context, brand *domain.B
 	}
 
 	return nil
-}
-
-// InvalidateReview asks the owner to review a set again after it changed.
-func (r *GormVisibilityRepository) InvalidateReview(ctx context.Context, brandID uuid.UUID, kind string) error {
-	if !validReviewKind(kind) {
-		return domain.Validation(domain.FieldError{Field: "review", Code: domain.FieldInvalid})
-	}
-
-	brands, err := NewBrandRepository(r.db).query(ctx)
-	if err != nil {
-		return err
-	}
-
-	return requireRow(invalidateReviewRows(brands, brandID, kind))
-}
-
-func validReviewKind(kind string) bool {
-	return kind == domain.ReviewPrompts || kind == domain.ReviewCompetitors
-}
-
-func invalidateReview(tx *gorm.DB, brandID uuid.UUID, kind string) error {
-	return invalidateReviewRows(tx, brandID, kind).Error
-}
-
-func invalidateReviewRows(db *gorm.DB, brandID uuid.UUID, kind string) *gorm.DB {
-	return db.Model(&domain.Brand{}).Where("id = ?", brandID).Update(kind+"_reviewed_at", nil)
 }

@@ -18,7 +18,7 @@ func TestPromptHistoryKeepsSnapshotsWithoutLivePrompt(t *testing.T) {
 	}, domain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
 	prompt := prompts.Items[0]
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	querier := domain.NewVisibilityQuerier(store)
 	page := domain.PageParams{Page: 1, PageSize: 10}
 

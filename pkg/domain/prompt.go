@@ -143,7 +143,6 @@ type PromptCommander interface {
 	Update(context.Context, uuid.UUID, UpdatePromptParams) (*Prompt, error)
 	Delete(context.Context, uuid.UUID) error
 	Confirm(context.Context, uuid.UUID) (*Prompt, error)
-	ConfirmAll(context.Context, uuid.UUID) error
 }
 
 type PromptQuerier interface {
@@ -170,11 +169,7 @@ func (c *promptCommander) Create(ctx context.Context, brandID uuid.UUID, params 
 			return err
 		}
 
-		if err := tx.PromptRepo().Create(ctx, prompt); err != nil {
-			return err
-		}
-
-		return tx.VisibilityRepo().InvalidateReview(ctx, brandID, ReviewPrompts)
+		return tx.PromptRepo().Create(ctx, prompt)
 	})
 	if err != nil {
 		return nil, err
@@ -204,17 +199,7 @@ func (c *promptCommander) Update(ctx context.Context, id uuid.UUID, params Updat
 			return err
 		}
 
-		if err := markPromptResults(ctx, tx, prompt.BrandID, prompt); err != nil {
-			return err
-		}
-
-		// Stopping or resuming is an explicit choice, not new content to review, so it must
-		// not block collection for the brand's other prompts.
-		if params.Text == nil {
-			return nil
-		}
-
-		return tx.VisibilityRepo().InvalidateReview(ctx, prompt.BrandID, ReviewPrompts)
+		return markPromptResults(ctx, tx, prompt.BrandID, prompt)
 	})
 	if err != nil {
 		return nil, err
@@ -236,11 +221,7 @@ func (c *promptCommander) Delete(ctx context.Context, id uuid.UUID) error {
 			return ErrResourceConflict
 		}
 
-		if err := tx.PromptRepo().Delete(ctx, id); err != nil {
-			return err
-		}
-
-		return tx.VisibilityRepo().InvalidateReview(ctx, prompt.BrandID, ReviewPrompts)
+		return tx.PromptRepo().Delete(ctx, id)
 	})
 }
 
@@ -262,10 +243,6 @@ func (c *promptCommander) Confirm(ctx context.Context, id uuid.UUID) (*Prompt, e
 	}
 
 	return prompt, nil
-}
-
-func (c *promptCommander) ConfirmAll(ctx context.Context, brandID uuid.UUID) error {
-	return c.store.VisibilityRepo().FinishReview(ctx, brandID, ReviewPrompts)
 }
 
 func promptChildren(s Store) BaseEntityQuerier[Prompt] { return s.PromptRepo() }

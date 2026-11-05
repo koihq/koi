@@ -28,7 +28,7 @@ func appearanceCell(cell domain.VisibilityResult, name, link string) domain.Visi
 
 func TestObservedCompetitorsCountDistinctCellsAndNeverAutoConfirm(t *testing.T) {
 	db, store, ctx, brand := liveVisibilityFixture(t, true)
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
 
@@ -80,13 +80,13 @@ func TestObservedCompetitorsCountDistinctCellsAndNeverAutoConfirm(t *testing.T) 
 	require.Equal(t, domain.CompetitorSourceObserved, suggestion.Source)
 	require.Equal(t, "acme.dev", suggestion.Domain)
 	require.False(t, suggestion.Confirmed)
-	require.NoError(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "competitors"))
+	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
 	unchanged, err := store.CompetitorRepo().Get(ctx, suggestion.ID)
 	require.NoError(t, err)
 	require.False(t, unchanged.Confirmed)
 	tracking, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
-	require.True(t, tracking.CompetitorsReviewed)
+	require.True(t, tracking.Confirmed)
 	require.Nil(t, tracking.BlockedReason)
 
 	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, domain.PageParams{Page: 1, PageSize: 10})
@@ -107,7 +107,7 @@ func TestObservedCompetitorsCountDistinctCellsAndNeverAutoConfirm(t *testing.T) 
 
 func TestNameOnlySuggestionNeedsIdentityAndHistoricalLinksFollowEdits(t *testing.T) {
 	_, store, ctx, brand := liveVisibilityFixture(t, true)
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
 	for _, cell := range cells[:2] {
@@ -166,7 +166,7 @@ func TestNameOnlySuggestionNeedsIdentityAndHistoricalLinksFollowEdits(t *testing
 
 func TestObservedDismissalSurvivesRediscoveryAndAllowsManualIdentity(t *testing.T) {
 	_, store, ctx, brand := liveVisibilityFixture(t, true)
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
 	for _, cell := range cells[:2] {
@@ -183,7 +183,7 @@ func TestObservedDismissalSurvivesRediscoveryAndAllowsManualIdentity(t *testing.
 	require.NoError(t, commander.Delete(ctx, competitors.Items[0].ID))
 	tracking, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
 	require.NoError(t, err)
-	require.True(t, tracking.CompetitorsReviewed)
+	require.True(t, tracking.Confirmed)
 	require.Nil(t, tracking.BlockedReason)
 	// A changed label on the same official URL remains dismissed.
 	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 1, appearanceCell(cells[2], "Acme Analytics", "https://acme.dev")))
@@ -208,7 +208,7 @@ func TestObservedDismissalSurvivesRediscoveryAndAllowsManualIdentity(t *testing.
 
 func TestDiscoveryIgnoresSelfStubAndFailedAnswers(t *testing.T) {
 	db, store, ctx, brand := liveVisibilityFixture(t, true)
-	run := finishVisibilityReviews(t, store, ctx, brand.ID)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
 	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
 	for _, cell := range cells[:2] {

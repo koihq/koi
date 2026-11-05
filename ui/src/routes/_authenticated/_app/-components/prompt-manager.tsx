@@ -14,7 +14,6 @@ import { BrandPill } from "@/components/blocks/brand-pill";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { EngineIcon } from "@/components/blocks/engine-icon";
-import { GenerationControls } from "@/components/blocks/generation-controls";
 import { PageNav } from "@/components/blocks/page-nav";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
@@ -22,7 +21,6 @@ import { RowAction, RowActions } from "@/components/blocks/row-actions";
 import { SearchToggle } from "@/components/blocks/search-toggle";
 import { type SortDirection, SortHeader } from "@/components/blocks/sort-header";
 import { StatusTabs } from "@/components/blocks/status-tabs";
-import { TrackingReview } from "@/components/blocks/tracking-review";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
+import { useTracking } from "@/hooks/use-tracking";
 import { formatPoints, formatRate } from "@/lib/format";
 import { change, engines, rate, type VisibilityScope } from "@/lib/visibility";
 import { PromptPreviewLink } from "@/routes/_authenticated/_app/-components/prompt-preview-link";
@@ -84,12 +83,10 @@ export function PromptManager({
   brandID,
   scope,
   collecting,
-  draftStartFailed = false,
 }: {
   brandID: string;
   scope: VisibilityScope;
   collecting: boolean;
-  draftStartFailed?: boolean;
 }) {
   const { t, i18n } = useTranslation(["management", "home"]);
   const mutations = usePromptMutations(brandID);
@@ -100,7 +97,13 @@ export function PromptManager({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
-  const { active, page, totalPages } = usePromptList(brandID, scope, search, collecting);
+  const tracking = useTracking(brandID);
+  // Before tracking starts there is one list to check, so its drafts are never behind a tab.
+  const started = tracking.data?.confirmed !== false;
+  const { active, page, totalPages } = usePromptList(brandID, scope, search, collecting, {
+    allStatuses: !started,
+    enabled: !tracking.isPending,
+  });
   const counts = usePromptCounts(brandID, scope);
   const visible = active.data?.items ?? [];
   const previousPage = useRef(page);
@@ -250,7 +253,7 @@ export function PromptManager({
 
   const renderActions = (row: Prompt) => (
     <RowActions>
-      {canApply("confirm", row) && (
+      {started && canApply("confirm", row) && (
         <RowAction
           persistent
           label={t("confirm")}
@@ -374,7 +377,9 @@ export function PromptManager({
   const mutationFailed = mutations.confirm.isError || mutations.update.isError || bulkFailed;
   const statusOptions = [
     { value: "tracking", label: t("statusTracking"), count: counts.tracking },
-    { value: "drafts", label: t("statusDrafts"), count: counts.drafts },
+    ...(counts.drafts
+      ? ([{ value: "drafts", label: t("statusDrafts"), count: counts.drafts }] as const)
+      : []),
     { value: "stopped", label: t("statusStopped"), count: counts.stopped },
   ] as const;
 
@@ -397,25 +402,21 @@ export function PromptManager({
           >
             {t("prompts")}
           </h2>
-          <StatusTabs
-            label={t("statusLabel")}
-            value={search.status}
-            options={[...statusOptions]}
-            onChange={(status) => changeSearch({ status })}
-          />
+          {started && (
+            <StatusTabs
+              label={t("statusLabel")}
+              value={search.status}
+              options={[...statusOptions]}
+              onChange={(status) => changeSearch({ status })}
+            />
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 [&>div]:m-0 [&_output:empty]:hidden">
+        <div className="flex flex-wrap items-center gap-2">
           <SearchToggle
             label={t("searchPrompts")}
             clearLabel={t("home:dashboard.clearSearch")}
             value={search.q}
             onChange={(q) => changeSearch({ q })}
-          />
-          <GenerationControls
-            brandID={brandID}
-            mode="prompts"
-            setupStartFailed={draftStartFailed}
-            hideSuccessMessage
           />
           <PromptDialog
             label={t("addPrompt")}
@@ -425,15 +426,6 @@ export function PromptManager({
           />
         </div>
       </div>
-      <div className="[&:not(:empty)]:mb-4">
-        <TrackingReview
-          brandID={brandID}
-          kind="prompts"
-          disabled={pending}
-          showTrackingError={false}
-        />
-      </div>
-
       {mutationFailed && !bulkDeleting && (
         <p role="alert" className="mb-4 text-sm text-destructive">
           {bulkFailed ? t("home:dashboard.bulkError") : t("mutationError")}
@@ -450,7 +442,7 @@ export function PromptManager({
           <span className="px-2 text-foreground">
             {t("home:dashboard.selectedCount", { count: selectedVisible.length })}
           </span>
-          {selectedPrompts.some((prompt) => canApply("confirm", prompt)) && (
+          {started && selectedPrompts.some((prompt) => canApply("confirm", prompt)) && (
             <Button
               type="button"
               size="sm"

@@ -25,16 +25,13 @@ func (s *Store) BeginGenerationAttempt(ctx context.Context, runID uuid.UUID, job
 		if run.State == domain.GenerationSucceeded || run.State == domain.GenerationFailed {
 			return nil
 		}
-		promptTarget := 15
+		promptTarget := domain.InitialDraftPromptLimit
 		if s.cloudMode {
-			available, err := cloudGenerationBudget(ctx, tx, run.BrandID, run.Mode)
+			available, err := cloudGenerationBudget(ctx, tx, run.BrandID)
 			if err != nil {
 				return err
 			}
 			promptTarget = min(promptTarget, available)
-			if promptTarget == 0 && run.Mode == domain.GenerationPrompts {
-				return domain.ErrPromptLimitReached
-			}
 		}
 
 		now := time.Now().UTC()
@@ -50,30 +47,25 @@ func (s *Store) BeginGenerationAttempt(ctx context.Context, runID uuid.UUID, job
 
 		input = domain.GenerationInput{
 			Brand:               run.BrandSnapshot,
-			Mode:                run.Mode,
 			PromptTarget:        promptTarget,
 			ExistingPrompts:     []string{},
 			ExistingCompetitors: []domain.CompetitorIdentity{},
 		}
-		if run.Mode != domain.GenerationCompetitors {
-			if err := tx.Model(&domain.Prompt{}).Where("brand_id = ?", run.BrandID).Order("created_at, id").Pluck("text", &input.ExistingPrompts).Error; err != nil {
-				return err
-			}
+		if err := tx.Model(&domain.Prompt{}).Where("brand_id = ?", run.BrandID).Order("created_at, id").Pluck("text", &input.ExistingPrompts).Error; err != nil {
+			return err
 		}
 
-		if run.Mode != domain.GenerationPrompts {
-			var companies []domain.Competitor
-			if err := tx.Select("name", "domain", "github_repo").Where("brand_id = ?", run.BrandID).Order("created_at, id").Find(&companies).Error; err != nil {
-				return err
-			}
+		var companies []domain.Competitor
+		if err := tx.Select("name", "domain", "github_repo").Where("brand_id = ?", run.BrandID).Order("created_at, id").Find(&companies).Error; err != nil {
+			return err
+		}
 
-			for _, company := range companies {
-				input.ExistingCompetitors = append(input.ExistingCompetitors, domain.CompetitorIdentity{
-					Name:       company.Name,
-					Domain:     company.Domain,
-					GitHubRepo: company.GitHubRepo,
-				})
-			}
+		for _, company := range companies {
+			input.ExistingCompetitors = append(input.ExistingCompetitors, domain.CompetitorIdentity{
+				Name:       company.Name,
+				Domain:     company.Domain,
+				GitHubRepo: company.GitHubRepo,
+			})
 		}
 
 		return nil
@@ -113,45 +105,30 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&brand, "id = ?", run.BrandID).Error; err != nil {
 			return err
 		}
-		promptBudget := min(15, len(result.Prompts))
+		promptBudget := min(domain.InitialDraftPromptLimit, len(result.Prompts))
 		if s.cloudMode {
 			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
 				return err
 			}
-			available, err := cloudGenerationBudget(ctx, tx, run.BrandID, run.Mode)
+			available, err := cloudGenerationBudget(ctx, tx, run.BrandID)
 			if err != nil {
 				return err
 			}
 			promptBudget = min(promptBudget, available)
 		}
 
-		if run.Mode != domain.GenerationCompetitors {
-			count, err := insertGeneratedPrompts(tx, run.BrandID, result.Prompts, promptBudget)
-			if err != nil {
-				return err
-			}
+		var err error
 
-			promptCount = count
+		promptCount, err = insertGeneratedPrompts(tx, run.BrandID, result.Prompts, promptBudget)
+		if err != nil {
+			return err
 		}
 
-		if run.Mode != domain.GenerationPrompts {
-			count, err := insertGeneratedCompetitors(tx, run, result.Competitors)
-			if err != nil {
-				return err
-			}
+		competitorCount, err = insertGeneratedCompetitors(tx, run, result.Competitors)
+		if err != nil {
+			return err
+		}
 
-			competitorCount = count
-		}
-		if promptCount > 0 {
-			if err := invalidateReview(tx, run.BrandID, "prompts"); err != nil {
-				return err
-			}
-		}
-		if competitorCount > 0 {
-			if err := invalidateReview(tx, run.BrandID, "competitors"); err != nil {
-				return err
-			}
-		}
 		return tx.Model(&run).Updates(map[string]any{
 			"state":            domain.GenerationSucceeded,
 			"prompt_count":     promptCount,
@@ -165,7 +142,7 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 	return promptCount, competitorCount, err
 }
 
-func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID, mode domain.GenerationMode) (int, error) {
+func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID) (int, error) {
 	var brand domain.Brand
 	if err := db.WithContext(ctx).Select("organization_id").Where("id = ?", brandID).Take(&brand).Error; err != nil {
 		return 0, err
@@ -186,7 +163,7 @@ func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID, 
 		return 0, err
 	}
 
-	return subscription.GenerationBudget(now, mode, int(count)), nil
+	return subscription.GenerationBudget(now, int(count)), nil
 }
 
 func insertGeneratedPrompts(tx *gorm.DB, brandID uuid.UUID, suggestions []string, budget int) (int, error) {

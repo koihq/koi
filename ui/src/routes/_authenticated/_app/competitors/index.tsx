@@ -14,14 +14,14 @@ import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicat
 import { RowAction, RowActions } from "@/components/blocks/row-actions";
 import { SearchToggle } from "@/components/blocks/search-toggle";
 import { StatusTabs } from "@/components/blocks/status-tabs";
-import { TrackingReview } from "@/components/blocks/tracking-review";
 import { Button } from "@/components/ui/button";
+import { useCompetitorCounts } from "@/hooks/use-competitor-counts";
 import { validateTableSearch } from "@/hooks/use-table-state";
+import { useTracking } from "@/hooks/use-tracking";
 import { formatPoints, formatRate } from "@/lib/format";
 import { visibilitySummaryOptions } from "@/lib/queries";
 import { rate as visibilityRate } from "@/lib/visibility";
 import { CompetitorDialog } from "@/routes/_authenticated/_app/competitors/-components/competitor-dialog";
-import { useCompetitorCounts } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-counts";
 import { useCompetitorList } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-list";
 import { useCompetitorMutations } from "@/routes/_authenticated/_app/competitors/-hooks/use-competitor-mutations";
 
@@ -38,6 +38,8 @@ function CompetitorPage() {
   const ownRate = visibilityRate(summary.data);
   const list = useCompetitorList(brand.id);
   const counts = useCompetitorCounts(brand.id);
+  const tracking = useTracking(brand.id);
+  const started = tracking.data?.confirmed !== false;
   const mutations = useCompetitorMutations(brand.id);
   const [editing, setEditing] = useState<Competitor>();
   const [deleting, setDeleting] = useState<Competitor>();
@@ -59,7 +61,7 @@ function CompetitorPage() {
 
     return (
       <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-        {t(item.source === "observed" ? "suggested" : "unconfirmed")}
+        {t(item.source === "observed" ? "suggested" : started ? "unconfirmed" : "drafted")}
       </span>
     );
   }
@@ -155,7 +157,7 @@ function CompetitorPage() {
 
     return (
       <RowActions>
-        {!item.confirmed && identified && (
+        {started && !item.confirmed && identified && (
           <RowAction
             persistent
             label={t("confirm")}
@@ -207,25 +209,26 @@ function CompetitorPage() {
             >
               {t("competitors")}
             </h1>
-            <StatusTabs
-              label={t("statusLabel")}
-              value={list.table.status}
-              options={[
-                { value: "all", label: t("all"), count: counts.all },
-                { value: "confirmed", label: t("confirmed"), count: counts.confirmed },
-                { value: "unconfirmed", label: t("unconfirmed"), count: counts.unconfirmed },
-              ]}
-              onChange={(status) => list.table.setStatus(status)}
-            />
+            {started && (
+              <StatusTabs
+                label={t("statusLabel")}
+                value={list.table.status}
+                options={[
+                  { value: "all", label: t("all"), count: counts.all },
+                  { value: "confirmed", label: t("confirmed"), count: counts.confirmed },
+                  { value: "unconfirmed", label: t("unconfirmed"), count: counts.unconfirmed },
+                ]}
+                onChange={(status) => list.table.setStatus(status)}
+              />
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 [&>div]:m-0 [&_output:empty]:hidden">
+          <div className="flex flex-wrap items-center gap-2">
             <SearchToggle
               label={t("searchCompetitors")}
               clearLabel={t("home:dashboard.clearSearch")}
               value={list.table.q}
               onChange={(q) => list.table.setSearch(q)}
             />
-            <GenerationControls brandID={brand.id} mode="competitors" />
             <CompetitorDialog
               brandID={brand.id}
               label={t("addCompetitor")}
@@ -236,7 +239,7 @@ function CompetitorPage() {
           </div>
         </div>
         <div className="[&:not(:empty)]:mb-4">
-          <TrackingReview brandID={brand.id} kind="competitors" disabled={pending} />
+          <GenerationControls brandID={brand.id} />
         </div>
         {mutations.confirm.isError && (
           <p role="alert" className="mb-4 text-sm text-destructive">

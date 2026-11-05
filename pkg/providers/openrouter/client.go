@@ -38,7 +38,6 @@ func New(key string, timeout time.Duration) *Client {
 func BoundInput(input domain.GenerationInput, model string, maxBytes int) (domain.GenerationInput, bool) {
 	bounded := domain.GenerationInput{
 		Brand:               input.Brand,
-		Mode:                input.Mode,
 		PromptTarget:        input.PromptTarget,
 		ExistingPrompts:     []string{},
 		ExistingCompetitors: []domain.CompetitorIdentity{},

@@ -70,8 +70,7 @@ async function mockProduct(page: Page) {
       json = { ...report, hasConfirmedPrompts: true };
     } else if (url.pathname === "/api/v1/tracking") {
       json = {
-        promptsReviewed: true,
-        competitorsReviewed: true,
+        confirmed: true,
         startedAt: null,
         nextRunAt: null,
         blockedReason: null,
@@ -122,6 +121,57 @@ async function mockProduct(page: Page) {
   });
 
   return { requests, state };
+}
+
+for (const arrival of ["back link", "direct url"]) {
+  test(`summary filters keep their position after a ${arrival} to the prompt list`, async ({
+    page,
+  }) => {
+    await mockProduct(page);
+    const scrollY = () => page.evaluate(() => Math.round(window.scrollY));
+
+    if (arrival === "back link") {
+      await page.goto("/");
+      await page
+        .getByRole("link", {
+          name: "Which analytics tools should a founder consider?",
+          exact: true,
+        })
+        .click();
+      await page.getByRole("link", { name: "All prompts" }).click();
+      await expect(page).toHaveURL(/\/$/);
+      expect(await scrollY(), "the link still leads to the list").toBeGreaterThan(0);
+    } else {
+      await page.goto("/#prompts");
+      await expect(page.getByRole("heading", { name: "AI visibility" })).toBeVisible();
+    }
+
+    const signal = page.locator('section[aria-labelledby="signal-heading"]');
+    const rivals = page.locator('aside[aria-labelledby="rivals-heading"]');
+    const controls = [
+      rivals.getByRole("button", { name: "Rival 000" }),
+      rivals.getByRole("button", { name: "Rival 000" }),
+      rivals.getByRole("button", { name: "Rival 003" }),
+      signal.getByRole("button", { name: "7D", exact: true }),
+      signal.getByRole("button", { name: "90D", exact: true }),
+      signal.getByRole("button", { name: "ChatGPT" }),
+      signal.getByRole("button", { name: "Gemini" }),
+    ];
+
+    for (const control of controls) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect.poll(scrollY).toBe(0);
+
+      const url = page.url();
+      await control.click();
+      await expect.poll(() => page.url()).not.toBe(url);
+      // The router scrolls after it renders the new location, so give a jump time to happen.
+      await page.waitForTimeout(300);
+      expect(await scrollY()).toBe(0);
+    }
+
+    expect(new URL(page.url()).hash).toBe("");
+  });
 }
 
 test("home and prompt detail use complete reports without loading resource collections", async ({

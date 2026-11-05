@@ -2,7 +2,7 @@ import { InformationCircleIcon, Settings01Icon } from "@hugeicons/core-free-icon
 import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow, { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import {
   createStandardSchemaV1,
   parseAsNumberLiteral,
@@ -10,7 +10,7 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
@@ -18,13 +18,14 @@ import { useBrandColor } from "@/components/blocks/brand-icon";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { EngineIcon } from "@/components/blocks/engine-icon";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
-import { TrackingSummary } from "@/components/blocks/tracking-review";
+import { TrackingSummary } from "@/components/blocks/tracking-summary";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCollection } from "@/hooks/use-collection";
 import { useFlip } from "@/hooks/use-flip";
+import { useTracking } from "@/hooks/use-tracking";
 import { brandGlow, brandRowTint } from "@/lib/brand-tint";
 import { formatDay, formatDayRange, formatPoints, formatRate } from "@/lib/format";
 import { keepPreviousDataForScope, visibilitySummaryOptions } from "@/lib/queries";
@@ -40,6 +41,7 @@ import {
   PromptManager,
   promptSearchParams,
 } from "@/routes/_authenticated/_app/-components/prompt-manager";
+import { TrackingStart } from "./-components/tracking-start";
 
 const graphSearchParams = {
   days: parseAsNumberLiteral([7, 30, 90] as const)
@@ -67,14 +69,31 @@ function Home() {
   const { t, i18n } = useTranslation("home");
   const { brand, draftStartFailed } = Route.useRouteContext();
   const { draftStart } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const hash = useLocation({ select: (location) => location.hash });
   const api = useApi();
   const { collecting } = useCollection(brand.id);
+  const tracking = useTracking(brand.id);
   const [graph, setGraph] = useQueryStates(graphSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
+
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsPinned, setDetailsPinned] = useState(false);
   const canAnimateNumbers = useCanAnimate();
+
+  // The router scrolls to the hash again on every navigation, and each filter is one. Once the
+  // link has landed, drop the hash so a later filter change keeps the page where it is.
+  useEffect(() => {
+    if (!hash) return;
+
+    const frame = requestAnimationFrame(() => {
+      void navigate({ to: ".", search: true, replace: true, resetScroll: false });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [hash, navigate]);
+
   const selectedEngines = useMemo(
     () =>
       graph.engines
@@ -219,15 +238,25 @@ function Home() {
                 {t("dashboard.retry")}
               </Button>
             </p>
+          ) : empty && tracking.isPending ? (
+            <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
+          ) : empty && tracking.data?.confirmed === false ? (
+            <TrackingStart
+              brandID={brand.id}
+              scope={scope}
+              draftStartFailed={draftStartFailed || draftStart === "failed"}
+            />
           ) : empty ? (
             <div className="grid min-h-60 content-center justify-items-start gap-4 group-data-[refreshing=true]/refresh:opacity-50">
-              <p className="max-w-[48ch] text-body text-muted-foreground">
+              <output className="block max-w-[48ch] text-body text-muted-foreground">
                 {t(
-                  hasConfirmedPrompts
-                    ? "dashboard.noCompletedAnswers"
-                    : "dashboard.emptyDescription",
+                  collecting
+                    ? "dashboard.firstCheckRunning"
+                    : hasConfirmedPrompts
+                      ? "dashboard.noCompletedAnswers"
+                      : "dashboard.emptyDescription",
                 )}
-              </p>
+              </output>
               {!hasConfirmedPrompts && (
                 <Button render={<Link to="/" hash="prompts" />} nativeButton={false} size="lg">
                   {t("dashboard.managePrompts")}
@@ -437,18 +466,21 @@ function Home() {
               })}
             </div>
           ) : summary.isSuccess ? (
-            <p className="py-2 text-xs text-muted-foreground">{t("dashboard.noCompetitors")}</p>
+            <p className="py-2 text-xs text-muted-foreground">
+              {t(
+                tracking.data?.confirmed === false
+                  ? "dashboard.competitorsAfterStart"
+                  : "dashboard.noCompetitors",
+              )}
+            </p>
           ) : null}
         </aside>
       </div>
 
-      {hasConfirmedPrompts && <TrackingSummary brandID={brand.id} showSchedule={false} />}
-      <MemoPromptManager
-        brandID={brand.id}
-        scope={scope}
-        collecting={collecting}
-        draftStartFailed={draftStartFailed || draftStart === "failed"}
-      />
+      {hasConfirmedPrompts && tracking.data?.confirmed !== false && (
+        <TrackingSummary brandID={brand.id} showSchedule={false} />
+      )}
+      <MemoPromptManager brandID={brand.id} scope={scope} collecting={collecting} />
     </div>
   );
 }

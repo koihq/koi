@@ -38,7 +38,5 @@ export function createCompetitorsApi(api: CompetitorsApi) {
       api.patchCompetitor({ competitorID: id, competitorPatchRequest: request }),
     delete: (id: string): Promise<void> => api.deleteCompetitor({ competitorID: id }),
     confirm: (id: string): Promise<Competitor> => api.confirmCompetitor({ competitorID: id }),
-    confirmAll: (brandId: string): Promise<void> =>
-      api.confirmAllCompetitors({ brandRequestScope: { brandId } }),
   };
 }

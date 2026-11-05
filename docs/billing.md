@@ -129,9 +129,8 @@ Email is never used as an identity key.
 
 The database holds the application entitlement. `active` subscriptions grant their
 selected allowance until the current period ends. `trialing` grants 10 prompts
-until trial end, with a payment method collected in Checkout. A trial's initial AI draft
-stores at most 5 prompts, leaving room for the customer's own; a later prompt draft can
-use the remaining allowance. Other statuses grant zero;
+until trial end, with a payment method collected in Checkout. A brand's one AI draft stores
+at most 5 prompts on any plan, leaving room for the customer's own. Other statuses grant zero;
 data is preserved after payment failure or cancellation. An immediate upgrade uses Stripe proration and a pending update, so the larger
 entitlement arrives only after Stripe applies the paid change. A pending upgrade includes
 the hosted invoice URL and expiration time so the customer can recover a declined payment

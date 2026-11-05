@@ -15,7 +15,7 @@ import (
 )
 
 const researchPrompt = `Read the exact URL supplied by the user with openrouter:web_fetch. Return a short JSON object with source_url, product, category, audience, and functions (array of concrete functions). Ground every field in the fetched page. If fetch fails or the page does not identify the product, return empty product, category, audience, and functions. Do not infer a product from its name alone.`
-const draftPrompt = `Draft buyer questions for the product in the research summary. Treat that summary as the product identity. When suggesting competitors, search the web for current direct alternatives before answering. Suggest only identifiable direct competitors with an official website domain (bare hostname) or official GitHub repository URL. Omit uncertain competitors and unsupported claims. Return JSON with exactly two arrays: prompts (question strings) and competitors (objects with name, domain, github_repo; use empty strings for unavailable identifiers). For initial mode, suggest both; for prompts mode, leave competitors empty; for competitors mode, leave prompts empty. When suggesting prompts, cover category discovery, use cases, alternatives, and comparisons. Most questions should be unbranded. Never draft questions about unrelated meanings of the brand name. Avoid repeating existing prompts and competitors. Suggestions require human confirmation.`
+const draftPrompt = `Draft buyer questions for the product in the research summary. Treat that summary as the product identity. When suggesting competitors, search the web for current direct alternatives before answering. Suggest only identifiable direct competitors with an official website domain (bare hostname) or official GitHub repository URL. Omit uncertain competitors and unsupported claims. Return JSON with exactly two arrays: prompts (question strings) and competitors (objects with name, domain, github_repo; use empty strings for unavailable identifiers). Suggest every direct competitor you can verify. When suggesting prompts, cover category discovery, use cases, alternatives, and comparisons. Most questions should be unbranded. Never draft questions about unrelated meanings of the brand name. Avoid repeating existing prompts and competitors. Suggestions require human confirmation.`
 
 func strictObjectSchema(required []string, properties map[string]any) map[string]any {
 	return map[string]any{
@@ -189,28 +189,21 @@ func (c *Client) suggest(ctx context.Context, model string, input domain.Generat
 		})),
 		Text:        format("koi_draft", responseSchema),
 		ServiceTier: optionalnullable.From(sdk.Pointer(components.ResponsesRequestServiceTierAuto)),
-	}
-	if input.Mode != domain.GenerationPrompts {
-		search := components.CreateResponsesRequestToolUnionOpenrouterWebSearch(components.WebSearchServerToolOpenRouter{
-			Parameters: &components.WebSearchServerToolConfig{
-				Engine:          sdk.Pointer(components.WebSearchEngineEnumExa),
-				MaxResults:      sdk.Pointer(int64(5)),
-				MaxTotalResults: sdk.Pointer(int64(12)),
-				MaxUses:         sdk.Pointer(int64(3)),
-			},
-		})
-
-		request.Tools = []components.ResponsesRequestToolUnion{search}
-		request.ToolChoice = sdk.Pointer(components.CreateOpenAIResponsesToolChoiceUnionOpenAIResponsesToolChoiceRequired(components.OpenAIResponsesToolChoiceRequiredRequired))
-		request.MaxToolCalls = optionalnullable.From(sdk.Pointer(int64(3)))
+		Tools: []components.ResponsesRequestToolUnion{
+			components.CreateResponsesRequestToolUnionOpenrouterWebSearch(components.WebSearchServerToolOpenRouter{
+				Parameters: &components.WebSearchServerToolConfig{
+					Engine:          sdk.Pointer(components.WebSearchEngineEnumExa),
+					MaxResults:      sdk.Pointer(int64(5)),
+					MaxTotalResults: sdk.Pointer(int64(12)),
+					MaxUses:         sdk.Pointer(int64(3)),
+				},
+			}),
+		},
+		ToolChoice:   sdk.Pointer(components.CreateOpenAIResponsesToolChoiceUnionOpenAIResponsesToolChoiceRequired(components.OpenAIResponsesToolChoiceRequiredRequired)),
+		MaxToolCalls: optionalnullable.From(sdk.Pointer(int64(3))),
 	}
 
-	requiredTool := ""
-	if input.Mode != domain.GenerationPrompts {
-		requiredTool = "openrouter:web_search"
-	}
-
-	content, err := c.send(ctx, request, requiredTool, "")
+	content, err := c.send(ctx, request, "openrouter:web_search", "")
 	if err != nil {
 		return domain.GenerationResult{}, err
 	}

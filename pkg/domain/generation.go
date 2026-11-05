@@ -8,14 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type GenerationMode string
-
-const (
-	GenerationInitial     GenerationMode = "initial"
-	GenerationPrompts     GenerationMode = "prompts"
-	GenerationCompetitors GenerationMode = "competitors"
-)
-
 type GenerationState string
 
 const (
@@ -43,7 +35,6 @@ type CompetitorIdentity struct {
 
 type GenerationInput struct {
 	Brand               BrandSnapshot        `json:"brand"`
-	Mode                GenerationMode       `json:"mode"`
 	PromptTarget        int                  `json:"prompt_target"`
 	ExistingPrompts     []string             `json:"existing_prompts"`
 	ExistingCompetitors []CompetitorIdentity `json:"existing_competitors"`
@@ -58,7 +49,6 @@ type GenerationRun struct {
 	BaseEntity
 	// Recent indexes use expressions for the inherited BaseEntity timestamps and ID.
 	BrandID         uuid.UUID       `json:"-" gorm:"type:uuid;not null;uniqueIndex:idx_generation_runs_active,where:state = 'queued' OR state = 'running';index:idx_generation_runs_recent,priority:1;index:idx_generation_runs_recent,priority:2,expression:created_at,sort:desc;index:idx_generation_runs_recent,priority:3,expression:id,sort:desc;uniqueIndex:idx_generation_runs_key,priority:1,where:idempotency_key IS NOT NULL"`
-	Mode            GenerationMode  `json:"-" gorm:"type:varchar(16);not null"`
 	State           GenerationState `json:"-" gorm:"type:varchar(16);not null"`
 	RiverJobID      *int64          `json:"-"`
 	IdempotencyKey  *string         `json:"-" gorm:"type:varchar(255);uniqueIndex:idx_generation_runs_key,priority:2"`
@@ -83,12 +73,12 @@ type GenerationRepository interface {
 	Lister[GenerationRun, BrandFilter]
 	ByKey(context.Context, uuid.UUID, string) (*GenerationRun, error)
 	Active(context.Context, uuid.UUID) (*GenerationRun, error)
-	HasSucceededInitial(context.Context, uuid.UUID) (bool, error)
+	HasSucceeded(context.Context, uuid.UUID) (bool, error)
 	CreateAndEnqueue(context.Context, *GenerationRun) error
 }
 
 type GenerationCommander interface {
-	Create(context.Context, uuid.UUID, GenerationMode, *string) (*GenerationRun, bool, error)
+	Create(context.Context, uuid.UUID, *string) (*GenerationRun, bool, error)
 }
 
 type GenerationQuerier interface {
@@ -114,15 +104,8 @@ func NewGenerationQuerier(store Store) GenerationQuerier {
 	}
 }
 
-func validGenerationMode(mode GenerationMode) bool {
-	return mode == GenerationInitial || mode == GenerationPrompts || mode == GenerationCompetitors
-}
-
-func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, mode GenerationMode, key *string) (*GenerationRun, bool, error) {
-	if !validGenerationMode(mode) {
-		return nil, false, Validation(FieldError{Field: "mode", Code: FieldInvalid})
-	}
-
+// Create starts the brand's one draft. A failed draft can run again until tracking starts.
+func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, key *string) (*GenerationRun, bool, error) {
 	var run *GenerationRun
 	var terminalReplay bool
 
@@ -141,10 +124,6 @@ func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, mod
 			}
 
 			if err == nil {
-				if run.Mode != mode {
-					return ErrIdempotencyConflict
-				}
-
 				terminalReplay = run.State == GenerationSucceeded || run.State == GenerationFailed
 
 				return nil
@@ -157,29 +136,26 @@ func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, mod
 		}
 
 		if err == nil {
-			if active.Mode == mode || active.Mode == GenerationInitial && mode != GenerationInitial {
-				run = active
+			run = active
 
-				return nil
-			}
-
-			return &Error{Code: CodeGenerationConflict, Message: ErrGenerationConflict.Message, RunID: active.ID}
+			return nil
 		}
 
-		if mode == GenerationInitial {
-			succeeded, err := repo.HasSucceededInitial(ctx, brandID)
-			if err != nil {
-				return err
-			}
+		if brand.TrackingConfirmedAt != nil {
+			return ErrInitialAlreadyCompleted
+		}
 
-			if succeeded {
-				return ErrInitialAlreadyCompleted
-			}
+		succeeded, err := repo.HasSucceeded(ctx, brandID)
+		if err != nil {
+			return err
+		}
+
+		if succeeded {
+			return ErrInitialAlreadyCompleted
 		}
 
 		run = &GenerationRun{
 			BrandID:        brandID,
-			Mode:           mode,
 			State:          GenerationQueued,
 			IdempotencyKey: key,
 			ModelSlug:      GenerationModelSlug,

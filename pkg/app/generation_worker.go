@@ -53,9 +53,6 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[database.Gen
 		if errors.Is(err, domain.ErrBillingRequired) {
 			return w.fail(ctx, job, "billing_required", false, err)
 		}
-		if errors.Is(err, domain.ErrPromptLimitReached) {
-			return w.fail(ctx, job, "prompt_limit_reached", false, err)
-		}
 		return w.fail(ctx, job, "storage_error", true, fmt.Errorf("begin generation: %w", err))
 	}
 

@@ -25,7 +25,7 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 	for _, tool := range tools.Tools {
 		names[tool.Name] = true
 	}
-	for _, name := range []string{"brands_list", "prompts_create", "competitors_list", "generations_create", "runs_results", "analysis_summary"} {
+	for _, name := range []string{"brands_list", "prompts_create", "competitors_list", "generations_create", "tracking_start", "runs_results", "analysis_summary"} {
 		require.True(t, names[name], name)
 	}
 	for _, tool := range tools.Tools {

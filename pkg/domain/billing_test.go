@@ -33,29 +33,27 @@ func TestBillingEntitlementEndsAfterPaidPeriodAndOnPaymentFailure(t *testing.T) 
 	}
 }
 
-func TestGenerationBudgetLimitsOnlyTheInitialTrialDraft(t *testing.T) {
+func TestGenerationBudgetCapsTheDraftAndLeavesRoom(t *testing.T) {
 	now := time.Date(2026, time.October, 20, 12, 0, 0, 0, time.UTC)
 	end := now.Add(24 * time.Hour)
 	trial := BillingSubscription{Quantity: 100, Status: "trialing", TrialEnd: &end}
-	paid := BillingSubscription{Quantity: 15, Status: "active", CurrentPeriodEnd: &end}
+	paid := BillingSubscription{Quantity: 100, Status: "active", CurrentPeriodEnd: &end}
 
 	for _, test := range []struct {
 		name         string
 		subscription BillingSubscription
-		mode         GenerationMode
 		stored       int
 		want         int
 	}{
-		{"trial initial draft", trial, GenerationInitial, 0, 5},
-		{"trial initial draft with little room", trial, GenerationInitial, 7, 3},
-		{"trial initial draft at the limit", trial, GenerationInitial, 10, 0},
-		{"trial drafting more prompts", trial, GenerationPrompts, 5, 5},
-		{"paid initial draft", paid, GenerationInitial, 0, 15},
-		{"paid over its allowance", paid, GenerationPrompts, 20, 0},
-		{"no subscription", BillingSubscription{}, GenerationInitial, 0, 0},
+		{"trial", trial, 0, InitialDraftPromptLimit},
+		{"trial with little room", trial, 7, 3},
+		{"trial at its limit", trial, 10, 0},
+		{"paid allowance above the cap", paid, 0, InitialDraftPromptLimit},
+		{"paid over its allowance", paid, 120, 0},
+		{"no subscription", BillingSubscription{}, 0, 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := test.subscription.GenerationBudget(now, test.mode, test.stored); got != test.want {
+			if got := test.subscription.GenerationBudget(now, test.stored); got != test.want {
 				t.Fatalf("GenerationBudget = %d, want %d", got, test.want)
 			}
 		})

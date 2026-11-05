@@ -90,9 +90,8 @@ type mcpCompetitorUpdate struct {
 	Confirmed      *bool     `json:"confirmed,omitempty"`
 }
 type mcpGenerationCreate struct {
-	BrandID        mcpUUID               `json:"brandId"`
-	Mode           domain.GenerationMode `json:"mode"`
-	IdempotencyKey string                `json:"idempotencyKey"`
+	BrandID        mcpUUID `json:"brandId"`
+	IdempotencyKey string  `json:"idempotencyKey"`
 }
 type mcpAnalysis struct {
 	BrandID mcpUUID           `json:"brandId"`
@@ -208,7 +207,7 @@ func addMCPTool[In any](server *mcp.Server, name, description string, readOnly b
 func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "koi", Version: "1.0.0"},
-		&mcp.ServerOptions{Instructions: "Koi measures a brand's visibility in AI answers. Use brands_list to find the brand and pass its explicit brandId to brand-scoped tools; the browser's active brand does not scope MCP calls. analysis_summary aggregates a selected period and engines, while runs_results contains individual answers and citations; distinguish observed results from recommendations. Drafting is asynchronous: after generations_create, check generations_get with the returned ID. Reuse the same idempotencyKey when retrying generations_create or billing_change_allowance. Billing tools are available only on Koi Cloud."},
+		&mcp.ServerOptions{Instructions: "Koi measures a brand's visibility in AI answers. Use brands_list to find the brand and pass its explicit brandId to brand-scoped tools; the browser's active brand does not scope MCP calls. analysis_summary aggregates a selected period and engines, while runs_results contains individual answers and citations; distinguish observed results from recommendations. Each brand gets one asynchronous draft: after generations_create, check generations_get with the returned ID, then call tracking_start to begin daily collection. Reuse the same idempotencyKey when retrying generations_create or billing_change_allowance. Billing tools are available only on Koi Cloud."},
 	)
 	addMCPTool(server, "account_me", "Get your account and organization", true, billing, false, func(ctx context.Context, _ struct{}) (any, error) {
 		return mcpResult(AuthToRes)(shared.auth.Me(ctx, uuid.Nil))
@@ -267,12 +266,6 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 	addMCPTool(server, "prompts_confirm", "Confirm a prompt", false, billing, true, func(ctx context.Context, in mcpID) (any, error) {
 		return mcpResult(PromptToRes)(shared.promptCommands.Confirm(ctx, in.ID.UUID()))
 	})
-	addMCPTool(server, "prompts_confirm_all", "Confirm all prompts for a brand", false, billing, true, func(ctx context.Context, in mcpScope) (any, error) {
-		if e := requireBrand(in.BrandID.UUID()); e != nil {
-			return nil, e
-		}
-		return map[string]bool{"confirmed": true}, shared.promptCommands.ConfirmAll(ctx, in.BrandID.UUID())
-	})
 	addMCPTool(server, "competitors_list", "List current competitors for brandId; paginated (default page 1, 10 items)", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
 		filter, p, e := in.args()
 		if e != nil {
@@ -304,24 +297,18 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 	addMCPTool(server, "competitors_confirm", "Confirm a competitor", false, billing, true, func(ctx context.Context, in mcpID) (any, error) {
 		return mcpResult(CompetitorToRes)(shared.competitorCommands.Confirm(ctx, in.ID.UUID()))
 	})
-	addMCPTool(server, "competitors_confirm_all", "Confirm all competitors for a brand", false, billing, true, func(ctx context.Context, in mcpScope) (any, error) {
-		if e := requireBrand(in.BrandID.UUID()); e != nil {
-			return nil, e
-		}
-		return map[string]bool{"confirmed": true}, shared.competitorCommands.ConfirmAll(ctx, in.BrandID.UUID())
-	})
-	addMCPTool(server, "generations_create", "Start an asynchronous prompt or competitor drafting job for brandId; returns an ID to check with generations_get. Reuse idempotencyKey on retries", false, billing, true, func(ctx context.Context, in mcpGenerationCreate) (any, error) {
+	addMCPTool(server, "generations_create", "Start the brand's one asynchronous draft of prompts and competitors; returns an ID to check with generations_get. After it succeeds, or once tracking starts, add entries with prompts_create and competitors_create. Reuse idempotencyKey on retries", false, billing, true, func(ctx context.Context, in mcpGenerationCreate) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
 		if !validIdempotencyKey(in.IdempotencyKey) {
 			return nil, domain.Validation(domain.FieldError{Field: "idempotencyKey", Code: domain.FieldInvalid})
 		}
-		v, replay, e := shared.generationCommands.Create(ctx, in.BrandID.UUID(), in.Mode, &in.IdempotencyKey)
+		v, replay, e := shared.generationCommands.Create(ctx, in.BrandID.UUID(), &in.IdempotencyKey)
 		if e != nil {
 			return nil, e
 		}
-		return map[string]any{"id": v.ID, "state": v.State, "mode": v.Mode, "terminalReplay": replay}, nil
+		return map[string]any{"id": v.ID, "state": v.State, "terminalReplay": replay}, nil
 	})
 	addMCPTool(server, "generations_get", "Get drafting job status", true, billing, true, func(ctx context.Context, in mcpID) (any, error) {
 		return mcpResult(GenerationToRes)(shared.generations.Get(ctx, in.ID.UUID()))
@@ -332,6 +319,12 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 			return nil, e
 		}
 		return mcpPageResult(GenerationToRes)(shared.generations.List(ctx, filter, p))
+	})
+	addMCPTool(server, "tracking_start", "Confirm the brand's drafted prompts and competitors and start daily collection. Runs once per brand; repeating it changes nothing", false, billing, true, func(ctx context.Context, in mcpScope) (any, error) {
+		if e := requireBrand(in.BrandID.UUID()); e != nil {
+			return nil, e
+		}
+		return map[string]bool{"started": true}, shared.tracking.Start(ctx, in.BrandID.UUID())
 	})
 	addMCPTool(server, "tracking_get", "Get live collection tracking state for a brand", true, billing, true, func(ctx context.Context, in mcpScope) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {

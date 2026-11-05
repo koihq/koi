@@ -59,7 +59,7 @@ export async function ensureInitialGeneration(api: Api, queryClient: QueryClient
   const runs = await queryClient.fetchQuery(generationOptions(api, brandId));
   if (runs.items.length > 0) return;
 
-  await api.generations.create({ brandId, mode: "initial" }, `setup-${brandId}`);
+  await api.generations.create({ brandId }, `setup-${brandId}`);
   await queryClient.invalidateQueries({ queryKey: generationKey(brandId), exact: true });
 }
 export const promptListOptions = (api: Api, brandId: string, params: PromptListParams) =>

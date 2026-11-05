@@ -91,6 +91,12 @@ packages:
           filename: mocks_test.go
           pkgname: api
           inpackage: false
+      TrackingCommander:
+        config:
+          dir: '{{.InterfaceDir}}/../api'
+          filename: mocks_test.go
+          pkgname: api
+          inpackage: false
       GenerationQuerier:
         config:
           dir: '{{.InterfaceDir}}/../api'

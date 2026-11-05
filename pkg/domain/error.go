@@ -1,7 +1,5 @@
 package domain
 
-import "github.com/google/uuid"
-
 const (
 	CodeResourceConflict          = "resource_conflict"
 	CodeValidation                = "validation"
@@ -13,7 +11,6 @@ const (
 	CodeInvalidJSON               = "invalid_json"
 	CodeInternal                  = "internal"
 	CodeFeatureUnavailable        = "feature_unavailable"
-	CodeGenerationConflict        = "generation_conflict"
 	CodeIdempotencyConflict       = "idempotency_conflict"
 	CodeInitialAlreadyCompleted   = "initial_already_completed"
 	CodeRunNotReady               = "run_not_ready"
@@ -49,7 +46,6 @@ var (
 	ErrInvalidJSON             = &Error{Code: CodeInvalidJSON, Message: "invalid json"}
 	ErrInternal                = &Error{Code: CodeInternal, Message: "internal error"}
 	ErrFeatureUnavailable      = &Error{Code: CodeFeatureUnavailable, Message: "feature unavailable"}
-	ErrGenerationConflict      = &Error{Code: CodeGenerationConflict, Message: "generation conflict"}
 	ErrIdempotencyConflict     = &Error{Code: CodeIdempotencyConflict, Message: "idempotency conflict"}
 	ErrInitialAlreadyCompleted = &Error{Code: CodeInitialAlreadyCompleted, Message: "initial already completed"}
 	ErrPromptLimitReached      = &Error{Code: CodePromptLimitReached, Message: "prompt limit reached"}
@@ -66,7 +62,6 @@ type Error struct {
 	Code    string
 	Fields  []FieldError
 	Message string
-	RunID   uuid.UUID
 }
 
 func (e *Error) Error() string {

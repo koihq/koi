@@ -17,10 +17,9 @@ import (
 )
 
 type Brand struct {
-	PromptsReviewedAt     *time.Time `json:"-"`
-	CompetitorsReviewedAt *time.Time `json:"-"`
-	VisibilityStartedAt   *time.Time `json:"-"`
-	NextVisibilityAt      *time.Time `json:"-"`
+	TrackingConfirmedAt *time.Time `json:"-"`
+	VisibilityStartedAt *time.Time `json:"-"`
+	NextVisibilityAt    *time.Time `json:"-"`
 	BaseEntity
 	OrganizationID uuid.UUID     `json:"organization_id" gorm:"type:uuid;not null;index"`
 	Organization   *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:RESTRICT"`

@@ -283,7 +283,7 @@ func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {
 	}
 }
 
-func TestPromptHandlerGetsOneAndConfirmsAllWithoutBody(t *testing.T) {
+func TestPromptHandlerGetsOne(t *testing.T) {
 	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
 	querier := NewMockPromptQuerier(t)
 	commander := NewMockPromptCommander(t)
@@ -294,7 +294,6 @@ func TestPromptHandlerGetsOneAndConfirmsAllWithoutBody(t *testing.T) {
 		BrandID: brandID,
 	}
 	querier.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil)
-	commander.EXPECT().ConfirmAll(mock.Anything, brandID).Return(nil)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
@@ -304,14 +303,9 @@ func TestPromptHandlerGetsOneAndConfirmsAllWithoutBody(t *testing.T) {
 	readJSON(t, resp, &body)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, promptID, body.ID)
-
-	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/prompts/confirm", "", brandID)
-	require.Equal(t, http.StatusNoContent, resp.StatusCode)
-	require.Zero(t, resp.ContentLength)
-	resp.Body.Close()
 }
 
-func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
+func TestCompetitorHandlerPaginates(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	querier := NewMockCompetitorQuerier(t)
 	commander := NewMockCompetitorCommander(t)
@@ -324,7 +318,6 @@ func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
 		Items:       []domain.Competitor{},
 		CurrentPage: 1,
 	}, nil)
-	commander.EXPECT().ConfirmAll(mock.Anything, brandID).Return(nil)
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), querier, commander)
 	client := newCookieClient(t)
 	brandSession(t, client, ts.URL, userID)
@@ -334,9 +327,4 @@ func TestCompetitorHandlerPaginatesAndConfirmsAllWithoutBody(t *testing.T) {
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotNil(t, page.Items)
-
-	resp = doJSON(t, client, http.MethodPost, ts.URL+"/api/v1"+"/competitors/confirm", "", brandID)
-	require.Equal(t, http.StatusNoContent, resp.StatusCode)
-	require.Zero(t, resp.ContentLength)
-	resp.Body.Close()
 }

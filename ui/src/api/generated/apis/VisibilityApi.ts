@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type BrandRequestScope,
+    BrandRequestScopeFromJSON,
+    BrandRequestScopeToJSON,
+} from '../models/BrandRequestScope';
+import {
     type Envelope,
     EnvelopeFromJSON,
     EnvelopeToJSON,
@@ -93,6 +98,10 @@ export interface ListVisibilityRunsRequest {
     brandId: string;
     page?: number;
     pageSize?: number;
+}
+
+export interface StartVisibilityTrackingRequest {
+    brandRequestScope: BrandRequestScope;
 }
 
 /**
@@ -274,6 +283,28 @@ export interface VisibilityApiInterface {
     /**
      */
     listVisibilityRuns(requestParameters: ListVisibilityRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityRunPage>;
+
+    /**
+     * Creates request options for startVisibilityTracking without sending the request
+     * @param {BrandRequestScope} brandRequestScope 
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    startVisibilityTrackingRequestOpts(requestParameters: StartVisibilityTrackingRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     * @param {BrandRequestScope} brandRequestScope 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    startVisibilityTrackingRaw(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     */
+    startVisibilityTracking(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
 }
 
@@ -656,6 +687,52 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
     async listVisibilityRuns(requestParameters: ListVisibilityRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityRunPage> {
         const response = await this.listVisibilityRunsRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for startVisibilityTracking without sending the request
+     */
+    async startVisibilityTrackingRequestOpts(requestParameters: StartVisibilityTrackingRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandRequestScope'] == null) {
+            throw new runtime.RequiredError(
+                'brandRequestScope',
+                'Required parameter "brandRequestScope" was null or undefined when calling startVisibilityTracking().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/v1/tracking/start`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BrandRequestScopeToJSON(requestParameters['brandRequestScope']),
+        };
+    }
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     */
+    async startVisibilityTrackingRaw(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.startVisibilityTrackingRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     */
+    async startVisibilityTracking(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.startVisibilityTrackingRaw(requestParameters, initOverrides);
     }
 
 }

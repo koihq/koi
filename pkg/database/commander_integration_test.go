@@ -1,67 +1,15 @@
 package database
 
 import (
-	"context"
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/koihq/koi/pkg/domain"
 )
 
-var errReviewFailed = errors.New("review failed")
-
-// failingReviewStore fails the last step of a prompt command, inside its transaction.
-type failingReviewStore struct {
-	domain.Store
-}
-
-func (s failingReviewStore) Atomic(ctx context.Context, fn func(domain.Store) error) error {
-	return s.Store.Atomic(ctx, func(tx domain.Store) error {
-		return fn(failingReviewStore{tx})
-	})
-}
-
-func (s failingReviewStore) VisibilityRepo() domain.VisibilityRepository {
-	return failingReviewRepository{s.Store.VisibilityRepo()}
-}
-
-type failingReviewRepository struct {
-	domain.VisibilityRepository
-}
-
-func (failingReviewRepository) InvalidateReview(context.Context, uuid.UUID, string) error {
-	return errReviewFailed
-}
-
-func TestPromptCommandsRollBackWhenReviewInvalidationFails(t *testing.T) {
-	f := newRepositoryFixture(t)
-	store := NewStore(f.db)
-	commander := domain.NewPromptCommander(store)
-	failing := domain.NewPromptCommander(failingReviewStore{store})
-
-	prompt, err := commander.Create(f.ctx, f.brand.ID, domain.CreatePromptParams{Text: "Original"})
-	require.NoError(t, err)
-
-	_, err = failing.Create(f.ctx, f.brand.ID, domain.CreatePromptParams{Text: "Rolled back"})
-	require.ErrorIs(t, err, errReviewFailed)
-
-	var created int64
-	require.NoError(t, f.db.Model(&domain.Prompt{}).Where("text = ?", "Rolled back").Count(&created).Error)
-	require.Zero(t, created)
-
-	text := "Changed"
-	_, err = failing.Update(f.ctx, prompt.ID, domain.UpdatePromptParams{Text: &text})
-	require.ErrorIs(t, err, errReviewFailed)
-
-	require.ErrorIs(t, failing.Delete(f.ctx, prompt.ID), errReviewFailed)
-
-	stored, err := store.PromptRepo().Get(f.ctx, prompt.ID)
-	require.NoError(t, err)
-	require.Equal(t, "Original", stored.Text)
-}
+var errForcedRollback = errors.New("forced rollback")
 
 func TestRepositoryTransactionInsideAtomicRollsBackWithIt(t *testing.T) {
 	f := newRepositoryFixture(t)
@@ -69,19 +17,19 @@ func TestRepositoryTransactionInsideAtomicRollsBackWithIt(t *testing.T) {
 	_, err := domain.NewPromptCommander(store).Create(f.ctx, f.brand.ID, domain.CreatePromptParams{Text: "Question"})
 	require.NoError(t, err)
 
-	// FinishReview opens its own transaction, which becomes a savepoint inside Atomic.
+	// StartTracking opens its own transaction, which becomes a savepoint inside Atomic.
 	err = store.Atomic(f.ctx, func(tx domain.Store) error {
-		if err := tx.VisibilityRepo().FinishReview(f.ctx, f.brand.ID, domain.ReviewPrompts); err != nil {
+		if err := tx.VisibilityRepo().StartTracking(f.ctx, f.brand.ID); err != nil {
 			return err
 		}
 
-		return errReviewFailed
+		return errForcedRollback
 	})
-	require.ErrorIs(t, err, errReviewFailed)
+	require.ErrorIs(t, err, errForcedRollback)
 
 	brand, err := store.BrandRepo().Get(f.ctx, f.brand.ID)
 	require.NoError(t, err)
-	require.Nil(t, brand.PromptsReviewedAt)
+	require.Nil(t, brand.TrackingConfirmedAt)
 }
 
 func TestPromptCommandsOfAnotherOrganizationAreNotFound(t *testing.T) {
@@ -107,34 +55,23 @@ func TestPromptCommandsOfAnotherOrganizationAreNotFound(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrUnauthorized)
 }
 
-func TestPromptCommandsInvalidateReviewAndKeepUniqueTextError(t *testing.T) {
+func TestPromptCommandsKeepTrackingAndUniqueTextError(t *testing.T) {
 	f := newRepositoryFixture(t)
 	store := NewStore(f.db)
 	commander := domain.NewPromptCommander(store)
 
-	prompt, err := commander.Create(f.ctx, f.brand.ID, domain.CreatePromptParams{Text: "Reviewed"})
+	prompt, err := commander.Create(f.ctx, f.brand.ID, domain.CreatePromptParams{Text: "Tracked"})
 	require.NoError(t, err)
 
-	require.NoError(t, store.VisibilityRepo().FinishReview(f.ctx, f.brand.ID, domain.ReviewPrompts))
-
-	reviewed, err := store.BrandRepo().Get(f.ctx, f.brand.ID)
-	require.NoError(t, err)
-	require.NotNil(t, reviewed.PromptsReviewedAt)
-
-	_, err = commander.Update(f.ctx, prompt.ID, domain.UpdatePromptParams{})
-	require.NoError(t, err)
-
-	unchanged, err := store.BrandRepo().Get(f.ctx, f.brand.ID)
-	require.NoError(t, err)
-	require.NotNil(t, unchanged.PromptsReviewedAt, "an empty update changes nothing to review")
+	require.NoError(t, store.VisibilityRepo().StartTracking(f.ctx, f.brand.ID))
 
 	text := "Changed"
 	_, err = commander.Update(f.ctx, prompt.ID, domain.UpdatePromptParams{Text: &text})
 	require.NoError(t, err)
 
-	invalidated, err := store.BrandRepo().Get(f.ctx, f.brand.ID)
+	brand, err := store.BrandRepo().Get(f.ctx, f.brand.ID)
 	require.NoError(t, err)
-	require.Nil(t, invalidated.PromptsReviewedAt)
+	require.NotNil(t, brand.TrackingConfirmedAt, "editing a prompt does not ask for a new confirmation")
 
 	_, err = commander.Create(f.ctx, f.brand.ID, domain.CreatePromptParams{Text: "changed"})
 
@@ -159,22 +96,20 @@ func TestCompetitorCommandsAgainstTheDatabase(t *testing.T) {
 		Source:    domain.PromptSourceManual,
 		Confirmed: true,
 	}).Error)
-	require.NoError(t, store.VisibilityRepo().FinishReview(f.ctx, f.brand.ID, domain.ReviewCompetitors))
+	require.NoError(t, store.VisibilityRepo().StartTracking(f.ctx, f.brand.ID))
 
 	created, err := commander.Create(f.ctx, f.brand.ID, domain.CreateCompetitorParams{Name: "Acme", Domain: "ACME.com"})
 	require.NoError(t, err)
 
 	brand, err := store.BrandRepo().Get(f.ctx, f.brand.ID)
 	require.NoError(t, err)
-	require.Nil(t, brand.CompetitorsReviewedAt, "adding a competitor asks for a new review")
+	require.NotNil(t, brand.TrackingConfirmedAt, "adding a competitor does not ask for a new confirmation")
 
 	_, err = commander.Create(f.ctx, f.brand.ID, domain.CreateCompetitorParams{Name: "Copy", Domain: "acme.com"})
 
 	var validation *domain.Error
 	require.ErrorAs(t, err, &validation)
 	require.Equal(t, []domain.FieldError{{Field: "domain", Code: domain.FieldTaken}}, validation.Fields)
-
-	require.NoError(t, store.VisibilityRepo().FinishReview(f.ctx, f.brand.ID, domain.ReviewCompetitors))
 
 	aliases := []string{"Acme Labs"}
 	updated, err := commander.Update(f.ctx, created.ID, domain.UpdateCompetitorParams{Aliases: &aliases})
@@ -185,10 +120,6 @@ func TestCompetitorCommandsAgainstTheDatabase(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, aliases, stored.Aliases)
 	require.Equal(t, domain.CompetitorSourceManual, stored.Source)
-
-	brand, err = store.BrandRepo().Get(f.ctx, f.brand.ID)
-	require.NoError(t, err)
-	require.NotNil(t, brand.CompetitorsReviewedAt, "editing an identity keeps the review")
 
 	_, err = commander.Update(f.otherCtx, created.ID, domain.UpdateCompetitorParams{Aliases: &aliases})
 	require.ErrorIs(t, err, domain.ErrNotFound)

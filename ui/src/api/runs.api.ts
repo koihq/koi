@@ -17,6 +17,8 @@ export type { VisibilityResult };
 export function createRunsApi(api: VisibilityApi) {
   return {
     tracking: (brandId: string, init?: RequestInit) => api.getVisibilityTracking({ brandId }, init),
+    startTracking: (brandId: string): Promise<void> =>
+      api.startVisibilityTracking({ brandRequestScope: { brandId } }),
     list: (
       brandId: string,
       page = 1,

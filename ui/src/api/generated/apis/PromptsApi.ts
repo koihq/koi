@@ -15,11 +15,6 @@
 
 import * as runtime from '../runtime';
 import {
-    type BrandRequestScope,
-    BrandRequestScopeFromJSON,
-    BrandRequestScopeToJSON,
-} from '../models/BrandRequestScope';
-import {
     type Envelope,
     EnvelopeFromJSON,
     EnvelopeToJSON,
@@ -44,10 +39,6 @@ import {
     PromptResFromJSON,
     PromptResToJSON,
 } from '../models/PromptRes';
-
-export interface ConfirmAllPromptsRequest {
-    brandRequestScope: BrandRequestScope;
-}
 
 export interface ConfirmPromptRequest {
     promptID: string;
@@ -90,27 +81,6 @@ export interface UpdatePromptRequest {
  * @interface PromptsApiInterface
  */
 export interface PromptsApiInterface {
-    /**
-     * Creates request options for confirmAllPrompts without sending the request
-     * @param {BrandRequestScope} brandRequestScope 
-     * @throws {RequiredError}
-     * @memberof PromptsApiInterface
-     */
-    confirmAllPromptsRequestOpts(requestParameters: ConfirmAllPromptsRequest): Promise<runtime.RequestOpts>;
-
-    /**
-     * 
-     * @param {BrandRequestScope} brandRequestScope 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof PromptsApiInterface
-     */
-    confirmAllPromptsRaw(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
-
-    /**
-     */
-    confirmAllPrompts(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
-
     /**
      * Creates request options for confirmPrompt without sending the request
      * @param {string} promptID 
@@ -264,50 +234,6 @@ export interface PromptsApiInterface {
  * 
  */
 export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
-
-    /**
-     * Creates request options for confirmAllPrompts without sending the request
-     */
-    async confirmAllPromptsRequestOpts(requestParameters: ConfirmAllPromptsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandRequestScope'] == null) {
-            throw new runtime.RequiredError(
-                'brandRequestScope',
-                'Required parameter "brandRequestScope" was null or undefined when calling confirmAllPrompts().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/v1/prompts/confirm`;
-
-        return {
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-            body: BrandRequestScopeToJSON(requestParameters['brandRequestScope']),
-        };
-    }
-
-    /**
-     */
-    async confirmAllPromptsRaw(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        const requestOptions = await this.confirmAllPromptsRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.VoidApiResponse(response);
-    }
-
-    /**
-     */
-    async confirmAllPrompts(requestParameters: ConfirmAllPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.confirmAllPromptsRaw(requestParameters, initOverrides);
-    }
 
     /**
      * Creates request options for confirmPrompt without sending the request

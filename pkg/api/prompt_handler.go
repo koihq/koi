@@ -62,7 +62,6 @@ func (h *PromptHandler) Routes() func(chi.Router) {
 	return func(r chi.Router) {
 		r.Get("/", List(promptFilter, h.querier.ListWithVisibility, PromptToRes))
 		r.With(middlewares.DecodeBody[CreatePromptReq]()).Post("/", Create(h.create, PromptToRes))
-		r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/confirm", Command(h.confirmAll))
 		r.Get("/{id}", Get(h.querier.Get, PromptToRes))
 		r.With(middlewares.DecodeBody[UpdatePromptReq]()).Patch("/{id}", Update(h.update, PromptToRes))
 		r.Delete("/{id}", Delete(h.commander.Delete))
@@ -143,12 +142,4 @@ func (h *PromptHandler) create(ctx context.Context, req CreatePromptReq) (*domai
 
 func (h *PromptHandler) update(ctx context.Context, id uuid.UUID, req UpdatePromptReq) (*domain.Prompt, error) {
 	return h.commander.Update(ctx, id, domain.UpdatePromptParams{Text: req.Text, Inactive: req.Inactive})
-}
-
-func (h *PromptHandler) confirmAll(ctx context.Context, req BrandRequestScope) error {
-	if err := requireBrand(req.BrandID); err != nil {
-		return err
-	}
-
-	return h.commander.ConfirmAll(ctx, req.BrandID)
 }

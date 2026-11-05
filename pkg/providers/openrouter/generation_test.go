@@ -99,7 +99,6 @@ func TestGenerateResearchesDejaAndSearchesAlternatives(t *testing.T) {
 			GitHubRepo: repo,
 			Domain:     "deja.example",
 		},
-		Mode: domain.GenerationInitial,
 	}
 	calls := 0
 
@@ -151,7 +150,7 @@ func TestGenerateFetchFallback(t *testing.T) {
 		var body map[string]any
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		require.Contains(t, body["input"], "zsh terminal")
-		_, _ = fmt.Fprint(w, result(`{"prompts":[],"competitors":[]}`, "", ""))
+		_, _ = fmt.Fprint(w, result(`{"prompts":[],"competitors":[]}`, "openrouter:web_search", ""))
 	}))
 
 	defer server.Close()
@@ -161,7 +160,6 @@ func TestGenerateFetchFallback(t *testing.T) {
 			GitHubRepo:  "https://github.com/Giammarco-Ferranti/deja",
 			Description: "Deja suggests previous shell commands while typing in the zsh terminal.",
 		},
-		Mode: domain.GenerationPrompts,
 	}
 	_, err := testClient(server.URL).Generate(t.Context(), "test", input)
 	require.NoError(t, err)
@@ -204,7 +202,6 @@ func TestResearchPreservesProviderFailures(t *testing.T) {
 					Name:       "Deja",
 					GitHubRepo: "https://github.com/Giammarco-Ferranti/deja",
 				},
-				Mode: domain.GenerationInitial,
 			}
 			_, err := testClient(server.URL).Generate(t.Context(), "test", input)
 			var providerErr *Error
@@ -232,13 +229,11 @@ func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {
 		Brand: domain.BrandSnapshot{
 			Name: "Koi",
 		},
-		Mode:            domain.GenerationPrompts,
 		PromptTarget:    5,
 		ExistingPrompts: []string{strings.Repeat("x", 2000), "short"},
 	}
 	limit := requestSize("test", domain.GenerationInput{
 		Brand:               input.Brand,
-		Mode:                input.Mode,
 		PromptTarget:        input.PromptTarget,
 		ExistingPrompts:     []string{"short"},
 		ExistingCompetitors: []domain.CompetitorIdentity{},
@@ -252,14 +247,13 @@ func TestBoundInputSkipsOversizedEntryAndKeepsLaterEntries(t *testing.T) {
 func TestGenerationFixturesAndOutputValidation(t *testing.T) {
 	for _, tc := range []struct {
 		name, site, category, output, wantCode string
-		mode                                   domain.GenerationMode
 		wantPrompts                            int
 	}{
-		{"Plausible Analytics", "plausible.io", "privacy-friendly website analytics", `{"prompts":["Which privacy-friendly analytics tools work for websites?"],"competitors":[]}`, "", domain.GenerationPrompts, 1},
-		{"sparse fictional brand", "acme.example", "", `{"prompts":[],"competitors":[]}`, "insufficient_context", domain.GenerationInitial, 0},
-		{"empty arrays", "plausible.io", "website analytics", `{"prompts":[],"competitors":[]}`, "", domain.GenerationPrompts, 0},
-		{"malformed JSON", "plausible.io", "website analytics", `{"prompts":[`, "invalid_output", domain.GenerationPrompts, 0},
-		{"extra field", "plausible.io", "website analytics", `{"prompts":[],"competitors":[],"secret":"x"}`, "invalid_output", domain.GenerationPrompts, 0},
+		{"Plausible Analytics", "plausible.io", "privacy-friendly website analytics", `{"prompts":["Which privacy-friendly analytics tools work for websites?"],"competitors":[]}`, "", 1},
+		{"sparse fictional brand", "acme.example", "", `{"prompts":[],"competitors":[]}`, "insufficient_context", 0},
+		{"empty arrays", "plausible.io", "website analytics", `{"prompts":[],"competitors":[]}`, "", 0},
+		{"malformed JSON", "plausible.io", "website analytics", `{"prompts":[`, "invalid_output", 0},
+		{"extra field", "plausible.io", "website analytics", `{"prompts":[],"competitors":[],"secret":"x"}`, "invalid_output", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			calls := 0
@@ -279,8 +273,7 @@ func TestGenerationFixturesAndOutputValidation(t *testing.T) {
 				}
 
 				require.Contains(t, body["input"], tc.category)
-				require.Contains(t, body["input"], `"mode":"prompts"`)
-				_, _ = fmt.Fprint(w, result(tc.output, "", ""))
+				_, _ = fmt.Fprint(w, result(tc.output, "openrouter:web_search", ""))
 			}))
 
 			defer server.Close()
@@ -290,7 +283,6 @@ func TestGenerationFixturesAndOutputValidation(t *testing.T) {
 					Name:   tc.name,
 					Domain: tc.site,
 				},
-				Mode: tc.mode,
 			})
 			if tc.wantCode != "" {
 				var providerErr *Error
@@ -337,7 +329,6 @@ func TestProviderErrorClassification(t *testing.T) {
 					Name:   "Plausible",
 					Domain: "plausible.io",
 				},
-				Mode: domain.GenerationPrompts,
 			}, researchSummary{Product: "Plausible", Category: "website analytics"})
 
 			var providerErr *Error

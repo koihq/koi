@@ -119,8 +119,7 @@ async function mockWorkspace(page: Page, rates: (number | null)[] = [50, 50], co
       };
     else if (path.endsWith("/tracking") && !state.trackingFailed)
       json = {
-        promptsReviewed: true,
-        competitorsReviewed: true,
+        confirmed: true,
         startedAt: state.started ? run.startedAt : null,
         nextRunAt: null,
         blockedReason: state.blockedReason,

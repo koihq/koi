@@ -78,7 +78,6 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 	require.NoError(t, db.Where("brand_id = ? AND text = ?", brands[1].ID, "Prompt 1").Delete(&domain.Prompt{}).Error)
 	run := &domain.GenerationRun{
 		BrandID:       brands[0].ID,
-		Mode:          domain.GenerationPrompts,
 		State:         domain.GenerationRunning,
 		Attempt:       1,
 		ModelSlug:     domain.GenerationModelSlug,
@@ -131,11 +130,10 @@ func TestCloudTrialInitialDraftLeavesRoomForTheCustomer(t *testing.T) {
 	}
 
 	var job int64
-	generate := func(mode domain.GenerationMode) (target, inserted int, err error) {
+	generate := func() (target, inserted int, err error) {
 		job++
 		run := &domain.GenerationRun{
 			BrandID:       brand.ID,
-			Mode:          mode,
 			State:         domain.GenerationQueued,
 			RiverJobID:    &job,
 			ModelSlug:     domain.GenerationModelSlug,
@@ -155,26 +153,29 @@ func TestCloudTrialInitialDraftLeavesRoomForTheCustomer(t *testing.T) {
 		return input.PromptTarget, inserted, err
 	}
 
-	target, inserted, err := generate(domain.GenerationInitial)
+	target, inserted, err := generate()
 	require.NoError(t, err)
-	require.Equal(t, domain.TrialInitialDraftLimit, target)
-	require.Equal(t, domain.TrialInitialDraftLimit, inserted)
+	require.Equal(t, domain.InitialDraftPromptLimit, target)
+	require.Equal(t, domain.InitialDraftPromptLimit, inserted)
 
-	target, inserted, err = generate(domain.GenerationPrompts)
+	// Only the budget left by the allowance is stored, here the rest of the trial's 10 prompts.
+	target, inserted, err = generate()
 	require.NoError(t, err)
 	require.Equal(t, 5, target)
 	require.Equal(t, 5, inserted)
 
-	_, _, err = generate(domain.GenerationPrompts)
-	require.ErrorIs(t, err, domain.ErrPromptLimitReached)
+	target, inserted, err = generate()
+	require.NoError(t, err)
+	require.Zero(t, target)
+	require.Zero(t, inserted)
 
 	require.NoError(t, db.Where("brand_id = ?", brand.ID).Delete(&domain.Prompt{}).Error)
 	require.NoError(t, db.Model(subscription).Updates(map[string]any{"status": "active", "quantity": 15}).Error)
 
-	target, inserted, err = generate(domain.GenerationInitial)
+	target, inserted, err = generate()
 	require.NoError(t, err)
-	require.Equal(t, 15, target)
-	require.Equal(t, 15, inserted)
+	require.Equal(t, domain.InitialDraftPromptLimit, target, "a larger allowance gets the same draft")
+	require.Equal(t, domain.InitialDraftPromptLimit, inserted)
 }
 
 func TestCloudWorkerStopsQueuedPromptAfterDeactivation(t *testing.T) {
@@ -189,7 +190,7 @@ func TestCloudWorkerStopsQueuedPromptAfterDeactivation(t *testing.T) {
 		CurrentPeriodEnd:     &periodEnd,
 	}).Error)
 
-	run := finishVisibilityReviews(t, ordinaryStore, ctx, brand.ID)
+	run := startVisibilityTracking(t, ordinaryStore, ctx, brand.ID)
 	cloudStore := NewStore(db).WithEnqueueClient(ordinaryStore.enqueueClient).WithCloudMode(true)
 	_, cells, err := cloudStore.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
 	require.NoError(t, err)
