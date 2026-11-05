@@ -14,7 +14,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/koihq/koi/internal/demoseed"
-	"github.com/koihq/koi/pkg/koidatabase"
+	"github.com/koihq/koi/pkg/database"
 )
 
 func main() {
@@ -47,7 +47,7 @@ func run(ctx context.Context, reset bool) error {
 		return fmt.Errorf("KOI_DATABASE_URL is required")
 	}
 
-	db, err := koidatabase.Open(dsn)
+	db, err := database.Open(dsn)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func run(ctx context.Context, reset bool) error {
 	}
 	defer sqlDB.Close()
 
-	if err := koidatabase.Migrate(db.WithContext(ctx)); err != nil {
+	if err := database.Migrate(db.WithContext(ctx)); err != nil {
 		return fmt.Errorf("migrate demo database: %w", err)
 	}
 

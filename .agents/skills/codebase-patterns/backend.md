@@ -1,24 +1,24 @@
 # Backend architecture
 
-Single Go binary built from `cmd/koi/main.go`. The binary boots the app (`koiapp.NewKoiApp`) and serves the HTTP API on port 8080. The UI bundle is produced by `make ui-build` into `pkg/web/dist` (gitignored) and embedded at compile time.
+Single Go binary built from `cmd/koi/main.go`. The binary boots the app (`app.New`) and serves the HTTP API on port 8080. The UI bundle is produced by `make ui-build` into `pkg/web/dist` (gitignored) and embedded at compile time.
 
 `make dev` runs Air against `./cmd/koi` (see `.air.toml`) plus Vite. Do not serve dev UI from `:8080`; that is the embedded bundle.
 
 ## Layering
 
 ```
-HTTP                pkg/koiapi/*_handler.go      (chi routes, DTO decode, JSON)
+HTTP                pkg/api/*_handler.go      (chi routes, DTO decode, JSON)
   ↓
-Domain              pkg/koidomain/*.go           (entities, Commander/Querier interfaces, Store)
+Domain              pkg/domain/*.go           (entities, Commander/Querier interfaces, Store)
   ↓
-Persistence         pkg/koidatabase/gorm_repo_*.go  (GORM implementations of Store)
+Persistence         pkg/database/gorm_repo_*.go  (GORM implementations of Store)
 ```
 
 Handlers receive querier and commander via constructor. No global state.
 
 Cookie session auth exists (`scs`, `koi_session`, `middlewares.Authenticate`). Keep constructors injectable. Do not add Keycloak or JWT.
 
-Shared HTTP responses live in `koiapi/response` (import alias `apiresponse`). Small `koiapi.Get`, `List`, `Create`, `Update`, `Delete` adapters share only transport handling. Domain commands and cookie handlers stay explicit. See `docs/architecture.md` for current contracts.
+Shared HTTP responses live in `api/response`. Small `api.Get`, `List`, `Create`, `Update`, `Delete`, `Action`, `Command` and `Read` adapters share only transport handling. Cookie, OAuth, billing and generation creation handlers stay explicit. See `docs/architecture.md` for current contracts.
 
 ## Stack (from `go.mod`)
 
@@ -30,7 +30,7 @@ Shared HTTP responses live in `koiapi/response` (import alias `apiresponse`). Sm
 - Testing: `stretchr/testify` + `vektra/mockery/v3` (`make mocks`).
 - Misc: `google/uuid`, argon2id passwords.
 
-## Handler pattern (`pkg/koiapi/`)
+## Handler pattern (`pkg/api/`)
 
 Before adding a route or MCP tool, find the nearest existing operation and trace its callers. When an operation exists on both HTTP and MCP, reuse value validation and domain error codes, then test the same defaults, invalid values, and results on both surfaces. For example, `analysis_summary` and `prompt_visibility` must accept the same visibility `days` and `engines` as the HTTP routes. For OAuth changes, test the complete browser flow with one hostname, distinct public hostnames, and localhost on different ports.
 
@@ -38,6 +38,24 @@ Handlers receive domain interfaces. `server.go` applies authentication once to t
 protected route group and injects the identity resolver. Resource handlers do not
 receive the session manager; auth and brand preference handlers still manage cookies
 or session state. Billing guards consume the verified organization identity.
+
+A CRUD handler is its routes plus small functions that turn a request into params.
+Keep the request, response and mapper in the handler file, and name them
+`CreatePromptReq`, `UpdatePromptReq`, `PromptRes` and `PromptToRes`. Resource routes
+use `{id}`. List parsers return only the resource filter, because `api.List` reads the
+page parameters itself:
+
+```go
+r.Get("/", List(competitorFilter, h.querier.List, CompetitorToRes))
+r.Post("/{id}/confirm", Action(h.commander.Confirm, CompetitorToRes))
+r.With(middlewares.DecodeBody[BrandRequestScope]()).Post("/confirm", Command(h.confirmAll))
+```
+
+MCP tools use the same services through `mcpResult` and `mcpPageResult`:
+
+```go
+return mcpResult(PromptToRes)(shared.prompts.Get(ctx, in.ID.UUID()))
+```
 
 HTTP DTOs explicitly map public camelCase fields without changing persistence
 serialization. Collections require `brandId`; creates and collection commands carry
@@ -49,9 +67,9 @@ Public JSON lives under `/api/v1`; `GET /health` is unprefixed.
 
 ## Errors
 
-Domain returns `*koidomain.Error` with a stable `Code` and optional `Fields`. UI owns user-facing copy; the API contract is the code (and field codes), not the message.
+Domain returns `*domain.Error` with a stable `Code` and optional `Fields`. UI owns user-facing copy; the API contract is the code (and field codes), not the message.
 
-Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP mapping lives only in `pkg/koiapi/response`:
+Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP mapping lives only in `pkg/api/response`:
 
 ```json
 {
@@ -71,15 +89,15 @@ Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP map
 | `not_found` | 404 |
 | anything else | 500 `{ code: "internal", message: "internal error" }` (log the real error) |
 
-`invalid_credentials` has no fields (do not leak which of email/password). Unique-violation on `users.email` maps to `email_taken` in `koidatabase`.
+`invalid_credentials` has no fields (do not leak which of email/password). Unique-violation on `users.email` maps to `email_taken` in `database`.
 
 ## Logging
 
-`koiapp` sets `slog` from env. Chi `RequestID` stays. `middlewares.RequestLogger` logs `method`, `path`, `status`, `duration_ms`, `request_id` (no query, no body). `middlewares.Recoverer` logs panics. 5xx from `WriteDomainError` are logged; 4xx are not. GORM stays at `Warn` with `IgnoreRecordNotFoundError` and `ParameterizedQueries` (not-found is control flow; never interpolate bound values such as emails).
+`app` sets `slog` from env. Chi `RequestID` stays. `middlewares.RequestLogger` logs `method`, `path`, `status`, `duration_ms`, `request_id` (no query, no body). `middlewares.Recoverer` logs panics. 5xx from `WriteDomainError` are logged; 4xx are not. GORM stays at `Warn` with `IgnoreRecordNotFoundError` and `ParameterizedQueries` (not-found is control flow; never interpolate bound values such as emails).
 
-## Domain (`pkg/koidomain/`)
+## Domain (`pkg/domain/`)
 
-Entities embed `koidomain.BaseEntity`. Postgres assigns `id` (`gen_random_uuid()`). GORM fills `CreatedAt` / `UpdatedAt` (`autoCreateTime` / `autoUpdateTime`). Timestamps are `json:"-"`; commanders do not set ID or timestamps. GORM migrates these same structs (no parallel row type).
+Entities embed `domain.BaseEntity`. Postgres assigns `id` (`gen_random_uuid()`). GORM fills `CreatedAt` / `UpdatedAt` (`autoCreateTime` / `autoUpdateTime`). Timestamps are `json:"-"`; commanders do not set ID or timestamps. GORM migrates these same structs (no parallel row type).
 
 ```go
 type BaseEntity struct {
@@ -89,9 +107,27 @@ type BaseEntity struct {
 }
 ```
 
-Each entity file declares the GORM-mapped struct, `TableName()`, `Validate()`, and a repository interface. Commanders/queriers are interfaces with unexported implementations (`NewAuthCommander(store) AuthCommander`).
+Each entity file declares the GORM-mapped struct, `TableName()`, `Validate()`, and a repository interface. Commanders/queriers are interfaces with unexported implementations (`NewPromptCommander(store) PromptCommander`). Input types are `CreatePromptParams`, `UpdatePromptParams` and `PromptFilter`.
 
-`Store` (`pkg/koidomain/store.go`) aggregates repos and exposes `Atomic(ctx, fn)` for transactions:
+Business rules live here, not in `database`. Put what an entity can decide alone on the entity (`NewPrompt`, `Prompt.Update`, `Prompt.Confirm`, `Competitor.ConflictsWith`), and put the sequence in the commander. A change to what a brand tracks runs under its lock:
+
+```go
+func (c *promptCommander) Delete(ctx context.Context, id uuid.UUID) error {
+    return withLockedChild(ctx, c.store, id, promptChildren, func(tx Store, _ *Brand, prompt *Prompt) error {
+        if err := tx.PromptRepo().Delete(ctx, id); err != nil {
+            return err
+        }
+
+        return tx.VisibilityRepo().InvalidateReview(ctx, prompt.BrandID, ReviewPrompts)
+    })
+}
+```
+
+Use `withBrandLock` when the child does not exist yet, as in `Create`. Check the brand before validating input, so another organization's brand is 404 rather than 400. `brandChildQuerier[T, F]` serves `Get` and `List` for anything owned by a brand; `List` checks the brand first.
+
+Compose repository interfaces from `BaseEntityRepository[T]`, `MutableRepository[T]` and `Lister[T, F]`, then declare only what differs. Filters for a brand's rows embed `BrandFilter`. Entities owned by a brand implement `BrandChild`.
+
+`Store` (`pkg/domain/store.go`) aggregates repos and exposes `Atomic(ctx, fn)` for transactions:
 
 ```go
 type Store interface {
@@ -103,20 +139,37 @@ type Store interface {
 }
 ```
 
-## Repositories (`pkg/koidatabase/`)
+## Repositories (`pkg/database/`)
 
-GORM-backed. Name files `gorm_repo_<entity>.go`. Entity repos embed `*Repository[T]` (`Create` / `Get` by UUID). Domain interfaces embed `BaseEntityRepository[T]`; list filters are resource-specific. `mapDBError` turns `ErrRecordNotFound` into `ErrNotFound` and email unique-violations into `ErrEmailTaken`.
+GORM-backed. Name files `gorm_repo_<entity>.go`, types `GormPromptRepository` and constructors `NewPromptRepository`. `mapDBError` turns `ErrRecordNotFound` into `ErrNotFound` and email unique-violations into `ErrEmailTaken`.
 
-`pkg/koidatabase` implements `koidomain.Store`. `Atomic` opens a GORM transaction and passes a store bound to that tx.
+`Repository[T]` provides `Create`, `Get`, `Update` and `Delete`; `ListRepository[T, F]` adds `List`. A concrete repository is configuration plus its own queries:
+
+```go
+func NewPromptRepository(db *gorm.DB) *GormPromptRepository {
+    base := newBrandChildRepository[domain.Prompt](db, "text", "confirmed", "inactive")
+
+    return &GormPromptRepository{
+        ListRepository: newListRepository(base, applyPromptFilter, promptOrder),
+    }
+}
+```
+
+The columns passed to the constructor are the only ones `Update` writes. Use `newRepository` for entities without a tenant (users, organizations, memberships), `newBrandChildRepository` for anything owned by a brand, and `newScopedRepository` with a `tenantScope` for other scopes. A scoped repository without `authorizeCreate` rejects every `Create`. Use `getBy` only for queries with their own meaning, such as `LockForUpdate` or `Latest`. Do not add product rules or transactions to these repositories.
+
+Worker state machines (`visibility_attempts`, `generation_attempts`, `visibility_schedule`), analytics, prompt history, billing and credentials keep specialized queries. Anything that updates existing prompts or competitors must hold the brand lock, because `Update` writes every declared column.
+
+`pkg/database` implements `domain.Store`. `Atomic` opens a GORM transaction and passes a copy of the store bound to that tx. A repository transaction inside it becomes a savepoint.
 
 ## Tests
 
-Generate doubles with `make mocks` (or `go generate ./pkg/koidomain`) into `*_test.go` in the consuming package (`pkg/koidomain/mocks_test.go`, `pkg/koiapi/mocks_test.go`). Same-package mocks avoid an import cycle with `koidomain`. Domain tests mock `Store` + repos (helper for `Atomic` to invoke the callback). Handler tests mock `AuthCommander` / `AuthQuerier`. Health mocks `Store.Ping` only. Commit generated mocks. No live Postgres in unit tests.
+Generate doubles with `make mocks` (or `go generate ./pkg/domain`) into `*_test.go` in the consuming package (`pkg/domain/mocks_test.go`, `pkg/api/mocks_test.go`). Same-package mocks avoid an import cycle with `domain`. Domain tests mock `Store` + repos (helper for `Atomic` to invoke the callback) and check the order of lock, write and review invalidation. Rules that depend on the database, such as rollback and tenant scope, have integration tests in `pkg/database/commander_integration_test.go`. Handler tests mock the commander and querier interfaces. Health mocks `Store.Ping` only. Commit generated mocks. No live Postgres in unit tests.
 
-## Server wiring (`pkg/koiapi/server.go`)
+## Server wiring (`pkg/api/server.go`)
 
-Compose domain services, resource handlers and middleware here. Authentication
-resolves membership into `koiauth.Identity{UserID, OrganizationID, Role}` once per
+Compose domain services, resource handlers and middleware here. `newServices` builds
+the single set shared with MCP, and `ServerOptions` lists optional capabilities. Authentication
+resolves membership into `auth.Identity{UserID, OrganizationID, Role}` once per
 request. Do not put resource authorization in generic HTTP adapters; scoped
 repositories enforce tenant access on every read and mutation.
 
@@ -124,6 +177,6 @@ repositories enforce tenant access on every read and mutation.
 
 Persisted-resource `GET` lists accept `page` and `pageSize` and return `Page[T]`, including empty results with `items: []`, `totalItems: 0`, `totalPages: 0`, `currentPage: 1`, `hasNext: false`, and `hasPrev: false`. Keep OpenAPI and UI wrappers aligned. Country options and competitor search are bounded combobox lookups.
 
-Postgres integration tests call `koidatabase.Open(testdb.URL(t))`, then run only the migrations that test needs. `internal/testdb` reads `KOI_DATABASE_URL` from the environment or repo `.env`, creates and cleans up a schema in that database, and fails if Postgres is unavailable. It does not migrate, because some tests verify behavior before River tables exist.
+Postgres integration tests call `database.Open(testdb.URL(t))`, then run only the migrations that test needs. `internal/testdb` reads `KOI_DATABASE_URL` from the environment or repo `.env`, creates and cleans up a schema in that database, and fails if Postgres is unavailable. It does not migrate, because some tests verify behavior before River tables exist.
 
-Break up nested Go literals even when `gofmt` accepts one line. Keep resource handlers and domain operations explicit. For external APIs, inspect installed clients, read official vendor docs, and verify code against the pinned SDK version. Use the installed OpenRouter SDK for Responses API and Resty for direct JSON HTTP integrations without a suitable SDK. Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.
+Break up nested Go literals even when `gofmt` accepts one line. For external APIs, inspect installed clients, read official vendor docs, and verify code against the pinned SDK version. Use the installed OpenRouter SDK for Responses API and Resty for direct JSON HTTP integrations without a suitable SDK. Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.

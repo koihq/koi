@@ -7,7 +7,7 @@ need their own Cloro key for live collection.
 
 ## Pricing
 
-`pkg/koipricing/catalog.json` contains the 12 selectable tax-inclusive monthly allowances:
+`pkg/pricing/catalog.json` contains the 12 selectable tax-inclusive monthly allowances:
 5 (€9), 10 (€15), 15 (€20), 25 (€29), 50 (€49), 75 (€69), 100 (€89),
 150 (€119), 200 (€149), 250 (€179), 350 (€235), and 500 (€319).
 The server quotes in integer cents and rejects other quantities, including 6.
@@ -148,7 +148,7 @@ period end when Stripe reports `cancel_at_period_end` and `active`.
 
 `BillingCommander` owns checkout, allowance changes, Portal access and webhook reconciliation.
 `BillingQuerier` exposes the catalog, quote, subscription status and product access. Both use
-`Store.BillingRepo()`; `koistripe.Client` implements the domain's `BillingGateway` and owns SDK
+`Store.BillingRepo()`; `stripe.Client` implements the domain's `BillingGateway` and owns SDK
 mapping. HTTP handlers decode requests, verify signatures and return typed DTOs.
 
 - `GET /api/v1/billing/catalog` returns `{currency, interval, options}`. Each option contains
@@ -215,7 +215,7 @@ checked at the same quantity and total; it still splits the zero-priced unit
 and €9 flat-fee lines. Repeatable sandbox validation is available with:
 
 ```sh
-KOI_STRIPE_SANDBOX_TEST=1 go test ./pkg/koistripe -run TestStripeSandbox -v
+KOI_STRIPE_SANDBOX_TEST=1 go test ./pkg/providers/stripe -run TestStripeSandbox -v
 ```
 
 The opt-in suite reads the sandbox key and Price from `.env`, refuses a live key, creates

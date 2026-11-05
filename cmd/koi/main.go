@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/koihq/koi/pkg/koiapp"
+	"github.com/koihq/koi/pkg/app"
 )
 
 var version = "dev"
@@ -34,7 +34,7 @@ func main() {
 		}
 	}
 
-	app, err := koiapp.NewKoiApp()
+	application, err := app.New()
 	if err != nil {
 		slog.Error("koi exited", "err", err)
 		os.Exit(1)
@@ -42,7 +42,7 @@ func main() {
 
 	slog.Info("koi starting", "version", version, "revision", revision)
 
-	if err := app.Run(); err != nil {
+	if err := application.Run(); err != nil {
 		slog.Error("koi exited", "err", err)
 		os.Exit(1)
 	}

@@ -18,29 +18,29 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/koiapi"
-	"github.com/koihq/koi/pkg/koiauth"
-	"github.com/koihq/koi/pkg/koidatabase"
-	"github.com/koihq/koi/pkg/koidomain"
+	"github.com/koihq/koi/pkg/api"
+	"github.com/koihq/koi/pkg/auth"
+	"github.com/koihq/koi/pkg/database"
+	"github.com/koihq/koi/pkg/domain"
 )
 
 func seedDatabase(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := koidatabase.Open(testdb.URL(t))
+	db, err := database.Open(testdb.URL(t))
 	require.NoError(t, err)
 	sqlDB, err := db.DB()
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
-	require.NoError(t, koidatabase.Migrate(db))
+	require.NoError(t, database.Migrate(db))
 
 	return db
 }
 
 func demoContext(ctx context.Context) context.Context {
-	return koiauth.WithIdentity(ctx, koiauth.Identity{
+	return auth.WithIdentity(ctx, auth.Identity{
 		UserID:         demoID("user"),
 		OrganizationID: demoID("organization"),
-		Role:           koidomain.RoleOwner,
+		Role:           domain.RoleOwner,
 	})
 }
 
@@ -49,16 +49,16 @@ func TestRunScenarios(t *testing.T) {
 	// Exercise the UTC boundary: the first collection must remain on today's date.
 	now := time.Date(2026, 11, 2, 0, 0, 30, 0, time.UTC)
 	require.NoError(t, Run(t.Context(), db, now, false))
-	store := koidatabase.NewStore(db)
+	store := database.NewStore(db)
 	ctx := demoContext(t.Context())
-	page := koidomain.PageParams{Page: 1, PageSize: 20}
+	page := domain.PageParams{Page: 1, PageSize: 20}
 
-	me, err := koidomain.NewAuthCommander(store).Login(t.Context(), Email, Password)
+	me, err := domain.NewAuthCommander(store).Login(t.Context(), Email, Password)
 	require.NoError(t, err)
 	require.Equal(t, demoID("user"), me.User.ID)
 	require.Equal(t, demoID("organization"), me.Organization.ID)
 
-	brands, err := store.BrandRepo().List(ctx, koidomain.BrandListParams{Page: page})
+	brands, err := store.BrandRepo().List(ctx, domain.BrandListFilter{}, page)
 	require.NoError(t, err)
 	require.Len(t, brands.Items, 3)
 	for _, brand := range brands.Items {
@@ -69,34 +69,34 @@ func TestRunScenarios(t *testing.T) {
 	}
 
 	t.Run("populated", func(t *testing.T) {
-		promptsPage, err := store.PromptRepo().List(ctx, koidomain.PromptFilter{BrandID: demoID("history"), Page: page})
+		promptsPage, err := store.PromptRepo().List(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: demoID("history")}}, page)
 		require.NoError(t, err)
 		require.EqualValues(t, 32, promptsPage.TotalItems)
 		require.True(t, promptsPage.HasNext)
-		history, err := store.VisibilityRepo().ListHistoricalPrompts(ctx, demoID("history"), koidomain.PromptListParams{Page: page})
+		history, err := store.VisibilityRepo().ListHistoricalPrompts(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: demoID("history")}}, page)
 		require.NoError(t, err)
 		require.EqualValues(t, 2, history.TotalItems)
 
-		var cells []koidomain.VisibilityResult
-		require.NoError(t, db.Where("collector = ?", koidomain.CollectorStub).Find(&cells).Error)
-		counts := map[koidomain.Outcome]int{}
+		var cells []domain.VisibilityResult
+		require.NoError(t, db.Where("collector = ?", domain.CollectorStub).Find(&cells).Error)
+		counts := map[domain.Outcome]int{}
 		for _, cell := range cells {
 			require.NoError(t, cell.Validate())
 			require.NotNil(t, cell.Outcome)
 			counts[*cell.Outcome]++
 			require.False(t, cell.CreatedAt.After(now))
 			require.Nil(t, cell.CloroTaskID)
-			if *cell.Outcome != koidomain.OutcomeError {
+			if *cell.Outcome != domain.OutcomeError {
 				require.Contains(t, cell.RawAnswer, "simulated answer")
 				require.Contains(t, cell.AnswerMarkdown, "simulated answer")
-				require.Equal(t, *cell.Outcome, koidomain.ScoreVisibility(koidomain.BrandSnapshot{
+				require.Equal(t, *cell.Outcome, domain.ScoreVisibility(domain.BrandSnapshot{
 					Name:       "Koi",
 					GitHubRepo: repository,
 				}, cell.RawAnswer, cell.Sources))
 			}
 		}
 		require.Len(t, cells, 20540)
-		for _, outcome := range []koidomain.Outcome{koidomain.OutcomeCited, koidomain.OutcomeMentioned, koidomain.OutcomeMiss, koidomain.OutcomeError} {
+		for _, outcome := range []domain.Outcome{domain.OutcomeCited, domain.OutcomeMentioned, domain.OutcomeMiss, domain.OutcomeError} {
 			require.Positive(t, counts[outcome], "missing %s", outcome)
 		}
 
@@ -120,22 +120,22 @@ func TestRunScenarios(t *testing.T) {
 			}
 		}
 
-		_, report, err := store.VisibilityRepo().AggregateVisibility(ctx, demoID("history"), nil, 30, []koidomain.EngineID{koidomain.EnginePerplexity}, now)
+		_, report, err := store.VisibilityRepo().AggregateVisibility(ctx, demoID("history"), nil, 30, []domain.EngineID{domain.EnginePerplexity}, now)
 		require.NoError(t, err)
 		require.Len(t, report.Engines, 1)
-		require.Contains(t, report.Engines, koidomain.EnginePerplexity)
+		require.Contains(t, report.Engines, domain.EnginePerplexity)
 	})
 
 	t.Run("empty", func(t *testing.T) {
-		promptsPage, err := store.PromptRepo().List(ctx, koidomain.PromptFilter{BrandID: demoID("empty"), Page: page})
+		promptsPage, err := store.PromptRepo().List(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: demoID("empty")}}, page)
 		require.NoError(t, err)
-		require.Equal(t, &koidomain.Page[koidomain.Prompt]{Items: []koidomain.Prompt{}, CurrentPage: 1}, promptsPage)
-		competitorsPage, err := store.CompetitorRepo().List(ctx, koidomain.CompetitorFilter{BrandID: demoID("empty"), Page: page})
+		require.Equal(t, &domain.Page[domain.Prompt]{Items: []domain.Prompt{}, CurrentPage: 1}, promptsPage)
+		competitorsPage, err := store.CompetitorRepo().List(ctx, domain.CompetitorFilter{BrandFilter: domain.BrandFilter{BrandID: demoID("empty")}}, page)
 		require.NoError(t, err)
-		require.Equal(t, &koidomain.Page[koidomain.Competitor]{Items: []koidomain.Competitor{}, CurrentPage: 1}, competitorsPage)
-		runs, err := store.VisibilityRepo().List(ctx, demoID("empty"), page)
+		require.Equal(t, &domain.Page[domain.Competitor]{Items: []domain.Competitor{}, CurrentPage: 1}, competitorsPage)
+		runs, err := store.VisibilityRepo().List(ctx, domain.BrandFilter{BrandID: demoID("empty")}, page)
 		require.NoError(t, err)
-		require.Equal(t, &koidomain.Page[koidomain.VisibilityRun]{Items: []koidomain.VisibilityRun{}, CurrentPage: 1}, runs)
+		require.Equal(t, &domain.Page[domain.VisibilityRun]{Items: []domain.VisibilityRun{}, CurrentPage: 1}, runs)
 		tracking, err := store.VisibilityRepo().Tracking(ctx, demoID("empty"))
 		require.NoError(t, err)
 		require.False(t, tracking.PromptsReviewed)
@@ -144,11 +144,11 @@ func TestRunScenarios(t *testing.T) {
 	})
 
 	t.Run("first collection", func(t *testing.T) {
-		runs, err := store.VisibilityRepo().List(ctx, demoID("first"), page)
+		runs, err := store.VisibilityRepo().List(ctx, domain.BrandFilter{BrandID: demoID("first")}, page)
 		require.NoError(t, err)
 		require.Len(t, runs.Items, 1)
 		run := runs.Items[0]
-		require.Equal(t, koidomain.VisibilitySucceeded, run.State)
+		require.Equal(t, domain.VisibilitySucceeded, run.State)
 		require.EqualValues(t, 20, run.CompletedResults)
 		require.Equal(t, "Koi", run.BrandSnapshot.Name)
 		require.Equal(t, "US", run.BrandSnapshot.Country)
@@ -172,15 +172,15 @@ func TestRunScenarios(t *testing.T) {
 
 	t.Run("offline snapshots", func(t *testing.T) {
 		var eligible int64
-		require.NoError(t, db.Model(&koidomain.Brand{}).Where(`next_visibility_at <= ? OR
+		require.NoError(t, db.Model(&domain.Brand{}).Where(`next_visibility_at <= ? OR
 			(visibility_started_at IS NULL AND prompts_reviewed_at IS NOT NULL AND competitors_reviewed_at IS NOT NULL)`, now.AddDate(1, 0, 0)).Count(&eligible).Error)
 		require.Zero(t, eligible)
-		var runs []koidomain.VisibilityRun
+		var runs []domain.VisibilityRun
 		require.NoError(t, db.Find(&runs).Error)
 		require.Len(t, runs, 181)
 		for _, run := range runs {
 			require.Equal(t, "US", run.BrandSnapshot.Country)
-			require.Equal(t, koidomain.VisibilitySucceeded, run.State)
+			require.Equal(t, domain.VisibilitySucceeded, run.State)
 			require.Nil(t, run.RiverJobID)
 			require.NotNil(t, run.FinishedAt)
 		}
@@ -191,7 +191,7 @@ func TestRunScenarios(t *testing.T) {
 	t.Run("cookie login", func(t *testing.T) {
 		sess := scs.New()
 		sess.Cookie.Name = "koi_session"
-		server := httptest.NewServer(koiapi.NewServer(store, sess, nil, false))
+		server := httptest.NewServer(api.NewServer(store, sess, api.ServerOptions{}))
 		t.Cleanup(server.Close)
 		jar, err := cookiejar.New(nil)
 		require.NoError(t, err)
@@ -207,33 +207,33 @@ func TestRunScenarios(t *testing.T) {
 		require.NoError(t, err)
 		defer response.Body.Close()
 		require.Equal(t, http.StatusOK, response.StatusCode)
-		var brands koidomain.Page[koiapi.BrandRes]
+		var brands domain.Page[api.BrandRes]
 		require.NoError(t, json.NewDecoder(response.Body).Decode(&brands))
 		require.Len(t, brands.Items, 3)
 	})
 
 	t.Run("preserve and reset", func(t *testing.T) {
-		foreign, err := koidomain.NewAuthCommander(store).Signup(t.Context(), koidomain.SignupParams{Email: "other@example.com", Password: "another-password"})
+		foreign, err := domain.NewAuthCommander(store).Signup(t.Context(), domain.SignupParams{Email: "other@example.com", Password: "another-password"})
 		require.NoError(t, err)
-		foreignCtx := koiauth.WithIdentity(t.Context(), koiauth.Identity{UserID: foreign.User.ID, OrganizationID: foreign.Organization.ID, Role: koidomain.RoleOwner})
-		foreignBrand, err := koidomain.NewBrandCommander(store).Create(foreignCtx, koidomain.BrandParams{Name: "Other brand", Domain: "example.com", Country: "US"})
+		foreignCtx := auth.WithIdentity(t.Context(), auth.Identity{UserID: foreign.User.ID, OrganizationID: foreign.Organization.ID, Role: domain.RoleOwner})
+		foreignBrand, err := domain.NewBrandCommander(store).Create(foreignCtx, domain.CreateBrandParams{Name: "Other brand", Domain: "example.com", Country: "US"})
 		require.NoError(t, err)
-		extraBrand, err := koidomain.NewBrandCommander(store).Create(ctx, koidomain.BrandParams{Name: "My extra brand", Domain: "example.org", Country: "US"})
+		extraBrand, err := domain.NewBrandCommander(store).Create(ctx, domain.CreateBrandParams{Name: "My extra brand", Domain: "example.org", Country: "US"})
 		require.NoError(t, err)
 		_, err = store.BrandRepo().Get(foreignCtx, demoID("history"))
-		require.ErrorIs(t, err, koidomain.ErrNotFound)
+		require.ErrorIs(t, err, domain.ErrNotFound)
 
-		require.NoError(t, db.Model(&koidomain.Brand{}).Where("id = ?", demoID("history")).Update("name", "Edited demo").Error)
+		require.NoError(t, db.Model(&domain.Brand{}).Where("id = ?", demoID("history")).Update("name", "Edited demo").Error)
 		require.NoError(t, Run(t.Context(), db, now.AddDate(0, 0, 1), false))
 		brand, err := store.BrandRepo().Get(ctx, demoID("history"))
 		require.NoError(t, err)
 		require.Equal(t, "Edited demo", brand.Name)
 		var resultCount int64
-		require.NoError(t, db.Model(&koidomain.VisibilityResult{}).Count(&resultCount).Error)
+		require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&resultCount).Error)
 		require.EqualValues(t, 20540, resultCount)
 
 		// Recreate a missing scenario without changing the existing ones.
-		require.NoError(t, db.Delete(&koidomain.Brand{}, "id = ?", demoID("empty")).Error)
+		require.NoError(t, db.Delete(&domain.Brand{}, "id = ?", demoID("empty")).Error)
 		require.NoError(t, Run(t.Context(), db, now, false))
 		require.NoError(t, Run(t.Context(), db, now.AddDate(0, 0, 2), true))
 		brand, err = store.BrandRepo().Get(ctx, demoID("history"))
@@ -246,20 +246,20 @@ func TestRunScenarios(t *testing.T) {
 		require.NoError(t, err)
 		_, err = store.BrandRepo().Get(foreignCtx, foreignBrand.ID)
 		require.NoError(t, err)
-		require.NoError(t, db.Model(&koidomain.VisibilityResult{}).Count(&resultCount).Error)
+		require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&resultCount).Error)
 		require.EqualValues(t, 20540, resultCount)
-		_, err = koidomain.NewAuthCommander(store).Login(t.Context(), Email, Password)
+		_, err = domain.NewAuthCommander(store).Login(t.Context(), Email, Password)
 		require.NoError(t, err)
 	})
 }
 
 func TestRunRejectsOccupiedEmail(t *testing.T) {
 	db := seedDatabase(t)
-	user := koidomain.User{Email: Email, PasswordHash: "existing"}
+	user := domain.User{Email: Email, PasswordHash: "existing"}
 	require.NoError(t, db.Create(&user).Error)
 	require.ErrorContains(t, Run(t.Context(), db, time.Now(), false), "occupied")
 	var count int64
-	require.NoError(t, db.Model(&koidomain.Organization{}).Count(&count).Error)
+	require.NoError(t, db.Model(&domain.Organization{}).Count(&count).Error)
 	require.Zero(t, count)
 	require.NoError(t, db.First(&user, "id = ?", user.ID).Error)
 	require.Equal(t, "existing", user.PasswordHash)
@@ -273,7 +273,7 @@ func TestRunRollsBackAccountAndReset(t *testing.T) {
 	// Force failure after the account and brands have already been written.
 	require.NoError(t, db.Exec(`ALTER TABLE visibility_results ADD CONSTRAINT reject_demo CHECK (collector <> 'stub')`).Error)
 	require.Error(t, Run(t.Context(), db, now, false))
-	for _, model := range []any{&koidomain.User{}, &koidomain.Organization{}, &koidomain.Membership{}, &koidomain.Brand{}, &koidomain.Prompt{}, &koidomain.Competitor{}, &koidomain.VisibilityRun{}} {
+	for _, model := range []any{&domain.User{}, &domain.Organization{}, &domain.Membership{}, &domain.Brand{}, &domain.Prompt{}, &domain.Competitor{}, &domain.VisibilityRun{}} {
 		var count int64
 		require.NoError(t, db.Model(model).Count(&count).Error)
 		require.Zero(t, count)
@@ -285,9 +285,9 @@ func TestRunRollsBackAccountAndReset(t *testing.T) {
 	require.NoError(t, db.Exec(`ALTER TABLE visibility_results ADD CONSTRAINT reject_demo CHECK (collector <> 'stub') NOT VALID`).Error)
 	require.Error(t, Run(t.Context(), db, now.AddDate(0, 0, 1), true))
 	var count int64
-	require.NoError(t, db.Model(&koidomain.VisibilityResult{}).Count(&count).Error)
+	require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&count).Error)
 	require.EqualValues(t, 20540, count)
-	var run koidomain.VisibilityRun
+	var run domain.VisibilityRun
 	require.NoError(t, db.First(&run, "id = ?", demoID("first/run/0")).Error)
 	require.Equal(t, now, run.FinishedAt.UTC())
 }

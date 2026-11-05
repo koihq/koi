@@ -6,10 +6,10 @@ Developer- and agent-first AEO tool: measure whether ChatGPT, Perplexity, Gemini
 
 ```
 cmd/koi/            Go binary
-pkg/koiapp/         boot
-pkg/koiapi/         chi HTTP
-pkg/koidomain/      entities, Store
-pkg/koidatabase/    GORM
+pkg/app/            boot
+pkg/api/            chi HTTP
+pkg/domain/         entities, Store
+pkg/database/       GORM
 ui/                 React SPA (pnpm) — add with Vite
 ```
 
@@ -60,8 +60,9 @@ compatibility migrations for earlier development schemas or historical job kinds
 ## API and implementation conventions
 
 - Architecture and examples: `docs/architecture.md`. Product APIs are flat: collections require `brandId` in query, creates and collection commands in the body; detail and mutation routes use the resource UUID alone. `active_brand_id` is only a session UI preference.
-- HTTP DTOs use camelCase, including error field names. Keep persisted snapshot JSON and vendor payloads unchanged. Shared responses live in `pkg/koiapi/response`; generic HTTP adapters stay in `koiapi` and carry no business policy.
-- Authentication resolves membership once per request into `koiauth.Identity` with user, organization and role. Scoped repositories reject a missing organization. One organization per user is enforced in the DB; an organization can have multiple members and brands.
+- HTTP DTOs use camelCase, including error field names. Keep persisted snapshot JSON and vendor payloads unchanged. Shared responses live in `pkg/api/response`; generic HTTP adapters stay in `api` and carry no business policy.
+- Authentication resolves membership once per request into `auth.Identity` with user, organization and role. Scoped repositories reject a missing organization. One organization per user is enforced in the DB; an organization can have multiple members and brands.
+- Product rules and transactions live in domain commanders and entity methods; repositories stay thin and declare their scope, filter and writable columns. A change to what a brand tracks runs under `withBrandLock` or `withLockedChild`. Worker state machines keep their transactions in `database`.
 - Keep the intentional absence of a live-prompt FK on historical results. Model live parent relations with GORM associations and explicit delete policy.
 - OpenAPI generates request objects (`useSingleRequestParameter=true`). Share `queryOptions` between loaders and hooks, normalize HTTP errors in the client middleware, and clear queries on account changes.
 

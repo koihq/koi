@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/koihq/koi/pkg/koidomain"
+	"github.com/koihq/koi/pkg/domain"
 )
 
 const Email = "demo@koi.local"
@@ -30,8 +30,8 @@ func demoID(key string) uuid.UUID {
 	return uuid.NewSHA1(uuid.NameSpaceURL, []byte(repository+"/demo/"+key))
 }
 
-func entity(key string, at time.Time) koidomain.BaseEntity {
-	return koidomain.BaseEntity{
+func entity(key string, at time.Time) domain.BaseEntity {
+	return domain.BaseEntity{
 		ID:        demoID(key),
 		CreatedAt: at,
 		UpdatedAt: at,
@@ -55,7 +55,7 @@ func Run(ctx context.Context, db *gorm.DB, now time.Time, reset bool) error {
 
 		for _, scenario := range scenarios {
 			brandID := demoID(scenario.key)
-			var existing koidomain.Brand
+			var existing domain.Brand
 			err := tx.First(&existing, "id = ?", brandID).Error
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
@@ -84,7 +84,7 @@ func Run(ctx context.Context, db *gorm.DB, now time.Time, reset bool) error {
 }
 
 func ensureAccount(tx *gorm.DB, now time.Time) error {
-	var user koidomain.User
+	var user domain.User
 	err := tx.Where("email = ? OR id = ?", Email, demoID("user")).First(&user).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
@@ -94,36 +94,36 @@ func ensureAccount(tx *gorm.DB, now time.Time) error {
 			return fmt.Errorf("demo email or user ID is already occupied by another account")
 		}
 
-		var membership koidomain.Membership
+		var membership domain.Membership
 		if err := tx.Where("user_id = ?", user.ID).First(&membership).Error; err != nil {
 			return fmt.Errorf("demo membership: %w", err)
 		}
-		if membership.OrganizationID != demoID("organization") || membership.Role != koidomain.RoleOwner {
+		if membership.OrganizationID != demoID("organization") || membership.Role != domain.RoleOwner {
 			return fmt.Errorf("demo account has an unexpected organization or role")
 		}
 
 		return nil
 	}
 
-	hash, err := koidomain.HashPassword(Password)
+	hash, err := domain.HashPassword(Password)
 	if err != nil {
 		return err
 	}
 
-	user = koidomain.User{
+	user = domain.User{
 		BaseEntity:   entity("user", now.AddDate(0, 0, -180)),
 		Email:        Email,
 		PasswordHash: hash,
 	}
-	organization := koidomain.Organization{
+	organization := domain.Organization{
 		BaseEntity: entity("organization", user.CreatedAt),
 		Name:       "Koi Demo",
 	}
-	membership := koidomain.Membership{
+	membership := domain.Membership{
 		BaseEntity:     entity("membership", user.CreatedAt),
 		UserID:         user.ID,
 		OrganizationID: organization.ID,
-		Role:           koidomain.RoleOwner,
+		Role:           domain.RoleOwner,
 	}
 
 	for _, record := range []interface{ Validate() error }{&user, &organization, &membership} {
@@ -140,7 +140,7 @@ func ensureAccount(tx *gorm.DB, now time.Time) error {
 
 func seedBrand(tx *gorm.DB, key, name string, days int, now time.Time) error {
 	createdAt := now.AddDate(0, 0, -days)
-	brand := koidomain.Brand{
+	brand := domain.Brand{
 		BaseEntity:     entity(key, createdAt),
 		OrganizationID: demoID("organization"),
 		Name:           name,
@@ -173,12 +173,12 @@ func seedBrand(tx *gorm.DB, key, name string, days int, now time.Time) error {
 	}
 	for i := range competitorCount {
 		spec := competitors[i]
-		competitor := koidomain.Competitor{
+		competitor := domain.Competitor{
 			BaseEntity: entity(fmt.Sprintf("%s/competitor/%d", key, i), createdAt),
 			BrandID:    brand.ID,
 			Name:       spec.name,
 			Domain:     spec.domain,
-			Source:     koidomain.CompetitorSourceManual,
+			Source:     domain.CompetitorSourceManual,
 			Confirmed:  true,
 		}
 		competitor.Normalize()
@@ -191,16 +191,16 @@ func seedBrand(tx *gorm.DB, key, name string, days int, now time.Time) error {
 	}
 
 	for i := range promptCount {
-		prompt := koidomain.Prompt{
+		prompt := domain.Prompt{
 			BaseEntity: entity(fmt.Sprintf("%s/prompt/%d", key, i), createdAt.Add(time.Duration(i)*time.Millisecond)),
 			BrandID:    brand.ID,
 			Text:       prompts[i].text,
-			Source:     koidomain.PromptSourceManual,
+			Source:     domain.PromptSourceManual,
 			Confirmed:  true,
 			Inactive:   i >= 26 && i < 29,
 		}
 		if i >= 29 {
-			prompt.Source = koidomain.PromptSourceDrafted
+			prompt.Source = domain.PromptSourceDrafted
 			prompt.Confirmed = false
 		}
 		prompt.Normalize()
@@ -232,18 +232,18 @@ func seedBrand(tx *gorm.DB, key, name string, days int, now time.Time) error {
 	return nil
 }
 
-func seedRun(tx *gorm.DB, key string, snapshot koidomain.BrandSnapshot, day, count, competitorCount int, at time.Time) error {
+func seedRun(tx *gorm.DB, key string, snapshot domain.BrandSnapshot, day, count, competitorCount int, at time.Time) error {
 	startedAt := at.Add(-2 * time.Minute)
 	if midnight := at.Truncate(24 * time.Hour); startedAt.Before(midnight) {
 		startedAt = midnight
 	}
-	run := koidomain.VisibilityRun{
+	run := domain.VisibilityRun{
 		BaseEntity:    entity(fmt.Sprintf("%s/run/%d", key, day), startedAt),
 		BrandID:       demoID(key),
 		BrandSnapshot: snapshot,
-		Engines:       koidomain.VisibilityEngines(),
-		State:         koidomain.VisibilityQueued,
-		TotalResults:  int64(count * len(koidomain.VisibilityEngines())),
+		Engines:       domain.VisibilityEngines(),
+		State:         domain.VisibilityQueued,
+		TotalResults:  int64(count * len(domain.VisibilityEngines())),
 		StartedAt:     &startedAt,
 		FinishedAt:    &at,
 		Attempt:       1,
@@ -252,8 +252,8 @@ func seedRun(tx *gorm.DB, key string, snapshot koidomain.BrandSnapshot, day, cou
 	if err := run.Validate(); err != nil {
 		return err
 	}
-	run.State = koidomain.VisibilitySucceeded
-	results := make([]koidomain.VisibilityResult, 0, run.TotalResults)
+	run.State = domain.VisibilitySucceeded
+	results := make([]domain.VisibilityResult, 0, run.TotalResults)
 
 	for position := range count {
 		index := position
@@ -261,7 +261,7 @@ func seedRun(tx *gorm.DB, key string, snapshot koidomain.BrandSnapshot, day, cou
 			index += 3 // Historical identifiers skip the three uncollected drafts.
 		}
 		for engineIndex, engine := range run.Engines {
-			result := koidomain.VisibilityResult{
+			result := domain.VisibilityResult{
 				BaseEntity:     entity(fmt.Sprintf("%s/run/%d/%d/%s", key, day, index, engine), at),
 				BrandID:        run.BrandID,
 				RunCreatedAt:   run.CreatedAt,
@@ -270,11 +270,11 @@ func seedRun(tx *gorm.DB, key string, snapshot koidomain.BrandSnapshot, day, cou
 				PromptText:     prompts[index].text,
 				PromptPosition: position,
 				Engine:         engine,
-				Collector:      koidomain.CollectorStub,
+				Collector:      domain.CollectorStub,
 				FetchedAt:      &at,
 				Sources:        []string{},
-				NamedEntities:  []koidomain.NamedEntity{},
-				Observations:   []koidomain.AppearanceObservation{},
+				NamedEntities:  []domain.NamedEntity{},
+				Observations:   []domain.AppearanceObservation{},
 			}
 			fillAnswer(&result, snapshot, index, engineIndex, day, competitorCount)
 			if err := result.Validate(); err != nil {
@@ -291,7 +291,7 @@ func seedRun(tx *gorm.DB, key string, snapshot koidomain.BrandSnapshot, day, cou
 	return tx.CreateInBatches(&results, 100).Error
 }
 
-func fillAnswer(result *koidomain.VisibilityResult, snapshot koidomain.BrandSnapshot, prompt, engine, day, competitorCount int) {
+func fillAnswer(result *domain.VisibilityResult, snapshot domain.BrandSnapshot, prompt, engine, day, competitorCount int) {
 	// Alternate improvement and decline by prompt, with weekly variation and an
 	// engine offset. Some prompts intentionally remain at 0% or 100% visibility.
 	phase := day / 30
@@ -307,7 +307,7 @@ func fillAnswer(result *koidomain.VisibilityResult, snapshot koidomain.BrandSnap
 		visible = false
 	}
 	if day > 0 && (day+prompt*3+engine)%97 == 0 {
-		result.Outcome = new(koidomain.OutcomeError)
+		result.Outcome = new(domain.OutcomeError)
 		result.ErrorCode = new("stub_error")
 		return
 	}
@@ -343,15 +343,15 @@ func fillAnswer(result *koidomain.VisibilityResult, snapshot koidomain.BrandSnap
 	// the brand name, so it cannot turn a measured miss into a mention.
 	result.RawAnswer = "Demo example — simulated answer; no engine was contacted.\n\n" + plain
 	result.AnswerMarkdown = "> Demo example — simulated answer; no engine was contacted.\n\n" + markdown
-	result.NamedEntities = []koidomain.NamedEntity{
+	result.NamedEntities = []domain.NamedEntity{
 		{Type: "organization", Name: first.name},
 		{Type: "organization", Name: second.name},
 	}
 	if visible {
-		result.NamedEntities = append(result.NamedEntities, koidomain.NamedEntity{Type: "organization", Name: "Koi"})
+		result.NamedEntities = append(result.NamedEntities, domain.NamedEntity{Type: "organization", Name: "Koi"})
 	}
 
 	// Branded questions may themselves name Koi; score the actual persisted answer.
-	result.Outcome = new(koidomain.ScoreVisibility(snapshot, result.RawAnswer, result.Sources))
-	result.Observations = koidomain.ExtractObservations(*result)
+	result.Outcome = new(domain.ScoreVisibility(snapshot, result.RawAnswer, result.Sources))
+	result.Observations = domain.ExtractObservations(*result)
 }
