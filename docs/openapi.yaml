@@ -447,6 +447,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillingChange"
+  /api/v1/billing/start-plan:
+    post:
+      tags: [billing]
+      operationId: billingStartPlan
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      responses:
+        "200":
+          description: Trial ended and plan active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "202":
+          description: Payment not completed, the trial continues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/billing/portal:
     post:
       tags: [billing]
@@ -1964,7 +1995,7 @@ components:
           type: integer
         effective:
           type: string
-          enum: [current, trial_end, next_cycle, after_payment]
+          enum: [current, trial_end, next_cycle, after_payment, started]
         paymentUrl:
           type: string
           format: uri

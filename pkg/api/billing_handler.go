@@ -123,6 +123,7 @@ func (h *BillingHandler) Routes() func(chi.Router) {
 		r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/checkout", h.Checkout)
 		r.With(middlewares.DecodeBody[confirmCheckoutRequest]()).Post("/confirm-checkout", h.ConfirmCheckout)
 		r.With(middlewares.DecodeBody[allowanceRequest]()).Post("/change-allowance", h.ChangeAllowance)
+		r.Post("/start-plan", h.StartPlan)
 		r.Post("/portal", h.Portal)
 	}
 }
@@ -207,6 +208,27 @@ func (h *BillingHandler) ChangeAllowance(w http.ResponseWriter, r *http.Request)
 
 	status := http.StatusAccepted
 	if change.Effective == "current" {
+		status = http.StatusOK
+	}
+
+	response.JSON(w, r, status, BillingChangeToRes(&change))
+}
+
+func (h *BillingHandler) StartPlan(w http.ResponseWriter, r *http.Request) {
+	values := r.Header.Values("Idempotency-Key")
+	if len(values) != 1 || !validIdempotencyKey(values[0]) {
+		response.WriteDomainError(w, r, domain.Validation(domain.FieldError{Field: "idempotency_key", Code: domain.FieldInvalid}))
+		return
+	}
+
+	change, err := h.commander.StartPlan(r.Context(), values[0])
+	if err != nil {
+		response.WriteDomainError(w, r, err)
+		return
+	}
+
+	status := http.StatusAccepted
+	if change.Effective == "started" {
 		status = http.StatusOK
 	}
 

@@ -7,10 +7,10 @@ need their own Cloro key for live collection.
 
 ## Pricing
 
-`pkg/pricing/catalog.json` contains the 12 selectable tax-inclusive monthly allowances:
-5 (€9), 10 (€15), 15 (€20), 25 (€29), 50 (€49), 75 (€69), 100 (€89),
-150 (€119), 200 (€149), 250 (€179), 350 (€235), and 500 (€319).
-The server quotes in integer cents and rejects other quantities, including 6.
+`pkg/pricing/catalog.json` contains the 10 selectable tax-inclusive monthly allowances:
+15 (€29), 25 (€45), 50 (€75), 75 (€99), 100 (€129), 150 (€179), 200 (€229),
+250 (€269), 350 (€349), and 500 (€449).
+The server quotes in integer cents and rejects other quantities, including 5 and 6.
 There is no catalog version. One Stripe volume-tiered monthly Price holds all
 allowances. Each tier has only a `flat_amount`; its `unit_amount` is omitted.
 The subscription item quantity is the selected prompt allowance.
@@ -53,18 +53,16 @@ through these sessions; existing subscriptions are not converted. See
    stripe prices create --dry-run --product prod_VTTHrgW2E8Lgny --currency eur \
      --billing-scheme tiered --tiers-mode volume \
      --recurring.interval month --tax-behavior inclusive \
-     -d 'tiers[0][up_to]=5' -d 'tiers[0][flat_amount]=900' \
-     -d 'tiers[1][up_to]=10' -d 'tiers[1][flat_amount]=1500' \
-     -d 'tiers[2][up_to]=15' -d 'tiers[2][flat_amount]=2000' \
-     -d 'tiers[3][up_to]=25' -d 'tiers[3][flat_amount]=2900' \
-     -d 'tiers[4][up_to]=50' -d 'tiers[4][flat_amount]=4900' \
-     -d 'tiers[5][up_to]=75' -d 'tiers[5][flat_amount]=6900' \
-     -d 'tiers[6][up_to]=100' -d 'tiers[6][flat_amount]=8900' \
-     -d 'tiers[7][up_to]=150' -d 'tiers[7][flat_amount]=11900' \
-     -d 'tiers[8][up_to]=200' -d 'tiers[8][flat_amount]=14900' \
-     -d 'tiers[9][up_to]=250' -d 'tiers[9][flat_amount]=17900' \
-     -d 'tiers[10][up_to]=350' -d 'tiers[10][flat_amount]=23500' \
-     -d 'tiers[11][up_to]=inf' -d 'tiers[11][flat_amount]=31900'
+     -d 'tiers[0][up_to]=15' -d 'tiers[0][flat_amount]=2900' \
+     -d 'tiers[1][up_to]=25' -d 'tiers[1][flat_amount]=4500' \
+     -d 'tiers[2][up_to]=50' -d 'tiers[2][flat_amount]=7500' \
+     -d 'tiers[3][up_to]=75' -d 'tiers[3][flat_amount]=9900' \
+     -d 'tiers[4][up_to]=100' -d 'tiers[4][flat_amount]=12900' \
+     -d 'tiers[5][up_to]=150' -d 'tiers[5][flat_amount]=17900' \
+     -d 'tiers[6][up_to]=200' -d 'tiers[6][flat_amount]=22900' \
+     -d 'tiers[7][up_to]=250' -d 'tiers[7][flat_amount]=26900' \
+     -d 'tiers[8][up_to]=350' -d 'tiers[8][flat_amount]=34900' \
+     -d 'tiers[9][up_to]=inf' -d 'tiers[9][flat_amount]=44900'
    ```
 
    The final tier must have `up_to=inf`; Koi rejects quantities above 500.
@@ -72,7 +70,7 @@ through these sessions; existing subscriptions are not converted. See
    `acct_1URAU0Gf1728FFn1` is:
 
    ```dotenv
-   KOI_STRIPE_PRICE_ID=price_1USsKwGf1728FFn1qAqVvjmZ
+   KOI_STRIPE_PRICE_ID=price_1UYLJ0Gf1728FFn1ZjJ9NKiS
    ```
 
    Create a separate live Price before enabling live billing. Sandbox IDs cannot
@@ -130,8 +128,10 @@ events from a previous subscription cannot replace its successor.
 Email is never used as an identity key.
 
 The database holds the application entitlement. `active` subscriptions grant their
-selected allowance until the current period ends. `trialing` grants five prompts
-until trial end, with a payment method collected in Checkout. Other statuses grant zero;
+selected allowance until the current period ends. `trialing` grants 10 prompts
+until trial end, with a payment method collected in Checkout. A trial's initial AI draft
+stores at most 5 prompts, leaving room for the customer's own; a later prompt draft can
+use the remaining allowance. Other statuses grant zero;
 data is preserved after payment failure or cancellation. An immediate upgrade uses Stripe proration and a pending update, so the larger
 entitlement arrives only after Stripe applies the paid change. A pending upgrade includes
 the hosted invoice URL and expiration time so the customer can recover a declined payment
@@ -139,10 +139,33 @@ or complete authentication. Subscription updates and pending-update applied/expi
 reconcile these fields. A downgrade is scheduled for the next cycle. It can be replaced or
 canceled by choosing the current allowance; upgrading releases an existing schedule first.
 During a trial, changing the future allowance updates quantity without proration and
-preserves the trial end date and five-prompt entitlement. If the
+preserves the trial end date and 10-prompt entitlement. If the
 new limit is below the active prompt count, tracking stops until enough prompts are
 paused. All prompts remain stored. Cancellation via Portal retains access until the
 period end when Stripe reports `cancel_at_period_end` and `active`.
+
+### Starting the plan during a trial
+
+`POST /api/v1/billing/start-plan` requires `Idempotency-Key`, takes no body and charges the
+plan already selected. It updates the subscription with `trial_end=now`,
+`payment_behavior=pending_if_incomplete` and `proration_behavior=none`. The billing date moves
+to today and unused trial days are not credited.
+
+- Payment succeeds: returns 200 with `effective=started`, and the allowance applies at once.
+- Payment fails or needs authentication: returns 202 with `effective=after_payment`,
+  `payment_url` and `expires_at`. The subscription stays `trialing` with the trial allowance
+  and is not `past_due`. Stripe holds this pending update for 23 hours, then voids the invoice.
+  Koi exposes it through the existing pending upgrade fields, with the current quantity as
+  target, and allowance changes are rejected while it is open.
+
+A new Stripe attempt voids the open invoice and its link, so a repeated request returns the
+open payment without calling Stripe.
+
+Managed Payments subscriptions cannot change `default_payment_method` through the API, and
+`invoices/pay` accepts no other payment method. Recovery therefore uses the hosted invoice
+page. Paying there with a new card does not replace the subscription's default card: in the
+sandbox the next renewal retried the declined card and went `past_due`. Customers change the
+card in the Portal, and the pending message tells them to.
 
 ## Application boundaries and API
 
@@ -199,8 +222,8 @@ GROUP BY b.organization_id, vr.engine;
 
 ## Sandbox acceptance checks
 
-- Quote and Checkout for all 12 allowances match the same tax-inclusive Stripe amounts. Other
-  quantities, including 6 and 501, are rejected.
+- Quote and Checkout for all 10 allowances match the same tax-inclusive Stripe amounts. Other
+  quantities, including 5, 6 and 501, are rejected.
 - Two browser tabs requesting Checkout for one organization reuse one session.
 - The webhook ignores a replay and rejects a Customer or organization mismatch.
 - Upgrade gains entitlement only after Stripe confirms payment; downgrade changes it
@@ -209,10 +232,8 @@ GROUP BY b.organization_id, vr.engine;
   to Cloro after deactivation.
 - A self-hosted install starts and tracks with its own Cloro key and no Stripe keys.
 
-Checkout was visually checked in the sandbox at five prompts with an Italian
-billing address: €9 after trial, including €1.62 IVA. The invoice preview was
-checked at the same quantity and total; it still splits the zero-priced unit
-and €9 flat-fee lines. Repeatable sandbox validation is available with:
+Stripe's invoice preview splits a zero-priced unit line and the tier's flat-fee line.
+Repeatable sandbox validation is available with:
 
 ```sh
 KOI_STRIPE_SANDBOX_TEST=1 go test ./pkg/providers/stripe -run TestStripeSandbox -v

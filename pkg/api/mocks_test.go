@@ -682,6 +682,72 @@ func (_c *MockBillingCommander_ReconcilePendingCheckouts_Call) RunAndReturn(run 
 	return _c
 }
 
+// StartPlan provides a mock function for the type MockBillingCommander
+func (_mock *MockBillingCommander) StartPlan(context1 context.Context, s string) (domain.BillingChange, error) {
+	ret := _mock.Called(context1, s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartPlan")
+	}
+
+	var r0 domain.BillingChange
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (domain.BillingChange, error)); ok {
+		return returnFunc(context1, s)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) domain.BillingChange); ok {
+		r0 = returnFunc(context1, s)
+	} else {
+		r0 = ret.Get(0).(domain.BillingChange)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(context1, s)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBillingCommander_StartPlan_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartPlan'
+type MockBillingCommander_StartPlan_Call struct {
+	*mock.Call
+}
+
+// StartPlan is a helper method to define mock.On call
+//   - context1 context.Context
+//   - s string
+func (_e *MockBillingCommander_Expecter) StartPlan(context1 interface{}, s interface{}) *MockBillingCommander_StartPlan_Call {
+	return &MockBillingCommander_StartPlan_Call{Call: _e.mock.On("StartPlan", context1, s)}
+}
+
+func (_c *MockBillingCommander_StartPlan_Call) Run(run func(context1 context.Context, s string)) *MockBillingCommander_StartPlan_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBillingCommander_StartPlan_Call) Return(billingChange domain.BillingChange, err error) *MockBillingCommander_StartPlan_Call {
+	_c.Call.Return(billingChange, err)
+	return _c
+}
+
+func (_c *MockBillingCommander_StartPlan_Call) RunAndReturn(run func(context1 context.Context, s string) (domain.BillingChange, error)) *MockBillingCommander_StartPlan_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockBillingQuerier creates a new instance of MockBillingQuerier. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockBillingQuerier(t interface {

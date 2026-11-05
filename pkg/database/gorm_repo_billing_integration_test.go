@@ -23,6 +23,7 @@ type billingTestGateway struct {
 	sessions         map[string]domain.BillingCheckout
 	createCalls      int
 	upgradeCalls     int
+	endTrialCalls    int
 	releaseCalls     int
 	failAfterUpgrade bool
 	pendingPayment   bool
@@ -112,6 +113,21 @@ func (g *billingTestGateway) ChangeTrial(_ context.Context, _ domain.BillingSnap
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.snapshot.Quantity = quantity
+	return g.snapshot, nil
+}
+func (g *billingTestGateway) EndTrial(_ context.Context, _ domain.BillingSnapshot, _ string) (domain.BillingSnapshot, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.endTrialCalls++
+	if g.pendingPayment {
+		expires := time.Now().Add(23 * time.Hour)
+		quantity := g.snapshot.Quantity
+		g.snapshot.PendingUpgradeQuantity = &quantity
+		g.snapshot.PendingUpgradeExpiresAt = &expires
+		g.snapshot.PaymentURL = "https://invoice.stripe.com/payment"
+	} else {
+		g.snapshot.Status, g.snapshot.TrialEnd = "active", nil
+	}
 	return g.snapshot, nil
 }
 func (g *billingTestGateway) ScheduleDowngrade(_ context.Context, _ domain.BillingSnapshot, quantity int, _ string) (domain.BillingSnapshot, error) {
@@ -259,7 +275,7 @@ func TestBillingCheckoutConfirmationWithoutWebhook(t *testing.T) {
 	}
 	status, err = f.commander.ConfirmCheckout(f.ctx, checkout.SessionID)
 	require.NoError(t, err)
-	require.Equal(t, 5, status.PromptLimit)
+	require.Equal(t, domain.TrialPromptLimit, status.PromptLimit)
 	require.NoError(t, f.commander.ProcessEvent(f.ctx, domain.BillingEvent{
 		ID: "evt_late", CheckoutID: checkout.SessionID, CustomerID: "cus_test",
 		OrganizationID: f.organization.ID.String(), SubscriptionID: "sub_test",
@@ -379,28 +395,107 @@ func TestBillingChangesPreserveTrialAndManageDowngrades(t *testing.T) {
 	trialEnd := time.Now().Add(7 * 24 * time.Hour)
 	f.gateway.snapshot.Status, f.gateway.snapshot.TrialEnd = "trialing", &trialEnd
 	f.complete(t)
-	result, err := f.commander.ChangeAllowance(f.ctx, 10, "trial-change")
+	result, err := f.commander.ChangeAllowance(f.ctx, 15, "trial-change")
 	require.NoError(t, err)
 	require.Equal(t, "trial_end", result.Effective)
 	subscription, err := f.repo.Subscription(f.ctx, f.organization.ID)
 	require.NoError(t, err)
-	require.Equal(t, 5, subscription.PromptLimit(time.Now()))
+	require.Equal(t, domain.TrialPromptLimit, subscription.PromptLimit(time.Now()))
 	require.WithinDuration(t, trialEnd, *subscription.TrialEnd, time.Microsecond)
 	require.Equal(t, 0, f.gateway.upgradeCalls)
 
 	f.gateway.snapshot.Status, f.gateway.snapshot.TrialEnd = "active", nil
-	f.gateway.snapshot.Quantity = 25
+	f.gateway.snapshot.Quantity = 50
 	f.event(t, "evt_trial_ended")
-	for index, quantity := range []int{15, 10, 25, 5, 50} {
+	for index, quantity := range []int{25, 15, 50, 25, 100} {
 		_, err := f.commander.ChangeAllowance(f.ctx, quantity, fmt.Sprintf("change-%d", index))
 		require.NoError(t, err)
 	}
 	subscription, err = f.repo.Subscription(f.ctx, f.organization.ID)
 	require.NoError(t, err)
-	require.Equal(t, 50, subscription.Quantity)
+	require.Equal(t, 100, subscription.Quantity)
 	require.Nil(t, subscription.PendingQuantity)
 	require.Equal(t, 2, f.gateway.releaseCalls)
 	require.Equal(t, 1, f.gateway.upgradeCalls)
+}
+
+func TestBillingStartPlanEndsTrialAfterPayment(t *testing.T) {
+	f := newBillingFixture(t)
+	trialEnd := time.Now().Add(7 * 24 * time.Hour)
+	f.gateway.snapshot.Status, f.gateway.snapshot.TrialEnd = "trialing", &trialEnd
+	f.complete(t)
+
+	result, err := f.commander.StartPlan(f.ctx, "start")
+	require.NoError(t, err)
+	require.Equal(t, "started", result.Effective)
+	require.Equal(t, 25, result.Quantity)
+	require.Empty(t, result.PaymentURL)
+
+	subscription, err := f.repo.Subscription(f.ctx, f.organization.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", subscription.Status)
+	require.Equal(t, 25, subscription.PromptLimit(time.Now()))
+
+	replayed, err := f.commander.StartPlan(f.ctx, "start")
+	require.NoError(t, err)
+	require.Equal(t, "started", replayed.Effective)
+	require.Equal(t, 1, f.gateway.endTrialCalls)
+}
+
+func TestBillingStartPlanKeepsTrialWhenPaymentFails(t *testing.T) {
+	f := newBillingFixture(t)
+	trialEnd := time.Now().Add(7 * 24 * time.Hour)
+	f.gateway.snapshot.Status, f.gateway.snapshot.TrialEnd = "trialing", &trialEnd
+	f.gateway.pendingPayment = true
+	f.complete(t)
+
+	result, err := f.commander.StartPlan(f.ctx, "start")
+	require.NoError(t, err)
+	require.Equal(t, "after_payment", result.Effective)
+	require.Equal(t, "https://invoice.stripe.com/payment", result.PaymentURL)
+	require.NotNil(t, result.ExpiresAt)
+
+	subscription, err := f.repo.Subscription(f.ctx, f.organization.ID)
+	require.NoError(t, err)
+	require.Equal(t, domain.TrialPromptLimit, subscription.PromptLimit(time.Now()))
+
+	// A new attempt would void the open invoice, so it returns the same payment link.
+	again, err := f.commander.StartPlan(f.ctx, "start-again")
+	require.NoError(t, err)
+	require.Equal(t, result.PaymentURL, again.PaymentURL)
+	require.Equal(t, 1, f.gateway.endTrialCalls)
+
+	// The open invoice is for the current plan, so its quantity cannot change.
+	_, err = f.commander.ChangeAllowance(f.ctx, 50, "change-while-open")
+	require.ErrorIs(t, err, domain.ErrBillingConflict)
+
+	f.gateway.snapshot.PendingUpgradeQuantity, f.gateway.snapshot.PendingUpgradeExpiresAt = nil, nil
+	f.gateway.snapshot.PaymentURL = ""
+	f.event(t, "evt_pending_expired")
+	subscription, err = f.repo.Subscription(f.ctx, f.organization.ID)
+	require.NoError(t, err)
+	require.Equal(t, "trialing", subscription.Status)
+	require.Nil(t, subscription.PendingUpgradeQuantity)
+}
+
+func TestBillingStartPlanRequiresAnOpenTrial(t *testing.T) {
+	f := newBillingFixture(t)
+	_, err := f.commander.StartPlan(f.ctx, "no-subscription")
+	require.ErrorIs(t, err, domain.ErrBillingConflict)
+
+	trialEnd := time.Now().Add(7 * 24 * time.Hour)
+	f.gateway.snapshot.Status, f.gateway.snapshot.TrialEnd = "trialing", &trialEnd
+	f.complete(t)
+
+	for _, change := range []func(){
+		func() { f.gateway.snapshot.CancelAtPeriodEnd = true },
+		func() { f.gateway.snapshot.CancelAtPeriodEnd, f.gateway.snapshot.Status = false, "past_due" },
+	} {
+		change()
+		_, err = f.commander.StartPlan(f.ctx, "closed")
+		require.ErrorIs(t, err, domain.ErrBillingConflict)
+	}
+	require.Equal(t, 0, f.gateway.endTrialCalls)
 }
 
 func TestBillingUpgradeRetryAfterLostResponseAndConflictingKey(t *testing.T) {
@@ -526,13 +621,13 @@ func TestBillingCatalogAndCancellation(t *testing.T) {
 	querier := domain.NewBillingQuerier(f.store, f.gateway, "price_test")
 	catalog, err := querier.Catalog(f.ctx)
 	require.NoError(t, err)
-	require.Len(t, catalog.Options, 12)
+	require.Len(t, catalog.Options, 10)
 	for _, quote := range catalog.Options {
 		got, err := querier.Quote(f.ctx, quote.Prompts)
 		require.NoError(t, err)
 		require.Equal(t, quote, got)
 	}
-	for _, quantity := range []int{0, 6, 501} {
+	for _, quantity := range []int{0, 5, 6, 501} {
 		_, err := querier.Quote(f.ctx, quantity)
 		require.ErrorIs(t, err, domain.ErrValidation)
 	}
@@ -573,7 +668,7 @@ func TestBillingDowngradePausesTrackingUntilPromptsFit(t *testing.T) {
 	f.complete(t)
 	brand := &domain.Brand{OrganizationID: f.organization.ID, Name: "Koi", Country: "IT"}
 	require.NoError(t, f.db.Create(brand).Error)
-	for index := range 6 {
+	for index := range 16 {
 		require.NoError(t, f.db.Create(&domain.Prompt{
 			BrandID:   brand.ID,
 			Text:      fmt.Sprintf("Prompt %d?", index),
@@ -584,7 +679,7 @@ func TestBillingDowngradePausesTrackingUntilPromptsFit(t *testing.T) {
 	allowed, err := cloudTrackingAllowed(f.ctx, f.db, f.organization.ID)
 	require.NoError(t, err)
 	require.True(t, allowed)
-	f.gateway.snapshot.Quantity = 5
+	f.gateway.snapshot.Quantity = 15
 	f.event(t, "evt_downgrade_applied")
 	allowed, err = cloudTrackingAllowed(f.ctx, f.db, f.organization.ID)
 	require.NoError(t, err)

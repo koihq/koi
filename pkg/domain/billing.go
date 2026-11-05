@@ -7,6 +7,11 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	TrialPromptLimit       = 10
+	TrialInitialDraftLimit = 5
+)
+
 var (
 	ErrBillingSubscriptionExists = &Error{Code: CodeBillingSubscriptionExists, Message: "organization already has a subscription"}
 	ErrBillingCheckoutPending    = &Error{Code: CodeBillingCheckoutPending, Message: "another checkout is pending"}
@@ -155,6 +160,7 @@ type BillingGateway interface {
 	GetSubscription(context.Context, string) (BillingSnapshot, error)
 	Upgrade(context.Context, BillingSnapshot, int, string) (BillingSnapshot, error)
 	ChangeTrial(context.Context, BillingSnapshot, int, string) (BillingSnapshot, error)
+	EndTrial(context.Context, BillingSnapshot, string) (BillingSnapshot, error)
 	ScheduleDowngrade(context.Context, BillingSnapshot, int, string) (BillingSnapshot, error)
 	ReleaseSchedule(context.Context, BillingSnapshot, string) (BillingSnapshot, error)
 }
@@ -191,6 +197,7 @@ type BillingCommander interface {
 	ConfirmCheckout(context.Context, string) (BillingStatus, error)
 	ReconcilePendingCheckouts(context.Context, time.Time) error
 	ChangeAllowance(context.Context, int, string) (BillingChange, error)
+	StartPlan(context.Context, string) (BillingChange, error)
 	Portal(context.Context) (string, error)
 	ProcessEvent(context.Context, BillingEvent) error
 }
@@ -203,16 +210,29 @@ type BillingQuerier interface {
 }
 
 func (s BillingSubscription) PromptLimit(now time.Time) int {
-	switch s.Status {
-	case "trialing":
-		if s.TrialEnd != nil && now.Before(*s.TrialEnd) {
-			return 5
-		}
-	case "active":
-		if s.CurrentPeriodEnd != nil && now.Before(*s.CurrentPeriodEnd) {
-			return s.Quantity
-		}
+	if s.inTrial(now) {
+		return TrialPromptLimit
+	}
+
+	if s.Status == "active" && s.CurrentPeriodEnd != nil && now.Before(*s.CurrentPeriodEnd) {
+		return s.Quantity
 	}
 
 	return 0
+}
+
+// GenerationBudget returns how many drafted prompts a run may store, given the prompts the
+// organization already stores. A trial's initial draft leaves room for the customer's own prompts.
+func (s BillingSubscription) GenerationBudget(now time.Time, mode GenerationMode, stored int) int {
+	available := max(0, s.PromptLimit(now)-stored)
+
+	if mode == GenerationInitial && s.inTrial(now) {
+		return min(available, TrialInitialDraftLimit)
+	}
+
+	return available
+}
+
+func (s BillingSubscription) inTrial(now time.Time) bool {
+	return s.Status == "trialing" && s.TrialEnd != nil && now.Before(*s.TrialEnd)
 }

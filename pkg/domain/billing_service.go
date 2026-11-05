@@ -369,6 +369,96 @@ func (s *billingService) ChangeAllowance(ctx context.Context, quantity int, key 
 	}
 }
 
+// StartPlan ends a trial and charges the selected plan now. A failed payment keeps the trial,
+// and an open payment is returned as is because a new attempt would void its invoice.
+func (s *billingService) StartPlan(ctx context.Context, key string) (BillingChange, error) {
+	organization, err := s.store.BillingRepo().OrganizationForUser(ctx)
+	if err != nil {
+		return BillingChange{}, err
+	}
+
+	var result BillingChange
+	err = s.store.Atomic(ctx, func(store Store) error {
+		repo := store.BillingRepo()
+
+		locked, err := repo.LockOrganization(ctx, organization.ID)
+		if err != nil {
+			return err
+		}
+
+		pending, err := repo.PendingChanges(ctx, organization.ID)
+		if err != nil {
+			return err
+		}
+		local, err := repo.Subscription(ctx, organization.ID)
+		if err != nil {
+			return err
+		}
+		if len(pending) > 0 || local == nil {
+			return ErrBillingConflict
+		}
+
+		current, err := s.gateway.GetSubscription(ctx, local.StripeSubscriptionID)
+		if err != nil {
+			return err
+		}
+		if err := s.validateSnapshot(locked, current); err != nil {
+			return err
+		}
+
+		current, err = s.endTrial(ctx, current, key)
+		if err != nil {
+			return err
+		}
+		if err := s.saveSnapshot(ctx, repo, locked, current); err != nil {
+			return err
+		}
+
+		result = BillingChange{Quantity: current.Quantity, Effective: "started"}
+		if current.Status == "trialing" {
+			result.Effective = "after_payment"
+			result.PaymentURL = current.PaymentURL
+			result.ExpiresAt = current.PendingUpgradeExpiresAt
+		}
+
+		return nil
+	})
+	if err != nil {
+		return BillingChange{}, err
+	}
+
+	return result, nil
+}
+
+func (s *billingService) endTrial(ctx context.Context, current BillingSnapshot, key string) (BillingSnapshot, error) {
+	if current.CancelAtPeriodEnd {
+		return BillingSnapshot{}, ErrBillingConflict
+	}
+
+	// An active plan means a repeated request already succeeded.
+	if current.Status == "active" {
+		return current, nil
+	}
+	if current.Status != "trialing" {
+		return BillingSnapshot{}, ErrBillingConflict
+	}
+	if current.PendingUpgradeQuantity != nil {
+		return current, nil
+	}
+
+	stripeKey := "koi-start-plan-" + key
+	if current.ScheduleID != nil {
+		released, err := s.gateway.ReleaseSchedule(ctx, current, stripeKey+"-release")
+		if err != nil {
+			return BillingSnapshot{}, err
+		}
+
+		current = released
+	}
+
+	return s.gateway.EndTrial(ctx, current, stripeKey)
+}
+
 func (s *billingService) applyChange(ctx context.Context, repo BillingRepository, organization *Organization, operation BillingChangeRequest) (BillingChange, error) {
 	local, err := repo.Subscription(ctx, organization.ID)
 	if err != nil {

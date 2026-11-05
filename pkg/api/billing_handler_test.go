@@ -41,6 +41,29 @@ func TestBillingChangeRequiresIdempotencyKeyAndPreservesPaymentResult(t *testing
 	}
 }
 
+func TestBillingStartPlanRequiresIdempotencyKeyAndReportsPayment(t *testing.T) {
+	for effective, want := range map[string]int{"started": http.StatusOK, "after_payment": http.StatusAccepted} {
+		t.Run(effective, func(t *testing.T) {
+			commander := NewMockBillingCommander(t)
+			handler := NewBillingHandler(NewMockBillingQuerier(t), commander, "secret")
+			router := chi.NewRouter()
+			router.Post("/start", handler.StartPlan)
+
+			missing := httptest.NewRecorder()
+			router.ServeHTTP(missing, httptest.NewRequest(http.MethodPost, "/start", nil))
+			require.Equal(t, http.StatusBadRequest, missing.Code)
+
+			commander.EXPECT().StartPlan(mock.Anything, "start-key").Return(domain.BillingChange{Quantity: 25, Effective: effective}, nil)
+			request := httptest.NewRequest(http.MethodPost, "/start", nil)
+			request.Header.Set("Idempotency-Key", "start-key")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			require.Equal(t, want, response.Code)
+			require.Contains(t, response.Body.String(), `"effective":"`+effective+`"`)
+		})
+	}
+}
+
 func TestBillingConfirmCheckoutUsesSavedSessionID(t *testing.T) {
 	commander := NewMockBillingCommander(t)
 	handler := NewBillingHandler(NewMockBillingQuerier(t), commander, "secret")

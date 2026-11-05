@@ -27,7 +27,7 @@ func (s *Store) BeginGenerationAttempt(ctx context.Context, runID uuid.UUID, job
 		}
 		promptTarget := 15
 		if s.cloudMode {
-			available, err := cloudGenerationBudget(ctx, tx, run.BrandID)
+			available, err := cloudGenerationBudget(ctx, tx, run.BrandID, run.Mode)
 			if err != nil {
 				return err
 			}
@@ -118,7 +118,7 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 			if err := lockOrganization(ctx, tx, brand.OrganizationID); err != nil {
 				return err
 			}
-			available, err := cloudGenerationBudget(ctx, tx, run.BrandID)
+			available, err := cloudGenerationBudget(ctx, tx, run.BrandID, run.Mode)
 			if err != nil {
 				return err
 			}
@@ -165,23 +165,28 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 	return promptCount, competitorCount, err
 }
 
-func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID) (int, error) {
+func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID, mode domain.GenerationMode) (int, error) {
 	var brand domain.Brand
 	if err := db.WithContext(ctx).Select("organization_id").Where("id = ?", brandID).Take(&brand).Error; err != nil {
 		return 0, err
 	}
-	limit, err := cloudPromptLimit(ctx, db, brand.OrganizationID)
+
+	subscription, err := cloudSubscription(ctx, db, brand.OrganizationID)
 	if err != nil {
 		return 0, err
 	}
-	if limit == 0 {
+
+	now := time.Now().UTC()
+	if subscription.PromptLimit(now) == 0 {
 		return 0, domain.ErrBillingRequired
 	}
+
 	count, err := storedPromptCount(ctx, db, brand.OrganizationID)
 	if err != nil {
 		return 0, err
 	}
-	return max(0, limit-int(count)), nil
+
+	return subscription.GenerationBudget(now, mode, int(count)), nil
 }
 
 func insertGeneratedPrompts(tx *gorm.DB, brandID uuid.UUID, suggestions []string, budget int) (int, error) {

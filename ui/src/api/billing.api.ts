@@ -10,6 +10,7 @@ export function createBillingApi(api: BillingApi) {
       api.billingConfirmCheckout({ billingConfirmCheckoutRequest: { sessionId } }),
     changeAllowance: (prompts: number, idempotencyKey: string) =>
       api.billingChangeAllowance({ idempotencyKey, billingAllowanceRequest: { prompts } }),
+    startPlan: (idempotencyKey: string) => api.billingStartPlan({ idempotencyKey }),
     portal: () => api.billingPortal(),
   };
 }

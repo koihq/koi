@@ -302,6 +302,13 @@ func subscriptionFromStripe(got *stripe.Subscription) (domain.BillingSnapshot, e
 				result.PendingUpgradeExpiresAt = timestamp(got.PendingUpdate.ExpiresAt)
 			}
 		}
+
+		// Ending a trial carries no item change: the unpaid target is the current quantity.
+		if got.PendingUpdate.TrialEnd != 0 && result.PendingUpgradeQuantity == nil {
+			quantity := result.Quantity
+			result.PendingUpgradeQuantity = &quantity
+			result.PendingUpgradeExpiresAt = timestamp(got.PendingUpdate.ExpiresAt)
+		}
 	}
 	if got.LatestInvoice != nil && (result.PendingUpgradeQuantity != nil ||
 		got.Status == stripe.SubscriptionStatusPastDue || got.Status == stripe.SubscriptionStatusUnpaid ||
@@ -388,6 +395,30 @@ func (c *Client) Upgrade(ctx context.Context, current domain.BillingSnapshot, qu
 
 func (c *Client) ChangeTrial(ctx context.Context, current domain.BillingSnapshot, quantity int, key string) (domain.BillingSnapshot, error) {
 	return c.updateQuantity(ctx, current, quantity, key, true)
+}
+
+// EndTrial charges the plan now. pending_if_incomplete keeps the trial when the payment fails,
+// instead of moving the subscription to past_due.
+func (c *Client) EndTrial(ctx context.Context, current domain.BillingSnapshot, key string) (domain.BillingSnapshot, error) {
+	params := &stripe.SubscriptionUpdateParams{
+		TrialEndNow:       stripe.Bool(true),
+		PaymentBehavior:   stripe.String("pending_if_incomplete"),
+		ProrationBehavior: stripe.String("none"),
+	}
+	params.SetIdempotencyKey(key)
+	params.AddExpand("latest_invoice")
+
+	got, err := c.stripe.V1Subscriptions.Update(ctx, current.ID, params)
+	if err != nil {
+		return domain.BillingSnapshot{}, err
+	}
+
+	result, err := subscriptionFromStripe(got)
+	if err == nil && result.ID != current.ID {
+		return domain.BillingSnapshot{}, errors.New("Stripe returned unexpected subscription")
+	}
+
+	return result, err
 }
 
 func (c *Client) ReleaseSchedule(ctx context.Context, current domain.BillingSnapshot, key string) (domain.BillingSnapshot, error) {

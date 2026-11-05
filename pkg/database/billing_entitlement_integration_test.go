@@ -47,7 +47,7 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 		require.NoError(t, store.BrandRepo().Create(ctx, brands[i]))
 	}
 	commander := domain.NewPromptCommander(store)
-	for i := range 5 {
+	for i := range domain.TrialPromptLimit {
 		_, err := commander.Create(ctx, brands[i%2].ID, domain.CreatePromptParams{Text: fmt.Sprintf("Prompt %d", i)})
 		require.NoError(t, err)
 	}
@@ -74,7 +74,7 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 	_, err = commander.Update(ctx, extra.ID, domain.UpdatePromptParams{Inactive: &active})
 	require.NoError(t, err)
 	require.NoError(t, db.Where("brand_id = ? AND text IN ?", brands[0].ID,
-		[]string{"Prompt 0", "Prompt 2", "Prompt 4"}).Delete(&domain.Prompt{}).Error)
+		[]string{"Prompt 0", "Prompt 2", "Prompt 4", "Prompt 6", "Prompt 8"}).Delete(&domain.Prompt{}).Error)
 	require.NoError(t, db.Where("brand_id = ? AND text = ?", brands[1].ID, "Prompt 1").Delete(&domain.Prompt{}).Error)
 	run := &domain.GenerationRun{
 		BrandID:       brands[0].ID,
@@ -92,10 +92,89 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 	inserted, _, err := store.FinishGenerationAttempt(ctx, run.ID, 1,
 		domain.GenerationResult{Prompts: suggestions})
 	require.NoError(t, err)
-	require.Equal(t, 3, inserted)
+	require.Equal(t, 5, inserted)
 	count, err := storedPromptCount(ctx, db, organization.ID)
 	require.NoError(t, err)
-	require.EqualValues(t, 5, count)
+	require.EqualValues(t, domain.TrialPromptLimit, count)
+}
+
+func TestCloudTrialInitialDraftLeavesRoomForTheCustomer(t *testing.T) {
+	db, err := Open(testdb.URL(t))
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	require.NoError(t, Migrate(db))
+
+	store := NewStore(db).WithCloudMode(true)
+	organization := &domain.Organization{Name: "Koi"}
+	require.NoError(t, store.OrganizationRepo().Create(t.Context(), organization))
+
+	end := time.Now().Add(7 * 24 * time.Hour)
+	subscription := &domain.BillingSubscription{
+		OrganizationID:       organization.ID,
+		StripeSubscriptionID: "sub_trial",
+		StripePriceID:        "price_trial",
+		Quantity:             100,
+		Status:               "trialing",
+		CurrentPeriodEnd:     &end,
+		TrialEnd:             &end,
+	}
+	require.NoError(t, db.Create(subscription).Error)
+
+	brand := &domain.Brand{OrganizationID: organization.ID, Name: "Brand", Domain: "brand.example", Country: "IT"}
+	require.NoError(t, db.Create(brand).Error)
+
+	suggestions := make([]string, 15)
+	for i := range suggestions {
+		suggestions[i] = fmt.Sprintf("Generated prompt %d?", i)
+	}
+
+	var job int64
+	generate := func(mode domain.GenerationMode) (target, inserted int, err error) {
+		job++
+		run := &domain.GenerationRun{
+			BrandID:       brand.ID,
+			Mode:          mode,
+			State:         domain.GenerationQueued,
+			RiverJobID:    &job,
+			ModelSlug:     domain.GenerationModelSlug,
+			BrandSnapshot: brand.Snapshot(),
+		}
+		require.NoError(t, db.Create(run).Error)
+
+		_, input, err := store.BeginGenerationAttempt(t.Context(), run.ID, job, 1)
+		if err != nil {
+			require.NoError(t, db.Delete(run).Error)
+
+			return 0, 0, err
+		}
+
+		inserted, _, err = store.FinishGenerationAttempt(t.Context(), run.ID, 1, domain.GenerationResult{Prompts: suggestions})
+
+		return input.PromptTarget, inserted, err
+	}
+
+	target, inserted, err := generate(domain.GenerationInitial)
+	require.NoError(t, err)
+	require.Equal(t, domain.TrialInitialDraftLimit, target)
+	require.Equal(t, domain.TrialInitialDraftLimit, inserted)
+
+	target, inserted, err = generate(domain.GenerationPrompts)
+	require.NoError(t, err)
+	require.Equal(t, 5, target)
+	require.Equal(t, 5, inserted)
+
+	_, _, err = generate(domain.GenerationPrompts)
+	require.ErrorIs(t, err, domain.ErrPromptLimitReached)
+
+	require.NoError(t, db.Where("brand_id = ?", brand.ID).Delete(&domain.Prompt{}).Error)
+	require.NoError(t, db.Model(subscription).Updates(map[string]any{"status": "active", "quantity": 15}).Error)
+
+	target, inserted, err = generate(domain.GenerationInitial)
+	require.NoError(t, err)
+	require.Equal(t, 15, target)
+	require.Equal(t, 15, inserted)
 }
 
 func TestCloudWorkerStopsQueuedPromptAfterDeactivation(t *testing.T) {

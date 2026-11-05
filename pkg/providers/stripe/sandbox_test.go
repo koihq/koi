@@ -19,7 +19,7 @@ func TestStripeSandbox(t *testing.T) {
 	if os.Getenv("KOI_STRIPE_SANDBOX_TEST") != "1" {
 		t.Skip("set KOI_STRIPE_SANDBOX_TEST=1 to run against the configured Stripe sandbox")
 	}
-	config, err := godotenv.Read("../../.env")
+	config, err := godotenv.Read("../../../.env")
 	require.NoError(t, err)
 	secret, priceID := config["KOI_STRIPE_SECRET_KEY"], config["KOI_STRIPE_PRICE_ID"]
 	require.True(t, strings.HasPrefix(secret, "sk_test_"), "sandbox tests require a test key")
@@ -69,31 +69,31 @@ func TestStripeSandbox(t *testing.T) {
 		current, err := client.GetSubscription(t.Context(), id)
 		require.NoError(t, err)
 		trialEnd := current.TrialEnd
-		changed, err := client.ChangeTrial(t.Context(), current, 10, "koi-test-trial-"+uuid.NewString())
+		changed, err := client.ChangeTrial(t.Context(), current, 50, "koi-test-trial-"+uuid.NewString())
 		require.NoError(t, err)
 		require.Equal(t, "trialing", changed.Status)
 		require.Equal(t, trialEnd, changed.TrialEnd)
-		require.Equal(t, 10, changed.Quantity)
+		require.Equal(t, 50, changed.Quantity)
 
 		advanceSandboxClock(t, client, clockID, trialEnd.Add(time.Hour).Unix())
 		current, err = client.GetSubscription(t.Context(), id)
 		require.NoError(t, err)
 		require.Equal(t, "active", current.Status)
-		scheduled, err := client.ScheduleDowngrade(t.Context(), current, 5, "koi-test-downgrade-"+uuid.NewString())
+		scheduled, err := client.ScheduleDowngrade(t.Context(), current, 25, "koi-test-downgrade-"+uuid.NewString())
 		require.NoError(t, err)
 		require.NotNil(t, scheduled.PendingQuantity)
-		require.Equal(t, 5, *scheduled.PendingQuantity)
-		require.Equal(t, 10, scheduled.Quantity)
+		require.Equal(t, 25, *scheduled.PendingQuantity)
+		require.Equal(t, 50, scheduled.Quantity)
 
 		released, err := client.ReleaseSchedule(t.Context(), scheduled, "koi-test-release-"+uuid.NewString())
 		require.NoError(t, err)
 		require.Nil(t, released.ScheduleID)
-		scheduled, err = client.ScheduleDowngrade(t.Context(), released, 5, "koi-test-renewal-"+uuid.NewString())
+		scheduled, err = client.ScheduleDowngrade(t.Context(), released, 25, "koi-test-renewal-"+uuid.NewString())
 		require.NoError(t, err)
 		advanceSandboxClock(t, client, clockID, scheduled.CurrentPeriodEnd.Add(time.Hour).Unix())
 		current, err = client.GetSubscription(t.Context(), id)
 		require.NoError(t, err)
-		require.Equal(t, 5, current.Quantity)
+		require.Equal(t, 25, current.Quantity)
 		require.Nil(t, current.PendingQuantity)
 	})
 
@@ -120,6 +120,38 @@ func TestStripeSandbox(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("ending a trial charges now or keeps the trial", func(t *testing.T) {
+		id, _ := fixture(t, true)
+		current, err := client.GetSubscription(t.Context(), id)
+		require.NoError(t, err)
+		started, err := client.EndTrial(t.Context(), current, "koi-test-start-"+uuid.NewString())
+		require.NoError(t, err)
+		require.Equal(t, "active", started.Status)
+		require.Nil(t, started.PendingUpgradeQuantity)
+
+		id, clockID := fixture(t, true)
+		current, err = client.GetSubscription(t.Context(), id)
+		require.NoError(t, err)
+		method, err := client.stripe.V1PaymentMethods.Attach(t.Context(), "pm_card_chargeCustomerFail", &stripe.PaymentMethodAttachParams{Customer: stripe.String(current.CustomerID)})
+		require.NoError(t, err)
+		_, err = client.stripe.V1Subscriptions.Update(t.Context(), id, &stripe.SubscriptionUpdateParams{DefaultPaymentMethod: stripe.String(method.ID)})
+		require.NoError(t, err)
+
+		declined, err := client.EndTrial(t.Context(), current, "koi-test-start-"+uuid.NewString())
+		require.NoError(t, err)
+		require.Equal(t, "trialing", declined.Status)
+		require.NotNil(t, declined.PendingUpgradeQuantity)
+		require.Equal(t, 25, *declined.PendingUpgradeQuantity)
+		require.NotEmpty(t, declined.PaymentURL)
+		require.NotNil(t, declined.PendingUpgradeExpiresAt)
+
+		advanceSandboxClock(t, client, clockID, declined.PendingUpgradeExpiresAt.Add(time.Hour).Unix())
+		expired, err := client.GetSubscription(t.Context(), id)
+		require.NoError(t, err)
+		require.Equal(t, "trialing", expired.Status)
+		require.Nil(t, expired.PendingUpgradeQuantity)
+	})
 
 	t.Run("cancellation retains access until the paid period ends", func(t *testing.T) {
 		id, clockID := fixture(t, false)

@@ -179,6 +179,40 @@ func TestHostedCheckoutTrialRequiresPaymentMethod(t *testing.T) {
 	}
 }
 
+func TestEndTrialKeepsTrialUntilPaymentSucceeds(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatal(err)
+		}
+		for key, want := range map[string]string{
+			"trial_end":          "now",
+			"payment_behavior":   "pending_if_incomplete",
+			"proration_behavior": "none",
+		} {
+			if got := r.Form.Get(key); got != want {
+				t.Errorf("%s = %q, want %q", key, got, want)
+			}
+		}
+		if got := r.Header.Get("Idempotency-Key"); got != "start-key" {
+			t.Errorf("idempotency key = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"sub_123","customer":"cus_org","status":"trialing","trial_end":900,"pending_update":{"expires_at":500,"trial_end":100},"latest_invoice":{"id":"in_1","hosted_invoice_url":"https://invoice.stripe.com/pay"},"items":{"data":[{"id":"si_123","quantity":25,"current_period_end":200,"price":{"id":"price_v1"}}]}}`))
+	}))
+	defer server.Close()
+
+	result, err := testClient(server).EndTrial(t.Context(), domain.BillingSnapshot{ID: "sub_123"}, "start-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != "trialing" || result.PendingUpgradeQuantity == nil || *result.PendingUpgradeQuantity != 25 {
+		t.Fatalf("pending plan start was not mapped: %+v", result)
+	}
+	if result.PaymentURL != "https://invoice.stripe.com/pay" || result.PendingUpgradeExpiresAt == nil || result.PendingUpgradeExpiresAt.Unix() != 500 {
+		t.Fatalf("payment recovery was not mapped: %+v", result)
+	}
+}
+
 func TestUpgradeRequestsPaidPendingProration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := r.ParseForm(); err != nil {

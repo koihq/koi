@@ -3,6 +3,16 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { messageFromUnknown } from "@/api/errors";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,7 +47,8 @@ function BillingSettings() {
   const { me } = Route.useRouteContext();
   const billing = useBilling(search.checkout === "success", me.organization.id, search.sessionId);
   const [selected, setSelected] = useState<string | null>(null);
-  const { subscription, catalog, update, checkout, portal } = billing;
+  const [confirmingStart, setConfirmingStart] = useState(false);
+  const { subscription, catalog, update, start, checkout, portal } = billing;
   const record = subscription.data?.subscription;
   const options = catalog.data?.options ?? [];
   const quantity =
@@ -53,12 +64,15 @@ function BillingSettings() {
   const canCheckout =
     !record || record.status === "canceled" || record.status === "incomplete_expired";
   const canChange = current && !current.cancelAtPeriodEnd;
-  const busy = update.isPending || checkout.isPending || portal.isPending;
+  const busy = update.isPending || start.isPending || checkout.isPending || portal.isPending;
   const unchanged = (record?.pendingQuantity ?? record?.quantity) === quantity;
+  const inTrial = record?.status === "trialing";
+  const paymentOpen = Boolean(record?.pendingUpgradeQuantity && !billing.paymentExpired);
   const paymentURL =
     !billing.paymentExpired &&
     (record?.paymentUrl || (billing.awaitingConfirmation ? billing.change?.paymentUrl : undefined));
-  const error = update.error ?? checkout.error ?? portal.error ?? billing.confirmation.error;
+  const error =
+    update.error ?? start.error ?? checkout.error ?? portal.error ?? billing.confirmation.error;
   const price = quote
     ? new Intl.NumberFormat(i18n.language, {
         style: "currency",
@@ -69,6 +83,7 @@ function BillingSettings() {
     : null;
 
   function changeAllowance(target: number) {
+    start.reset();
     checkout.reset();
     portal.reset();
     update.mutate(target, { onSuccess: () => setSelected(null) });
@@ -79,6 +94,7 @@ function BillingSettings() {
     if (canChange) changeAllowance(quantity);
     else if (canCheckout) {
       update.reset();
+      start.reset();
       portal.reset();
       checkout.mutate(quantity);
     }
@@ -88,7 +104,7 @@ function BillingSettings() {
     <div className="max-w-2xl pb-24">
       <h1 className="text-title font-semibold">{t("title")}</h1>
       <p className="mt-2 text-sm text-muted-foreground">{t("description")}</p>
-      {billing.awaitingConfirmation && (
+      {billing.awaitingConfirmation && !(inTrial && paymentOpen) && (
         <div className="mt-4 space-y-2 text-sm">
           <output className="block text-muted-foreground">
             {t(billing.pollExpired ? "confirmationDelayed" : "awaitingConfirmation")}
@@ -131,12 +147,18 @@ function BillingSettings() {
             {t("pending", { quantity: record.pendingQuantity })}
           </p>
         )}
-        {record?.pendingUpgradeQuantity && !billing.paymentExpired && (
+        {paymentOpen && (
           <p className="text-sm text-muted-foreground">
-            {t("pendingUpgrade", { quantity: record.pendingUpgradeQuantity })}
+            {inTrial
+              ? t("startPlanPending")
+              : t("pendingUpgrade", { quantity: record?.pendingUpgradeQuantity })}
           </p>
         )}
-        {billing.paymentExpired && <output className="block text-sm">{t("upgradeExpired")}</output>}
+        {billing.paymentExpired && (
+          <output className="block text-sm">
+            {t(inTrial ? "startPlanExpired" : "upgradeExpired")}
+          </output>
+        )}
         {current && (
           <p className="text-sm text-muted-foreground">
             {t("allowance", { quantity: subscription.data?.promptLimit ?? 0 })}
@@ -208,11 +230,21 @@ function BillingSettings() {
                 subscription.isPending ||
                 subscription.isError ||
                 Boolean(canChange && unchanged) ||
-                Boolean(record?.pendingUpgradeQuantity && !billing.paymentExpired)
+                paymentOpen
               }
               onClick={submit}
             >
               {canChange ? t("changeAllowance") : t("checkout")}
+            </Button>
+          )}
+          {canChange && inTrial && unchanged && !paymentOpen && price && (
+            <Button
+              size="lg"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setConfirmingStart(true)}
+            >
+              {t("startPlan")}
             </Button>
           )}
           {canChange && record?.pendingQuantity && (
@@ -232,6 +264,7 @@ function BillingSettings() {
               disabled={busy}
               onClick={() => {
                 update.reset();
+                start.reset();
                 checkout.reset();
                 portal.mutate();
               }}
@@ -251,6 +284,31 @@ function BillingSettings() {
           </p>
         )}
       </div>
+
+      <AlertDialog open={confirmingStart} onOpenChange={setConfirmingStart}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("startPlanTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("startPlanDescription", { price, quantity })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("startPlanCancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmingStart(false);
+                update.reset();
+                checkout.reset();
+                portal.reset();
+                start.mutate();
+              }}
+            >
+              {t("startPlanConfirm", { price })}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

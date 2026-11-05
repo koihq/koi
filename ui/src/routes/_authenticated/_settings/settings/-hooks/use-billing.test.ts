@@ -17,11 +17,26 @@ const status: BillingStatus = {
 
 describe("billing state", () => {
   it("selects the scheduled allowance before the current one", () => {
-    expect(billingSelection(undefined, 5)).toBe(5);
-    expect(billingSelection(status, 5)).toBe(25);
+    expect(billingSelection(undefined, 50)).toBe(50);
+    expect(billingSelection(status, 50)).toBe(25);
     expect(
-      billingSelection({ ...status, subscription: { ...subscription, pendingQuantity: 10 } }, 5),
-    ).toBe(10);
+      billingSelection({ ...status, subscription: { ...subscription, pendingQuantity: 15 } }, 50),
+    ).toBe(15);
+  });
+
+  it("expires an unpaid plan start even though the quantity does not change", () => {
+    const trial = (pendingUpgradeExpiresAt: Date) => ({
+      ...status,
+      subscription: {
+        ...subscription,
+        status: "trialing",
+        pendingUpgradeQuantity: 25,
+        pendingUpgradeExpiresAt,
+      },
+    });
+
+    expect(billingUpgradeExpired(trial(new Date(500)), undefined, 1000)).toBe(true);
+    expect(billingUpgradeExpired(trial(new Date(2000)), undefined, 1000)).toBe(false);
   });
 
   it("waits only while checkout or upgrade confirmation is outstanding", () => {
@@ -30,7 +45,7 @@ describe("billing state", () => {
     expect(
       billingNeedsConfirmation(status, { quantity: 50, effective: "after_payment" }, false),
     ).toBe(true);
-    expect(billingNeedsConfirmation(status, { quantity: 5, effective: "next_cycle" }, false)).toBe(
+    expect(billingNeedsConfirmation(status, { quantity: 15, effective: "next_cycle" }, false)).toBe(
       false,
     );
     expect(

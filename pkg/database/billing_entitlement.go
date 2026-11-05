@@ -19,12 +19,19 @@ func lockOrganization(ctx context.Context, db *gorm.DB, organizationID uuid.UUID
 		Where("id = ?", organizationID).Take(&organization).Error)
 }
 
-func cloudPromptLimit(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (int, error) {
+// cloudSubscription returns a zero subscription, which grants nothing, when none exists.
+func cloudSubscription(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (domain.BillingSubscription, error) {
 	var subscription domain.BillingSubscription
 	err := db.WithContext(ctx).Where("organization_id = ?", organizationID).Take(&subscription).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, nil
+		return domain.BillingSubscription{}, nil
 	}
+
+	return subscription, err
+}
+
+func cloudPromptLimit(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (int, error) {
+	subscription, err := cloudSubscription(ctx, db, organizationID)
 	if err != nil {
 		return 0, err
 	}
