@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import { promptListOptions } from "@/lib/queries";
-import { runKey } from "@/lib/query-keys";
 import type { VisibilityScope } from "@/lib/visibility";
+import { promptStatusFilters } from "./prompt-status";
 
 /**
  * How many prompts each status tab holds. Each count is the `totalItems` of a one-page
@@ -11,23 +11,18 @@ import type { VisibilityScope } from "@/lib/visibility";
 export function usePromptCounts(brandID: string, scope: VisibilityScope) {
   const api = useApi();
   const base = { page: 1, pageSize: 10 as const, scope };
-  const confirmed = useQuery({
-    ...promptListOptions(api, brandID, { ...base, confirmed: true }),
+  const tracking = useQuery({
+    ...promptListOptions(api, brandID, { ...base, ...promptStatusFilters.tracking }),
     select: (page) => page.totalItems,
   });
-  const unconfirmed = useQuery({
-    ...promptListOptions(api, brandID, { ...base, confirmed: false }),
+  const drafts = useQuery({
+    ...promptListOptions(api, brandID, { ...base, ...promptStatusFilters.drafts }),
     select: (page) => page.totalItems,
   });
-  const past = useQuery({
-    queryKey: [...runKey(brandID), "past-prompts", base],
-    queryFn: ({ signal }) => api.runs.historicalPrompts(brandID, base, { signal }),
+  const stopped = useQuery({
+    ...promptListOptions(api, brandID, { ...base, ...promptStatusFilters.stopped }),
     select: (page) => page.totalItems,
   });
-  const all =
-    confirmed.data === undefined || unconfirmed.data === undefined
-      ? undefined
-      : confirmed.data + unconfirmed.data;
 
-  return { all, confirmed: confirmed.data, unconfirmed: unconfirmed.data, past: past.data };
+  return { tracking: tracking.data, drafts: drafts.data, stopped: stopped.data };
 }

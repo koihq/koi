@@ -137,9 +137,9 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	require.NoError(t, db.Model(&domain.Prompt{}).Where("id = ?", promptID).
 		Update("confirmed", false).Error)
 	require.Equal(t, 2, read(nil).Metric.Completed)
-	require.NoError(t, domain.NewPromptCommander(store).Delete(ctx, promptID))
+	require.NoError(t, store.PromptRepo().Delete(ctx, promptID))
 	require.Equal(t, 2, read(nil).Metric.Completed)
-	require.NoError(t, domain.NewPromptCommander(store).Delete(ctx, secondPrompt.ID))
+	require.NoError(t, store.PromptRepo().Delete(ctx, secondPrompt.ID))
 	summary, err := domain.NewVisibilityAnalyticsQuerier(store).Summary(ctx, domain.VisibilityScope{BrandFilter: domain.BrandFilter{BrandID: brand.ID}, Days: 7})
 	require.NoError(t, err)
 	require.False(t, summary.HasConfirmedPrompts)

@@ -149,15 +149,15 @@ export interface BillingApiInterface {
 
     /**
      * Creates request options for billingConfirmCheckout without sending the request
-     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest
+     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest 
      * @throws {RequiredError}
      * @memberof BillingApiInterface
      */
     billingConfirmCheckoutRequestOpts(requestParameters: BillingConfirmCheckoutOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     *
-     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest
+     * 
+     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof BillingApiInterface

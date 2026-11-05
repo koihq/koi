@@ -53,9 +53,14 @@ body. Details and mutations identify the resource by its own UUID. The server
 resolves its parent. The same rules apply to competitors and generations. Runs use
 `/runs?brandId=...`, `/runs/{runID}` and `/runs/{runID}/results`.
 
-The historical endpoints `/prompt-history/{promptID}/runs` and
-`/prompt-history/{promptID}/visibility` retain a required `brandId` query parameter:
-the prompt identifier may refer to a deleted snapshot rather than a current row.
+`/prompt-history/{promptID}/runs` and `/prompt-history/{promptID}/visibility` read saved
+results and keep a required `brandId` query parameter, because results have no foreign key to
+a live prompt.
+
+A prompt with saved results can only be stopped (`inactive: true`), so its history stays
+reachable and resuming continues the same series. `DELETE /prompts/{id}` returns
+`resource_conflict` for such a prompt; `hasResults` tells clients which action applies.
+Stopping or resuming does not reset the prompt review. Editing the text or deleting does.
 
 `POST /prompts/confirm` and `POST /competitors/confirm` accept `{"brandId":"..."}`.
 They finish a review and can enable tracking, so they remain explicit domain
@@ -131,7 +136,7 @@ applied at read time.
 Every analytics report includes each confirmed competitor's ID, name, domain,
 metric and series, even when the period has no completed answers. The summary adds
 `hasConfirmedPrompts`, checked independently of period and engines and including
-paused prompts. Handlers do not load prompt pages to derive that state.
+stopped prompts. Handlers do not load prompt pages to derive that state.
 
 Workers consume the application `CollectedAnswer` and `ProviderError` contracts.
 Provider adapters retain their protocol details and stable failure codes. Cloro is

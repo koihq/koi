@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/api/apiProvider";
 import type { PromptListParams } from "@/api/prompts.api";
 import { keepPreviousDataForScope, promptListOptions } from "@/lib/queries";
-import { promptKey, runKey } from "@/lib/query-keys";
+import { promptKey } from "@/lib/query-keys";
 import type { VisibilityScope } from "@/lib/visibility";
+import { type PromptStatus, promptStatusFilters } from "./prompt-status";
 
 type PromptSearch = {
   page: number;
@@ -11,7 +12,7 @@ type PromptSearch = {
   q: string;
   sort: NonNullable<PromptListParams["sort"]>;
   descending: boolean;
-  status: string;
+  status: PromptStatus;
 };
 
 export function usePromptList(
@@ -22,30 +23,19 @@ export function usePromptList(
 ) {
   const api = useApi();
   const page = Math.max(1, search.page);
-  const confirmed =
-    search.status === "confirmed" ? true : search.status === "unconfirmed" ? false : undefined;
-  const params = {
-    page,
-    pageSize: search.pageSize,
-    q: search.q.trim() || undefined,
-    sort: search.sort,
-    descending: search.descending,
-    scope,
-  };
-  const live = useQuery({
-    ...promptListOptions(api, brandID, { ...params, confirmed }),
+  const active = useQuery({
+    ...promptListOptions(api, brandID, {
+      ...promptStatusFilters[search.status],
+      page,
+      pageSize: search.pageSize,
+      q: search.q.trim() || undefined,
+      sort: search.sort,
+      descending: search.descending,
+      scope,
+    }),
     placeholderData: keepPreviousDataForScope(promptKey(brandID)),
-    enabled: search.status !== "past",
     refetchInterval: collecting ? 5_000 : false,
   });
-  const history = useQuery({
-    queryKey: [...runKey(brandID), "past-prompts", params],
-    placeholderData: keepPreviousDataForScope(runKey(brandID)),
-    enabled: search.status === "past",
-    queryFn: ({ signal }) => api.runs.historicalPrompts(brandID, params, { signal }),
-    refetchInterval: collecting ? 5_000 : false,
-  });
-  const active = search.status === "past" ? history : live;
 
-  return { active, live, history, page, totalPages: active.data?.totalPages ?? 0 };
+  return { active, page, totalPages: active.data?.totalPages ?? 0 };
 }

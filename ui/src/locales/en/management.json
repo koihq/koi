@@ -19,9 +19,7 @@
   "confirmAllCount": "Confirm all ({count})",
   "delete": "Delete",
   "edit": "Edit",
-  "pausePrompt": "Pause tracking",
   "resumePrompt": "Resume tracking",
-  "inactivePrompt": "Tracking paused",
   "prompts": "Prompts",
   "competitors": "Competitors",
   "addPrompt": "Add prompt",
@@ -31,7 +29,7 @@
   "editPrompt": "Edit prompt",
   "deletePrompt": "Delete prompt",
   "deleteCompetitor": "Delete competitor",
-  "deletePromptTitle": "Delete prompt?",
+  "deletePromptTitle": "Delete this prompt?",
   "deleteCompetitorTitle": "Delete competitor?",
   "actions": "Actions",
   "manual": "Added manually",
@@ -45,7 +43,7 @@
   "competitorSearchLabel": "Search for a company",
   "promptDescription": "Questions Koi asks answer engines about your market.",
   "competitorDescription": "Brands Koi compares with yours in answer-engine results.",
-  "promptDeleteDescription": "This removes the prompt from future visibility runs.",
+  "promptDeleteDescription": "It has no saved answers, so nothing is lost. This can't be undone.",
   "competitorDeleteDescription": "This removes the competitor from future comparisons.",
   "promptEmpty": "Add the questions you want Koi to track.",
   "competitorEmpty": "Add the brands you want Koi to compare with yours.",
@@ -108,5 +106,9 @@
   "dismiss": "Dismiss",
   "dismissSuggestionTitle": "Dismiss suggestion?",
   "dismissSuggestionDescription": "This removes the suggestion and prevents Koi from suggesting this competitor again. Recorded answers stay available.",
-  "suggested": "Suggested"
+  "suggested": "Suggested",
+  "stopPrompt": "Stop tracking",
+  "statusTracking": "Tracking",
+  "statusDrafts": "Drafts",
+  "statusStopped": "Stopped"
 }

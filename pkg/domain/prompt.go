@@ -22,7 +22,9 @@ type Prompt struct {
 	Confirmed  bool              `json:"confirmed" gorm:"not null;default:false"`
 	Inactive   bool              `json:"inactive" gorm:"not null;default:false"`
 	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
-	Brand      *Brand            `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	// HasResults is true once any run has recorded this prompt. Such a prompt can only be stopped.
+	HasResults bool   `json:"has_results" gorm:"-"`
+	Brand      *Brand `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
 
 func (Prompt) TableName() string { return "prompts" }
@@ -69,6 +71,7 @@ type PromptFilter struct {
 	BrandFilter
 	Query      string
 	Confirmed  *bool
+	Inactive   *bool
 	Sort       PromptSort
 	Descending bool
 	Days       int
@@ -111,12 +114,18 @@ func NewPrompt(brandID uuid.UUID, params CreatePromptParams) (*Prompt, error) {
 }
 
 // Update applies the fields present in params. Provenance and confirmation never change here.
+// Only a confirmed prompt can be stopped: a draft has nothing to stop, so a prompt is always
+// exactly one of tracking, draft or stopped.
 func (p *Prompt) Update(params UpdatePromptParams) error {
 	if params.Text != nil {
 		p.Text = *params.Text
 	}
 
 	if params.Inactive != nil {
+		if *params.Inactive && !p.Confirmed {
+			return Validation(FieldError{Field: "inactive", Code: FieldInvalid})
+		}
+
 		p.Inactive = *params.Inactive
 	}
 
@@ -195,7 +204,13 @@ func (c *promptCommander) Update(ctx context.Context, id uuid.UUID, params Updat
 			return err
 		}
 
-		if params.Text == nil && params.Inactive == nil {
+		if err := markPromptResults(ctx, tx, prompt.BrandID, prompt); err != nil {
+			return err
+		}
+
+		// Stopping or resuming is an explicit choice, not new content to review, so it must
+		// not block collection for the brand's other prompts.
+		if params.Text == nil {
 			return nil
 		}
 
@@ -208,8 +223,19 @@ func (c *promptCommander) Update(ctx context.Context, id uuid.UUID, params Updat
 	return prompt, nil
 }
 
+// Delete removes a prompt that has no saved results. A prompt with results can only be
+// stopped, so its history stays reachable and resuming continues the same series. Run
+// creation reads prompts under the same brand lock, so the check cannot race a new run.
 func (c *promptCommander) Delete(ctx context.Context, id uuid.UUID) error {
 	return withLockedChild(ctx, c.store, id, promptChildren, func(tx Store, _ *Brand, prompt *Prompt) error {
+		if err := markPromptResults(ctx, tx, prompt.BrandID, prompt); err != nil {
+			return err
+		}
+
+		if prompt.HasResults {
+			return ErrResourceConflict
+		}
+
 		if err := tx.PromptRepo().Delete(ctx, id); err != nil {
 			return err
 		}
@@ -225,7 +251,11 @@ func (c *promptCommander) Confirm(ctx context.Context, id uuid.UUID) (*Prompt, e
 		prompt = locked
 		prompt.Confirm()
 
-		return tx.PromptRepo().Update(ctx, prompt)
+		if err := tx.PromptRepo().Update(ctx, prompt); err != nil {
+			return err
+		}
+
+		return markPromptResults(ctx, tx, prompt.BrandID, prompt)
 	})
 	if err != nil {
 		return nil, err
@@ -240,6 +270,29 @@ func (c *promptCommander) ConfirmAll(ctx context.Context, brandID uuid.UUID) err
 
 func promptChildren(s Store) BaseEntityQuerier[Prompt] { return s.PromptRepo() }
 
+// markPromptResults sets HasResults on prompts of one brand with a single query.
+func markPromptResults(ctx context.Context, store Store, brandID uuid.UUID, prompts ...*Prompt) error {
+	if len(prompts) == 0 {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(prompts))
+	for _, prompt := range prompts {
+		ids = append(ids, prompt.ID)
+	}
+
+	withResults, err := store.VisibilityRepo().PromptsWithResults(ctx, brandID, ids)
+	if err != nil {
+		return err
+	}
+
+	for _, prompt := range prompts {
+		prompt.HasResults = withResults[prompt.ID]
+	}
+
+	return nil
+}
+
 type promptQuerier struct {
 	brandChildQuerier[Prompt, PromptFilter]
 }
@@ -253,6 +306,37 @@ func NewPromptQuerier(store Store) PromptQuerier {
 			},
 		},
 	}
+}
+
+func (q *promptQuerier) Get(ctx context.Context, id uuid.UUID) (*Prompt, error) {
+	prompt, err := q.brandChildQuerier.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := markPromptResults(ctx, q.store, prompt.BrandID, prompt); err != nil {
+		return nil, err
+	}
+
+	return prompt, nil
+}
+
+func (q *promptQuerier) List(ctx context.Context, filter PromptFilter, page PageParams) (*Page[Prompt], error) {
+	prompts, err := q.brandChildQuerier.List(ctx, filter, page)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*Prompt, 0, len(prompts.Items))
+	for i := range prompts.Items {
+		items = append(items, &prompts.Items[i])
+	}
+
+	if err := markPromptResults(ctx, q.store, filter.BrandID, items...); err != nil {
+		return nil, err
+	}
+
+	return prompts, nil
 }
 
 // ListWithVisibility adds each prompt's report for the period and engines in the filter.

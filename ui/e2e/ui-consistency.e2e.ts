@@ -48,6 +48,7 @@ async function mockWorkspace(page: Page, rates: (number | null)[] = [50, 50], co
     source: "manual",
     confirmed: true,
     inactive: false,
+    hasResults: true,
     visibility: report,
   }));
   const run = {

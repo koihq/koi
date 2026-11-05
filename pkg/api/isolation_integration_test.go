@@ -79,7 +79,7 @@ func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
 		{http.MethodPost, "/competitors", `{"brandId":"` + brandA.ID.String() + `","name":"Other","domain":"other.dev"}`},
 		{http.MethodGet, "/runs?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/generations?brandId=" + brandA.ID.String(), ""},
-		{http.MethodGet, "/prompt-history?brandId=" + brandA.ID.String(), ""},
+		{http.MethodGet, "/prompt-history/" + uuid.NewString() + "/runs?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/visibility/summary?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/tracking?brandId=" + brandA.ID.String(), ""},
 	} {

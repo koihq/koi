@@ -58,6 +58,11 @@ type mcpBrandUpdate struct {
 	Country     *string `json:"country,omitempty"`
 	Description *string `json:"description,omitempty"`
 }
+type mcpPromptList struct {
+	mcpPage
+	Confirmed *bool `json:"confirmed,omitempty"`
+	Inactive  *bool `json:"inactive,omitempty"`
+}
 type mcpPromptCreate struct {
 	BrandID mcpUUID `json:"brandId"`
 	Text    string  `json:"text"`
@@ -233,12 +238,16 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 	addMCPTool(server, "brands_update", "Update a brand", false, billing, true, func(ctx context.Context, in mcpBrandUpdate) (any, error) {
 		return mcpResult(BrandToRes)(shared.brandCommands.Update(ctx, in.ID.UUID(), domain.UpdateBrandParams{Name: in.Name, Domain: in.Domain, GitHubRepo: in.GitHubRepo, Country: in.Country, Description: in.Description}))
 	})
-	addMCPTool(server, "prompts_list", "List current prompts for brandId; paginated (default page 1, 10 items)", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
+	addMCPTool(server, "prompts_list", "List prompts for brandId, optionally by confirmed and inactive (stopped); hasResults tells whether a prompt has saved answers; paginated (default page 1, 10 items)", true, billing, true, func(ctx context.Context, in mcpPromptList) (any, error) {
 		filter, p, e := in.args()
 		if e != nil {
 			return nil, e
 		}
-		return mcpPageResult(PromptToRes)(shared.prompts.List(ctx, domain.PromptFilter{BrandFilter: filter}, p))
+		return mcpPageResult(PromptToRes)(shared.prompts.List(ctx, domain.PromptFilter{
+			BrandFilter: filter,
+			Confirmed:   in.Confirmed,
+			Inactive:    in.Inactive,
+		}, p))
 	})
 	addMCPTool(server, "prompts_get", "Get a prompt", true, billing, true, func(ctx context.Context, in mcpID) (any, error) {
 		return mcpResult(PromptToRes)(shared.prompts.Get(ctx, in.ID.UUID()))
@@ -249,10 +258,10 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 		}
 		return mcpResult(PromptToRes)(shared.promptCommands.Create(ctx, in.BrandID.UUID(), domain.CreatePromptParams{Text: in.Text}))
 	})
-	addMCPTool(server, "prompts_update", "Update a prompt", false, billing, true, func(ctx context.Context, in mcpPromptUpdate) (any, error) {
+	addMCPTool(server, "prompts_update", "Update a prompt's text, or set inactive to stop (true) or resume (false) tracking a confirmed prompt; its saved answers stay available", false, billing, true, func(ctx context.Context, in mcpPromptUpdate) (any, error) {
 		return mcpResult(PromptToRes)(shared.promptCommands.Update(ctx, in.ID.UUID(), domain.UpdatePromptParams{Text: in.Text, Inactive: in.Inactive}))
 	})
-	addMCPTool(server, "prompts_delete", "Delete a prompt", false, billing, true, func(ctx context.Context, in mcpID) (any, error) {
+	addMCPTool(server, "prompts_delete", "Delete a prompt with no saved answers; a prompt with answers returns resource_conflict, so stop it with prompts_update inactive=true instead", false, billing, true, func(ctx context.Context, in mcpID) (any, error) {
 		return map[string]bool{"deleted": true}, shared.promptCommands.Delete(ctx, in.ID.UUID())
 	})
 	addMCPTool(server, "prompts_confirm", "Confirm a prompt", false, billing, true, func(ctx context.Context, in mcpID) (any, error) {
@@ -365,7 +374,7 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 			Engines:     engines,
 		})
 	})
-	addMCPTool(server, "prompt_visibility", "Analyze a historical prompt for brandId over days (7, 30, or 90; default 30) and selected engines (default all)", true, billing, true, func(ctx context.Context, in mcpPromptVisibility) (any, error) {
+	addMCPTool(server, "prompt_visibility", "Analyze a prompt for brandId over days (7, 30, or 90; default 30) and selected engines (default all)", true, billing, true, func(ctx context.Context, in mcpPromptVisibility) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}
@@ -382,14 +391,7 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 			PromptID: in.PromptID.UUID(),
 		})
 	})
-	addMCPTool(server, "prompt_history_list", "List historical prompts with results", true, billing, true, func(ctx context.Context, in mcpPage) (any, error) {
-		filter, p, e := in.args()
-		if e != nil {
-			return nil, e
-		}
-		return mcpPageResult(HistoricalPromptToRes)(shared.visibility.ListHistoricalPrompts(ctx, domain.PromptFilter{BrandFilter: filter}, p))
-	})
-	addMCPTool(server, "prompt_history_runs", "List runs for a historical prompt", true, billing, true, func(ctx context.Context, in mcpPromptHistory) (any, error) {
+	addMCPTool(server, "prompt_history_runs", "List saved runs for a prompt", true, billing, true, func(ctx context.Context, in mcpPromptHistory) (any, error) {
 		if e := requireBrand(in.BrandID.UUID()); e != nil {
 			return nil, e
 		}

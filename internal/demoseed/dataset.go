@@ -48,7 +48,7 @@ type promptSpec struct {
 	topic int
 }
 
-// 0–25: active; 26–28: inactive; 29–31: drafts; 32–33: historical only.
+// 0–25: active; 26–28: stopped; 29–31: drafts.
 var prompts = []promptSpec{
 	{"What are the best tools to track whether ChatGPT recommends my SaaS?", 0},
 	{"Which AEO tools help a bootstrapped founder understand AI search visibility?", 1},
@@ -82,8 +82,6 @@ var prompts = []promptSpec{
 	{"How should a developer-first startup evaluate an AEO platform?", 4},
 	{"What would a weekly AI visibility review for a solo founder look like?", 5},
 	{"How can I use prompt-level evidence to prioritize documentation updates?", 5},
-	{"Which AI search tools should I evaluate before launching my first SaaS?", 0},
-	{"How can I monitor an early positioning experiment across answer engines?", 7},
 }
 
 var topicNotes = []string{

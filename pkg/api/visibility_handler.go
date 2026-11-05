@@ -78,22 +78,6 @@ func VisibilityResultToRes(v *domain.VisibilityResult) VisibilityResultRes {
 	}
 }
 
-type HistoricalPromptRes struct {
-	PromptID   uuid.UUID                `json:"promptId"`
-	PromptText string                   `json:"promptText"`
-	LastSeenAt time.Time                `json:"lastSeenAt"`
-	Visibility *domain.VisibilityReport `json:"visibility,omitempty"`
-}
-
-func HistoricalPromptToRes(v *domain.HistoricalPrompt) HistoricalPromptRes {
-	return HistoricalPromptRes{
-		PromptID:   v.PromptID,
-		PromptText: v.PromptText,
-		LastSeenAt: v.LastSeenAt,
-		Visibility: v.Visibility,
-	}
-}
-
 type PromptHistoryRunRes struct {
 	Run     VisibilityRunRes      `json:"run"`
 	Results []VisibilityResultRes `json:"results"`
@@ -141,10 +125,9 @@ func (h *VisibilityHandler) Routes() func(chi.Router) {
 	}
 }
 
-// HistoryRoutes mounts the prompt history collection, which outlives deleted prompts.
+// HistoryRoutes mounts a prompt's saved runs and visibility, read from the saved results.
 func (h *VisibilityHandler) HistoryRoutes() func(chi.Router) {
 	return func(r chi.Router) {
-		r.Get("/", List(historicalPromptFilter, h.querier.ListHistoricalPromptsWithVisibility, HistoricalPromptToRes))
 		r.Get("/{promptID}/runs", List(promptHistoryParams, h.listPromptRuns, PromptHistoryRunToRes))
 		r.Get("/{promptID}/visibility", Read(promptVisibilityParams, h.analytics.PromptVisibility, identity[domain.VisibilityReport]))
 	}

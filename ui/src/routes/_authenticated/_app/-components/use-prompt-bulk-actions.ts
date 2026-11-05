@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useApi } from "@/api/apiProvider";
 import type { Prompt } from "@/api/prompts.api";
 import { invalidateProduct } from "@/lib/queries";
+import { canApply, type PromptBulkKind } from "./prompt-status";
 
 export async function runPromptBatch<T extends { id: string }>(
   targets: T[],
@@ -24,16 +25,19 @@ export function usePromptBulkActions(
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  async function run(kind: "confirm" | "delete") {
-    const eligible = targets.filter((prompt) => kind === "delete" || !prompt.confirmed);
+  async function run(kind: PromptBulkKind) {
+    const eligible = targets.filter((prompt) => canApply(kind, prompt));
     if (!eligible.length) return false;
 
     setPending(true);
     setFailed(false);
     try {
-      const failedIDs = await runPromptBatch(eligible, (prompt) =>
-        kind === "confirm" ? api.prompts.confirm(prompt.id) : api.prompts.delete(prompt.id),
-      );
+      const failedIDs = await runPromptBatch(eligible, (prompt) => {
+        if (kind === "confirm") return api.prompts.confirm(prompt.id);
+        if (kind === "delete") return api.prompts.delete(prompt.id);
+
+        return api.prompts.update(prompt.id, { inactive: kind === "stop" });
+      });
       selectFailures(failedIDs);
       setFailed(failedIDs.length > 0);
       await invalidateProduct(queryClient, brandID, "prompts");

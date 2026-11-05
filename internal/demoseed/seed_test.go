@@ -73,9 +73,6 @@ func TestRunScenarios(t *testing.T) {
 		require.NoError(t, err)
 		require.EqualValues(t, 32, promptsPage.TotalItems)
 		require.True(t, promptsPage.HasNext)
-		history, err := store.VisibilityRepo().ListHistoricalPrompts(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: demoID("history")}}, page)
-		require.NoError(t, err)
-		require.EqualValues(t, 2, history.TotalItems)
 
 		var cells []domain.VisibilityResult
 		require.NoError(t, db.Where("collector = ?", domain.CollectorStub).Find(&cells).Error)
@@ -95,7 +92,7 @@ func TestRunScenarios(t *testing.T) {
 				}, cell.RawAnswer, cell.Sources))
 			}
 		}
-		require.Len(t, cells, 20540)
+		require.Len(t, cells, 19820)
 		for _, outcome := range []domain.Outcome{domain.OutcomeCited, domain.OutcomeMentioned, domain.OutcomeMiss, domain.OutcomeError} {
 			require.Positive(t, counts[outcome], "missing %s", outcome)
 		}
@@ -230,7 +227,7 @@ func TestRunScenarios(t *testing.T) {
 		require.Equal(t, "Edited demo", brand.Name)
 		var resultCount int64
 		require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&resultCount).Error)
-		require.EqualValues(t, 20540, resultCount)
+		require.EqualValues(t, 19820, resultCount)
 
 		// Recreate a missing scenario without changing the existing ones.
 		require.NoError(t, db.Delete(&domain.Brand{}, "id = ?", demoID("empty")).Error)
@@ -247,7 +244,7 @@ func TestRunScenarios(t *testing.T) {
 		_, err = store.BrandRepo().Get(foreignCtx, foreignBrand.ID)
 		require.NoError(t, err)
 		require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&resultCount).Error)
-		require.EqualValues(t, 20540, resultCount)
+		require.EqualValues(t, 19820, resultCount)
 		_, err = domain.NewAuthCommander(store).Login(t.Context(), Email, Password)
 		require.NoError(t, err)
 	})
@@ -286,7 +283,7 @@ func TestRunRollsBackAccountAndReset(t *testing.T) {
 	require.Error(t, Run(t.Context(), db, now.AddDate(0, 0, 1), true))
 	var count int64
 	require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&count).Error)
-	require.EqualValues(t, 20540, count)
+	require.EqualValues(t, 19820, count)
 	var run domain.VisibilityRun
 	require.NoError(t, db.First(&run, "id = ?", demoID("first/run/0")).Error)
 	require.Equal(t, now, run.FinishedAt.UTC())

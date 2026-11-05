@@ -104,3 +104,10 @@ de-duplicated evidence kinds, and sources by site with the brand's own site firs
 for your agent" writes a markdown brief (`lib/agent-brief.ts`) from the saved answer; no
 service is involved, so it works on self-hosted instances. Dialog content uses no inner
 panels so light and dark keep the same hierarchy.
+
+## Prompt states
+
+A prompt is in exactly one tab: Tracking, Drafts or Stopped. Each row offers one way out of the
+list, chosen from its data rather than by the user: a prompt with saved answers is stopped and
+can be resumed with its history intact; a prompt with no answers is deleted, with a confirmation
+because that cannot be undone. Stopping and resuming need no confirmation.

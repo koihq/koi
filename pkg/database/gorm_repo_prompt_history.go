@@ -24,55 +24,27 @@ func historyPage[T any](items []T, total int64, params domain.PageParams) *domai
 	return page
 }
 
-func (r *GormVisibilityRepository) ListHistoricalPrompts(ctx context.Context, filter domain.PromptFilter, page domain.PageParams) (*domain.Page[domain.HistoricalPrompt], error) {
-	brandID := filter.BrandID
+// PromptsWithResults reports which of a brand's prompts appear in at least one run.
+func (r *GormVisibilityRepository) PromptsWithResults(ctx context.Context, brandID uuid.UUID, promptIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
 	if _, err := NewBrandRepository(r.db).Get(ctx, brandID); err != nil {
 		return nil, err
 	}
 
-	const from = `FROM visibility_results AS result
-		JOIN visibility_runs AS run ON run.id = result.run_id
-		LEFT JOIN prompts AS prompt ON prompt.id = result.prompt_id AND prompt.brand_id = run.brand_id
-		WHERE run.brand_id = ? AND prompt.id IS NULL`
-
-	const snapshots = `SELECT DISTINCT ON (result.prompt_id)
-		result.prompt_id, result.prompt_text, run.created_at AS last_seen_at ` + from + `
-		ORDER BY result.prompt_id, run.created_at DESC, run.id DESC`
-	base := ` FROM (` + snapshots + `) AS snapshot`
-	where := ""
-	countArgs := []any{brandID}
-	if filter.Query != "" {
-		where = ` WHERE snapshot.prompt_text ILIKE ? ESCAPE '!'`
-		countArgs = append(countArgs, likePattern(filter.Query))
-	}
-
-	var total int64
-	if err := r.db.WithContext(ctx).Raw(`SELECT count(*)`+base+where, countArgs...).Scan(&total).Error; err != nil {
+	var found []uuid.UUID
+	err := r.db.WithContext(ctx).Model(&domain.VisibilityResult{}).
+		Where("brand_id = ? AND prompt_id IN ?", brandID, promptIDs).
+		Distinct().
+		Pluck("prompt_id", &found).Error
+	if err != nil {
 		return nil, mapDBError(err)
 	}
 
-	items := make([]domain.HistoricalPrompt, 0)
-	if total > 0 {
-		args := []any{brandID}
-		join := ""
-		if filter.Sort == domain.PromptSortRate || filter.Sort == domain.PromptSortChange {
-			var rankArgs []any
-			join, rankArgs = visibilitySortJoin("snapshot.prompt_id", brandID, filter.Days, filter.Engines)
-			args = append(args, rankArgs...)
-		}
-		if filter.Query != "" {
-			args = append(args, likePattern(filter.Query))
-		}
-
-		order := promptSortOrder(filter.Sort, filter.Descending, "snapshot.prompt_text", "snapshot.last_seen_at DESC, snapshot.prompt_id DESC")
-		query := `SELECT snapshot.*` + base + ` ` + join + where + ` ORDER BY ` + order + ` LIMIT ? OFFSET ?`
-		args = append(args, page.PageSize, (page.Page-1)*page.PageSize)
-		if err := r.db.WithContext(ctx).Raw(query, args...).Scan(&items).Error; err != nil {
-			return nil, mapDBError(err)
-		}
+	withResults := make(map[uuid.UUID]bool, len(found))
+	for _, id := range found {
+		withResults[id] = true
 	}
 
-	return historyPage(items, total, page), nil
+	return withResults, nil
 }
 
 func promptRunsQuery(db *gorm.DB, brandID, promptID uuid.UUID) *gorm.DB {

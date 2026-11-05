@@ -112,33 +112,6 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/prompt-history:
-    get:
-      tags: [visibility]
-      operationId: listHistoricalPrompts
-      description: Deleted prompts with saved run results, newest snapshot first.
-      security:
-        - cookieAuth: []
-      parameters:
-        - $ref: "#/components/parameters/BrandID"
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Query"
-        - $ref: "#/components/parameters/PromptSort"
-        - $ref: "#/components/parameters/Descending"
-        - $ref: "#/components/parameters/VisibilityDays"
-        - $ref: "#/components/parameters/VisibilityEngines"
-      responses:
-        "402":
-          $ref: "#/components/responses/Error"
-        "200":
-          description: Page of historical prompts
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HistoricalPromptPage"
-        default:
-          $ref: "#/components/responses/Error"
   /api/v1/prompt-history/{promptID}/runs:
     parameters:
       - $ref: "#/components/parameters/PromptID"
@@ -663,6 +636,7 @@ paths:
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/Confirmed"
+        - $ref: "#/components/parameters/Inactive"
         - $ref: "#/components/parameters/PromptSort"
         - $ref: "#/components/parameters/Descending"
         - $ref: "#/components/parameters/VisibilityDays"
@@ -758,6 +732,7 @@ paths:
     delete:
       tags: [prompts]
       operationId: deletePrompt
+      description: Deletes a prompt with no saved results. A prompt with results returns resource_conflict; stop it by setting inactive instead.
       security:
         - cookieAuth: []
       responses:
@@ -768,6 +743,8 @@ paths:
         "402":
           $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
   /api/v1/prompts/{promptID}/confirm:
     parameters:
@@ -1166,6 +1143,12 @@ components:
       in: query
       schema:
         type: boolean
+    Inactive:
+      name: inactive
+      in: query
+      description: Filter by stopped (true) or not stopped (false) prompts.
+      schema:
+        type: boolean
     Query:
       name: q
       in: query
@@ -1278,20 +1261,6 @@ components:
         brandId:
           type: string
           format: uuid
-    HistoricalPrompt:
-      type: object
-      required: [promptId, promptText, lastSeenAt]
-      properties:
-        promptId:
-          type: string
-          format: uuid
-        promptText:
-          type: string
-        lastSeenAt:
-          type: string
-          format: date-time
-        visibility:
-          $ref: "#/components/schemas/VisibilityReport"
     VisibilityMetric:
       type: object
       required: [completed, cited, mentioned, rate]
@@ -1348,27 +1317,7 @@ components:
           properties:
             hasConfirmedPrompts:
               type: boolean
-              description: Whether the brand has any current confirmed prompts, including paused prompts, regardless of the selected period and engines
-    HistoricalPromptPage:
-      type: object
-      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/HistoricalPrompt"
-        totalItems:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int64
-        currentPage:
-          type: integer
-        hasNext:
-          type: boolean
-        hasPrev:
-          type: boolean
+              description: Whether the brand has any current confirmed prompts, including stopped prompts, regardless of the selected period and engines
     PromptHistoryRun:
       type: object
       required: [run, results]
@@ -1718,7 +1667,7 @@ components:
           type: boolean
     PromptRes:
       type: object
-      required: [id, brandId, text, source, confirmed, inactive]
+      required: [id, brandId, text, source, confirmed, inactive, hasResults]
       properties:
         id:
           type: string
@@ -1735,6 +1684,9 @@ components:
           type: boolean
         inactive:
           type: boolean
+        hasResults:
+          type: boolean
+          description: Whether any run recorded this prompt. Such a prompt cannot be deleted; stop it by setting inactive.
         visibility:
           $ref: "#/components/schemas/VisibilityReport"
     CompetitorRequest:

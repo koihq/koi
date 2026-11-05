@@ -1,11 +1,10 @@
 import {
   Delete02Icon,
-  PauseIcon,
   PencilEdit02Icon,
   PlayIcon,
+  StopCircleIcon,
   Tick02Icon,
 } from "@hugeicons/core-free-icons";
-import { Link } from "@tanstack/react-router";
 import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,36 +38,23 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { tableSearchParams } from "@/hooks/use-table-state";
 import { formatPoints, formatRate } from "@/lib/format";
-import {
-  change,
-  engines,
-  rate,
-  type VisibilityReport,
-  type VisibilityScope,
-} from "@/lib/visibility";
+import { change, engines, rate, type VisibilityScope } from "@/lib/visibility";
 import { PromptPreviewLink } from "@/routes/_authenticated/_app/-components/prompt-preview-link";
 import { PromptRateBreakdown } from "@/routes/_authenticated/_app/-components/prompt-rate-breakdown";
 import { PromptSelectCheckbox } from "@/routes/_authenticated/_app/-components/prompt-select-checkbox";
 import { EngineMeterCell } from "./engine-meter";
+import { canApply, type PromptBulkKind, promptStatuses } from "./prompt-status";
 import { usePromptBulkActions } from "./use-prompt-bulk-actions";
 import { usePromptCounts } from "./use-prompt-counts";
 import { usePromptList } from "./use-prompt-list";
-
-type PromptRow = {
-  id: string;
-  text: string;
-  prompt?: Prompt;
-  visibility?: VisibilityReport;
-  past: boolean;
-};
 
 export const promptSearchParams = {
   ...tableSearchParams,
   pageSize: parseAsNumberLiteral([10, 20, 50] as const)
     .withDefault(20)
     .withOptions({ clearOnDefault: true }),
-  status: parseAsStringLiteral(["all", "confirmed", "unconfirmed", "past"] as const)
-    .withDefault("all")
+  status: parseAsStringLiteral(promptStatuses)
+    .withDefault("tracking")
     .withOptions({ clearOnDefault: true }),
   sort: parseAsStringLiteral(["original", "prompt", "rate"] as const)
     .withDefault("original")
@@ -80,8 +66,6 @@ const promptHeadClass =
   "h-auto px-3 py-1.5 text-start text-xs text-muted-foreground whitespace-normal";
 const promptCellClass =
   "px-3 py-4 align-middle text-start text-body whitespace-normal [overflow-wrap:anywhere]";
-const promptRowLinkClass =
-  "block max-w-2xl text-sm/normal font-semibold text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline";
 
 /** Signed change as a tinted chip: green up, red down. */
 export function DeltaChip({ value, locale }: { value: number | null; locale: string }) {
@@ -116,34 +100,13 @@ export function PromptManager({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
-  const { active, live, history, page, totalPages } = usePromptList(
-    brandID,
-    scope,
-    search,
-    collecting,
-  );
+  const { active, page, totalPages } = usePromptList(brandID, scope, search, collecting);
   const counts = usePromptCounts(brandID, scope);
-  const visible: PromptRow[] =
-    search.status === "past"
-      ? (history.data?.items ?? []).map((prompt) => ({
-          id: prompt.promptId,
-          text: prompt.promptText,
-          visibility: prompt.visibility,
-          past: true,
-        }))
-      : (live.data?.items ?? []).map((prompt) => ({
-          id: prompt.id,
-          text: prompt.text,
-          prompt,
-          visibility: prompt.visibility,
-          past: false,
-        }));
+  const visible = active.data?.items ?? [];
   const previousPage = useRef(page);
-  const visibleLiveIDs = visible.filter((row) => !row.past).map((row) => row.id);
+  const visibleLiveIDs = visible.map((row) => row.id);
   const selectedVisible = selected.filter((id) => visibleLiveIDs.includes(id));
-  const selectedPrompts = visible.flatMap((row) =>
-    row.prompt && selectedVisible.includes(row.id) ? [row.prompt] : [],
-  );
+  const selectedPrompts = visible.filter((row) => selectedVisible.includes(row.id));
   const bulk = usePromptBulkActions(brandID, selectedPrompts, setSelected);
   const bulkPending = bulk.pending;
   const bulkFailed = bulk.failed;
@@ -167,7 +130,7 @@ export function PromptManager({
     setSelected([]);
   }, [page]);
 
-  async function bulkAction(kind: "confirm" | "delete") {
+  async function bulkAction(kind: PromptBulkKind) {
     const succeeded = await bulk.run(kind);
     if (kind === "delete" && succeeded) setBulkDeleting(false);
   }
@@ -203,33 +166,25 @@ export function PromptManager({
     );
   }
 
-  const renderPrompt = (row: PromptRow) => (
+  const renderPrompt = (row: Prompt) => (
     <div>
-      {row.prompt ? (
-        <PromptPreviewLink prompt={row.prompt} />
-      ) : (
-        <Link to="/prompts/$promptId" params={{ promptId: row.id }} className={promptRowLinkClass}>
-          {row.text}
-        </Link>
-      )}
-      {(row.past || !row.prompt?.confirmed || row.prompt.inactive) && (
+      <PromptPreviewLink prompt={row} />
+      {!row.confirmed && (
         <small className="mt-1.5 block text-xs text-muted-foreground">
-          {row.past
-            ? t("home:dashboard.pastPrompt")
-            : row.prompt?.inactive
-              ? t("inactivePrompt")
-              : t("home:dashboard.draft")}
+          {t("home:dashboard.draft")}
         </small>
       )}
     </div>
   );
 
-  const renderRate = (row: PromptRow) => {
+  const renderRate = (row: Prompt) => {
     const currentRate = rate(row.visibility);
 
     if (currentRate === null) {
       return (
-        <span className="text-xs text-muted-foreground">{t("home:dashboard.noAnswersYet")}</span>
+        <span className="text-xs text-muted-foreground">
+          {t(row.hasResults ? "home:dashboard.noCompletedAnswers" : "home:dashboard.noAnswersYet")}
+        </span>
       );
     }
 
@@ -254,7 +209,7 @@ export function PromptManager({
     );
   };
 
-  const renderRival = (row: PromptRow) => {
+  const renderRival = (row: Prompt) => {
     if (!row.visibility?.metric.completed) {
       return <span className="text-xs text-muted-foreground">{t("home:dashboard.noData")}</span>;
     }
@@ -293,38 +248,40 @@ export function PromptManager({
     );
   };
 
-  const renderActions = (row: PromptRow) => {
-    const prompt = row.prompt;
-    if (!prompt) return null;
-
-    return (
-      <RowActions>
-        {!prompt.confirmed && (
-          <RowAction
-            persistent
-            label={t("confirm")}
-            icon={Tick02Icon}
-            disabled={pending}
-            onClick={() => mutations.confirm.mutate(row.id)}
-          />
-        )}
+  const renderActions = (row: Prompt) => (
+    <RowActions>
+      {canApply("confirm", row) && (
         <RowAction
-          label={t("edit")}
-          icon={PencilEdit02Icon}
+          persistent
+          label={t("confirm")}
+          icon={Tick02Icon}
           disabled={pending}
-          onClick={() => setEditing(prompt)}
+          onClick={() => mutations.confirm.mutate(row.id)}
         />
-        {prompt.confirmed && (
-          <RowAction
-            label={prompt.inactive ? t("resumePrompt") : t("pausePrompt")}
-            icon={prompt.inactive ? PlayIcon : PauseIcon}
-            pressed={prompt.inactive}
-            disabled={pending}
-            onClick={() =>
-              mutations.update.mutate({ id: row.id, request: { inactive: !prompt.inactive } })
-            }
-          />
-        )}
+      )}
+      <RowAction
+        label={t("edit")}
+        icon={PencilEdit02Icon}
+        disabled={pending}
+        onClick={() => setEditing(row)}
+      />
+      {canApply("stop", row) && (
+        <RowAction
+          label={t("stopPrompt")}
+          icon={StopCircleIcon}
+          disabled={pending}
+          onClick={() => mutations.update.mutate({ id: row.id, request: { inactive: true } })}
+        />
+      )}
+      {canApply("resume", row) && (
+        <RowAction
+          label={t("resumePrompt")}
+          icon={PlayIcon}
+          disabled={pending}
+          onClick={() => mutations.update.mutate({ id: row.id, request: { inactive: false } })}
+        />
+      )}
+      {canApply("delete", row) && (
         <RowAction
           destructive
           label={t("delete")}
@@ -332,14 +289,14 @@ export function PromptManager({
           disabled={pending}
           onClick={() => {
             trigger.current = document.activeElement as HTMLElement;
-            setDeleting(prompt);
+            setDeleting(row);
           }}
         />
-      </RowActions>
-    );
-  };
+      )}
+    </RowActions>
+  );
 
-  const columns: DataTableColumn<PromptRow>[] = [
+  const columns: DataTableColumn<Prompt>[] = [
     {
       id: "select",
       header: visibleLiveIDs.length > 0 && (
@@ -360,14 +317,13 @@ export function PromptManager({
       ),
       headClassName: `${promptHeadClass} w-12 text-center`,
       cellClassName: `${promptCellClass} text-center`,
-      cell: (row) =>
-        !row.past && (
-          <PromptSelectCheckbox
-            label={t("home:dashboard.selectPrompt", { text: row.text })}
-            checked={selectedVisible.includes(row.id)}
-            onChange={() => select(row.id)}
-          />
-        ),
+      cell: (row) => (
+        <PromptSelectCheckbox
+          label={t("home:dashboard.selectPrompt", { text: row.text })}
+          checked={selectedVisible.includes(row.id)}
+          onChange={() => select(row.id)}
+        />
+      ),
     },
     {
       id: "prompt",
@@ -414,12 +370,12 @@ export function PromptManager({
   ];
 
   const totalItems = active.data?.totalItems ?? 0;
+  const deletable = selectedPrompts.filter((prompt) => canApply("delete", prompt)).length;
   const mutationFailed = mutations.confirm.isError || mutations.update.isError || bulkFailed;
   const statusOptions = [
-    { value: "all", label: t("all"), count: counts.all },
-    { value: "confirmed", label: t("confirmed"), count: counts.confirmed },
-    { value: "unconfirmed", label: t("unconfirmed"), count: counts.unconfirmed },
-    { value: "past", label: t("home:history.title"), count: counts.past },
+    { value: "tracking", label: t("statusTracking"), count: counts.tracking },
+    { value: "drafts", label: t("statusDrafts"), count: counts.drafts },
+    { value: "stopped", label: t("statusStopped"), count: counts.stopped },
   ] as const;
 
   return (
@@ -494,7 +450,7 @@ export function PromptManager({
           <span className="px-2 text-foreground">
             {t("home:dashboard.selectedCount", { count: selectedVisible.length })}
           </span>
-          {selectedPrompts.some((prompt) => !prompt.confirmed) && (
+          {selectedPrompts.some((prompt) => canApply("confirm", prompt)) && (
             <Button
               type="button"
               size="sm"
@@ -504,15 +460,39 @@ export function PromptManager({
               {t("confirm")}
             </Button>
           )}
-          <Button
-            type="button"
-            size="sm"
-            variant="destructive"
-            disabled={pending}
-            onClick={() => setBulkDeleting(true)}
-          >
-            {t("delete")}
-          </Button>
+          {selectedPrompts.some((prompt) => canApply("stop", prompt)) && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => void bulkAction("stop")}
+            >
+              {t("stopPrompt")}
+            </Button>
+          )}
+          {selectedPrompts.some((prompt) => canApply("resume", prompt)) && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={pending}
+              onClick={() => void bulkAction("resume")}
+            >
+              {t("resumePrompt")}
+            </Button>
+          )}
+          {deletable > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={pending}
+              onClick={() => setBulkDeleting(true)}
+            >
+              {t("delete")}
+            </Button>
+          )}
           <Button type="button" size="sm" variant="ghost" onClick={() => setSelected([])}>
             {t("home:dashboard.clearSelection")}
           </Button>
@@ -531,7 +511,7 @@ export function PromptManager({
           <p className="py-12 text-sm text-muted-foreground">{t("loading")}</p>
         ) : visible.length === 0 ? (
           <p className="py-12 text-sm text-muted-foreground">
-            {search.q || search.status !== "all" ? t("noStatusResults") : t("promptEmpty")}
+            {search.q || search.status !== "tracking" ? t("noStatusResults") : t("promptEmpty")}
           </p>
         ) : (
           <div className="@container group-data-[refreshing=true]/refresh:opacity-50">
@@ -553,13 +533,11 @@ export function PromptManager({
                   data-selected={selectedVisible.includes(row.id) || undefined}
                   className="group flex min-w-0 items-start gap-2 rounded-control px-2 py-3 hover:bg-signal-pill data-[selected]:bg-signal-pill"
                 >
-                  {!row.past && (
-                    <PromptSelectCheckbox
-                      label={t("home:dashboard.selectPrompt", { text: row.text })}
-                      checked={selectedVisible.includes(row.id)}
-                      onChange={() => select(row.id)}
-                    />
-                  )}
+                  <PromptSelectCheckbox
+                    label={t("home:dashboard.selectPrompt", { text: row.text })}
+                    checked={selectedVisible.includes(row.id)}
+                    onChange={() => select(row.id)}
+                  />
                   <div className="grid min-w-0 flex-1 gap-2">
                     {renderPrompt(row)}
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -619,7 +597,7 @@ export function PromptManager({
           <AlertDialogHeader>
             <AlertDialogTitle>{t("home:dashboard.deleteSelectedTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("home:dashboard.deleteSelectedDescription", { count: selectedVisible.length })}
+              {t("home:dashboard.deleteSelectedDescription", { count: deletable })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {bulkFailed && (

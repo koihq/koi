@@ -20,7 +20,8 @@ export function usePromptMutations(brandID: string) {
 
   const remove = useMutation({
     mutationFn: (id: string) => api.prompts.delete(id),
-    onSuccess: invalidate,
+    // A refused delete means the row is stale: a run saved answers since it loaded.
+    onSettled: invalidate,
   });
 
   const confirm = useMutation({

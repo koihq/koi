@@ -73,7 +73,7 @@ export interface VisibilitySummary {
      */
     competitors: Array<CompetitorVisibility>;
     /**
-     * Whether the brand has any current confirmed prompts, including paused prompts, regardless of the selected period and engines
+     * Whether the brand has any current confirmed prompts, including stopped prompts, regardless of the selected period and engines
      * @type {boolean}
      * @memberof VisibilitySummary
      */

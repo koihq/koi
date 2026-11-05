@@ -35,6 +35,7 @@ async function mockProduct(page: Page) {
     source: "manual",
     confirmed: true,
     inactive: false,
+    hasResults: true,
     visibility: report,
   });
   const empty = {

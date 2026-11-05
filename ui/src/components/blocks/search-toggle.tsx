@@ -54,7 +54,7 @@ export function SearchToggle({
         value={value}
         placeholder={label}
         aria-label={label}
-        className="pe-8"
+        className="pe-8 [&::-webkit-search-cancel-button]:appearance-none"
         onChange={(event) => onChange(event.target.value)}
         onBlur={() => {
           if (value === "") setOpened(false);

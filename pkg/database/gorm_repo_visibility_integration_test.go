@@ -149,7 +149,7 @@ func TestVisibilityMatrixSnapshotsRetryOwnershipAndReconciliation(t *testing.T) 
 	text := "Edited later?"
 	_, err = domain.NewPromptCommander(store).Update(ctx, firstID, domain.UpdatePromptParams{Text: &text})
 	require.NoError(t, err)
-	require.NoError(t, domain.NewPromptCommander(store).Delete(ctx, firstID))
+	require.NoError(t, store.PromptRepo().Delete(ctx, firstID))
 	page, err = querier.ListResults(ctx, run.ID, domain.PageParams{Page: 1, PageSize: 4})
 	require.NoError(t, err)
 	require.Len(t, page.Items, 4)

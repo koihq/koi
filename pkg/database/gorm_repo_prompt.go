@@ -29,6 +29,10 @@ func applyPromptFilter(db *gorm.DB, filter domain.PromptFilter) *gorm.DB {
 		db = db.Where("confirmed = ?", *filter.Confirmed)
 	}
 
+	if filter.Inactive != nil {
+		db = db.Where("inactive = ?", *filter.Inactive)
+	}
+
 	if filter.Query != "" {
 		db = db.Where("text ILIKE ? ESCAPE '!'", likePattern(filter.Query))
 	}

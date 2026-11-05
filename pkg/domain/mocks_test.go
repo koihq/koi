@@ -5192,80 +5192,6 @@ func (_c *MockVisibilityRepository_List_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
-// ListHistoricalPrompts provides a mock function for the type MockVisibilityRepository
-func (_mock *MockVisibilityRepository) ListHistoricalPrompts(context1 context.Context, promptFilter PromptFilter, pageParams PageParams) (*Page[HistoricalPrompt], error) {
-	ret := _mock.Called(context1, promptFilter, pageParams)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListHistoricalPrompts")
-	}
-
-	var r0 *Page[HistoricalPrompt]
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, PromptFilter, PageParams) (*Page[HistoricalPrompt], error)); ok {
-		return returnFunc(context1, promptFilter, pageParams)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, PromptFilter, PageParams) *Page[HistoricalPrompt]); ok {
-		r0 = returnFunc(context1, promptFilter, pageParams)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*Page[HistoricalPrompt])
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, PromptFilter, PageParams) error); ok {
-		r1 = returnFunc(context1, promptFilter, pageParams)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockVisibilityRepository_ListHistoricalPrompts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListHistoricalPrompts'
-type MockVisibilityRepository_ListHistoricalPrompts_Call struct {
-	*mock.Call
-}
-
-// ListHistoricalPrompts is a helper method to define mock.On call
-//   - context1 context.Context
-//   - promptFilter PromptFilter
-//   - pageParams PageParams
-func (_e *MockVisibilityRepository_Expecter) ListHistoricalPrompts(context1 interface{}, promptFilter interface{}, pageParams interface{}) *MockVisibilityRepository_ListHistoricalPrompts_Call {
-	return &MockVisibilityRepository_ListHistoricalPrompts_Call{Call: _e.mock.On("ListHistoricalPrompts", context1, promptFilter, pageParams)}
-}
-
-func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Run(run func(context1 context.Context, promptFilter PromptFilter, pageParams PageParams)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 PromptFilter
-		if args[1] != nil {
-			arg1 = args[1].(PromptFilter)
-		}
-		var arg2 PageParams
-		if args[2] != nil {
-			arg2 = args[2].(PageParams)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) Return(page *Page[HistoricalPrompt], err error) *MockVisibilityRepository_ListHistoricalPrompts_Call {
-	_c.Call.Return(page, err)
-	return _c
-}
-
-func (_c *MockVisibilityRepository_ListHistoricalPrompts_Call) RunAndReturn(run func(context1 context.Context, promptFilter PromptFilter, pageParams PageParams) (*Page[HistoricalPrompt], error)) *MockVisibilityRepository_ListHistoricalPrompts_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListPromptRuns provides a mock function for the type MockVisibilityRepository
 func (_mock *MockVisibilityRepository) ListPromptRuns(context1 context.Context, uUID uuid.UUID, uUID1 uuid.UUID, pageParams PageParams) (*Page[PromptHistoryRun], error) {
 	ret := _mock.Called(context1, uUID, uUID1, pageParams)
@@ -5416,6 +5342,80 @@ func (_c *MockVisibilityRepository_ListResults_Call) Return(page *Page[Visibilit
 }
 
 func (_c *MockVisibilityRepository_ListResults_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, pageParams PageParams) (*Page[VisibilityResult], error)) *MockVisibilityRepository_ListResults_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PromptsWithResults provides a mock function for the type MockVisibilityRepository
+func (_mock *MockVisibilityRepository) PromptsWithResults(ctx context.Context, brandID uuid.UUID, promptIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	ret := _mock.Called(ctx, brandID, promptIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PromptsWithResults")
+	}
+
+	var r0 map[uuid.UUID]bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) (map[uuid.UUID]bool, error)); ok {
+		return returnFunc(ctx, brandID, promptIDs)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, []uuid.UUID) map[uuid.UUID]bool); ok {
+		r0 = returnFunc(ctx, brandID, promptIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[uuid.UUID]bool)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, []uuid.UUID) error); ok {
+		r1 = returnFunc(ctx, brandID, promptIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockVisibilityRepository_PromptsWithResults_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PromptsWithResults'
+type MockVisibilityRepository_PromptsWithResults_Call struct {
+	*mock.Call
+}
+
+// PromptsWithResults is a helper method to define mock.On call
+//   - ctx context.Context
+//   - brandID uuid.UUID
+//   - promptIDs []uuid.UUID
+func (_e *MockVisibilityRepository_Expecter) PromptsWithResults(ctx interface{}, brandID interface{}, promptIDs interface{}) *MockVisibilityRepository_PromptsWithResults_Call {
+	return &MockVisibilityRepository_PromptsWithResults_Call{Call: _e.mock.On("PromptsWithResults", ctx, brandID, promptIDs)}
+}
+
+func (_c *MockVisibilityRepository_PromptsWithResults_Call) Run(run func(ctx context.Context, brandID uuid.UUID, promptIDs []uuid.UUID)) *MockVisibilityRepository_PromptsWithResults_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 []uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].([]uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockVisibilityRepository_PromptsWithResults_Call) Return(uUIDToBool map[uuid.UUID]bool, err error) *MockVisibilityRepository_PromptsWithResults_Call {
+	_c.Call.Return(uUIDToBool, err)
+	return _c
+}
+
+func (_c *MockVisibilityRepository_PromptsWithResults_Call) RunAndReturn(run func(ctx context.Context, brandID uuid.UUID, promptIDs []uuid.UUID) (map[uuid.UUID]bool, error)) *MockVisibilityRepository_PromptsWithResults_Call {
 	_c.Call.Return(run)
 	return _c
 }

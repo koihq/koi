@@ -1,6 +1,6 @@
 import { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   createStandardSchemaV1,
   parseAsInteger,
@@ -15,6 +15,7 @@ import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
 import { useBrandColor } from "@/components/blocks/brand-icon";
 import { BrandLabel } from "@/components/blocks/brand-label";
+import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { OutcomeLegend } from "@/components/blocks/outcome-mark";
 import { PageNav } from "@/components/blocks/page-nav";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
@@ -42,6 +43,7 @@ import {
   rate as visibilityRate,
   series as visibilitySeries,
 } from "@/lib/visibility";
+import { canApply } from "@/routes/_authenticated/_app/-components/prompt-status";
 import { CopyForAgent, EngineSwitch, RunAnswer } from "./-components/run-evidence";
 import { RunHistory } from "./-components/run-history";
 
@@ -77,6 +79,8 @@ function PromptDetail() {
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
   const canAnimateNumbers = useCanAnimate();
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
   const runTrigger = useRef<HTMLButtonElement | null>(null);
   const editTrigger = useRef<HTMLButtonElement | null>(null);
 
@@ -160,16 +164,54 @@ function PromptDetail() {
             )}
         </h1>
         {prompt.data && (
-          <Button ref={editTrigger} variant="ghost" size="sm" onClick={() => setEditing(true)}>
-            {t("management:editPrompt")}
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {prompt.data.inactive && (
+              <span className="me-1 rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                {t("management:statusStopped")}
+              </span>
+            )}
+            <Button ref={editTrigger} variant="ghost" size="sm" onClick={() => setEditing(true)}>
+              {t("management:editPrompt")}
+            </Button>
+            {canApply("stop", prompt.data) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={mutations.update.isPending}
+                onClick={() =>
+                  mutations.update.mutate({ id: promptId, request: { inactive: true } })
+                }
+              >
+                {t("management:stopPrompt")}
+              </Button>
+            )}
+            {canApply("resume", prompt.data) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={mutations.update.isPending}
+                onClick={() =>
+                  mutations.update.mutate({ id: promptId, request: { inactive: false } })
+                }
+              >
+                {t("management:resumePrompt")}
+              </Button>
+            )}
+            {canApply("delete", prompt.data) && (
+              <Button variant="ghost" size="sm" onClick={() => setDeleting(true)}>
+                {t("management:delete")}
+              </Button>
+            )}
+          </div>
         )}
       </div>
-      {prompt.isError && title && (
-        <p className="text-xs text-muted-foreground">{t("home:detail.historical")}</p>
-      )}
       {prompt.data && !prompt.data.confirmed && (
         <p className="text-xs text-muted-foreground">{t("home:dashboard.draft")}</p>
+      )}
+      {mutations.update.isError && (
+        <p role="alert" className="text-sm text-destructive">
+          {t("management:mutationError")}
+        </p>
       )}
 
       {visibility.isError && visibility.data && (
@@ -419,6 +461,20 @@ function PromptDetail() {
           )}
         </DialogContent>
       </Dialog>
+      <DeleteItemDialog
+        itemID={deleting ? promptId : undefined}
+        title={t("management:deletePromptTitle")}
+        description={t("management:promptDeleteDescription")}
+        actionLabel={t("management:deletePrompt")}
+        onClose={() => setDeleting(false)}
+        pending={mutations.remove.isPending}
+        failed={mutations.remove.isError}
+        onDelete={async (id) => {
+          await mutations.remove.mutateAsync(id);
+          await navigate({ to: "/", hash: "prompts" });
+        }}
+        finalFocus={() => editTrigger.current}
+      />
       {prompt.data && (
         <PromptDialog
           prompt={prompt.data}

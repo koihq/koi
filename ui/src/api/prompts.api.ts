@@ -13,6 +13,7 @@ export interface PromptListParams extends BaseListParams {
   pageSize?: 10 | 20 | 50;
   q?: string;
   confirmed?: boolean;
+  inactive?: boolean;
   sort?: PromptSort;
   descending?: boolean;
   scope?: VisibilityScope;

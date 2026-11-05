@@ -253,6 +253,6 @@ func TestVisibilityDisabledReviewsAndEmptyPrompts(t *testing.T) {
 	require.NoError(t, err)
 	prompts, err := store.PromptRepo().List(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: brand.ID}}, domain.PageParams{Page: 1, PageSize: 10})
 	require.NoError(t, err)
-	require.NoError(t, domain.NewPromptCommander(store).Delete(ctx, prompts.Items[0].ID))
+	require.NoError(t, store.PromptRepo().Delete(ctx, prompts.Items[0].ID))
 	require.ErrorIs(t, store.VisibilityRepo().FinishReview(ctx, brand.ID, "prompts"), domain.ErrValidation)
 }

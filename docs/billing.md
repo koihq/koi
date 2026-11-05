@@ -205,7 +205,7 @@ GROUP BY b.organization_id, vr.engine;
 - The webhook ignores a replay and rejects a Customer or organization mismatch.
 - Upgrade gains entitlement only after Stripe confirms payment; downgrade changes it
   at renewal. Cancellation keeps access until the paid period ends.
-- Paused prompts do not consume the allowance and already queued cells do not submit
+- Stopped prompts do not consume the allowance and already queued cells do not submit
   to Cloro after deactivation.
 - A self-hosted install starts and tracks with its own Cloro key and no Stripe keys.
 

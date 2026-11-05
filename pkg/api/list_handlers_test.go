@@ -216,6 +216,55 @@ func TestPromptHandlerPaginatesAndFilters(t *testing.T) {
 	require.False(t, page.HasNext)
 }
 
+func TestPromptHandlerFiltersStoppedAndReportsResults(t *testing.T) {
+	userID, brandID, promptID := uuid.New(), uuid.New(), uuid.New()
+	querier := NewMockPromptQuerier(t)
+	querier.EXPECT().ListWithVisibility(mock.Anything, mock.MatchedBy(func(filter domain.PromptFilter) bool {
+		return filter.BrandID == brandID && filter.Inactive != nil && *filter.Inactive && filter.Confirmed == nil
+	}), mock.Anything).Return(&domain.Page[domain.Prompt]{
+		Items: []domain.Prompt{{
+			BaseEntity: domain.BaseEntity{ID: promptID},
+			BrandID:    brandID,
+			Text:       "Stopped?",
+			Source:     domain.PromptSourceManual,
+			Confirmed:  true,
+			Inactive:   true,
+			HasResults: true,
+		}},
+		TotalItems:  1,
+		TotalPages:  1,
+		CurrentPage: 1,
+	}, nil)
+	ts := newListsTestServer(t, querier, NewMockPromptCommander(t), NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1/prompts?inactive=true", "", brandID)
+	var page struct {
+		Items []PromptRes `json:"items"`
+	}
+	readJSON(t, resp, &page)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Len(t, page.Items, 1)
+	require.True(t, page.Items[0].Inactive)
+	require.True(t, page.Items[0].HasResults)
+}
+
+func TestPromptHandlerDeleteWithResultsIsAConflict(t *testing.T) {
+	userID, promptID := uuid.New(), uuid.New()
+	commander := NewMockPromptCommander(t)
+	commander.EXPECT().Delete(mock.Anything, promptID).Return(domain.ErrResourceConflict)
+	ts := newListsTestServer(t, NewMockPromptQuerier(t), commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+
+	resp := doJSON(t, client, http.MethodDelete, ts.URL+"/api/v1/prompts/"+promptID.String(), "")
+	var body response.Envelope
+	readJSON(t, resp, &body)
+	require.Equal(t, http.StatusConflict, resp.StatusCode)
+	require.Equal(t, domain.CodeResourceConflict, body.Error.Code)
+}
+
 func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {
 	userID, brandID := uuid.New(), uuid.New()
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
@@ -224,6 +273,7 @@ func TestPromptHandlerRejectsInvalidListFilters(t *testing.T) {
 
 	for _, query := range []string{
 		"page=0", "pageSize=101", "confirmed=maybe", "confirmed=true&confirmed=false", "q=one&q=two",
+		"inactive=maybe", "inactive=true&inactive=false",
 	} {
 		resp := doJSON(t, client, http.MethodGet, ts.URL+"/api/v1"+"/prompts?"+query, "", brandID)
 		var body response.Envelope

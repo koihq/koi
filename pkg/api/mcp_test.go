@@ -47,4 +47,16 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 		}
 	}
 	require.False(t, names["billing_checkout"])
+	require.False(t, names["prompt_history_list"], "deleted prompts are no longer listed")
+	for _, tool := range tools.Tools {
+		if tool.Name == "prompts_list" {
+			properties := tool.InputSchema.(map[string]any)["properties"].(map[string]any)
+			require.Contains(t, properties, "brandId")
+			require.Contains(t, properties, "confirmed")
+			require.Contains(t, properties, "inactive")
+		}
+		if tool.Name == "prompts_delete" {
+			require.Contains(t, tool.Description, "no saved answers")
+		}
+	}
 }

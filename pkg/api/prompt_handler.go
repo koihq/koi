@@ -32,6 +32,7 @@ type PromptRes struct {
 	Source     domain.PromptSource      `json:"source"`
 	Confirmed  bool                     `json:"confirmed"`
 	Inactive   bool                     `json:"inactive"`
+	HasResults bool                     `json:"hasResults"`
 	Visibility *domain.VisibilityReport `json:"visibility,omitempty"`
 }
 
@@ -43,6 +44,7 @@ func PromptToRes(v *domain.Prompt) PromptRes {
 		Source:     v.Source,
 		Confirmed:  v.Confirmed,
 		Inactive:   v.Inactive,
+		HasResults: v.HasResults,
 		Visibility: v.Visibility,
 	}
 }
@@ -69,18 +71,6 @@ func (h *PromptHandler) Routes() func(chi.Router) {
 }
 
 func promptFilter(r *http.Request) (domain.PromptFilter, error) {
-	filter, err := historicalPromptFilter(r)
-	if err != nil {
-		return domain.PromptFilter{}, err
-	}
-
-	filter.Confirmed, err = optionalBoolQuery(r, "confirmed")
-
-	return filter, err
-}
-
-// historicalPromptFilter reads the parameters shared by live prompts and prompt history.
-func historicalPromptFilter(r *http.Request) (domain.PromptFilter, error) {
 	brand, err := brandFilter(r)
 	if err != nil {
 		return domain.PromptFilter{}, err
@@ -117,9 +107,21 @@ func historicalPromptFilter(r *http.Request) (domain.PromptFilter, error) {
 		return domain.PromptFilter{}, err
 	}
 
+	confirmed, err := optionalBoolQuery(r, "confirmed")
+	if err != nil {
+		return domain.PromptFilter{}, err
+	}
+
+	inactive, err := optionalBoolQuery(r, "inactive")
+	if err != nil {
+		return domain.PromptFilter{}, err
+	}
+
 	filter := domain.PromptFilter{
 		BrandFilter: brand,
 		Query:       query,
+		Confirmed:   confirmed,
+		Inactive:    inactive,
 		Sort:        sort,
 		Days:        days,
 		Engines:     engines,

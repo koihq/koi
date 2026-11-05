@@ -218,8 +218,8 @@ func seedBrand(tx *gorm.DB, key, name string, days int, now time.Time) error {
 		at := now.AddDate(0, 0, day+1-days)
 		count := 26
 		if day < 90 {
-			// Three now-inactive prompts and two deleted prompts were tracked earlier.
-			count = 31
+			// Three now-stopped prompts were tracked earlier.
+			count = 29
 		}
 		if days == 1 {
 			count = 5
@@ -255,11 +255,7 @@ func seedRun(tx *gorm.DB, key string, snapshot domain.BrandSnapshot, day, count,
 	run.State = domain.VisibilitySucceeded
 	results := make([]domain.VisibilityResult, 0, run.TotalResults)
 
-	for position := range count {
-		index := position
-		if index >= 29 {
-			index += 3 // Historical identifiers skip the three uncollected drafts.
-		}
+	for index := range count {
 		for engineIndex, engine := range run.Engines {
 			result := domain.VisibilityResult{
 				BaseEntity:     entity(fmt.Sprintf("%s/run/%d/%d/%s", key, day, index, engine), at),
@@ -268,7 +264,7 @@ func seedRun(tx *gorm.DB, key string, snapshot domain.BrandSnapshot, day, count,
 				RunID:          run.ID,
 				PromptID:       demoID(fmt.Sprintf("%s/prompt/%d", key, index)),
 				PromptText:     prompts[index].text,
-				PromptPosition: position,
+				PromptPosition: index,
 				Engine:         engine,
 				Collector:      domain.CollectorStub,
 				FetchedAt:      &at,

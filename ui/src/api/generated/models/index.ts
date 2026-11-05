@@ -37,8 +37,6 @@ export * from './GenerationPage';
 export * from './GenerationRequest';
 export * from './GenerationStatus';
 export * from './HealthResponse';
-export * from './HistoricalPrompt';
-export * from './HistoricalPromptPage';
 export * from './MeRes';
 export * from './OAuthConsent';
 export * from './OAuthConsentDecision';

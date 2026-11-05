@@ -71,6 +71,7 @@ export interface ListPromptsRequest {
     pageSize?: number;
     q?: string;
     confirmed?: boolean;
+    inactive?: boolean;
     sort?: ListPromptsSortEnum;
     descending?: boolean;
     days?: ListPromptsDaysEnum;
@@ -161,7 +162,7 @@ export interface PromptsApiInterface {
     deletePromptRequestOpts(requestParameters: DeletePromptRequest): Promise<runtime.RequestOpts>;
 
     /**
-     * 
+     * Deletes a prompt with no saved results. A prompt with results returns resource_conflict; stop it by setting inactive instead.
      * @param {string} promptID 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -170,6 +171,7 @@ export interface PromptsApiInterface {
     deletePromptRaw(requestParameters: DeletePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
 
     /**
+     * Deletes a prompt with no saved results. A prompt with results returns resource_conflict; stop it by setting inactive instead.
      */
     deletePrompt(requestParameters: DeletePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
@@ -201,6 +203,7 @@ export interface PromptsApiInterface {
      * @param {number} [pageSize] 
      * @param {string} [q] 
      * @param {boolean} [confirmed] 
+     * @param {boolean} [inactive] Filter by stopped (true) or not stopped (false) prompts.
      * @param {'original' | 'prompt' | 'rate' | 'change'} [sort] 
      * @param {boolean} [descending] 
      * @param {7 | 30 | 90} [days] 
@@ -217,6 +220,7 @@ export interface PromptsApiInterface {
      * @param {number} [pageSize] 
      * @param {string} [q] 
      * @param {boolean} [confirmed] 
+     * @param {boolean} [inactive] Filter by stopped (true) or not stopped (false) prompts.
      * @param {'original' | 'prompt' | 'rate' | 'change'} [sort] 
      * @param {boolean} [descending] 
      * @param {7 | 30 | 90} [days] 
@@ -421,6 +425,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
     }
 
     /**
+     * Deletes a prompt with no saved results. A prompt with results returns resource_conflict; stop it by setting inactive instead.
      */
     async deletePromptRaw(requestParameters: DeletePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         const requestOptions = await this.deletePromptRequestOpts(requestParameters);
@@ -430,6 +435,7 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
     }
 
     /**
+     * Deletes a prompt with no saved results. A prompt with results returns resource_conflict; stop it by setting inactive instead.
      */
     async deletePrompt(requestParameters: DeletePromptRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deletePromptRaw(requestParameters, initOverrides);
@@ -509,6 +515,10 @@ export class PromptsApi extends runtime.BaseAPI implements PromptsApiInterface {
 
         if (requestParameters['confirmed'] != null) {
             queryParameters['confirmed'] = requestParameters['confirmed'];
+        }
+
+        if (requestParameters['inactive'] != null) {
+            queryParameters['inactive'] = requestParameters['inactive'];
         }
 
         if (requestParameters['sort'] != null) {

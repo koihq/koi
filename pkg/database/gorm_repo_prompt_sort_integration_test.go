@@ -66,18 +66,4 @@ func TestPromptSortPaginatesAfterRanking(t *testing.T) {
 	second, err := store.PromptRepo().List(ctx, filter, secondPage)
 	require.NoError(t, err)
 	require.Equal(t, []uuid.UUID{ids[3], ids[1]}, []uuid.UUID{second.Items[0].ID, second.Items[1].ID})
-
-	for _, id := range ids {
-		require.NoError(t, commander.Delete(ctx, id))
-	}
-	historyFilter := domain.PromptFilter{
-		BrandFilter: domain.BrandFilter{BrandID: brand.ID},
-		Sort:        domain.PromptSortRate,
-		Descending:  true,
-		Days:        30,
-	}
-	history, err := store.VisibilityRepo().ListHistoricalPrompts(ctx, historyFilter, page)
-	require.NoError(t, err)
-	require.EqualValues(t, 5, history.TotalItems)
-	require.Equal(t, []uuid.UUID{ids[2], ids[4]}, []uuid.UUID{history.Items[0].PromptID, history.Items[1].PromptID})
 }

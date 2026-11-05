@@ -96,11 +96,18 @@ func (d *promptCommandDeps) invalidateReview(brandID uuid.UUID) {
 	}).Return(nil).Once()
 }
 
+// noResults answers the HasResults lookup every prompt mutation returns with.
+func (d *promptCommandDeps) noResults() {
+	d.visibility.EXPECT().PromptsWithResults(mock.Anything, mock.Anything, mock.Anything).
+		Return(map[uuid.UUID]bool{}, nil).Maybe()
+}
+
 func TestPromptUpdateKeepsProvenanceAndConfirmation(t *testing.T) {
 	prompt := &Prompt{
-		BrandID: uuid.New(),
-		Text:    "Old",
-		Source:  PromptSourceDrafted,
+		BrandID:   uuid.New(),
+		Text:      "Old",
+		Source:    PromptSourceDrafted,
+		Confirmed: true,
 	}
 	text := " New   text "
 	inactive := true
@@ -109,7 +116,7 @@ func TestPromptUpdateKeepsProvenanceAndConfirmation(t *testing.T) {
 	require.Equal(t, "New text", prompt.Text)
 	require.True(t, prompt.Inactive)
 	require.Equal(t, PromptSourceDrafted, prompt.Source)
-	require.False(t, prompt.Confirmed)
+	require.True(t, prompt.Confirmed)
 
 	empty := " "
 	require.ErrorIs(t, prompt.Update(UpdatePromptParams{Text: &empty}), ErrValidation)
@@ -171,6 +178,7 @@ func TestPromptUpdateReadsUnderLockAndInvalidatesReview(t *testing.T) {
 	d.prompts.EXPECT().Update(mock.Anything, locked).Run(func(context.Context, *Prompt) {
 		d.steps = append(d.steps, "write")
 	}).Return(nil).Once()
+	d.noResults()
 	d.invalidateReview(brandID)
 
 	text := " New   text "
@@ -196,11 +204,11 @@ func TestPromptUpdateReservesCapacityOnlyWhenReactivating(t *testing.T) {
 
 	// No ReservePromptCapacity expectation: the mock fails the test if deactivating reserves.
 	deactivating := newPromptCommandDeps(t)
-	deactivated := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Q", Source: PromptSourceDrafted}
+	deactivated := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Q", Source: PromptSourceDrafted, Confirmed: true}
 	deactivating.prompts.EXPECT().Get(mock.Anything, promptID).Return(deactivated, nil).Twice()
 	deactivating.lockBrand(brandID, organizationID)
 	deactivating.prompts.EXPECT().Update(mock.Anything, deactivated).Return(nil).Once()
-	deactivating.invalidateReview(brandID)
+	deactivating.noResults()
 
 	_, err = NewPromptCommander(deactivating.store).Update(t.Context(), promptID, UpdatePromptParams{Inactive: &inactive})
 	require.NoError(t, err)
@@ -213,6 +221,7 @@ func TestPromptEmptyUpdateKeepsTheReview(t *testing.T) {
 	d.prompts.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil).Twice()
 	d.lockBrand(brandID, organizationID)
 	d.prompts.EXPECT().Update(mock.Anything, prompt).Return(nil).Once()
+	d.noResults()
 
 	_, err := NewPromptCommander(d.store).Update(t.Context(), promptID, UpdatePromptParams{})
 	require.NoError(t, err)
@@ -225,6 +234,7 @@ func TestPromptConfirmAndConfirmAll(t *testing.T) {
 	d.prompts.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil).Twice()
 	d.lockBrand(brandID, organizationID)
 	d.prompts.EXPECT().Update(mock.Anything, mock.MatchedBy(func(p *Prompt) bool { return p.Confirmed })).Return(nil).Once()
+	d.noResults()
 
 	got, err := NewPromptCommander(d.store).Confirm(t.Context(), promptID)
 	require.NoError(t, err)
@@ -240,15 +250,67 @@ func TestPromptDeleteInOrderAndUnknownPrompt(t *testing.T) {
 	prompt := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID}
 	d.prompts.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil).Twice()
 	d.lockBrand(brandID, organizationID)
+	d.visibility.EXPECT().PromptsWithResults(mock.Anything, brandID, []uuid.UUID{promptID}).Run(func(context.Context, uuid.UUID, []uuid.UUID) {
+		d.steps = append(d.steps, "check")
+	}).Return(map[uuid.UUID]bool{}, nil).Once()
 	d.prompts.EXPECT().Delete(mock.Anything, promptID).Run(func(context.Context, uuid.UUID) {
 		d.steps = append(d.steps, "delete")
 	}).Return(nil).Once()
 	d.invalidateReview(brandID)
 
 	require.NoError(t, NewPromptCommander(d.store).Delete(t.Context(), promptID))
-	require.Equal(t, []string{"lock", "delete", "invalidate"}, d.steps)
+	require.Equal(t, []string{"lock", "check", "delete", "invalidate"}, d.steps)
 
 	missing := newPromptCommandDeps(t)
 	missing.prompts.EXPECT().Get(mock.Anything, promptID).Return(nil, ErrNotFound).Once()
 	require.ErrorIs(t, NewPromptCommander(missing.store).Delete(t.Context(), promptID), ErrNotFound)
+}
+
+func TestPromptDeleteRefusesAPromptWithResults(t *testing.T) {
+	d := newPromptCommandDeps(t)
+	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
+	prompt := &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Confirmed: true}
+	d.prompts.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil).Twice()
+	d.lockBrand(brandID, organizationID)
+	d.visibility.EXPECT().PromptsWithResults(mock.Anything, brandID, []uuid.UUID{promptID}).
+		Return(map[uuid.UUID]bool{promptID: true}, nil).Once()
+
+	require.ErrorIs(t, NewPromptCommander(d.store).Delete(t.Context(), promptID), ErrResourceConflict)
+}
+
+func TestPromptUpdateRefusesToStopADraft(t *testing.T) {
+	prompt := &Prompt{BrandID: uuid.New(), Text: "Draft", Source: PromptSourceDrafted}
+	inactive := true
+
+	err := prompt.Update(UpdatePromptParams{Inactive: &inactive})
+
+	require.ErrorIs(t, err, ErrValidation)
+	require.False(t, prompt.Inactive)
+}
+
+func TestPromptStopAndResumeKeepTheReview(t *testing.T) {
+	brandID, organizationID, promptID := uuid.New(), uuid.New(), uuid.New()
+	expect := func(d *promptCommandDeps, prompt *Prompt) {
+		d.prompts.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil).Twice()
+		d.lockBrand(brandID, organizationID)
+		d.prompts.EXPECT().Update(mock.Anything, prompt).Return(nil).Once()
+		d.visibility.EXPECT().PromptsWithResults(mock.Anything, brandID, []uuid.UUID{promptID}).
+			Return(map[uuid.UUID]bool{promptID: true}, nil).Once()
+	}
+
+	stop := newPromptCommandDeps(t)
+	stopped := true
+	expect(stop, &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Q", Source: PromptSourceManual, Confirmed: true})
+	updated, err := NewPromptCommander(stop.store).Update(t.Context(), promptID, UpdatePromptParams{Inactive: &stopped})
+	require.NoError(t, err)
+	require.True(t, updated.Inactive)
+	require.True(t, updated.HasResults)
+
+	resume := newPromptCommandDeps(t)
+	resumed := false
+	expect(resume, &Prompt{BaseEntity: BaseEntity{ID: promptID}, BrandID: brandID, Text: "Q", Source: PromptSourceManual, Confirmed: true, Inactive: true})
+	resume.billing.EXPECT().ReservePromptCapacity(mock.Anything, organizationID, int64(1)).Return(nil).Once()
+	updated, err = NewPromptCommander(resume.store).Update(t.Context(), promptID, UpdatePromptParams{Inactive: &resumed})
+	require.NoError(t, err)
+	require.False(t, updated.Inactive)
 }

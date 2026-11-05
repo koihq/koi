@@ -151,13 +151,6 @@ type VisibilityInputs struct {
 	Prompts []Prompt
 }
 
-type HistoricalPrompt struct {
-	PromptID   uuid.UUID         `json:"prompt_id"`
-	PromptText string            `json:"prompt_text"`
-	LastSeenAt time.Time         `json:"last_seen_at"`
-	Visibility *VisibilityReport `json:"visibility,omitempty" gorm:"-"`
-}
-
 type PromptHistoryRun struct {
 	Run     VisibilityRun      `json:"run"`
 	Results []VisibilityResult `json:"results"`
@@ -180,7 +173,7 @@ type VisibilityRepository interface {
 	Inputs(context.Context, uuid.UUID) (VisibilityInputs, error)
 	CreateAndEnqueue(context.Context, *VisibilityRun, []VisibilityResult) error
 	ListResults(context.Context, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
-	ListHistoricalPrompts(context.Context, PromptFilter, PageParams) (*Page[HistoricalPrompt], error)
+	PromptsWithResults(ctx context.Context, brandID uuid.UUID, promptIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
 
@@ -197,8 +190,6 @@ type VisibilityQuerier interface {
 	Lister[VisibilityRun, BrandFilter]
 	ListResults(context.Context, uuid.UUID, PageParams) (*Page[VisibilityResult], error)
 	Tracking(context.Context, uuid.UUID) (*TrackingStatus, error)
-	ListHistoricalPrompts(ctx context.Context, filter PromptFilter, page PageParams) (*Page[HistoricalPrompt], error)
-	ListHistoricalPromptsWithVisibility(ctx context.Context, filter PromptFilter, page PageParams) (*Page[HistoricalPrompt], error)
 	ListPromptRuns(context.Context, uuid.UUID, uuid.UUID, PageParams) (*Page[PromptHistoryRun], error)
 }
 
@@ -227,38 +218,6 @@ func (s *visibilityQuerier) ListResults(ctx context.Context, runID uuid.UUID, pa
 	}
 
 	return s.store.VisibilityRepo().ListResults(ctx, runID, page)
-}
-
-func (s *visibilityQuerier) ListHistoricalPrompts(ctx context.Context, filter PromptFilter, page PageParams) (*Page[HistoricalPrompt], error) {
-	if err := ownedBrand(ctx, s.store, filter.BrandID); err != nil {
-		return nil, err
-	}
-
-	return s.store.VisibilityRepo().ListHistoricalPrompts(ctx, filter, page)
-}
-
-// ListHistoricalPromptsWithVisibility adds each snapshot's report for the period and engines in the filter.
-func (s *visibilityQuerier) ListHistoricalPromptsWithVisibility(ctx context.Context, filter PromptFilter, page PageParams) (*Page[HistoricalPrompt], error) {
-	prompts, err := s.ListHistoricalPrompts(ctx, filter, page)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := make([]uuid.UUID, 0, len(prompts.Items))
-	for _, prompt := range prompts.Items {
-		ids = append(ids, prompt.PromptID)
-	}
-
-	byPrompt, _, err := NewVisibilityAnalyticsQuerier(s.store).Aggregate(ctx, filter.BrandID, ids, filter.Days, filter.Engines)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := range prompts.Items {
-		prompts.Items[i].Visibility = byPrompt[prompts.Items[i].PromptID]
-	}
-
-	return prompts, nil
 }
 
 func (s *visibilityQuerier) ListPromptRuns(ctx context.Context, brandID, promptID uuid.UUID, page PageParams) (*Page[PromptHistoryRun], error) {

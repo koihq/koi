@@ -10,7 +10,8 @@ import (
 	"github.com/koihq/koi/pkg/domain"
 )
 
-func TestPromptHistoryKeepsDeletedPromptSnapshots(t *testing.T) {
+// Results have no foreign key to prompts: they stay readable if the row ever disappears.
+func TestPromptHistoryKeepsSnapshotsWithoutLivePrompt(t *testing.T) {
 	_, store, ctx, brand := liveVisibilityFixture(t, true)
 	prompts, err := store.PromptRepo().List(ctx, domain.PromptFilter{
 		BrandFilter: domain.BrandFilter{BrandID: brand.ID},
@@ -27,12 +28,7 @@ func TestPromptHistoryKeepsDeletedPromptSnapshots(t *testing.T) {
 	require.Len(t, live.Items[0].Results, 4)
 	require.Equal(t, run.ID, live.Items[0].Run.ID)
 
-	require.NoError(t, domain.NewPromptCommander(store).Delete(ctx, prompt.ID))
-	historical, err := querier.ListHistoricalPrompts(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: brand.ID}}, page)
-	require.NoError(t, err)
-	require.EqualValues(t, 1, historical.TotalItems)
-	require.Equal(t, prompt.ID, historical.Items[0].PromptID)
-	require.Equal(t, prompt.Text, historical.Items[0].PromptText)
+	require.NoError(t, store.PromptRepo().Delete(ctx, prompt.ID))
 
 	saved, err := querier.ListPromptRuns(ctx, brand.ID, prompt.ID, page)
 	require.NoError(t, err)
@@ -49,8 +45,6 @@ func TestPromptHistoryKeepsDeletedPromptSnapshots(t *testing.T) {
 	require.True(t, empty.HasPrev)
 
 	stranger := auth.WithIdentity(t.Context(), auth.Identity{UserID: uuid.New(), OrganizationID: uuid.New()})
-	_, err = querier.ListHistoricalPrompts(stranger, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: brand.ID}}, page)
-	require.ErrorIs(t, err, domain.ErrNotFound)
 	_, err = querier.ListPromptRuns(stranger, brand.ID, prompt.ID, page)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 }

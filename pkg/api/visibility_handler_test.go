@@ -46,31 +46,11 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 	response.Body.Close()
 
 	brandSession(t, client, ts.URL, userID)
+	removed := doJSON(t, client, http.MethodGet, base+"?pageSize=10", "", brandID)
+	require.NotEqual(t, http.StatusOK, removed.StatusCode, "the deleted-prompts list is gone")
+	require.NoError(t, removed.Body.Close())
+
 	page := domain.PageParams{Page: 1, PageSize: 10}
-	q.EXPECT().ListHistoricalPromptsWithVisibility(identityIs(userID), domain.PromptFilter{
-		BrandFilter: domain.BrandFilter{
-			BrandID: brandID,
-		},
-		Sort: domain.PromptSortOriginal,
-		Days: 30,
-	}, page).Return(
-		&domain.Page[domain.HistoricalPrompt]{
-			Items: []domain.HistoricalPrompt{{
-				PromptID:   promptID,
-				PromptText: "Saved question?",
-				LastSeenAt: time.Date(2026, 10, 5, 10, 30, 0, 0, time.UTC),
-			}},
-			TotalItems:  1,
-			TotalPages:  1,
-			CurrentPage: 1,
-		}, nil,
-	)
-	response = doJSON(t, client, http.MethodGet, base+"?pageSize=10", "", brandID)
-	var snapshots map[string]any
-	readJSON(t, response, &snapshots)
-	require.Equal(t, http.StatusOK, response.StatusCode)
-	require.EqualValues(t, 1, snapshots["totalItems"])
-	require.Equal(t, promptID.String(), snapshots["items"].([]any)[0].(map[string]any)["promptId"])
 
 	run := domain.VisibilityRun{
 		BaseEntity:    domain.BaseEntity{ID: runID},

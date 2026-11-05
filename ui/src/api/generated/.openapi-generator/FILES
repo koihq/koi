@@ -47,8 +47,6 @@ models/GenerationPage.ts
 models/GenerationRequest.ts
 models/GenerationStatus.ts
 models/HealthResponse.ts
-models/HistoricalPrompt.ts
-models/HistoricalPromptPage.ts
 models/MeRes.ts
 models/OAuthConsent.ts
 models/OAuthConsentDecision.ts

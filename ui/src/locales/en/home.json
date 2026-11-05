@@ -49,7 +49,7 @@
     "selectPrompt": "Select {text}",
     "clearSelection": "Clear selection",
     "deleteSelectedTitle": "Delete selected prompts?",
-    "deleteSelectedDescription": "Delete {count} selected prompts. Saved answer history remains available.",
+    "deleteSelectedDescription": "Delete {count} selected prompts with no saved answers. Nothing is lost, and this can't be undone. Prompts with saved answers stay in the list.",
     "bulkError": "Some selected prompts could not be updated. Retry the remaining selection.",
     "backToVisibility": "Back to visibility",
     "brandSettings": "Brand settings",
@@ -71,7 +71,6 @@
     "visibility": "Visibility",
     "awaitingReview": "Awaiting review",
     "draft": "Draft",
-    "pastPrompt": "No longer tracked",
     "noAnswersYet": "No answers yet",
     "noData": "No data",
     "competitors": "Competitors",
@@ -100,7 +99,6 @@
     "title": "Prompt detail",
     "loadingPrompt": "Loading prompt…",
     "notFound": "Prompt not found",
-    "historical": "Historical prompt",
     "loadError": "Could not load the saved answers.",
     "loadingAnswers": "Loading saved answers…",
     "noAnswers": "No collected answers for this prompt yet. Answers and citations appear here after a run.",
@@ -126,10 +124,5 @@
     "copied": "Copied",
     "copyFailed": "Copy failed. Try again.",
     "legend": "Answer outcome"
-  },
-  "history": {
-    "title": "Past prompts",
-    "loadError": "Could not load past prompts.",
-    "empty": "Deleted prompts with saved answers appear here."
   }
 }
