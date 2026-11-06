@@ -42,6 +42,7 @@ models/ErrorBody.ts
 models/ErrorCode.ts
 models/FieldCode.ts
 models/FieldError.ts
+models/ForgotPasswordReq.ts
 models/GenerationAccepted.ts
 models/GenerationPage.ts
 models/GenerationRequest.ts
@@ -58,6 +59,7 @@ models/PromptPage.ts
 models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts
+models/ResetPasswordReq.ts
 models/SearchCompetitors200ResponseInner.ts
 models/TrackingStatus.ts
 models/VisibilityDay.ts

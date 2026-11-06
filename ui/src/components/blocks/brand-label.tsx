@@ -37,7 +37,9 @@ export function BrandLabel({
       className={cn("inline-flex min-w-0 max-w-full items-center", style.gap, className)}
     >
       <BrandIcon name={name} domain={domain} lookupLogo={lookupLogo} className={style.icon} />
-      <span className={cn("min-w-0 truncate text-foreground", style.text)}>{name}</span>
+      <span className={cn("min-w-0 truncate text-foreground", style.text)} title={name}>
+        {name}
+      </span>
       {detail ? (
         <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{detail}</span>
       ) : null}

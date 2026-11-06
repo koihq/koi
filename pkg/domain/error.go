@@ -20,6 +20,7 @@ const (
 	CodeBillingSubscriptionExists = "billing_subscription_exists"
 	CodeBillingPriceMismatch      = "billing_price_mismatch"
 	CodeBillingRequired           = "billing_required"
+	CodePasswordResetInvalid      = "password_reset_invalid"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"
@@ -51,6 +52,7 @@ var (
 	ErrPromptLimitReached      = &Error{Code: CodePromptLimitReached, Message: "prompt limit reached"}
 	ErrBillingConflict         = &Error{Code: CodeBillingConflict, Message: "billing conflict"}
 	ErrBillingRequired         = &Error{Code: CodeBillingRequired, Message: "trial or payment required"}
+	ErrPasswordResetInvalid    = &Error{Code: CodePasswordResetInvalid, Message: "password reset link invalid or expired"}
 )
 
 type FieldError struct {

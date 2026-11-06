@@ -95,6 +95,13 @@ func TestCloudPromptAllowanceIsOrganizationWideAndIgnoresInactivePrompts(t *test
 	count, err := storedPromptCount(ctx, db, organization.ID)
 	require.NoError(t, err)
 	require.EqualValues(t, domain.TrialPromptLimit, count)
+
+	used, err := store.BillingRepo().UsedPromptCount(ctx, organization.ID)
+	require.NoError(t, err)
+	require.Equal(t, count, used, "the reported usage is the count that enforces the allowance")
+
+	_, err = store.BillingRepo().UsedPromptCount(ctx, uuid.New())
+	require.ErrorIs(t, err, domain.ErrUnauthorized)
 }
 
 func TestCloudTrialInitialDraftLeavesRoomForTheCustomer(t *testing.T) {

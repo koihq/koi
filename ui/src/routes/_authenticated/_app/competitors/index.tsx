@@ -1,10 +1,12 @@
 import { Delete02Icon, PencilEdit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor, UpdateCompetitor } from "@/api/competitors.api";
+import { ApiErrorMessage } from "@/components/blocks/api-error-message";
+import { BackLink } from "@/components/blocks/back-link";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
@@ -46,7 +48,16 @@ function CompetitorPage() {
   const trigger = useRef<HTMLElement | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const pending = Object.values(mutations).some((mutation) => mutation.isPending);
-  const items = list.competitors.data?.items ?? [];
+  const items = useMemo(() => {
+    const rates = new Map(
+      summary.data?.competitors.map((competitor) => [competitor.id, competitor.metric.rate]),
+    );
+
+    // Most visible first, the same order the home page uses.
+    return [...(list.competitors.data?.items ?? [])].sort(
+      (left, right) => (rates.get(right.id) ?? -1) - (rates.get(left.id) ?? -1),
+    );
+  }, [list.competitors.data, summary.data]);
   const response = list.competitors.data;
   const dismissing = deleting?.source === "observed" && !deleting.confirmed;
 
@@ -112,7 +123,7 @@ function CompetitorPage() {
     {
       id: "name",
       header: t("name"),
-      headClassName: `${headClass} w-[32%]`,
+      headClassName: `${headClass} w-[34%]`,
       cellClassName: `${cellClass} whitespace-normal [overflow-wrap:anywhere]`,
       cell: (item) => (
         <span className="flex flex-wrap items-center gap-2">
@@ -124,29 +135,37 @@ function CompetitorPage() {
     {
       id: "identity",
       header: t("domain"),
-      headClassName: `${headClass} w-[26%]`,
-      cellClassName: `${cellClass} whitespace-normal break-all text-muted-foreground`,
-      cell: (item) => item.domain || item.githubRepo || t("competitorIdentityNeeded"),
+      headClassName: `${headClass} w-[30%]`,
+      cellClassName: `${cellClass} text-muted-foreground`,
+      cell: (item) => {
+        const identity = item.domain || item.githubRepo || t("competitorIdentityNeeded");
+
+        return (
+          <span className="block truncate" title={identity}>
+            {identity}
+          </span>
+        );
+      },
     },
     {
       id: "rate",
       header: t("home:dashboard.visibility"),
-      headClassName: `${headClass} w-[14%] text-end`,
+      headClassName: `${headClass} w-[13%] text-end`,
       cellClassName: `${cellClass} text-end`,
       cell: renderRate,
     },
     {
       id: "gap",
       header: t("home:dashboard.vsYou"),
-      headClassName: `${headClass} w-[14%] text-end`,
+      headClassName: `${headClass} w-[13%] text-end`,
       cellClassName: `${cellClass} text-end`,
       cell: renderGap,
     },
     {
       id: "actions",
       header: <span className="sr-only">{t("actions")}</span>,
-      headClassName: `${headClass} w-[14%] text-end`,
-      cellClassName: `${cellClass} text-end`,
+      headClassName: `${headClass} w-28`,
+      cellClassName: `${cellClass} ps-0! pe-1! text-end`,
       cell: (item) => renderActions(item),
     },
   ];
@@ -185,15 +204,10 @@ function CompetitorPage() {
   }
 
   return (
-    <div className="pb-24">
-      <Link
-        to="/"
-        className="text-xs text-muted-foreground mb-6 inline-block hover:text-foreground"
-      >
-        {t("home:dashboard.backToVisibility")}
-      </Link>
+    <div className="grid gap-6 pb-24">
+      <BackLink label={t("home:dashboard.backToVisibility")} />
       <section
-        className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7"
+        className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
         aria-busy={list.competitors.isFetching}
         data-refreshing={list.competitors.isFetching && Boolean(list.competitors.data)}
         aria-labelledby="competitors-heading"
@@ -216,7 +230,15 @@ function CompetitorPage() {
                 options={[
                   { value: "all", label: t("all"), count: counts.all },
                   { value: "confirmed", label: t("confirmed"), count: counts.confirmed },
-                  { value: "unconfirmed", label: t("unconfirmed"), count: counts.unconfirmed },
+                  ...(counts.unconfirmed || list.table.status === "unconfirmed"
+                    ? [
+                        {
+                          value: "unconfirmed" as const,
+                          label: t("unconfirmed"),
+                          count: counts.unconfirmed,
+                        },
+                      ]
+                    : []),
                 ]}
                 onChange={(status) => list.table.setStatus(status)}
               />
@@ -233,7 +255,6 @@ function CompetitorPage() {
               brandID={brand.id}
               label={t("addCompetitor")}
               pending={mutations.create.isPending}
-              triggerVariant="outline"
               onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}
             />
           </div>
@@ -243,7 +264,7 @@ function CompetitorPage() {
         </div>
         {mutations.confirm.isError && (
           <p role="alert" className="mb-4 text-sm text-destructive">
-            {t("mutationError")}
+            <ApiErrorMessage error={mutations.confirm.error} fallback={t("mutationError")} />
           </p>
         )}
         {list.competitors.isError ? (
@@ -257,7 +278,7 @@ function CompetitorPage() {
           <p className="py-8 text-sm text-muted-foreground">{t("loading")}</p>
         ) : items.length ? (
           <div className="@container group-data-[refreshing=true]/refresh:opacity-50">
-            <div className="hidden @2xl:block">
+            <div className="-mx-3 hidden @2xl:block">
               <DataTable
                 interactive
                 ariaLabel={t("competitors")}
@@ -267,7 +288,7 @@ function CompetitorPage() {
                 getRowId={(item) => item.id}
               />
             </div>
-            <ul className="list-rows grid gap-0.5 @2xl:hidden">
+            <ul className="list-rows -mx-2 grid gap-0.5 @2xl:hidden">
               {items.map((item) => (
                 <li
                   key={item.id}

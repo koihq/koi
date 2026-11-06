@@ -35,6 +35,51 @@ func (c *Client) SendWelcome(ctx context.Context, userID uuid.UUID, to string) e
 	return err
 }
 
+// SendPasswordReset has no idempotency key: each retry carries a new token, which a replayed
+// request would not deliver.
+func (c *Client) SendPasswordReset(ctx context.Context, to, token string) error {
+	resetURL := strings.TrimRight(c.publicURL, "/") + "/reset-password#" + token
+	text, markup := passwordResetContent(resetURL)
+
+	_, err := c.client.Emails.SendWithContext(ctx, &resend.SendEmailRequest{
+		From:    c.from,
+		To:      []string{to},
+		Subject: "Reset your Koi password",
+		Text:    text,
+		Html:    markup,
+	})
+
+	return err
+}
+
+func passwordResetContent(resetURL string) (string, string) {
+	text := "Reset your Koi password.\n\n" +
+		"Choose a new password: " + resetURL + "\n\n" +
+		"This link works once and expires in 1 hour. " +
+		"If you did not ask for it, you can ignore this email and your password stays the same.\n\n" +
+		"The Koi team"
+	markup := `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
+		`<meta name="viewport" content="width=device-width,initial-scale=1">` +
+		`<title>Reset your Koi password</title></head>` +
+		`<body style="margin:0;padding:0;background:#f7f7f5;color:#171717;font-family:Arial,Helvetica,sans-serif">` +
+		`<table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td align="center" style="padding:40px 20px">` +
+		`<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff">` +
+		`<tr><td style="padding:40px 40px 0;font-size:19px;font-weight:700;letter-spacing:-0.04em">Koi</td></tr>` +
+		`<tr><td style="padding:44px 40px 40px"><table role="presentation" cellpadding="0" cellspacing="0" width="100%">` +
+		`<tr><td style="font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-0.035em">Reset your password</td></tr>` +
+		`<tr><td style="padding-top:24px;font-size:16px;line-height:1.6">This link works once and expires in 1 hour.</td></tr>` +
+		`<tr><td style="padding:28px 0 0"><a href="` + html.EscapeString(resetURL) +
+		`" style="display:inline-block;background:#171717;color:#ffffff;text-decoration:none;` +
+		`font-size:14px;font-weight:600;padding:13px 20px;border-radius:6px">Choose a new password</a></td></tr>` +
+		`<tr><td style="padding-top:28px;font-size:14px;line-height:1.6;color:#656565">` +
+		`If you did not ask for it, you can ignore this email and your password stays the same.</td></tr>` +
+		`</table></td></tr></table>` +
+		`<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px"><tr><td style="padding:24px 4px;color:#656565;font-size:12px">The Koi team</td></tr></table>` +
+		`</td></tr></table></body></html>`
+
+	return text, markup
+}
+
 func welcomeContent(publicURL string) (string, string) {
 	text := "Welcome to Koi.\n\nSee how AI talks about your brand.\n\n" +
 		"Koi shows you when answer engines mention or cite your brand, who they recommend instead, " +

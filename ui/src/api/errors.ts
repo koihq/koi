@@ -49,6 +49,17 @@ export function messageFromUnknown(err: unknown): string {
   return displayMessage("internal");
 }
 
+const genericCodes: readonly string[] = ["validation", "invalid_json", "internal", "not_found"];
+
+/** The server's specific reason for a failure, or `fallback` when it only knows it failed. */
+export function messageOr(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && isErrorCode(err.code) && !genericCodes.includes(err.code)) {
+    return displayMessage(err.code, err.fields);
+  }
+
+  return fallback;
+}
+
 export async function apiErrorFromResponse(response: Response): Promise<ApiError> {
   try {
     const body = (await response.json()) as Envelope;

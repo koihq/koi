@@ -30,6 +30,9 @@ Set `KOI_PUBLIC_URL` to the browser origin to include a “Set up your brand” 
 without it, the email has no link. Each self-hosted instance uses its own Resend
 account and credentials. Without the Resend variables, signup works without email.
 
+Password recovery uses the same email setup and also requires `KOI_PUBLIC_URL`. Without
+them, the recovery page says it is not set up on that instance.
+
 Dev serves the UI with Vite HMR at `http://localhost:5173` and the API (Air) at `:8080`. Vite proxies `/health` and `/api` to the API. Check `GET http://localhost:5173/health` — `{ "status": "ok", "db": "ok"|"down" }`.
 
 To run the production-shaped binary (embedded UI, no HMR):

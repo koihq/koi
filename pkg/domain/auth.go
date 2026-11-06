@@ -40,6 +40,9 @@ type Me struct {
 type AuthCommander interface {
 	Signup(ctx context.Context, p SignupParams) (*Me, error)
 	Login(ctx context.Context, email, password string) (*Me, error)
+	RequestPasswordReset(ctx context.Context, email string) error
+	IssuePasswordReset(ctx context.Context, email string) (*User, string, error)
+	ResetPassword(ctx context.Context, token, password string) (uuid.UUID, error)
 }
 
 type AuthQuerier interface {

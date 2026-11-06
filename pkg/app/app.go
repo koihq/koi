@@ -309,6 +309,10 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					store:  database.NewStore(db),
 					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
 				})
+				river.AddWorker(workers, &passwordResetWorker{
+					issuer: domain.NewAuthCommander(database.NewStore(db)),
+					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
+				})
 			}
 		}
 		maintenance := &maintenanceWorker{}
@@ -349,6 +353,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	liveCollection := a.cfg.CloroAPIKey != "" && riverClient != nil
 	store := database.NewStore(db).WithEnqueueClient(riverClient).
 		WithWelcomeEmail(a.cfg.ResendAPIKey != "").
+		WithPasswordResetEmail(a.cfg.ResendAPIKey != "" && a.cfg.PublicURL != "").
 		WithLiveCollection(liveCollection).WithCloudMode(a.cfg.DeploymentMode == "cloud")
 	options := api.ServerOptions{
 		Searcher:       searcher,

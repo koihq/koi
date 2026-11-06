@@ -20,6 +20,7 @@ func (sessionRow) TableName() string { return "sessions" }
 func Migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&domain.User{},
+		&domain.PasswordResetToken{},
 		&domain.Credential{},
 		&domain.OAuthClient{},
 		&domain.OAuthCode{},

@@ -32,11 +32,15 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
     .slice(0, 3);
   const width = 320;
   const height = 96;
+  // The line spans the days with readings, so a day still waiting for its run leaves no gap.
+  const hasReading = series.map((point) => point.rate !== null);
+  const firstReading = hasReading.indexOf(true);
+  const lastReading = hasReading.lastIndexOf(true);
   const points = series.map((point, index) =>
     point.rate === null
       ? null
       : {
-          x: (index / Math.max(1, series.length - 1)) * width,
+          x: ((index - firstReading) / Math.max(1, lastReading - firstReading)) * width,
           y: 8 + ((100 - point.rate) / 100) * (height - 16),
         },
   );
@@ -46,6 +50,15 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
       if (!segments.length || points[index - 1] === null) segments.push([]);
       segments.at(-1)?.push(point);
     }
+  }
+
+  // One reading has no trend yet, so hold its level across the chart.
+  const readings = points.filter((point) => point !== null);
+  if (readings.length === 1) {
+    segments.splice(0, segments.length, [
+      { x: 0, y: readings[0].y },
+      { x: width, y: readings[0].y },
+    ]);
   }
 
   return (
@@ -70,7 +83,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
           side="right"
           align="start"
           sideOffset={14}
-          className="surface-float flex w-72 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-0 overflow-hidden px-3.5 pt-3.5 pb-0 text-foreground animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
+          className="surface-float flex w-72 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-0 overflow-hidden px-4 pt-4 text-foreground animate-none! pb-0 [&>[data-slot=tooltip-arrow]]:hidden"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="grid gap-1.5">
@@ -94,11 +107,11 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
               )}
             </div>
           </div>
-          {segments.length ? (
+          {segments.length > 0 && (
             <svg
               viewBox={`0 0 ${width} ${height}`}
               preserveAspectRatio="none"
-              className="mt-3 -mx-3.5 block h-24 w-[calc(100%+28px)]"
+              className="mt-3 -mx-4 block h-24 w-[calc(100%+32px)]"
               role="img"
               aria-label={t("dashboard.chartDescription")}
             >
@@ -132,7 +145,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
                 ) : (
                   <circle
                     key={segment[0].x}
-                    cx={segment[0].x}
+                    cx={Math.min(width - 6, Math.max(6, segment[0].x))}
                     cy={segment[0].y}
                     r="3"
                     fill="currentColor"
@@ -140,10 +153,6 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
                 ),
               )}
             </svg>
-          ) : (
-            <div className="mt-3 -mx-3.5 grid h-24 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
-              {t("dashboard.noComparison")}
-            </div>
           )}
         </TooltipContent>
       )}

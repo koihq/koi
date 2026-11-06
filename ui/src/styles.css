@@ -250,6 +250,12 @@
       .prompt-check-wrap {
       opacity: 0;
     }
+
+    .list-table:not(:hover):not(:has(:focus-visible)):not(:has(tr[data-selected]))
+      thead
+      .prompt-check-wrap {
+      opacity: 0;
+    }
   }
 
   .metric-details-tooltip {

@@ -14,7 +14,7 @@ func MapError(err error) (int, Envelope) {
 	var de *domain.Error
 	if errors.As(err, &de) {
 		switch de.Code {
-		case domain.CodeValidation, domain.CodeInvalidJSON:
+		case domain.CodeValidation, domain.CodeInvalidJSON, domain.CodePasswordResetInvalid:
 			return http.StatusBadRequest, envelope(de)
 		case domain.CodeResourceConflict, domain.CodeEmailTaken, domain.CodeBrandLimitReached, domain.CodePromptLimitReached,
 			domain.CodeBillingConflict, domain.CodeBillingCheckoutPending,

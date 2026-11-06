@@ -134,6 +134,7 @@ type BillingEvent struct {
 type BillingStatus struct {
 	Subscription   *BillingSubscription `json:"subscription"`
 	PromptLimit    int                  `json:"prompt_limit"`
+	UsedPrompts    int64                `json:"used_prompts"`
 	TrialAvailable bool                 `json:"trial_available"`
 }
 
@@ -173,6 +174,9 @@ type BillingRepository interface {
 	// activating more prompts would exceed its allowance. Only Koi Cloud has an allowance.
 	ReservePromptCapacity(ctx context.Context, organizationID uuid.UUID, additional int64) error
 	ProductAccess(context.Context, uuid.UUID) (bool, error)
+	// UsedPromptCount is what ReservePromptCapacity measures: every prompt that is not stopped,
+	// drafts included, across all brands.
+	UsedPromptCount(context.Context, uuid.UUID) (int64, error)
 	SaveCustomer(context.Context, uuid.UUID, string) (string, error)
 	Subscription(context.Context, uuid.UUID) (*BillingSubscription, error)
 	ReserveCheckout(context.Context, uuid.UUID, string, string, int) (*BillingCheckoutSession, error)

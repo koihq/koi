@@ -67,6 +67,11 @@ Shared product blocks and utilities:
 | Engine identity | `EngineIcon` (monochrome Hugeicons). Never draw engines with favicons |
 | Engine outcome | `OutcomeMark` (filled = cited, tinted = mentioned, outlined = not in answer) with `OutcomeLegend` |
 | Dates, rates, deltas | `lib/format.ts`: `formatDay`, `formatDateTime`, `formatDayRange`, `formatRate`, `formatPoints` ("−16.0 pp") |
+| Chart period and engine filter | `RangeControl`, `EngineFilter` (`chart-controls`): one row beside the chart title, on every chart |
+| Amount picker | `TickPicker` (`tick-picker`): large value over a tick ruler, for a few uneven amounts. Plain props, reusable outside the app |
+| Row selection | A controls-only column left of the text, as in Linear: the checkbox hangs in the panel's 44px side padding, with 12px on each side of it, so row text stays aligned with the panel title |
+| Way back | `BackLink` (`back-link`): arrow icon only, named by `aria-label` |
+| Add to a list | `icon-outline` `circle-sm` button with `Add01Icon`, beside the list's search |
 | Re-sorting lists | `useFlip` so rows move instead of jumping |
 
 Authenticated navigation uses `AppHeader`: one brand link, competitors, account menu, theme, and sign out. There is no sidebar; the legacy Sidebar and Sheet were removed.

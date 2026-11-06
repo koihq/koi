@@ -52,15 +52,19 @@ function endpointLabel(
     const rate = Number(value);
     let top = clamp(Number(y) - PILL_HEIGHT / 2, 8, HEIGHT - PILL_HEIGHT - 8);
 
-    if (
-      isComparison &&
-      otherRate !== null &&
-      (Math.abs(rate - otherRate) / 100) * (HEIGHT - 32) < PILL_HEIGHT + 8
-    ) {
-      top =
-        top + PILL_HEIGHT + 8 <= HEIGHT - PILL_HEIGHT - 8
-          ? top + PILL_HEIGHT + 8
-          : top - PILL_HEIGHT - 8;
+    if (isComparison && otherRate !== null) {
+      // The brand's pill keeps its place; this one moves only as far as it must to clear it.
+      const otherY = Number(y) - ((otherRate - rate) / 100) * (HEIGHT - PLOT_INSET * 2);
+      const otherTop = clamp(otherY - PILL_HEIGHT / 2, 8, HEIGHT - PILL_HEIGHT - 8);
+      const spacing = PILL_HEIGHT + 8;
+
+      if (Math.abs(top - otherTop) < spacing) {
+        const below = otherTop + spacing;
+        const above = otherTop - spacing;
+        const fitsBelow = below <= HEIGHT - PILL_HEIGHT - 8;
+
+        top = (rate <= otherRate && fitsBelow) || above < 8 ? below : above;
+      }
     }
 
     return (
@@ -237,7 +241,7 @@ export function VisibilityChart({
             } as CSSProperties)
           : undefined
       }
-      className="relative -mx-4 mt-6 sm:-mx-7 group-data-[refreshing=true]/refresh:opacity-50"
+      className="relative -mx-4 mt-6 sm:-mx-11 group-data-[refreshing=true]/refresh:opacity-50"
     >
       <ChartContainer
         config={chartConfig}

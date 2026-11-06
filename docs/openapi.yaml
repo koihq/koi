@@ -326,6 +326,40 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/auth/password/forgot:
+    post:
+      tags: [auth]
+      operationId: forgotPassword
+      description: Answers the same for every well-formed address, registered or not.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordReq"
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+  /api/v1/auth/password/reset:
+    post:
+      tags: [auth]
+      operationId: resetPassword
+      description: Sets a new password with a one-time link and ends the user's sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordReq"
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/logout:
     post:
       tags: [auth]
@@ -1816,6 +1850,20 @@ components:
           type: string
         password:
           type: string
+    ForgotPasswordReq:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    ResetPasswordReq:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
     AuthRes:
       type: object
       required: [id, email, organization]
@@ -1941,7 +1989,7 @@ components:
           type: boolean
     BillingStatus:
       type: object
-      required: [subscription, promptLimit, trialAvailable]
+      required: [subscription, promptLimit, usedPrompts, trialAvailable]
       properties:
         subscription:
           allOf:
@@ -1949,6 +1997,9 @@ components:
           nullable: true
         promptLimit:
           type: integer
+        usedPrompts:
+          type: integer
+          format: int64
         trialAvailable:
           type: boolean
     BillingConfirmCheckoutRequest:

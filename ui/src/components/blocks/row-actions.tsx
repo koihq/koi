@@ -32,6 +32,7 @@ export function RowAction({
   destructive = false,
   persistent = false,
   pressed,
+  large = false,
 }: {
   label: string;
   icon: IconSvgElement;
@@ -40,6 +41,8 @@ export function RowAction({
   destructive?: boolean;
   persistent?: boolean;
   pressed?: boolean;
+  /** For a page's own actions, beside its title instead of inside a row. */
+  large?: boolean;
 }) {
   return (
     <Tooltip>
@@ -62,7 +65,11 @@ export function RowAction({
           />
         }
       >
-        <HugeiconsIcon icon={icon} aria-hidden="true" />
+        <HugeiconsIcon
+          icon={icon}
+          className={large ? "size-[18px]" : undefined}
+          aria-hidden="true"
+        />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

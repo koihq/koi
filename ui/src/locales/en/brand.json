@@ -13,6 +13,8 @@
     "editTitle": "Edit brand",
     "dialogDescription": "Add a brand name, an identifier, and a measurement country.",
     "active": "Active",
+    "switch": "Switch to this brand",
+    "switchError": "Unable to switch brand. Try again.",
     "actions": "Actions",
     "loading": "Loading brands…",
     "loadError": "Unable to load brands. Check your connection and try again.",

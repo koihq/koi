@@ -42,6 +42,12 @@ export interface BillingStatus {
     promptLimit: number;
     /**
      * 
+     * @type {number}
+     * @memberof BillingStatus
+     */
+    usedPrompts: number;
+    /**
+     * 
      * @type {boolean}
      * @memberof BillingStatus
      */
@@ -54,6 +60,7 @@ export interface BillingStatus {
 export function instanceOfBillingStatus(value: object): value is BillingStatus {
     if (!('subscription' in value) || value['subscription'] === undefined) return false;
     if (!('promptLimit' in value) || value['promptLimit'] === undefined) return false;
+    if (!('usedPrompts' in value) || value['usedPrompts'] === undefined) return false;
     if (!('trialAvailable' in value) || value['trialAvailable'] === undefined) return false;
     return true;
 }
@@ -70,6 +77,7 @@ export function BillingStatusFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'subscription': BillingSubscriptionFromJSON(json['subscription']),
         'promptLimit': json['promptLimit'],
+        'usedPrompts': json['usedPrompts'],
         'trialAvailable': json['trialAvailable'],
     };
 }
@@ -87,6 +95,7 @@ export function BillingStatusToJSONTyped(value?: BillingStatus | null, ignoreDis
         
         'subscription': BillingSubscriptionToJSON(value['subscription']),
         'promptLimit': value['promptLimit'],
+        'usedPrompts': value['usedPrompts'],
         'trialAvailable': value['trialAvailable'],
     };
 }

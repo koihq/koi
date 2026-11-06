@@ -9,6 +9,7 @@ import { parseAsBoolean, parseAsNumberLiteral, parseAsStringLiteral, useQuerySta
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
+import { ApiErrorMessage } from "@/components/blocks/api-error-message";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
@@ -318,8 +319,8 @@ export function PromptManager({
           }
         />
       ),
-      headClassName: `${promptHeadClass} w-12 text-center`,
-      cellClassName: `${promptCellClass} text-center`,
+      headClassName: `${promptHeadClass} w-10 px-0! text-center`,
+      cellClassName: `${promptCellClass} px-0! text-center`,
       cell: (row) => (
         <PromptSelectCheckbox
           label={t("home:dashboard.selectPrompt", { text: row.text })}
@@ -338,8 +339,8 @@ export function PromptManager({
         />
       ),
       sort: sortDirection("prompt"),
-      headClassName: `${promptHeadClass} w-[44%]`,
-      cellClassName: promptCellClass,
+      headClassName: `${promptHeadClass} w-[38%] ps-0!`,
+      cellClassName: `${promptCellClass} ps-0!`,
       cell: renderPrompt,
     },
     {
@@ -352,22 +353,22 @@ export function PromptManager({
         />
       ),
       sort: sortDirection("rate"),
-      headClassName: `${promptHeadClass} w-[26%]`,
+      headClassName: `${promptHeadClass} w-[32%]`,
       cellClassName: promptCellClass,
       cell: renderRate,
     },
     {
       id: "rival",
       header: t("home:dashboard.topRival"),
-      headClassName: `${promptHeadClass} w-[20%]`,
+      headClassName: promptHeadClass,
       cellClassName: promptCellClass,
       cell: renderRival,
     },
     {
       id: "actions",
       header: <span className="sr-only">{t("actions")}</span>,
-      headClassName: `${promptHeadClass} w-[10%]`,
-      cellClassName: `${promptCellClass} text-end`,
+      headClassName: `${promptHeadClass} w-36`,
+      cellClassName: `${promptCellClass} ps-0! pe-8! text-end`,
       cell: renderActions,
     },
   ];
@@ -375,19 +376,22 @@ export function PromptManager({
   const totalItems = active.data?.totalItems ?? 0;
   const deletable = selectedPrompts.filter((prompt) => canApply("delete", prompt)).length;
   const mutationFailed = mutations.confirm.isError || mutations.update.isError || bulkFailed;
+  const mutationError = bulk.error ?? mutations.update.error ?? mutations.confirm.error;
   const statusOptions = [
     { value: "tracking", label: t("statusTracking"), count: counts.tracking },
     ...(counts.drafts
       ? ([{ value: "drafts", label: t("statusDrafts"), count: counts.drafts }] as const)
       : []),
-    { value: "stopped", label: t("statusStopped"), count: counts.stopped },
+    ...(counts.stopped || search.status === "stopped"
+      ? ([{ value: "stopped", label: t("statusStopped"), count: counts.stopped }] as const)
+      : []),
   ] as const;
 
   return (
     <section
       id="prompts"
       aria-labelledby="prompts-heading"
-      className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7 scroll-mt-8"
+      className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9 scroll-mt-8"
       aria-busy={active.isFetching}
       data-refreshing={active.isFetching && Boolean(active.data)}
     >
@@ -422,13 +426,15 @@ export function PromptManager({
             label={t("addPrompt")}
             pending={mutations.create.isPending}
             onSave={(request) => mutations.create.mutateAsync(request).then(() => undefined)}
-            variant="outline"
           />
         </div>
       </div>
       {mutationFailed && !bulkDeleting && (
         <p role="alert" className="mb-4 text-sm text-destructive">
-          {bulkFailed ? t("home:dashboard.bulkError") : t("mutationError")}
+          <ApiErrorMessage
+            error={mutationError}
+            fallback={bulkFailed ? t("home:dashboard.bulkError") : t("mutationError")}
+          />
         </p>
       )}
 
@@ -507,7 +513,7 @@ export function PromptManager({
           </p>
         ) : (
           <div className="@container group-data-[refreshing=true]/refresh:opacity-50">
-            <div className="hidden @4xl:block">
+            <div className="-mx-10 hidden @5xl:block">
               <DataTable
                 interactive
                 ariaLabel={t("tableLabel")}
@@ -518,7 +524,7 @@ export function PromptManager({
                 isRowSelected={(row) => selectedVisible.includes(row.id)}
               />
             </div>
-            <ul className="list-rows grid gap-0.5 @4xl:hidden">
+            <ul className="list-rows -mx-2 grid gap-0.5 @5xl:hidden">
               {visible.map((row) => (
                 <li
                   key={row.id}

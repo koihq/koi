@@ -20,6 +20,7 @@ export const errorCodes = [
   "billing_checkout_pending",
   "billing_subscription_exists",
   "billing_price_mismatch",
+  "password_reset_invalid",
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

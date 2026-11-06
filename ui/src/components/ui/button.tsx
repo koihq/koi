@@ -28,7 +28,7 @@ const buttonVariants = cva(
         "circle-sm":
           "relative size-8 rounded-full after:absolute after:-inset-1 after:rounded-full [&_svg:not([class*='size-'])]:size-4",
         circle: "size-10 rounded-full [&_svg:not([class*='size-'])]:size-4",
-        pill: "min-h-10 min-w-10 rounded-full px-2 text-xs",
+        pill: "relative min-h-8 min-w-8 rounded-full px-2.5 text-xs after:absolute after:-inset-y-1 after:inset-x-0 after:rounded-full",
         icon: "size-7 [&_svg:not([class*='size-'])]:size-3.5",
         "icon-xs": "size-5 rounded-sm [&_svg:not([class*='size-'])]:size-2.5",
         "icon-sm": "size-6 [&_svg:not([class*='size-'])]:size-3",

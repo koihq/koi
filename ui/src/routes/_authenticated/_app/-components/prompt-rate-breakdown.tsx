@@ -43,7 +43,7 @@ export function PromptRateBreakdown({
         render={
           <button
             type="button"
-            className="inline-flex min-h-8 cursor-default items-center gap-2 rounded-control text-start text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex min-h-8 max-w-full cursor-default flex-wrap items-center gap-2 rounded-control text-start text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           />
         }
         aria-label={`${label}: ${items.map((item) => `${item.name} ${percent(item.rate)}`).join(", ")}`}

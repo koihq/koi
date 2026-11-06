@@ -1,9 +1,11 @@
+import { Add01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Competitor, CompetitorSearchResult, CreateCompetitor } from "@/api/competitors.api";
-import { ApiError } from "@/api/errors";
+import { ApiError, messageOr } from "@/api/errors";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,7 +38,6 @@ export function CompetitorDialog({
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
-  triggerVariant = "default",
 }: {
   brandID: string;
   competitor?: Competitor;
@@ -46,7 +47,6 @@ export function CompetitorDialog({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
-  triggerVariant?: "default" | "ghost" | "outline";
 }) {
   const { t } = useTranslation("management");
   const api = useApi();
@@ -65,6 +65,7 @@ export function CompetitorDialog({
   const [additionalURLs, setAdditionalURLs] = useState(competitor?.additionalUrls.join(", ") ?? "");
   const [invalid, setInvalid] = useState(false);
   const [saveError, setSaveError] = useState<"duplicate" | "invalidDomain" | "other">();
+  const [saveFailure, setSaveFailure] = useState<unknown>(null);
   const saving = useRef(false);
   const debouncedQuery = useDebouncedValue(query.trim(), 400);
 
@@ -113,6 +114,8 @@ export function CompetitorDialog({
       changeOpen(false);
       reset();
     } catch (error) {
+      setSaveFailure(error);
+
       const domainField =
         error instanceof ApiError
           ? error.fields?.find((field) =>
@@ -170,7 +173,7 @@ export function CompetitorDialog({
       ? t("competitorAlreadyAdded")
       : saveError === "invalidDomain"
         ? t("competitorDomainInvalid")
-        : t("competitorSaveError");
+        : messageOr(saveFailure, t("competitorSaveError"));
 
   return (
     <Dialog
@@ -185,13 +188,16 @@ export function CompetitorDialog({
           render={
             <Button
               type="button"
-              size={competitor ? "xs" : "sm"}
-              variant={competitor ? "ghost" : triggerVariant}
+              variant="icon-outline"
+              size="circle-sm"
+              aria-label={label}
+              title={label}
               disabled={pending}
+              className="text-muted-foreground"
             />
           }
         >
-          {label}
+          <HugeiconsIcon icon={Add01Icon} aria-hidden="true" />
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-lg">

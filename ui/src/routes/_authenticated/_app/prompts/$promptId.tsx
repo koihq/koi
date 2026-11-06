@@ -1,6 +1,12 @@
+import {
+  Delete02Icon,
+  PencilEdit02Icon,
+  PlayIcon,
+  StopCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   createStandardSchemaV1,
   parseAsInteger,
@@ -13,13 +19,17 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
+import { ApiErrorMessage } from "@/components/blocks/api-error-message";
+import { BackLink } from "@/components/blocks/back-link";
 import { useBrandColor } from "@/components/blocks/brand-icon";
 import { BrandLabel } from "@/components/blocks/brand-label";
+import { chartRanges, RangeControl } from "@/components/blocks/chart-controls";
 import { DeleteItemDialog } from "@/components/blocks/delete-item-dialog";
 import { OutcomeLegend } from "@/components/blocks/outcome-mark";
 import { PageNav } from "@/components/blocks/page-nav";
 import { PromptDialog } from "@/components/blocks/prompt-dialog";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
+import { RowAction, RowActions } from "@/components/blocks/row-actions";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
@@ -35,7 +45,7 @@ import { useFlip } from "@/hooks/use-flip";
 import { usePromptMutations } from "@/hooks/use-prompt-mutations";
 import { isCollecting } from "@/lib/answer-state";
 import { brandGlow, brandRowTint } from "@/lib/brand-tint";
-import { formatDateTime, formatDayRange, formatPoints, formatRate } from "@/lib/format";
+import { formatDateTime, formatDay, formatDayRange, formatPoints, formatRate } from "@/lib/format";
 import { keepPreviousDataForScope } from "@/lib/queries";
 import { promptKey, runKey } from "@/lib/query-keys";
 import {
@@ -49,9 +59,7 @@ import { RunHistory } from "./-components/run-history";
 
 const detailSearchParams = {
   page: parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true }),
-  days: parseAsNumberLiteral([7, 30, 90] as const)
-    .withDefault(30)
-    .withOptions({ clearOnDefault: true }),
+  days: parseAsNumberLiteral(chartRanges).withDefault(30).withOptions({ clearOnDefault: true }),
   compareId: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   runId: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   responseEngine: parseAsStringLiteral([
@@ -82,7 +90,7 @@ function PromptDetail() {
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
   const runTrigger = useRef<HTMLButtonElement | null>(null);
-  const editTrigger = useRef<HTMLButtonElement | null>(null);
+  const deleteTrigger = useRef<HTMLElement | null>(null);
 
   const prompt = useQuery({
     queryKey: [...promptKey(brand.id), promptId],
@@ -131,6 +139,7 @@ function PromptDetail() {
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
   const rivalList = useRef<HTMLDivElement>(null);
   useFlip(rivalList, rivals.map(({ competitor }) => competitor.id).join(","));
+  const inspectedDate = inspected === null ? undefined : series[inspected]?.date;
   const metricRate = inspected === null ? rate : (series[inspected]?.rate ?? null);
   const metricComparisonRate =
     inspected === null ? comparisonRate : (comparedSeries[inspected]?.rate ?? null);
@@ -151,9 +160,7 @@ function PromptDetail() {
 
   return (
     <article className="grid min-w-0 grid-cols-1 gap-6 pb-24">
-      <Link to="/" hash="prompts" className="text-xs text-muted-foreground hover:text-foreground">
-        {t("home:detail.allPrompts")}
-      </Link>
+      <BackLink label={t("home:detail.allPrompts")} hash="prompts" />
       <div className="mb-6 flex items-start justify-between gap-6">
         <h1 className="max-w-[60ch] text-title font-semibold text-balance">
           {title ??
@@ -164,44 +171,58 @@ function PromptDetail() {
             )}
         </h1>
         {prompt.data && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="-me-2 flex shrink-0 items-center gap-2">
             {prompt.data.inactive && (
-              <span className="me-1 rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
                 {t("management:statusStopped")}
               </span>
             )}
-            <Button ref={editTrigger} variant="ghost" size="sm" onClick={() => setEditing(true)}>
-              {t("management:editPrompt")}
-            </Button>
-            {canApply("stop", prompt.data) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={mutations.update.isPending}
-                onClick={() =>
-                  mutations.update.mutate({ id: promptId, request: { inactive: true } })
-                }
-              >
-                {t("management:stopPrompt")}
-              </Button>
-            )}
-            {canApply("resume", prompt.data) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={mutations.update.isPending}
-                onClick={() =>
-                  mutations.update.mutate({ id: promptId, request: { inactive: false } })
-                }
-              >
-                {t("management:resumePrompt")}
-              </Button>
-            )}
-            {canApply("delete", prompt.data) && (
-              <Button variant="ghost" size="sm" onClick={() => setDeleting(true)}>
-                {t("management:delete")}
-              </Button>
-            )}
+            <RowActions>
+              <RowAction
+                large
+                persistent
+                label={t("management:editPrompt")}
+                icon={PencilEdit02Icon}
+                onClick={() => setEditing(true)}
+              />
+              {canApply("stop", prompt.data) && (
+                <RowAction
+                  large
+                  persistent
+                  label={t("management:stopPrompt")}
+                  icon={StopCircleIcon}
+                  disabled={mutations.update.isPending}
+                  onClick={() =>
+                    mutations.update.mutate({ id: promptId, request: { inactive: true } })
+                  }
+                />
+              )}
+              {canApply("resume", prompt.data) && (
+                <RowAction
+                  large
+                  persistent
+                  label={t("management:resumePrompt")}
+                  icon={PlayIcon}
+                  disabled={mutations.update.isPending}
+                  onClick={() =>
+                    mutations.update.mutate({ id: promptId, request: { inactive: false } })
+                  }
+                />
+              )}
+              {canApply("delete", prompt.data) && (
+                <RowAction
+                  large
+                  persistent
+                  destructive
+                  label={t("management:delete")}
+                  icon={Delete02Icon}
+                  onClick={() => {
+                    deleteTrigger.current = document.activeElement as HTMLElement;
+                    setDeleting(true);
+                  }}
+                />
+              )}
+            </RowActions>
           </div>
         )}
       </div>
@@ -210,7 +231,10 @@ function PromptDetail() {
       )}
       {mutations.update.isError && (
         <p role="alert" className="text-sm text-destructive">
-          {t("management:mutationError")}
+          <ApiErrorMessage
+            error={mutations.update.error}
+            fallback={t("management:mutationError")}
+          />
         </p>
       )}
 
@@ -222,9 +246,9 @@ function PromptDetail() {
           </Button>
         </p>
       )}
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section
-          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7"
+          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
           style={brandGlow(compareColor)}
           aria-busy={visibility.isFetching}
           data-refreshing={visibility.isFetching && Boolean(visibility.data)}
@@ -238,43 +262,47 @@ function PromptDetail() {
             active={visibility.isFetching}
             label={t("home:dashboard.loading")}
           />
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 id="detail-visibility-heading" className="text-section font-semibold">
-                {t("home:dashboard.aiVisibility")}
-              </h2>
-              {visibility.data && (
-                <VisibilityHeadline
-                  brand={brand}
-                  competitor={comparison}
-                  rate={metricRate}
-                  comparisonRate={metricComparisonRate}
-                  paired={Boolean(comparison && metricComparisonRate !== null)}
-                  locale={i18n.language}
-                  animated={canAnimateNumbers && inspectionInput === "pointer"}
-                  variant="detail"
-                />
-              )}
-            </div>
-            <fieldset className="flex gap-0.5" aria-label={t("home:dashboard.range")}>
-              {([7, 30, 90] as const).map((days) => (
-                <Button
-                  key={days}
-                  type="button"
-                  aria-pressed={search.days === days}
-                  variant="ghost"
-                  size="pill"
-                  className="text-muted-foreground"
-                  onClick={() => {
-                    void setSearch({ days }, { history: "push" });
-                    setInspected(null);
-                  }}
-                >
-                  {`${days}D`}
-                </Button>
-              ))}
-            </fieldset>
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h2 id="detail-visibility-heading" className="text-section font-semibold">
+              {t("home:dashboard.aiVisibility")}
+            </h2>
+            <RangeControl
+              days={search.days}
+              onChange={(days) => {
+                void setSearch({ days }, { history: "push" });
+                setInspected(null);
+              }}
+            />
           </div>
+          {visibility.data && (
+            <VisibilityHeadline
+              brand={brand}
+              competitor={comparison}
+              rate={metricRate}
+              comparisonRate={metricComparisonRate}
+              paired={Boolean(comparison && metricComparisonRate !== null)}
+              locale={i18n.language}
+              animated={canAnimateNumbers && inspectionInput === "pointer"}
+              variant="detail"
+            />
+          )}
+          {series.length > 0 && (
+            <p className="mt-1 min-h-[18px] text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+              {inspectedDate ? (
+                <time dateTime={inspectedDate.toISOString()}>
+                  {formatDay(inspectedDate, i18n.language)}
+                </time>
+              ) : (
+                t("home:dashboard.periodAverage", {
+                  range: formatDayRange(
+                    series[0].date,
+                    series[series.length - 1].date,
+                    i18n.language,
+                  ),
+                })
+              )}
+            </p>
+          )}
           {visibility.isPending ? (
             <p className="py-8 text-sm text-muted-foreground">{t("home:dashboard.loading")}</p>
           ) : visibility.isError && !visibility.data ? (
@@ -302,19 +330,14 @@ function PromptDetail() {
               {t("home:detail.noAnswers")}
             </p>
           )}
-          {series.length > 0 && (
-            <p className="mt-4 text-xs text-muted-foreground group-data-[refreshing=true]/refresh:opacity-50">
-              {formatDayRange(series[0].date, series[series.length - 1].date, i18n.language)}
-            </p>
-          )}
         </section>
         <aside
-          className="group/refresh min-w-0 rounded-panel bg-surface p-5"
+          className="group/refresh min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9 xl:px-5"
           aria-labelledby="detail-compare-heading"
           aria-busy={visibility.isFetching}
           data-refreshing={visibility.isFetching && Boolean(visibility.data)}
         >
-          <div className="mb-4 flex items-baseline justify-between gap-3">
+          <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
             <h2 id="detail-compare-heading" className="text-section font-semibold">
               {t("home:detail.compareWith")}
             </h2>
@@ -323,7 +346,7 @@ function PromptDetail() {
             </span>
           </div>
           {rivals.length ? (
-            <div ref={rivalList} className="list-rows grid gap-0.5">
+            <div ref={rivalList} className="list-rows -mx-2 grid gap-0.5">
               {rivals.map(({ competitor, rate: rivalRate }) => (
                 <button
                   key={competitor.id}
@@ -340,13 +363,15 @@ function PromptDetail() {
                     setInspected(null);
                   }}
                 >
-                  <span className="justify-self-start">
+                  <span className="flex min-w-0">
                     <BrandLabel name={competitor.name} domain={competitor.domain} />
                   </span>
                   <span className="text-body font-semibold tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
                     {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
                   </span>
-                  <small className="col-span-full text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                  <small
+                    className={`col-span-full text-xs tabular-nums group-data-[refreshing=true]/refresh:opacity-50 ${rivalRate === null || rate === null ? "text-muted-foreground" : rivalRate > rate ? "text-negative" : "text-positive"}`}
+                  >
                     {rivalRate !== null && rate !== null
                       ? t("home:detail.comparisonGap", {
                           points: formatPoints(rivalRate - rate, i18n.language),
@@ -363,7 +388,7 @@ function PromptDetail() {
       </div>
 
       <section
-        className="group/refresh relative mt-8 min-w-0"
+        className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
         aria-labelledby="run-history-heading"
         aria-busy={history.isFetching}
         data-refreshing={history.isFetching && Boolean(history.data)}
@@ -473,7 +498,7 @@ function PromptDetail() {
           await mutations.remove.mutateAsync(id);
           await navigate({ to: "/", hash: "prompts" });
         }}
-        finalFocus={() => editTrigger.current}
+        finalFocus={() => deleteTrigger.current}
       />
       {prompt.data && (
         <PromptDialog

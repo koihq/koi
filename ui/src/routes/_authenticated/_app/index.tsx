@@ -1,4 +1,4 @@
-import { InformationCircleIcon, Settings01Icon } from "@hugeicons/core-free-icons";
+import { InformationCircleIcon, RankingIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow, { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,12 +16,13 @@ import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
 import { useBrandColor } from "@/components/blocks/brand-icon";
 import { BrandLabel } from "@/components/blocks/brand-label";
-import { EngineIcon } from "@/components/blocks/engine-icon";
+import { chartRanges, EngineFilter, RangeControl } from "@/components/blocks/chart-controls";
 import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
 import { TrackingSummary } from "@/components/blocks/tracking-summary";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCollection } from "@/hooks/use-collection";
 import { useFlip } from "@/hooks/use-flip";
@@ -44,9 +45,7 @@ import {
 import { TrackingStart } from "./-components/tracking-start";
 
 const graphSearchParams = {
-  days: parseAsNumberLiteral([7, 30, 90] as const)
-    .withDefault(30)
-    .withOptions({ clearOnDefault: true }),
+  days: parseAsNumberLiteral(chartRanges).withDefault(30).withOptions({ clearOnDefault: true }),
   engines: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   compareId: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
 };
@@ -127,6 +126,8 @@ function Home() {
         competitor,
         rate: competitor.metric.rate,
       }))
+      // A rival with no mentions in this period was not recommended instead of anyone.
+      .filter((rival) => rival.rate !== 0)
       .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
     const comparisonRate = comparison ? visibilityRate(report, undefined, comparison.id) : null;
 
@@ -170,7 +171,7 @@ function Home() {
       <h1 className="sr-only">{t("dashboard.title")}</h1>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <section
-          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:p-7"
+          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
           style={brandGlow(compareColor)}
           aria-busy={summary.isFetching}
           data-refreshing={summary.isFetching && Boolean(summary.data)}
@@ -181,51 +182,41 @@ function Home() {
           onKeyDownCapture={() => setInspectionInput("keyboard")}
         >
           <QueryRefreshIndicator active={summary.isFetching} label={t("dashboard.loading")} />
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="grid gap-0.5">
-              <time className="text-xs text-muted-foreground" dateTime={new Date().toISOString()}>
-                {new Date().toLocaleDateString(i18n.language, {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </time>
-              <h2 id="signal-heading" className="text-section font-semibold">
-                {t("dashboard.aiVisibility")}
-              </h2>
-            </div>
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h2 id="signal-heading" className="text-section font-semibold">
+              {t("dashboard.aiVisibility")}
+            </h2>
             {!empty && (
-              <fieldset className="flex shrink-0 gap-1" aria-label={t("dashboard.filterEngines")}>
-                {engines.map((engine) => {
-                  const selected = selectedEngines.includes(engine.id);
-                  return (
-                    <Button
-                      key={engine.id}
-                      type="button"
-                      title={engine.name}
-                      aria-label={engine.name}
-                      aria-pressed={selected}
-                      variant="ghost"
-                      size="circle"
-                      className="text-muted-foreground"
-                      onClick={() => {
-                        const next = selected
-                          ? selectedEngines.filter((id) => id !== engine.id)
-                          : [...selectedEngines, engine.id];
-                        void setGraph({ engines: next.join(",") }, { history: "push" });
-                        setInspected(null);
-                      }}
-                    >
-                      <EngineIcon engine={engine.id} className="size-5" />
-                    </Button>
-                  );
-                })}
-              </fieldset>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <EngineFilter
+                  selected={selectedEngines}
+                  onToggle={(engine) => {
+                    const next = selectedEngines.includes(engine)
+                      ? selectedEngines.filter((id) => id !== engine)
+                      : [...selectedEngines, engine];
+
+                    void setGraph({ engines: next.join(",") }, { history: "push" });
+                    setInspected(null);
+                  }}
+                />
+                <RangeControl
+                  days={graph.days}
+                  onChange={(days) => {
+                    void setGraph({ days }, { history: "push" });
+                    setInspected(null);
+                  }}
+                />
+              </div>
             )}
           </div>
 
           {summary.isPending ? (
-            <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
+            <output className="mt-4 block">
+              <span className="sr-only">{t("dashboard.loading")}</span>
+              <Skeleton className="h-[42px] w-40" />
+              <Skeleton className="mt-1 h-[18px] w-44" />
+              <div className="h-[236px]" />
+            </output>
           ) : summary.isError ? (
             <p role="alert" className="mt-6 text-sm">
               {t("dashboard.loadError")}{" "}
@@ -293,14 +284,6 @@ function Home() {
                     />
                   </span>
                 )}
-                {selectedPoint && (
-                  <time
-                    className="text-xs text-muted-foreground"
-                    dateTime={selectedPoint.date.toISOString()}
-                  >
-                    {formatDay(selectedPoint.date, i18n.language)}
-                  </time>
-                )}
                 <TooltipProvider delay={350}>
                   <Tooltip
                     open={detailsOpen}
@@ -364,6 +347,22 @@ function Home() {
                   </Tooltip>
                 </TooltipProvider>
               </div>
+              <p className="mt-1 min-h-[18px] text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                {selectedPoint ? (
+                  <time dateTime={selectedPoint.date.toISOString()}>
+                    {formatDay(selectedPoint.date, i18n.language)}
+                  </time>
+                ) : (
+                  series.length > 0 &&
+                  t("dashboard.periodAverage", {
+                    range: formatDayRange(
+                      series[0].date,
+                      series[series.length - 1].date,
+                      i18n.language,
+                    ),
+                  })
+                )}
+              </p>
               <VisibilityChart
                 series={series}
                 comparison={comparedSeries}
@@ -378,41 +377,14 @@ function Home() {
               />
             </>
           )}
-
-          {!empty && (
-            <div className="mt-4 flex items-center justify-between gap-4">
-              <span className="text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
-                {series.length > 0 &&
-                  formatDayRange(series[0].date, series[series.length - 1].date, i18n.language)}
-              </span>
-              <fieldset className="flex gap-0.5" aria-label={t("dashboard.range")}>
-                {([7, 30, 90] as const).map((days) => (
-                  <Button
-                    key={days}
-                    type="button"
-                    aria-pressed={graph.days === days}
-                    variant="ghost"
-                    size="pill"
-                    className="text-muted-foreground"
-                    onClick={() => {
-                      void setGraph({ days }, { history: "push" });
-                      setInspected(null);
-                    }}
-                  >
-                    {`${days}D`}
-                  </Button>
-                ))}
-              </fieldset>
-            </div>
-          )}
         </section>
 
         <aside
-          className="group/refresh min-w-0 rounded-panel bg-surface p-4 sm:p-7 xl:p-5"
+          className="group/refresh min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9 xl:px-5"
           aria-labelledby="rivals-heading"
           data-refreshing={summary.isFetching && Boolean(summary.data)}
         >
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
             <h2 id="rivals-heading" className="text-section font-semibold">
               {t("dashboard.recommendedInstead")}
             </h2>
@@ -423,13 +395,13 @@ function Home() {
               nativeButton={false}
               aria-label={t("dashboard.manageCompetitors")}
               title={t("dashboard.manageCompetitors")}
-              className="text-muted-foreground"
+              className="-me-2 text-muted-foreground"
             >
-              <HugeiconsIcon icon={Settings01Icon} aria-hidden="true" />
+              <HugeiconsIcon icon={RankingIcon} aria-hidden="true" />
             </Button>
           </div>
           {rivals.length ? (
-            <div ref={rivalList} className="list-rows grid gap-0.5">
+            <div ref={rivalList} className="list-rows -mx-2 grid gap-0.5">
               {rivals.map(({ competitor, rate: rivalRate }) => {
                 const gap = rivalRate !== null && rate !== null ? rivalRate - rate : null;
                 return (
@@ -450,14 +422,14 @@ function Home() {
                     }}
                     className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-control px-2 py-2 text-start text-body hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
-                    <span className="min-w-0 justify-self-start">
+                    <span className="flex min-w-0">
                       <BrandLabel name={competitor.name} domain={competitor.domain} />
                     </span>
                     <span className="text-end font-semibold tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
                       {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
                     </span>
                     <span
-                      className={`w-20 text-end text-xs tabular-nums group-data-[refreshing=true]/refresh:opacity-50 ${gap === null ? "text-muted-foreground" : gap > 0 ? "text-negative" : "text-positive"}`}
+                      className={`w-16 text-end text-xs tabular-nums group-data-[refreshing=true]/refresh:opacity-50 ${gap === null ? "text-muted-foreground" : gap > 0 ? "text-negative" : "text-positive"}`}
                     >
                       {gap === null ? "—" : formatPoints(gap, i18n.language)}
                     </span>
@@ -470,7 +442,9 @@ function Home() {
               {t(
                 tracking.data?.confirmed === false
                   ? "dashboard.competitorsAfterStart"
-                  : "dashboard.noCompetitors",
+                  : summary.data?.competitors.length
+                    ? "dashboard.noneRecommended"
+                    : "dashboard.noCompetitors",
               )}
             </p>
           ) : null}

@@ -81,7 +81,17 @@ func (s *billingService) Subscription(ctx context.Context) (BillingStatus, error
 	if err != nil {
 		return BillingStatus{}, err
 	}
-	status := BillingStatus{Subscription: subscription, TrialAvailable: organization.TrialUsedAt == nil}
+
+	usedPrompts, err := s.store.BillingRepo().UsedPromptCount(ctx, organization.ID)
+	if err != nil {
+		return BillingStatus{}, err
+	}
+
+	status := BillingStatus{
+		Subscription:   subscription,
+		UsedPrompts:    usedPrompts,
+		TrialAvailable: organization.TrialUsedAt == nil,
+	}
 	if subscription != nil {
 		status.PromptLimit = subscription.PromptLimit(time.Now().UTC())
 	}

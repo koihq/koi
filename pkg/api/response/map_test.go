@@ -54,6 +54,12 @@ func TestMapError(t *testing.T) {
 			},
 		},
 		{
+			name:   "password_reset_invalid",
+			err:    domain.ErrPasswordResetInvalid,
+			status: http.StatusBadRequest,
+			code:   domain.CodePasswordResetInvalid,
+		},
+		{
 			name:   "brand_limit_reached",
 			err:    domain.ErrBrandLimitReached,
 			status: http.StatusConflict,

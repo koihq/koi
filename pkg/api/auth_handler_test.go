@@ -260,3 +260,97 @@ func sessionStore(t *testing.T) *MockStore {
 	store.EXPECT().CredentialRepo().Return(nil)
 	return store
 }
+
+func TestForgotPasswordAnswersAcceptedForAnyAddress(t *testing.T) {
+	c := NewMockAuthCommander(t)
+	c.EXPECT().RequestPasswordReset(mock.Anything, "nobody@example.com").Return(nil).Once()
+	ts := newAuthTestServer(t, NewMockAuthQuerier(t), c)
+
+	res, err := http.Post(
+		ts.URL+"/api/v1/auth/password/forgot",
+		"application/json",
+		strings.NewReader(`{"email":"nobody@example.com"}`),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = res.Body.Close() })
+	require.Equal(t, http.StatusAccepted, res.StatusCode)
+}
+
+func TestForgotPasswordReportsMissingEmailSetup(t *testing.T) {
+	c := NewMockAuthCommander(t)
+	c.EXPECT().RequestPasswordReset(mock.Anything, "you@example.com").Return(domain.ErrFeatureUnavailable).Once()
+	ts := newAuthTestServer(t, NewMockAuthQuerier(t), c)
+
+	res, err := http.Post(
+		ts.URL+"/api/v1/auth/password/forgot",
+		"application/json",
+		strings.NewReader(`{"email":"you@example.com"}`),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = res.Body.Close() })
+	require.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+}
+
+func TestResetPasswordEndsOnlyThatUsersSessions(t *testing.T) {
+	me := sampleMe()
+	other := sampleMe()
+	other.User.ID = uuid.MustParse("33333333-3333-3333-3333-333333333333")
+
+	q := NewMockAuthQuerier(t)
+	q.EXPECT().Me(mock.Anything, mock.Anything).Return(other, nil).Maybe()
+	c := NewMockAuthCommander(t)
+	c.EXPECT().Login(mock.Anything, me.User.Email, mock.Anything).Return(me, nil).Once()
+	c.EXPECT().Login(mock.Anything, "other@example.com", mock.Anything).Return(other, nil).Once()
+	c.EXPECT().ResetPassword(mock.Anything, "raw-token", "new-password").Return(me.User.ID, nil).Once()
+	ts := newAuthTestServer(t, q, c)
+
+	mine := newCookieClient(t)
+	theirs := newCookieClient(t)
+	post := func(client *http.Client, path, body string) int {
+		res, err := client.Post(ts.URL+path, "application/json", strings.NewReader(body))
+		require.NoError(t, err)
+		defer func() { _ = res.Body.Close() }()
+
+		return res.StatusCode
+	}
+	signedIn := func(client *http.Client) int {
+		res, err := client.Get(ts.URL + "/api/v1/auth/me")
+		require.NoError(t, err)
+		defer func() { _ = res.Body.Close() }()
+
+		return res.StatusCode
+	}
+
+	require.Equal(t, http.StatusOK, post(mine, "/api/v1/auth/login", `{"email":"you@example.com","password":"x"}`))
+	require.Equal(t, http.StatusOK, post(theirs, "/api/v1/auth/login", `{"email":"other@example.com","password":"x"}`))
+	require.Equal(t, http.StatusOK, signedIn(mine))
+	require.Equal(t, http.StatusOK, signedIn(theirs))
+
+	require.Equal(
+		t,
+		http.StatusNoContent,
+		post(http.DefaultClient, "/api/v1/auth/password/reset", `{"token":"raw-token","password":"new-password"}`),
+	)
+
+	require.Equal(t, http.StatusUnauthorized, signedIn(mine))
+	require.Equal(t, http.StatusOK, signedIn(theirs))
+}
+
+func TestResetPasswordReportsAnInvalidLink(t *testing.T) {
+	c := NewMockAuthCommander(t)
+	c.EXPECT().ResetPassword(mock.Anything, "used", "new-password").Return(uuid.Nil, domain.ErrPasswordResetInvalid).Once()
+	ts := newAuthTestServer(t, NewMockAuthQuerier(t), c)
+
+	res, err := http.Post(
+		ts.URL+"/api/v1/auth/password/reset",
+		"application/json",
+		strings.NewReader(`{"token":"used","password":"new-password"}`),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = res.Body.Close() })
+	require.Equal(t, http.StatusBadRequest, res.StatusCode)
+
+	var body response.Envelope
+	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
+	require.Equal(t, domain.CodePasswordResetInvalid, body.Error.Code)
+}

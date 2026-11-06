@@ -58,6 +58,15 @@ func (r *GormBillingRepository) ProductAccess(ctx context.Context, organizationI
 	return limit > 0, err
 }
 
+func (r *GormBillingRepository) UsedPromptCount(ctx context.Context, organizationID uuid.UUID) (int64, error) {
+	identity, ok := auth.FromContext(ctx)
+	if !ok || identity.OrganizationID == uuid.Nil || identity.OrganizationID != organizationID {
+		return 0, domain.ErrUnauthorized
+	}
+
+	return storedPromptCount(ctx, r.db, organizationID)
+}
+
 func (r *GormBillingRepository) SaveCustomer(ctx context.Context, orgID uuid.UUID, customerID string) (string, error) {
 	result := r.db.WithContext(ctx).Model(&domain.Organization{}).
 		Where("id = ? AND stripe_customer_id IS NULL", orgID).

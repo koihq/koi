@@ -1,4 +1,4 @@
-import { UserIcon, UserMultipleIcon } from "@hugeicons/core-free-icons";
+import { UserIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
@@ -44,19 +44,6 @@ export function AppHeader({ brand }: { brand: Brand }) {
       <BrandSwitcher key={brand.id} brand={brand} />
 
       <div className="flex shrink-0 items-center gap-3">
-        <Button
-          variant="ghost"
-          size="circle-sm"
-          render={<Link to="/competitors" />}
-          nativeButton={false}
-          role="link"
-          aria-label={t("dashboard.competitors")}
-          title={t("dashboard.competitors")}
-          className="text-muted-foreground"
-        >
-          <HugeiconsIcon icon={UserMultipleIcon} className="size-[18px]" aria-hidden="true" />
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={t("header.account")}
@@ -67,17 +54,17 @@ export function AppHeader({ brand }: { brand: Brand }) {
             <HugeiconsIcon icon={UserIcon} className="size-[18px]" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8}>
+            <DropdownMenuItem render={<Link to="/settings/brand" />}>
+              {t("header.brands")}
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link to="/settings/connections" />}>
+              {t("header.connections")}
+            </DropdownMenuItem>
             {capabilities.data?.cloudBilling && (
               <DropdownMenuItem render={<Link to="/settings/billing" />}>
                 {t("billing")}
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem render={<Link to="/settings/brand" />}>
-              {t("header.settings")}
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link to="/settings/connections" />}>
-              {t("header.connections")}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => changeTheme(theme === "dark" ? "light" : "dark")}>
               {t(theme === "dark" ? "header.lightMode" : "header.darkMode")}
             </DropdownMenuItem>

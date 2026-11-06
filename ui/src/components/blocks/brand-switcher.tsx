@@ -34,7 +34,7 @@ export function BrandSwitcher({ brand }: { brand: Brand }) {
   const busy = search.searching || search.result.isFetching;
 
   return (
-    <div className="min-w-0">
+    <div className="-ms-1 min-w-0">
       <Combobox
         items={search.items}
         filter={null}

@@ -12,6 +12,7 @@ const subscription: BillingSubscription = {
 const status: BillingStatus = {
   subscription,
   promptLimit: 25,
+  usedPrompts: 0,
   trialAvailable: false,
 };
 

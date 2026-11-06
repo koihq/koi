@@ -48,6 +48,7 @@ func BillingSubscriptionToRes(v *domain.BillingSubscription) BillingSubscription
 type BillingStatusRes struct {
 	Subscription   *BillingSubscriptionRes `json:"subscription"`
 	PromptLimit    int                     `json:"promptLimit"`
+	UsedPrompts    int64                   `json:"usedPrompts"`
 	TrialAvailable bool                    `json:"trialAvailable"`
 }
 
@@ -55,6 +56,7 @@ func BillingStatusToRes(v *domain.BillingStatus) BillingStatusRes {
 	return BillingStatusRes{
 		Subscription:   optionalResponse(v.Subscription, BillingSubscriptionToRes),
 		PromptLimit:    v.PromptLimit,
+		UsedPrompts:    v.UsedPrompts,
 		TrialAvailable: v.TrialAvailable,
 	}
 }

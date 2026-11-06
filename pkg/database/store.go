@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/riverqueue/river"
@@ -18,6 +19,7 @@ type Store struct {
 	liveCollection bool
 	cloudMode      bool
 	welcomeEmail   bool
+	passwordReset  bool
 	db             *gorm.DB
 	enqueueClient  *river.Client[*sql.Tx]
 }
@@ -80,6 +82,40 @@ func (s *Store) EnqueueWelcomeEmail(ctx context.Context, userID uuid.UUID) error
 	})
 
 	return err
+}
+
+// PasswordResetJobArgs holds an address, never a token: the worker creates that when sending.
+type PasswordResetJobArgs struct {
+	Email string `json:"email"`
+}
+
+func (PasswordResetJobArgs) Kind() string { return "koi_password_reset_email" }
+
+func (s *Store) WithPasswordResetEmail(enabled bool) *Store {
+	s.passwordReset = enabled
+	return s
+}
+
+// EnqueuePasswordResetEmail sends at most one email per address per minute.
+func (s *Store) EnqueuePasswordResetEmail(ctx context.Context, email string) error {
+	if !s.passwordReset || s.enqueueClient == nil {
+		return domain.ErrFeatureUnavailable
+	}
+
+	_, err := s.enqueueClient.Insert(ctx, PasswordResetJobArgs{Email: email}, &river.InsertOpts{
+		Queue:       "email",
+		MaxAttempts: 3,
+		UniqueOpts: river.UniqueOpts{
+			ByArgs:   true,
+			ByPeriod: time.Minute,
+		},
+	})
+
+	return err
+}
+
+func (s *Store) PasswordResetRepo() domain.PasswordResetRepository {
+	return NewPasswordResetRepository(s.db)
 }
 
 func (s *Store) UserRepo() domain.UserRepository {

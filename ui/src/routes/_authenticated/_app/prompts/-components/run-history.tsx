@@ -23,7 +23,7 @@ export function RunHistory({
   const { t, i18n } = useTranslation(["home", "visibility"]);
 
   return (
-    <ul className="list-rows mt-4 grid gap-0.5">
+    <ul className="list-rows -mx-3 mt-4 grid gap-0.5">
       {runs.map((item) => {
         const rivals = [
           ...new Set(item.results.flatMap((cell) => cell.appearances.map((entry) => entry.name))),

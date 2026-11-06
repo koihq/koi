@@ -26,7 +26,7 @@ export function PageNav({
   return (
     <nav
       aria-label={t("dashboard.pagination")}
-      className="mt-6 flex items-center justify-end gap-3 text-xs text-muted-foreground"
+      className="-me-2 mt-6 flex items-center justify-end gap-3 text-xs text-muted-foreground"
     >
       <span className="tabular-nums">
         {t("dashboard.pageRange", {

@@ -1513,6 +1513,72 @@ func (_c *MockBillingRepository_TouchCheckout_Call) RunAndReturn(run func(contex
 	return _c
 }
 
+// UsedPromptCount provides a mock function for the type MockBillingRepository
+func (_mock *MockBillingRepository) UsedPromptCount(context1 context.Context, uUID uuid.UUID) (int64, error) {
+	ret := _mock.Called(context1, uUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UsedPromptCount")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (int64, error)); ok {
+		return returnFunc(context1, uUID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) int64); ok {
+		r0 = returnFunc(context1, uUID)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBillingRepository_UsedPromptCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UsedPromptCount'
+type MockBillingRepository_UsedPromptCount_Call struct {
+	*mock.Call
+}
+
+// UsedPromptCount is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+func (_e *MockBillingRepository_Expecter) UsedPromptCount(context1 interface{}, uUID interface{}) *MockBillingRepository_UsedPromptCount_Call {
+	return &MockBillingRepository_UsedPromptCount_Call{Call: _e.mock.On("UsedPromptCount", context1, uUID)}
+}
+
+func (_c *MockBillingRepository_UsedPromptCount_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockBillingRepository_UsedPromptCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBillingRepository_UsedPromptCount_Call) Return(n int64, err error) *MockBillingRepository_UsedPromptCount_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockBillingRepository_UsedPromptCount_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (int64, error)) *MockBillingRepository_UsedPromptCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockBrandRepository creates a new instance of MockBrandRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockBrandRepository(t interface {
@@ -3939,6 +4005,63 @@ func (_c *MockStore_CredentialRepo_Call) RunAndReturn(run func() CredentialRepos
 	return _c
 }
 
+// EnqueuePasswordResetEmail provides a mock function for the type MockStore
+func (_mock *MockStore) EnqueuePasswordResetEmail(ctx context.Context, email string) error {
+	ret := _mock.Called(ctx, email)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnqueuePasswordResetEmail")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = returnFunc(ctx, email)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockStore_EnqueuePasswordResetEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnqueuePasswordResetEmail'
+type MockStore_EnqueuePasswordResetEmail_Call struct {
+	*mock.Call
+}
+
+// EnqueuePasswordResetEmail is a helper method to define mock.On call
+//   - ctx context.Context
+//   - email string
+func (_e *MockStore_Expecter) EnqueuePasswordResetEmail(ctx interface{}, email interface{}) *MockStore_EnqueuePasswordResetEmail_Call {
+	return &MockStore_EnqueuePasswordResetEmail_Call{Call: _e.mock.On("EnqueuePasswordResetEmail", ctx, email)}
+}
+
+func (_c *MockStore_EnqueuePasswordResetEmail_Call) Run(run func(ctx context.Context, email string)) *MockStore_EnqueuePasswordResetEmail_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStore_EnqueuePasswordResetEmail_Call) Return(err error) *MockStore_EnqueuePasswordResetEmail_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStore_EnqueuePasswordResetEmail_Call) RunAndReturn(run func(ctx context.Context, email string) error) *MockStore_EnqueuePasswordResetEmail_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // EnqueueWelcomeEmail provides a mock function for the type MockStore
 func (_mock *MockStore) EnqueueWelcomeEmail(context1 context.Context, uUID uuid.UUID) error {
 	ret := _mock.Called(context1, uUID)
@@ -4130,6 +4253,52 @@ func (_c *MockStore_OrganizationRepo_Call) Return(organizationRepository Organiz
 }
 
 func (_c *MockStore_OrganizationRepo_Call) RunAndReturn(run func() OrganizationRepository) *MockStore_OrganizationRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PasswordResetRepo provides a mock function for the type MockStore
+func (_mock *MockStore) PasswordResetRepo() PasswordResetRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PasswordResetRepo")
+	}
+
+	var r0 PasswordResetRepository
+	if returnFunc, ok := ret.Get(0).(func() PasswordResetRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(PasswordResetRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_PasswordResetRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PasswordResetRepo'
+type MockStore_PasswordResetRepo_Call struct {
+	*mock.Call
+}
+
+// PasswordResetRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) PasswordResetRepo() *MockStore_PasswordResetRepo_Call {
+	return &MockStore_PasswordResetRepo_Call{Call: _e.mock.On("PasswordResetRepo")}
+}
+
+func (_c *MockStore_PasswordResetRepo_Call) Run(run func()) *MockStore_PasswordResetRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_PasswordResetRepo_Call) Return(passwordResetRepository PasswordResetRepository) *MockStore_PasswordResetRepo_Call {
+	_c.Call.Return(passwordResetRepository)
+	return _c
+}
+
+func (_c *MockStore_PasswordResetRepo_Call) RunAndReturn(run func() PasswordResetRepository) *MockStore_PasswordResetRepo_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4407,6 +4576,63 @@ func (_c *MockUserRepository_Create_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// Delete provides a mock function for the type MockUserRepository
+func (_mock *MockUserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	ret := _mock.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockUserRepository_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
+type MockUserRepository_Delete_Call struct {
+	*mock.Call
+}
+
+// Delete is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id uuid.UUID
+func (_e *MockUserRepository_Expecter) Delete(ctx interface{}, id interface{}) *MockUserRepository_Delete_Call {
+	return &MockUserRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, id)}
+}
+
+func (_c *MockUserRepository_Delete_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockUserRepository_Delete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserRepository_Delete_Call) Return(err error) *MockUserRepository_Delete_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockUserRepository_Delete_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockUserRepository_Delete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Get provides a mock function for the type MockUserRepository
 func (_mock *MockUserRepository) Get(ctx context.Context, id uuid.UUID) (*User, error) {
 	ret := _mock.Called(ctx, id)
@@ -4596,6 +4822,63 @@ func (_c *MockUserRepository_LockForUpdate_Call) Return(err error) *MockUserRepo
 }
 
 func (_c *MockUserRepository_LockForUpdate_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) error) *MockUserRepository_LockForUpdate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Update provides a mock function for the type MockUserRepository
+func (_mock *MockUserRepository) Update(ctx context.Context, entity *User) error {
+	ret := _mock.Called(ctx, entity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Update")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *User) error); ok {
+		r0 = returnFunc(ctx, entity)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockUserRepository_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
+type MockUserRepository_Update_Call struct {
+	*mock.Call
+}
+
+// Update is a helper method to define mock.On call
+//   - ctx context.Context
+//   - entity *User
+func (_e *MockUserRepository_Expecter) Update(ctx interface{}, entity interface{}) *MockUserRepository_Update_Call {
+	return &MockUserRepository_Update_Call{Call: _e.mock.On("Update", ctx, entity)}
+}
+
+func (_c *MockUserRepository_Update_Call) Run(run func(ctx context.Context, entity *User)) *MockUserRepository_Update_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *User
+		if args[1] != nil {
+			arg1 = args[1].(*User)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserRepository_Update_Call) Return(err error) *MockUserRepository_Update_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockUserRepository_Update_Call) RunAndReturn(run func(ctx context.Context, entity *User) error) *MockUserRepository_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }

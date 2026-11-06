@@ -1,5 +1,6 @@
-import { PencilEdit02Icon } from "@hugeicons/core-free-icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Add01Icon, PencilEdit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -49,13 +50,20 @@ function BrandSettings() {
   const [dialog, setDialog] = useState<BrandDialog | null>(null);
   const brands = useQuery(brandListOptions(api, brand.organizationId, { page, pageSize: 10 }));
   const items = brands.data?.items ?? [];
+  const activation = useMutation({
+    mutationFn: (id: string) => api.brands.activate(id),
+    onSuccess: async () => {
+      await router.invalidate();
+      await router.navigate({ to: "/" });
+    },
+  });
   const headClass = "h-auto px-3 py-1.5 text-xs text-muted-foreground";
   const cellClass = "px-3 py-3.5 text-body";
   const columns: DataTableColumn<Brand>[] = [
     {
       id: "name",
       header: t("fields.name.label"),
-      headClassName: `${headClass} w-[36%]`,
+      headClassName: `${headClass} w-[40%]`,
       cellClassName: `${cellClass} whitespace-normal [overflow-wrap:anywhere]`,
       cell: (item) => (
         <span className="flex flex-wrap items-center gap-2">
@@ -72,32 +80,48 @@ function BrandSettings() {
       id: "domain",
       header: t("fields.domain.label"),
       headClassName: `${headClass} w-[32%]`,
-      cellClassName: `${cellClass} whitespace-normal break-all text-muted-foreground`,
-      cell: (item) => item.domain || item.githubRepo,
+      cellClassName: `${cellClass} text-muted-foreground`,
+      cell: (item) => (
+        <span className="block truncate" title={item.domain || item.githubRepo}>
+          {item.domain || item.githubRepo}
+        </span>
+      ),
     },
     {
       id: "country",
       header: t("fields.country.label"),
-      headClassName: `${headClass} w-[16%]`,
+      headClassName: headClass,
       cellClassName: `${cellClass} text-muted-foreground`,
       cell: (item) => item.country,
     },
     {
       id: "actions",
       header: <span className="sr-only">{t("settings.actions")}</span>,
-      headClassName: `${headClass} w-[16%] text-end`,
+      headClassName: `${headClass} w-28 text-end`,
       cellClassName: `${cellClass} text-end`,
-      cell: (item) => (
-        <RowActions>
-          <RowAction
-            label={t("settings.edit")}
-            icon={PencilEdit02Icon}
-            onClick={() => setDialog({ kind: "edit", brand: item })}
-          />
-        </RowActions>
-      ),
+      cell: renderActions,
     },
   ];
+
+  function renderActions(item: Brand) {
+    return (
+      <RowActions>
+        {item.id !== brand.id && (
+          <RowAction
+            label={t("settings.switch")}
+            icon={Tick02Icon}
+            disabled={activation.isPending}
+            onClick={() => activation.mutate(item.id)}
+          />
+        )}
+        <RowAction
+          label={t("settings.edit")}
+          icon={PencilEdit02Icon}
+          onClick={() => setDialog({ kind: "edit", brand: item })}
+        />
+      </RowActions>
+    );
+  }
 
   async function saveBrand(body: CreateBrand) {
     if (!dialog) return;
@@ -117,16 +141,32 @@ function BrandSettings() {
   }
 
   return (
-    <div className="w-full pb-24">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-title font-semibold">{t("settings.title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{t("settings.description")}</p>
-        </div>
-        <Button onClick={() => setDialog({ kind: "create" })}>{t("settings.create")}</Button>
+    <section
+      className="min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
+      aria-labelledby="brands-heading"
+    >
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 id="brands-heading" className="text-section font-semibold">
+          {t("settings.title")}
+        </h1>
+        <Button
+          variant="icon-outline"
+          size="circle-sm"
+          aria-label={t("settings.create")}
+          title={t("settings.create")}
+          className="text-muted-foreground"
+          onClick={() => setDialog({ kind: "create" })}
+        >
+          <HugeiconsIcon icon={Add01Icon} aria-hidden="true" />
+        </Button>
       </div>
+      {activation.isError && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {t("settings.switchError")}
+        </p>
+      )}
 
-      <div className="mt-10">
+      <div>
         {brands.isError ? (
           <p role="alert" className="text-sm text-destructive">
             {t("settings.loadError")}{" "}
@@ -139,7 +179,7 @@ function BrandSettings() {
         ) : (
           <>
             <div className="@container">
-              <div className="hidden @2xl:block">
+              <div className="-mx-3 hidden @2xl:block">
                 <DataTable
                   interactive
                   ariaLabel={t("settings.title")}
@@ -149,7 +189,7 @@ function BrandSettings() {
                   getRowId={(item) => item.id}
                 />
               </div>
-              <ul className="list-rows grid gap-0.5 @2xl:hidden">
+              <ul className="list-rows -mx-2 grid gap-0.5 @2xl:hidden">
                 {items.map((item) => (
                   <li
                     key={item.id}
@@ -168,13 +208,7 @@ function BrandSettings() {
                         {[item.domain || item.githubRepo, item.country].filter(Boolean).join(" · ")}
                       </span>
                     </div>
-                    <RowActions>
-                      <RowAction
-                        label={t("settings.edit")}
-                        icon={PencilEdit02Icon}
-                        onClick={() => setDialog({ kind: "edit", brand: item })}
-                      />
-                    </RowActions>
+                    {renderActions(item)}
                   </li>
                 ))}
               </ul>
@@ -214,6 +248,6 @@ function BrandSettings() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </section>
   );
 }

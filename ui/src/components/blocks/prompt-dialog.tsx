@@ -1,3 +1,5 @@
+import { Add01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -18,7 +20,6 @@ export function PromptDialog({
   label,
   pending,
   onSave,
-  variant = "default",
   open: controlledOpen,
   onOpenChange,
   hideTrigger = false,
@@ -27,7 +28,6 @@ export function PromptDialog({
   label: string;
   pending: boolean;
   onSave: (request: CreatePrompt) => Promise<void>;
-  variant?: "default" | "ghost" | "outline";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   hideTrigger?: boolean;
@@ -40,8 +40,19 @@ export function PromptDialog({
   return (
     <Dialog open={visible} onOpenChange={changeOpen}>
       {!hideTrigger && (
-        <DialogTrigger render={<Button type="button" variant={variant} size="sm" />}>
-          {label}
+        <DialogTrigger
+          render={
+            <Button
+              type="button"
+              variant="icon-outline"
+              size="circle-sm"
+              aria-label={label}
+              title={label}
+              className="text-muted-foreground"
+            />
+          }
+        >
+          <HugeiconsIcon icon={Add01Icon} aria-hidden="true" />
         </DialogTrigger>
       )}
       <DialogContent>

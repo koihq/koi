@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/alexedwards/scs/v2"
@@ -14,6 +16,15 @@ import (
 
 type CredentialsReq struct {
 	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type ForgotPasswordReq struct {
+	Email string `json:"email"`
+}
+
+type ResetPasswordReq struct {
+	Token    string `json:"token"`
 	Password string `json:"password"`
 }
 
@@ -61,6 +72,8 @@ func (h *AuthHandler) Routes() func(r chi.Router) {
 	return func(r chi.Router) {
 		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/signup", h.Signup)
 		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/login", h.Login)
+		r.With(middlewares.DecodeBody[ForgotPasswordReq]()).Post("/password/forgot", h.ForgotPassword)
+		r.With(middlewares.DecodeBody[ResetPasswordReq]()).Post("/password/reset", h.ResetPassword)
 		r.Post("/logout", h.Logout)
 		r.With(h.auth).Get("/me", h.Me)
 	}
@@ -104,6 +117,48 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(w, r, http.StatusOK, AuthToRes(me))
+}
+
+// ForgotPassword answers the same for every well-formed address, registered or not.
+func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	req := middlewares.Body[ForgotPasswordReq](r)
+
+	if err := h.commander.RequestPasswordReset(r.Context(), req.Email); err != nil {
+		response.WriteDomainError(w, r, err)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	req := middlewares.Body[ResetPasswordReq](r)
+
+	userID, err := h.commander.ResetPassword(r.Context(), req.Token, req.Password)
+	if err != nil {
+		response.WriteDomainError(w, r, err)
+
+		return
+	}
+
+	// The password has already changed, so a failure here is logged rather than reported as one.
+	if err := h.endSessions(r.Context(), userID); err != nil {
+		slog.Error("end sessions after password reset", "user_id", userID, "err", err)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// endSessions signs the user out everywhere, in case someone else was the reason for the reset.
+func (h *AuthHandler) endSessions(ctx context.Context, userID uuid.UUID) error {
+	return h.sess.Iterate(ctx, func(ctx context.Context) error {
+		if h.sess.GetString(ctx, "user_id") != userID.String() {
+			return nil
+		}
+
+		return h.sess.Destroy(ctx)
+	})
 }
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {

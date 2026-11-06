@@ -45,6 +45,37 @@ func TestSendWelcome(t *testing.T) {
 	require.NoError(t, sender.SendWelcome(t.Context(), userID, "you@example.com"))
 }
 
+func TestSendPasswordReset(t *testing.T) {
+	const link = "https://app.getkoi.co/reset-password#secret-token"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/emails", r.URL.Path)
+		require.Empty(t, r.Header.Get("Idempotency-Key"))
+
+		var body struct {
+			To      []string `json:"to"`
+			Subject string   `json:"subject"`
+			Text    string   `json:"text"`
+			Html    string   `json:"html"`
+		}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, []string{"you@example.com"}, body.To)
+		require.Equal(t, "Reset your Koi password", body.Subject)
+		require.Contains(t, body.Text, link)
+		require.Contains(t, body.Html, `href="`+link+`"`)
+		_, _ = w.Write([]byte(`{"id":"email-id"}`))
+	}))
+	defer server.Close()
+
+	client := resend.NewClient("test-key")
+	baseURL, err := url.Parse(server.URL + "/")
+	require.NoError(t, err)
+	client.BaseURL = baseURL
+
+	sender := &Client{client: client, from: "Koi <hello@mail.getkoi.co>", publicURL: "https://app.getkoi.co/"}
+	require.NoError(t, sender.SendPasswordReset(t.Context(), "you@example.com", "secret-token"))
+}
+
 func TestWelcomeContentWithoutPublicURL(t *testing.T) {
 	text, markup := welcomeContent("")
 

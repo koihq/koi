@@ -15,7 +15,7 @@ type GormUserRepository struct {
 }
 
 func NewUserRepository(db *gorm.DB) *GormUserRepository {
-	return &GormUserRepository{Repository: newRepository[domain.User](db)}
+	return &GormUserRepository{Repository: newRepository[domain.User](db, "password_hash")}
 }
 
 func (r *GormUserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {

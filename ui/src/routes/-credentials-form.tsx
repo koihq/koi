@@ -69,6 +69,14 @@ export function CredentialsForm({
               minLength={8}
               aria-invalid={error ? true : undefined}
             />
+            {intent === "sign-in" && !onSwitchIntent && (
+              <Link
+                to="/forgot-password"
+                className="justify-self-start text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                {t("signIn.forgot")}
+              </Link>
+            )}
           </Field>
           <FieldError>{error}</FieldError>
           <Button type="submit" size="lg" className="w-full" disabled={pending}>

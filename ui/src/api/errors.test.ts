@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { apiErrorFromResponse, displayMessage } from "@/api/errors";
+import { ApiError, apiErrorFromResponse, displayMessage, messageOr } from "@/api/errors";
 import i18n from "@/config/i18n";
 
 describe("displayMessage", () => {
@@ -18,6 +18,21 @@ describe("displayMessage", () => {
       i18n.t("codes.invalid_credentials", { ns: "errors" }),
     );
     expect(displayMessage("email_taken")).toBe(i18n.t("codes.email_taken", { ns: "errors" }));
+  });
+});
+
+describe("messageOr", () => {
+  it("prefers the specific reason", () => {
+    expect(messageOr(new ApiError("prompt_limit_reached"), "Unable to save")).toBe(
+      i18n.t("codes.prompt_limit_reached", { ns: "errors" }),
+    );
+  });
+
+  it("keeps the fallback when the server only knows it failed", () => {
+    expect(messageOr(new ApiError("internal"), "Unable to save")).toBe("Unable to save");
+    expect(messageOr(new ApiError("validation"), "Unable to save")).toBe("Unable to save");
+    expect(messageOr(new ApiError("unknown_code"), "Unable to save")).toBe("Unable to save");
+    expect(messageOr(new Error("network"), "Unable to save")).toBe("Unable to save");
   });
 });
 

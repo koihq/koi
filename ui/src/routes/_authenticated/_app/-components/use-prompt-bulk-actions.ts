@@ -24,6 +24,7 @@ export function usePromptBulkActions(
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   async function run(kind: PromptBulkKind) {
     const eligible = targets.filter((prompt) => canApply(kind, prompt));
@@ -31,12 +32,18 @@ export function usePromptBulkActions(
 
     setPending(true);
     setFailed(false);
+    setError(null);
     try {
-      const failedIDs = await runPromptBatch(eligible, (prompt) => {
-        if (kind === "confirm") return api.prompts.confirm(prompt.id);
-        if (kind === "delete") return api.prompts.delete(prompt.id);
+      const failedIDs = await runPromptBatch(eligible, async (prompt) => {
+        try {
+          if (kind === "confirm") return await api.prompts.confirm(prompt.id);
+          if (kind === "delete") return await api.prompts.delete(prompt.id);
 
-        return api.prompts.update(prompt.id, { inactive: kind === "stop" });
+          return await api.prompts.update(prompt.id, { inactive: kind === "stop" });
+        } catch (failure) {
+          setError(failure);
+          throw failure;
+        }
       });
       selectFailures(failedIDs);
       setFailed(failedIDs.length > 0);
@@ -50,5 +57,5 @@ export function usePromptBulkActions(
     }
   }
 
-  return { run, pending, failed };
+  return { run, pending, failed, error };
 }
