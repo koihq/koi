@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Brand } from "@/api/brands.api";
 import { BrandSwitcher } from "@/components/blocks/brand-switcher";
+import { KoiMark } from "@/components/blocks/koi-mark";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,7 +18,8 @@ import {
 import { useTheme } from "@/hooks/use-theme";
 import { capabilitiesOptions, clearAccountCache } from "@/lib/queries";
 
-export function AppHeader({ brand }: { brand: Brand }) {
+/** `focused` keeps someone on their first check: no way off the page but theme and sign out. */
+export function AppHeader({ brand, focused = false }: { brand: Brand; focused?: boolean }) {
   const api = useApi();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -41,7 +43,7 @@ export function AppHeader({ brand }: { brand: Brand }) {
 
   return (
     <header className="relative mx-auto flex min-h-8 w-full max-w-[1376px] items-center justify-between gap-4 px-4 pt-5 pb-6 sm:px-7 sm:pt-7 sm:pb-10">
-      <BrandSwitcher key={brand.id} brand={brand} />
+      {focused ? <KoiMark /> : <BrandSwitcher key={brand.id} brand={brand} />}
 
       <div className="flex shrink-0 items-center gap-3">
         <DropdownMenu>
@@ -54,13 +56,17 @@ export function AppHeader({ brand }: { brand: Brand }) {
             <HugeiconsIcon icon={UserIcon} className="size-[18px]" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={8}>
-            <DropdownMenuItem render={<Link to="/settings/brand" />}>
-              {t("header.brands")}
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link to="/settings/connections" />}>
-              {t("header.connections")}
-            </DropdownMenuItem>
-            {capabilities.data?.cloudBilling && (
+            {!focused && (
+              <DropdownMenuItem render={<Link to="/settings/brand" />}>
+                {t("header.brands")}
+              </DropdownMenuItem>
+            )}
+            {!focused && (
+              <DropdownMenuItem render={<Link to="/settings/connections" />}>
+                {t("header.connections")}
+              </DropdownMenuItem>
+            )}
+            {!focused && capabilities.data?.cloudBilling && (
               <DropdownMenuItem render={<Link to="/settings/billing" />}>
                 {t("billing")}
               </DropdownMenuItem>

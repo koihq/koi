@@ -45,6 +45,15 @@ type GenerationResult struct {
 	Competitors []CompetitorIdentity `json:"competitors"`
 }
 
+// GenerationSummary is what the draft understood about the product, shown back to the customer
+// while the draft continues.
+type GenerationSummary struct {
+	Product   string   `json:"product"`
+	Category  string   `json:"category"`
+	Audience  string   `json:"audience"`
+	Functions []string `json:"functions"`
+}
+
 type GenerationRun struct {
 	BaseEntity
 	// Recent indexes use expressions for the inherited BaseEntity timestamps and ID.
@@ -61,7 +70,10 @@ type GenerationRun struct {
 	ErrorCode       *string         `json:"-"`
 	ModelSlug       string          `json:"-" gorm:"not null"`
 	BrandSnapshot   BrandSnapshot   `json:"-" gorm:"type:jsonb;serializer:json;not null"`
-	Brand           *Brand          `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
+	// StartTracking starts collection when the draft succeeds, so closing the page cannot stop it.
+	StartTracking bool               `json:"-" gorm:"not null;default:false"`
+	Summary       *GenerationSummary `json:"-" gorm:"type:jsonb;serializer:json"`
+	Brand         *Brand             `json:"-" gorm:"foreignKey:BrandID;constraint:OnDelete:CASCADE"`
 }
 
 func (GenerationRun) TableName() string { return "generation_runs" }
@@ -78,7 +90,7 @@ type GenerationRepository interface {
 }
 
 type GenerationCommander interface {
-	Create(context.Context, uuid.UUID, *string) (*GenerationRun, bool, error)
+	Create(ctx context.Context, brandID uuid.UUID, key *string, startTracking bool) (*GenerationRun, bool, error)
 }
 
 type GenerationQuerier interface {
@@ -105,7 +117,7 @@ func NewGenerationQuerier(store Store) GenerationQuerier {
 }
 
 // Create starts the brand's one draft. A failed draft can run again until tracking starts.
-func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, key *string) (*GenerationRun, bool, error) {
+func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, key *string, startTracking bool) (*GenerationRun, bool, error) {
 	var run *GenerationRun
 	var terminalReplay bool
 
@@ -160,6 +172,7 @@ func (s *generationCommander) Create(ctx context.Context, brandID uuid.UUID, key
 			IdempotencyKey: key,
 			ModelSlug:      GenerationModelSlug,
 			BrandSnapshot:  brand.Snapshot(),
+			StartTracking:  startTracking,
 		}
 
 		return repo.CreateAndEnqueue(ctx, run)

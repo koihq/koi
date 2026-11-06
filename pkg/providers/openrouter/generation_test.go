@@ -126,7 +126,7 @@ func TestGenerateResearchesDejaAndSearchesAlternatives(t *testing.T) {
 	}))
 
 	defer server.Close()
-	draft, err := testClient(server.URL).Generate(t.Context(), domain.GenerationModelSlug, input)
+	draft, err := testClient(server.URL).Generate(t.Context(), domain.GenerationModelSlug, input, nil)
 	require.NoError(t, err)
 	require.Equal(t, 2, calls)
 	require.Len(t, draft.Prompts, 2)
@@ -161,10 +161,10 @@ func TestGenerateFetchFallback(t *testing.T) {
 			Description: "Deja suggests previous shell commands while typing in the zsh terminal.",
 		},
 	}
-	_, err := testClient(server.URL).Generate(t.Context(), "test", input)
+	_, err := testClient(server.URL).Generate(t.Context(), "test", input, nil)
 	require.NoError(t, err)
 	input.Brand.Description = ""
-	_, err = testClient(server.URL).Generate(t.Context(), "test", input)
+	_, err = testClient(server.URL).Generate(t.Context(), "test", input, nil)
 	var providerErr *Error
 	require.ErrorAs(t, err, &providerErr)
 	require.Equal(t, "provider_unavailable", providerErr.Code)
@@ -203,7 +203,7 @@ func TestResearchPreservesProviderFailures(t *testing.T) {
 					GitHubRepo: "https://github.com/Giammarco-Ferranti/deja",
 				},
 			}
-			_, err := testClient(server.URL).Generate(t.Context(), "test", input)
+			_, err := testClient(server.URL).Generate(t.Context(), "test", input, nil)
 			var providerErr *Error
 			require.ErrorAs(t, err, &providerErr)
 			require.Equal(t, tc.code, providerErr.Code)
@@ -213,7 +213,7 @@ func TestResearchPreservesProviderFailures(t *testing.T) {
 
 			if !tc.retry {
 				input.Brand.Description = "Deja suggests previous shell commands while typing in the zsh terminal."
-				_, err = testClient(server.URL).Generate(t.Context(), "test", input)
+				_, err = testClient(server.URL).Generate(t.Context(), "test", input, nil)
 				require.ErrorAs(t, err, &providerErr)
 				require.Equal(t, tc.code, providerErr.Code)
 				require.Equal(t, tc.status, providerErr.Status)
@@ -283,7 +283,7 @@ func TestGenerationFixturesAndOutputValidation(t *testing.T) {
 					Name:   tc.name,
 					Domain: tc.site,
 				},
-			})
+			}, nil)
 			if tc.wantCode != "" {
 				var providerErr *Error
 				require.ErrorAs(t, err, &providerErr)

@@ -127,6 +127,24 @@ event fetches the current subscription to complete synchronization. Delayed subs
 events from a previous subscription cannot replace its successor.
 Email is never used as an identity key.
 
+### First Look
+
+An organization with no subscription and an unused trial gets one free check before any payment.
+It can draft up to 5 prompts and run one collection, and it keeps reading those results. Later
+collections are blocked until Checkout, and `tracking_get` reports `first_look_used`; the daily
+dispatcher then resumes on the next slot without any other step. Canceled subscriptions and used
+trials never get it. `BillingStatus.firstLook` exposes the state to the UI and to MCP.
+
+Sign-up has no email verification or rate limit, so two limits bound the spend. A website or
+repository gets one First Look across organizations, and `KOI_FIRST_LOOK_DAILY_LIMIT` (default 100)
+caps the checks started in 24 hours. Either limit reports `first_look_unavailable`, and the
+organization can still start its trial.
+
+Setup asks the draft to start collection (`GenerationRequest.startTracking`), so the worker starts
+the check when the draft succeeds and closing the page cannot stop it. An agent does not set it,
+because it may still be correcting prompts, and calls `tracking_start` itself. When the first check
+finishes with at least one real answer, the owner gets a "ready" email if Resend is configured.
+
 The database holds the application entitlement. `active` subscriptions grant their
 selected allowance until the current period ends. `trialing` grants 10 prompts
 until trial end, with a payment method collected in Checkout. A brand's one AI draft stores

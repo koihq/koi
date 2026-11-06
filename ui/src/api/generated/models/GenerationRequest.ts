@@ -26,6 +26,12 @@ export interface GenerationRequest {
      * @memberof GenerationRequest
      */
     brandId: string;
+    /**
+     * Start collection as soon as the draft succeeds. Used by setup for the free check.
+     * @type {boolean}
+     * @memberof GenerationRequest
+     */
+    startTracking?: boolean;
 }
 
 /**
@@ -47,6 +53,7 @@ export function GenerationRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     return {
         
         'brandId': json['brandId'],
+        'startTracking': json['startTracking'] == null ? undefined : json['startTracking'],
     };
 }
 
@@ -62,6 +69,7 @@ export function GenerationRequestToJSONTyped(value?: GenerationRequest | null, i
     return {
         
         'brandId': value['brandId'],
+        'startTracking': value['startTracking'],
     };
 }
 

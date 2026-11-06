@@ -37,3 +37,35 @@ func (w *welcomeWorker) Work(ctx context.Context, job *river.Job[database.Welcom
 
 	return w.sender.SendWelcome(ctx, user.ID, user.Email)
 }
+
+type firstCheckEmailStore interface {
+	FirstCheckEmail(context.Context, uuid.UUID) (string, string, int, error)
+}
+
+type firstCheckSender interface {
+	SendFirstCheckReady(ctx context.Context, runID uuid.UUID, to, brand string) error
+}
+
+type firstCheckEmailWorker struct {
+	river.WorkerDefaults[database.FirstCheckEmailJobArgs]
+	store  firstCheckEmailStore
+	sender firstCheckSender
+}
+
+func (w *firstCheckEmailWorker) Timeout(*river.Job[database.FirstCheckEmailJobArgs]) time.Duration {
+	return 30 * time.Second
+}
+
+func (w *firstCheckEmailWorker) Work(ctx context.Context, job *river.Job[database.FirstCheckEmailJobArgs]) error {
+	to, brand, answers, err := w.store.FirstCheckEmail(ctx, job.Args.RunID)
+	if err != nil {
+		return err
+	}
+
+	// A check with no real answers has nothing to show, so it should not bring anyone back.
+	if to == "" || answers == 0 {
+		return nil
+	}
+
+	return w.sender.SendFirstCheckReady(ctx, job.Args.RunID, to, brand)
+}

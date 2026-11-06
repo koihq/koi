@@ -101,10 +101,19 @@ func format(name string, schema map[string]any) *components.TextExtendedConfig {
 	}
 }
 
-func (c *Client) Generate(ctx context.Context, model string, input domain.GenerationInput) (domain.GenerationResult, error) {
+func (c *Client) Generate(ctx context.Context, model string, input domain.GenerationInput, onResearch func(domain.GenerationSummary)) (domain.GenerationResult, error) {
 	summary, err := c.research(ctx, model, input)
 	if err != nil {
 		return domain.GenerationResult{}, err
+	}
+
+	if onResearch != nil {
+		onResearch(domain.GenerationSummary{
+			Product:   summary.Product,
+			Category:  summary.Category,
+			Audience:  summary.Audience,
+			Functions: summary.Functions,
+		})
 	}
 
 	return c.suggest(ctx, model, input, summary)

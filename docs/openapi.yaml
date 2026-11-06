@@ -615,6 +615,55 @@ paths:
           $ref: "#/components/responses/Error"
         "409":
           $ref: "#/components/responses/Error"
+  /api/v1/onboarding/events:
+    post:
+      tags: [brands]
+      operationId: recordOnboardingStep
+      description: Records the first time the organization reached a setup step. Koi Cloud only.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingEvent"
+      responses:
+        "204":
+          description: Recorded, or already recorded
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/lookup:
+    get:
+      tags: [brands]
+      operationId: lookupBrand
+      description: Reads a suggested name and description from a public website or GitHub repository for the setup form. Pass domain or githubRepo. A site that cannot be read returns found false.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: domain
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: githubRepo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: What the site or repository says about itself
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandLookup"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
   /api/v1/brands/countries:
     get:
       tags: [brands]
@@ -1564,7 +1613,7 @@ components:
         blockedReason:
           type: string
           nullable: true
-          enum: [collection_unavailable, start_required, prompts_required, billing_inactive_or_over_limit]
+          enum: [collection_unavailable, start_required, prompts_required, billing_inactive_or_over_limit, first_look_used, first_look_unavailable]
     BrandRequest:
       type: object
       description: At least one of domain or githubRepo is required.
@@ -1989,7 +2038,7 @@ components:
           type: boolean
     BillingStatus:
       type: object
-      required: [subscription, promptLimit, usedPrompts, trialAvailable]
+      required: [subscription, promptLimit, usedPrompts, trialAvailable, firstLook]
       properties:
         subscription:
           allOf:
@@ -2002,6 +2051,9 @@ components:
           format: int64
         trialAvailable:
           type: boolean
+        firstLook:
+          type: boolean
+          description: The organization never had a subscription or trial, so it may run one free check and keep reading its results.
     BillingConfirmCheckoutRequest:
       type: object
       required: [sessionId]
@@ -2030,6 +2082,40 @@ components:
         expiresAt:
           type: string
           format: date-time
+    OnboardingEvent:
+      type: object
+      required: [step]
+      properties:
+        step:
+          type: string
+          enum: [choice, website, confirm, agent_connect, agent_prompt, first_look, first_answer, trial_clicked, agent_handoff]
+    BrandLookup:
+      type: object
+      required: [found, name, description, source]
+      properties:
+        found:
+          type: boolean
+        name:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+          description: Where the values came from, website or github. Empty when nothing was found.
+    GenerationSummary:
+      type: object
+      required: [product, category, audience, functions]
+      properties:
+        product:
+          type: string
+        category:
+          type: string
+        audience:
+          type: string
+        functions:
+          type: array
+          items:
+            type: string
     GenerationRequest:
       type: object
       required: [brandId]
@@ -2037,6 +2123,9 @@ components:
         brandId:
           type: string
           format: uuid
+        startTracking:
+          type: boolean
+          description: Start collection as soon as the draft succeeds. Used by setup for the free check.
     GenerationAccepted:
       type: object
       required: [id, state, statusUrl]
@@ -2051,8 +2140,12 @@ components:
           type: string
     GenerationStatus:
       type: object
-      required: [id, state, attempt, promptCount, competitorCount, createdAt]
+      required: [id, state, attempt, promptCount, competitorCount, createdAt, startTracking]
       properties:
+        startTracking:
+          type: boolean
+        summary:
+          $ref: "#/components/schemas/GenerationSummary"
         id:
           type: string
           format: uuid

@@ -164,6 +164,19 @@ func responseError(resp *resty.Response) error {
 		return nil
 	}
 	e := &Error{Code: "cloro_request_failed"}
+
+	var body struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	// An outage at one engine arrives as a 400, but the request itself was fine.
+	if json.Unmarshal(resp.Body(), &body) == nil && body.Error.Code == "MODEL_UNAVAILABLE" {
+		e.Code = "cloro_engine_unavailable"
+
+		return e
+	}
+
 	switch resp.StatusCode() {
 	case 400, 422:
 		e.Code = "cloro_invalid_request"

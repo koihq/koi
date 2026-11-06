@@ -213,9 +213,10 @@ func (f *billingFixture) event(t *testing.T, id string) {
 
 func TestBillingWebhookIdentityReplayAndEntitlement(t *testing.T) {
 	f := newBillingFixture(t)
+	// A new organization can read its First Look before any subscription exists.
 	allowed, err := f.repo.ProductAccess(f.ctx, f.organization.ID)
 	require.NoError(t, err)
-	require.False(t, allowed)
+	require.True(t, allowed)
 	// A premature subscription event cannot grant access without a completed checkout.
 	f.event(t, "evt_early")
 	f.complete(t)
@@ -254,7 +255,8 @@ func TestBillingCheckoutConfirmationWithoutWebhook(t *testing.T) {
 
 	status, err := f.commander.ConfirmCheckout(f.ctx, checkout.SessionID)
 	require.NoError(t, err)
-	require.Zero(t, status.PromptLimit)
+	require.True(t, status.FirstLook)
+	require.Equal(t, domain.FirstLookPromptLimit, status.PromptLimit)
 	otherOrg := &domain.Organization{Name: "Other"}
 	require.NoError(t, f.db.Create(otherOrg).Error)
 	otherUser := &domain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
@@ -676,12 +678,12 @@ func TestBillingDowngradePausesTrackingUntilPromptsFit(t *testing.T) {
 			Confirmed: true,
 		}).Error)
 	}
-	allowed, err := cloudTrackingAllowed(f.ctx, f.db, f.organization.ID)
+	allowed, err := cloudCollectionAllowed(f.ctx, f.db, f.organization.ID, false)
 	require.NoError(t, err)
 	require.True(t, allowed)
 	f.gateway.snapshot.Quantity = 15
 	f.event(t, "evt_downgrade_applied")
-	allowed, err = cloudTrackingAllowed(f.ctx, f.db, f.organization.ID)
+	allowed, err = cloudCollectionAllowed(f.ctx, f.db, f.organization.ID, false)
 	require.NoError(t, err)
 	require.False(t, allowed)
 	var prompt domain.Prompt
@@ -691,7 +693,7 @@ func TestBillingDowngradePausesTrackingUntilPromptsFit(t *testing.T) {
 		Inactive: &inactive,
 	})
 	require.NoError(t, err)
-	allowed, err = cloudTrackingAllowed(f.ctx, f.db, f.organization.ID)
+	allowed, err = cloudCollectionAllowed(f.ctx, f.db, f.organization.ID, false)
 	require.NoError(t, err)
 	require.True(t, allowed)
 }

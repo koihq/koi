@@ -21,9 +21,10 @@ func (VisibilityJobArgs) Kind() string { return "koi_visibility" }
 
 type GormVisibilityRepository struct {
 	*ListRepository[domain.VisibilityRun, domain.BrandFilter]
-	client    *river.Client[*sql.Tx]
-	enabled   bool
-	cloudMode bool
+	client              *river.Client[*sql.Tx]
+	enabled             bool
+	cloudMode           bool
+	firstLookDailyLimit int
 }
 
 func NewVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx], enabled, cloudMode bool) *GormVisibilityRepository {
@@ -31,10 +32,11 @@ func NewVisibilityRepository(db *gorm.DB, client *river.Client[*sql.Tx], enabled
 	base.read = visibilityProgress
 
 	return &GormVisibilityRepository{
-		ListRepository: newListRepository(base, filterByBrand, fixedOrder[domain.BrandFilter]("created_at DESC, id DESC")),
-		client:         client,
-		enabled:        enabled,
-		cloudMode:      cloudMode,
+		ListRepository:      newListRepository(base, filterByBrand, fixedOrder[domain.BrandFilter]("created_at DESC, id DESC")),
+		client:              client,
+		enabled:             enabled,
+		cloudMode:           cloudMode,
+		firstLookDailyLimit: domain.DefaultFirstLookDailyLimit,
 	}
 }
 

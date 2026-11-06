@@ -21,10 +21,12 @@ type generationStore interface {
 	BeginGenerationAttempt(context.Context, uuid.UUID, int64, int) (*domain.GenerationRun, domain.GenerationInput, error)
 	FinishGenerationAttempt(context.Context, uuid.UUID, int, domain.GenerationResult) (int, int, error)
 	RecordGenerationFailure(context.Context, uuid.UUID, int, string, *time.Time) error
+	SaveGenerationSummary(context.Context, uuid.UUID, domain.GenerationSummary) error
+	StartTrackingAsOwner(context.Context, uuid.UUID) error
 }
 
 type generationProvider interface {
-	Generate(context.Context, string, domain.GenerationInput) (domain.GenerationResult, error)
+	Generate(context.Context, string, domain.GenerationInput, func(domain.GenerationSummary)) (domain.GenerationResult, error)
 }
 
 type generationWorker struct {
@@ -66,7 +68,11 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[database.Gen
 		return w.fail(ctx, job, "request_too_large", false, errors.New("brand snapshot exceeds request limit"))
 	}
 
-	result, err := w.provider.Generate(ctx, run.ModelSlug, input)
+	result, err := w.provider.Generate(ctx, run.ModelSlug, input, func(summary domain.GenerationSummary) {
+		if err := w.store.SaveGenerationSummary(ctx, run.ID, summary); err != nil {
+			slog.Warn("generation summary not saved", "run_id", run.ID, "err", err)
+		}
+	})
 	if err != nil {
 		if ctx.Err() != nil {
 			return w.fail(ctx, job, "job_timeout", true, ctx.Err())
@@ -92,6 +98,13 @@ func (w *generationWorker) Work(ctx context.Context, job *river.Job[database.Gen
 	}
 
 	slog.Info("generation completed", "run_id", run.ID, "attempt", job.Attempt, "prompt_count", prompts, "competitor_count", competitors, "duration_ms", time.Since(started).Milliseconds())
+
+	// The draft already succeeded, so a failed start must not retry it. The page offers the start.
+	if run.StartTracking {
+		if err := w.store.StartTrackingAsOwner(ctx, run.BrandID); err != nil {
+			slog.Warn("tracking did not start after the draft", "run_id", run.ID, "err", err)
+		}
+	}
 
 	return nil
 }

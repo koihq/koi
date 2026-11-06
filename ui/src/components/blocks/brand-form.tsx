@@ -217,7 +217,7 @@ function countryFromCode(code: string): BrandCountry | null {
   return { code: normalized, name: countryNames.of(normalized) ?? normalized };
 }
 
-function CountryCombobox({
+export function CountryCombobox({
   initialCode = "",
   invalid,
   describedBy,

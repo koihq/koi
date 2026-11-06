@@ -2141,8 +2141,8 @@ func (_m *MockGenerationCommander) EXPECT() *MockGenerationCommander_Expecter {
 }
 
 // Create provides a mock function for the type MockGenerationCommander
-func (_mock *MockGenerationCommander) Create(context1 context.Context, uUID uuid.UUID, s *string) (*domain.GenerationRun, bool, error) {
-	ret := _mock.Called(context1, uUID, s)
+func (_mock *MockGenerationCommander) Create(ctx context.Context, brandID uuid.UUID, key *string, startTracking bool) (*domain.GenerationRun, bool, error) {
+	ret := _mock.Called(ctx, brandID, key, startTracking)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
@@ -2151,23 +2151,23 @@ func (_mock *MockGenerationCommander) Create(context1 context.Context, uUID uuid
 	var r0 *domain.GenerationRun
 	var r1 bool
 	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string) (*domain.GenerationRun, bool, error)); ok {
-		return returnFunc(context1, uUID, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string, bool) (*domain.GenerationRun, bool, error)); ok {
+		return returnFunc(ctx, brandID, key, startTracking)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string) *domain.GenerationRun); ok {
-		r0 = returnFunc(context1, uUID, s)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, *string, bool) *domain.GenerationRun); ok {
+		r0 = returnFunc(ctx, brandID, key, startTracking)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*domain.GenerationRun)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, *string) bool); ok {
-		r1 = returnFunc(context1, uUID, s)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID, *string, bool) bool); ok {
+		r1 = returnFunc(ctx, brandID, key, startTracking)
 	} else {
 		r1 = ret.Get(1).(bool)
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context, uuid.UUID, *string) error); ok {
-		r2 = returnFunc(context1, uUID, s)
+	if returnFunc, ok := ret.Get(2).(func(context.Context, uuid.UUID, *string, bool) error); ok {
+		r2 = returnFunc(ctx, brandID, key, startTracking)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -2180,14 +2180,15 @@ type MockGenerationCommander_Create_Call struct {
 }
 
 // Create is a helper method to define mock.On call
-//   - context1 context.Context
-//   - uUID uuid.UUID
-//   - s *string
-func (_e *MockGenerationCommander_Expecter) Create(context1 interface{}, uUID interface{}, s interface{}) *MockGenerationCommander_Create_Call {
-	return &MockGenerationCommander_Create_Call{Call: _e.mock.On("Create", context1, uUID, s)}
+//   - ctx context.Context
+//   - brandID uuid.UUID
+//   - key *string
+//   - startTracking bool
+func (_e *MockGenerationCommander_Expecter) Create(ctx interface{}, brandID interface{}, key interface{}, startTracking interface{}) *MockGenerationCommander_Create_Call {
+	return &MockGenerationCommander_Create_Call{Call: _e.mock.On("Create", ctx, brandID, key, startTracking)}
 }
 
-func (_c *MockGenerationCommander_Create_Call) Run(run func(context1 context.Context, uUID uuid.UUID, s *string)) *MockGenerationCommander_Create_Call {
+func (_c *MockGenerationCommander_Create_Call) Run(run func(ctx context.Context, brandID uuid.UUID, key *string, startTracking bool)) *MockGenerationCommander_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -2201,10 +2202,15 @@ func (_c *MockGenerationCommander_Create_Call) Run(run func(context1 context.Con
 		if args[2] != nil {
 			arg2 = args[2].(*string)
 		}
+		var arg3 bool
+		if args[3] != nil {
+			arg3 = args[3].(bool)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -2215,7 +2221,7 @@ func (_c *MockGenerationCommander_Create_Call) Return(generationRun *domain.Gene
 	return _c
 }
 
-func (_c *MockGenerationCommander_Create_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID, s *string) (*domain.GenerationRun, bool, error)) *MockGenerationCommander_Create_Call {
+func (_c *MockGenerationCommander_Create_Call) RunAndReturn(run func(ctx context.Context, brandID uuid.UUID, key *string, startTracking bool) (*domain.GenerationRun, bool, error)) *MockGenerationCommander_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3402,6 +3408,52 @@ func (_c *MockStore_MembershipRepo_Call) Return(membershipRepository domain.Memb
 }
 
 func (_c *MockStore_MembershipRepo_Call) RunAndReturn(run func() domain.MembershipRepository) *MockStore_MembershipRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// OnboardingRepo provides a mock function for the type MockStore
+func (_mock *MockStore) OnboardingRepo() domain.OnboardingRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for OnboardingRepo")
+	}
+
+	var r0 domain.OnboardingRepository
+	if returnFunc, ok := ret.Get(0).(func() domain.OnboardingRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(domain.OnboardingRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_OnboardingRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnboardingRepo'
+type MockStore_OnboardingRepo_Call struct {
+	*mock.Call
+}
+
+// OnboardingRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) OnboardingRepo() *MockStore_OnboardingRepo_Call {
+	return &MockStore_OnboardingRepo_Call{Call: _e.mock.On("OnboardingRepo")}
+}
+
+func (_c *MockStore_OnboardingRepo_Call) Run(run func()) *MockStore_OnboardingRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_OnboardingRepo_Call) Return(onboardingRepository domain.OnboardingRepository) *MockStore_OnboardingRepo_Call {
+	_c.Call.Return(onboardingRepository)
+	return _c
+}
+
+func (_c *MockStore_OnboardingRepo_Call) RunAndReturn(run func() domain.OnboardingRepository) *MockStore_OnboardingRepo_Call {
 	_c.Call.Return(run)
 	return _c
 }

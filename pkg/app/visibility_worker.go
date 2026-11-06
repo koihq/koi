@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ type visibilityStore interface {
 	SaveVisibilityTask(context.Context, uuid.UUID, int, uuid.UUID, string) error
 	SaveVisibilityResult(context.Context, uuid.UUID, int, domain.VisibilityResult) error
 	FinishVisibilityAttempt(context.Context, uuid.UUID, int) error
+	EnqueueFirstCheckEmail(context.Context, uuid.UUID) error
 	RecordVisibilityFailure(context.Context, uuid.UUID, int64, int, string, bool) error
 }
 
@@ -161,7 +163,16 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[database.Vis
 
 func (w *visibilityWorker) workSync(ctx context.Context, job *river.Job[database.VisibilityJobArgs], run *domain.VisibilityRun, cells []domain.VisibilityResult) error {
 	if len(cells) == 0 {
-		return w.store.FinishVisibilityAttempt(ctx, run.ID, job.Attempt)
+		if err := w.store.FinishVisibilityAttempt(ctx, run.ID, job.Attempt); err != nil {
+			return err
+		}
+
+		// The check is already saved, and the page shows it, so a lost email must not retry the job.
+		if err := w.store.EnqueueFirstCheckEmail(ctx, run.ID); err != nil {
+			slog.Warn("first check email not enqueued", "run_id", run.ID, "err", err)
+		}
+
+		return nil
 	}
 	if len(cells) > 4 {
 		cells = cells[:4]

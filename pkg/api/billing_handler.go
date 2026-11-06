@@ -50,6 +50,7 @@ type BillingStatusRes struct {
 	PromptLimit    int                     `json:"promptLimit"`
 	UsedPrompts    int64                   `json:"usedPrompts"`
 	TrialAvailable bool                    `json:"trialAvailable"`
+	FirstLook      bool                    `json:"firstLook"`
 }
 
 func BillingStatusToRes(v *domain.BillingStatus) BillingStatusRes {
@@ -58,6 +59,7 @@ func BillingStatusToRes(v *domain.BillingStatus) BillingStatusRes {
 		PromptLimit:    v.PromptLimit,
 		UsedPrompts:    v.UsedPrompts,
 		TrialAvailable: v.TrialAvailable,
+		FirstLook:      v.FirstLook,
 	}
 }
 

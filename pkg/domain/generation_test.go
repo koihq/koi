@@ -128,7 +128,7 @@ func TestGenerationCreateDecision(t *testing.T) {
 				}
 			}
 
-			got, terminalReplay, err := NewGenerationCommander(store, tc.enabled).Create(t.Context(), brandID, tc.key)
+			got, terminalReplay, err := NewGenerationCommander(store, tc.enabled).Create(t.Context(), brandID, tc.key, false)
 			if tc.err != nil {
 				require.True(t, errors.Is(err, tc.err), "error: %v", err)
 				require.Nil(t, created)
@@ -166,6 +166,6 @@ func TestGenerationCreateRequiresOwnedBrand(t *testing.T) {
 	)
 	store.EXPECT().BrandRepo().Return(brands)
 	brands.EXPECT().LockForUpdate(mock.Anything, brandID).Return(nil, ErrNotFound)
-	_, _, err := NewGenerationCommander(store, true).Create(t.Context(), brandID, nil)
+	_, _, err := NewGenerationCommander(store, true).Create(t.Context(), brandID, nil, false)
 	require.ErrorIs(t, err, ErrNotFound)
 }

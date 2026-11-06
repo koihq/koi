@@ -56,6 +56,14 @@ type BrandHandler struct {
 	commander domain.BrandCommander
 	sess      *scs.SessionManager
 	billing   func(http.Handler) http.Handler
+	looker    domain.BrandLooker
+}
+
+type BrandLookupRes struct {
+	Found       bool   `json:"found"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Source      string `json:"source"`
 }
 
 // NewBrandHandler guards brand changes with billing. Self-hosted instances pass passThrough.
@@ -68,6 +76,7 @@ func (h *BrandHandler) Routes() func(chi.Router) {
 		r.With(middlewares.DecodeBody[CreateBrandReq]()).Post("/", Create(h.create, BrandToRes))
 		r.Get("/", List(brandListFilter, h.querier.List, BrandToRes))
 		r.Get("/countries", h.Countries)
+		r.Get("/lookup", h.Lookup)
 		r.Get("/{id}", Get(h.querier.Get, BrandToRes))
 		r.With(h.billing).Post("/{id}/activate", Action(h.activate, BrandToRes))
 		r.With(h.billing, middlewares.DecodeBody[UpdateBrandReq]()).Patch("/{id}", Update(h.update, BrandToRes))
@@ -112,6 +121,25 @@ func (h *BrandHandler) update(ctx context.Context, id uuid.UUID, req UpdateBrand
 		GitHubRepo:  req.GitHubRepo,
 		Country:     req.Country,
 		Description: req.Description,
+	})
+}
+
+// Lookup only suggests values for the setup form, so it stays open before any subscription.
+func (h *BrandHandler) Lookup(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+
+	lookup, err := domain.LookupBrand(r.Context(), h.looker, query.Get("domain"), query.Get("githubRepo"))
+	if err != nil {
+		response.WriteDomainError(w, r, err)
+
+		return
+	}
+
+	response.JSON(w, r, http.StatusOK, BrandLookupRes{
+		Found:       lookup.Found,
+		Name:        lookup.Name,
+		Description: lookup.Description,
+		Source:      lookup.Source,
 	})
 }
 

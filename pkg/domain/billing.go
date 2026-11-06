@@ -10,6 +10,16 @@ import (
 const (
 	TrialPromptLimit        = 10
 	InitialDraftPromptLimit = 5
+	FirstLookPromptLimit    = InitialDraftPromptLimit
+
+	// DefaultFirstLookDailyLimit bounds what unpaid First Looks can spend on collection in a day.
+	DefaultFirstLookDailyLimit = 100
+)
+
+// Reasons a First Look organization cannot collect, reported through tracking status.
+const (
+	TrackingBlockedFirstLookUsed        = "first_look_used"
+	TrackingBlockedFirstLookUnavailable = "first_look_unavailable"
 )
 
 var (
@@ -136,6 +146,7 @@ type BillingStatus struct {
 	PromptLimit    int                  `json:"prompt_limit"`
 	UsedPrompts    int64                `json:"used_prompts"`
 	TrialAvailable bool                 `json:"trial_available"`
+	FirstLook      bool                 `json:"first_look"`
 }
 
 type BillingQuote struct {
@@ -225,10 +236,25 @@ func (s BillingSubscription) PromptLimit(now time.Time) int {
 	return 0
 }
 
+// IsFirstLook reports an organization that never had a subscription or started a trial. It may run
+// one collection and keep reading it; further collections need the trial.
+func IsFirstLook(s BillingSubscription, trialUsedAt *time.Time) bool {
+	return s.Status == "" && trialUsedAt == nil
+}
+
+// EffectivePromptLimit is the allowance an organization has now, including the First Look.
+func EffectivePromptLimit(s BillingSubscription, trialUsedAt *time.Time, now time.Time) int {
+	if IsFirstLook(s, trialUsedAt) {
+		return FirstLookPromptLimit
+	}
+
+	return s.PromptLimit(now)
+}
+
 // GenerationBudget returns how many drafted prompts the initial draft may store, given the
-// prompts the organization already stores. It leaves room for the customer's own prompts.
-func (s BillingSubscription) GenerationBudget(now time.Time, stored int) int {
-	return min(max(0, s.PromptLimit(now)-stored), InitialDraftPromptLimit)
+// organization's allowance and stored prompts. It leaves room for the customer's own prompts.
+func GenerationBudget(limit, stored int) int {
+	return min(max(0, limit-stored), InitialDraftPromptLimit)
 }
 
 func (s BillingSubscription) inTrial(now time.Time) bool {

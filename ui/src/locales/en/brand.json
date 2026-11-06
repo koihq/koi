@@ -1,8 +1,45 @@
 {
   "setup": {
-    "title": "Set up your brand",
-    "description": "Tell Koi which brand and market to measure.",
-    "submit": "Create brand"
+    "title": "Let's find out what AI says about you.",
+    "koiOption": "Show me here",
+    "koiOptionDescription": "Tell us your website. We'll ask ChatGPT, Perplexity, Gemini and Google for you. One free check, no card needed.",
+    "agentOption": "Let my agent handle it",
+    "agentOptionDescription": "It can read your project. Paste one prompt and go make a coffee.",
+    "back": "Back",
+    "formDescription": "Change anything that's off. We match answers on this name.",
+    "site": "Website or GitHub repo",
+    "sitePlaceholder": "deja.dev",
+    "siteInvalid": "Enter a website or a GitHub repository URL",
+    "submit": "See what AI says",
+    "agentTitle": "Connect your agent",
+    "agentDescription": "Once, and it's done. It signs in to Koi with your approval.",
+    "agentClient": "Your agent",
+    "agentInstall": "Run this in your terminal to connect Koi and install its skills.",
+    "agentPromptText": "Set up Koi for this project with the koi-setup skill. Use this repository to understand the product, start the first check and show me what AI engines say.",
+    "agentPromptTextWeb": "Set up Koi for my brand. Ask me for anything you can't find, start the first check and show me what AI engines say.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyError": "Unable to copy. Select the text and copy it manually.",
+    "agentWaiting": "Waiting for your agent to say hi…",
+    "agentConnected": "{client}'s here. It's getting to know your brand…",
+    "useKoi": "Show me here instead",
+    "description": "How do you want to start?",
+    "koiPreviewLabel": "Example",
+    "koiPreview": "ChatGPT recommends Stripe instead of Acme",
+    "continue": "Let's go",
+    "copyPrompt": "Copy prompt",
+    "step": "Step {current} of {total}",
+    "websiteTitle": "What's your website?",
+    "websiteDescription": "That's all we need. A GitHub repo works too.",
+    "websiteContinue": "Continue",
+    "confirmTitle": "Is this you?",
+    "country": "Check from",
+    "looking": "Looking you up…",
+    "sourceWebsite": "From {site}",
+    "sourceGithub": "From GitHub",
+    "promptTitle": "Now hand it over",
+    "promptDescription": "Paste this into your agent and go make a coffee.",
+    "agentConnectedContinue": "I've connected it"
   },
   "settings": {
     "title": "Brands",
@@ -113,11 +150,21 @@
     }
   },
   "validation": {
-    "name": { "invalid": "Enter a brand name" },
-    "domain": { "invalid": "Enter a valid domain or provide a GitHub repository" },
-    "github_repo": { "invalid": "Enter a valid GitHub URL or provide a domain" },
-    "country": { "invalid": "Select a supported country" },
-    "description": { "invalid": "Check the description" }
+    "name": {
+      "invalid": "Enter a brand name"
+    },
+    "domain": {
+      "invalid": "Enter a valid domain or provide a GitHub repository"
+    },
+    "github_repo": {
+      "invalid": "Enter a valid GitHub URL or provide a domain"
+    },
+    "country": {
+      "invalid": "Select a supported country"
+    },
+    "description": {
+      "invalid": "Check the description"
+    }
   },
   "loadError": {
     "title": "Unable to load your brand",

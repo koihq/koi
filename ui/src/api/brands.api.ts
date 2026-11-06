@@ -1,9 +1,11 @@
 import type {
+  BrandLookup,
   BrandPatchRequest,
   BrandRequest,
   BrandRes,
   BrandsApi,
   CountryOption,
+  OnboardingEventStepEnum,
 } from "@/api/generated";
 import type { ApiListResponse, BaseListParams } from "@/api/shared/types";
 
@@ -28,6 +30,18 @@ export function createBrandsApi(api: BrandsApi) {
     create: (request: CreateBrand): Promise<Brand> => api.createBrand({ brandRequest: request }),
     update: (id: string, request: UpdateBrand): Promise<Brand> =>
       api.updateBrand({ id, brandPatchRequest: request }),
+    lookup: (
+      identifiers: { domain: string; githubRepo: string },
+      init?: RequestInit,
+    ): Promise<BrandLookup> =>
+      api.lookupBrand(
+        identifiers.githubRepo
+          ? { githubRepo: identifiers.githubRepo }
+          : { domain: identifiers.domain },
+        init,
+      ),
+    recordStep: (step: OnboardingEventStepEnum): Promise<void> =>
+      api.recordOnboardingStep({ onboardingEvent: { step } }),
     listCountries: (query?: string, initOverrides?: RequestInit): Promise<BrandCountry[]> =>
       api.listBrandCountries({ q: query }, initOverrides),
   };

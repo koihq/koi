@@ -75,7 +75,7 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 	}
 	c.EXPECT().Create(identityIs(userID), brandID, mock.MatchedBy(func(key *string) bool {
 		return key != nil && *key == "setup-1"
-	})).Return(run, false, nil)
+	}), false).Return(run, false, nil)
 	request, err = http.NewRequest(http.MethodPost, base, strings.NewReader(`{"brandId":"`+brandID.String()+`"}`))
 	require.NoError(t, err)
 	request.Header.Set("Content-Type", "application/json")
@@ -90,7 +90,7 @@ func TestGenerationHandlerAuthValidationAndCreate(t *testing.T) {
 		"state":     "queued",
 		"statusUrl": "/api/v1" + "/generations/" + runID.String(),
 	}, accepted)
-	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything).Return(run, true, nil)
+	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything, false).Return(run, true, nil)
 	resp = doJSON(t, client, http.MethodPost, base, `{}`, brandID)
 	readJSON(t, resp, &accepted)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -125,6 +125,7 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, map[string]any{
 		"id":              runID.String(),
+		"startTracking":   false,
 		"state":           "queued",
 		"attempt":         float64(0),
 		"promptCount":     float64(0),
@@ -163,14 +164,14 @@ func TestGenerationHandlerStatusListAndConflicts(t *testing.T) {
 	readJSON(t, resp, &missing)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 
-	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything).Return(nil, false, domain.ErrInitialAlreadyCompleted).Once()
+	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything, false).Return(nil, false, domain.ErrInitialAlreadyCompleted).Once()
 	resp = doJSON(t, client, http.MethodPost, base, `{}`, brandID)
 	var conflict response.Envelope
 	readJSON(t, resp, &conflict)
 	require.Equal(t, http.StatusConflict, resp.StatusCode)
 	require.Equal(t, domain.CodeInitialAlreadyCompleted, conflict.Error.Code)
 
-	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything).Return(nil, false, domain.ErrFeatureUnavailable).Once()
+	c.EXPECT().Create(identityIs(userID), brandID, mock.Anything, false).Return(nil, false, domain.ErrFeatureUnavailable).Once()
 	resp = doJSON(t, client, http.MethodPost, base, `{}`, brandID)
 	readJSON(t, resp, &conflict)
 	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)

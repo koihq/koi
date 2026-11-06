@@ -31,6 +31,14 @@ func (h *GenerationHandler) Routes() func(chi.Router) {
 
 type CreateGenerationReq struct {
 	BrandRequestScope
+	StartTracking bool `json:"startTracking"`
+}
+
+type GenerationSummaryRes struct {
+	Product   string   `json:"product"`
+	Category  string   `json:"category"`
+	Audience  string   `json:"audience"`
+	Functions []string `json:"functions"`
 }
 
 type GenerationAcceptedRes struct {
@@ -50,6 +58,8 @@ type GenerationRes struct {
 	FinishedAt      *time.Time             `json:"finishedAt,omitempty"`
 	NextRetryAt     *time.Time             `json:"nextRetryAt,omitempty"`
 	ErrorCode       *string                `json:"errorCode,omitempty"`
+	StartTracking   bool                   `json:"startTracking"`
+	Summary         *GenerationSummaryRes  `json:"summary,omitempty"`
 }
 
 func generationStatusURL(runID uuid.UUID) string {
@@ -57,6 +67,16 @@ func generationStatusURL(runID uuid.UUID) string {
 }
 
 func GenerationToRes(run *domain.GenerationRun) GenerationRes {
+	var summary *GenerationSummaryRes
+	if run.Summary != nil {
+		summary = &GenerationSummaryRes{
+			Product:   run.Summary.Product,
+			Category:  run.Summary.Category,
+			Audience:  run.Summary.Audience,
+			Functions: run.Summary.Functions,
+		}
+	}
+
 	return GenerationRes{
 		ID:              run.ID,
 		State:           run.State,
@@ -68,6 +88,8 @@ func GenerationToRes(run *domain.GenerationRun) GenerationRes {
 		FinishedAt:      run.FinishedAt,
 		NextRetryAt:     run.NextRetryAt,
 		ErrorCode:       run.ErrorCode,
+		StartTracking:   run.StartTracking,
+		Summary:         summary,
 	}
 }
 
@@ -89,7 +111,7 @@ func (h *GenerationHandler) Create(w http.ResponseWriter, r *http.Request) {
 		key = &values[0]
 	}
 
-	run, terminalReplay, err := h.commander.Create(r.Context(), input.BrandID, key)
+	run, terminalReplay, err := h.commander.Create(r.Context(), input.BrandID, key, input.StartTracking)
 	if err != nil {
 		response.WriteDomainError(w, r, err)
 

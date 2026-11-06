@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type BrandLookup,
+    BrandLookupFromJSON,
+    BrandLookupToJSON,
+} from '../models/BrandLookup';
+import {
     type BrandPage,
     BrandPageFromJSON,
     BrandPageToJSON,
@@ -44,6 +49,11 @@ import {
     EnvelopeFromJSON,
     EnvelopeToJSON,
 } from '../models/Envelope';
+import {
+    type OnboardingEvent,
+    OnboardingEventFromJSON,
+    OnboardingEventToJSON,
+} from '../models/OnboardingEvent';
 
 export interface ActivateBrandRequest {
     id: string;
@@ -65,6 +75,15 @@ export interface ListBrandsRequest {
     page?: number;
     pageSize?: number;
     q?: string;
+}
+
+export interface LookupBrandRequest {
+    domain?: string;
+    githubRepo?: string;
+}
+
+export interface RecordOnboardingStepRequest {
+    onboardingEvent: OnboardingEvent;
 }
 
 export interface UpdateBrandRequest {
@@ -188,6 +207,52 @@ export interface BrandsApiInterface {
     /**
      */
     listBrands(requestParameters: ListBrandsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage>;
+
+    /**
+     * Creates request options for lookupBrand without sending the request
+     * @param {string} [domain] 
+     * @param {string} [githubRepo] 
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    lookupBrandRequestOpts(requestParameters: LookupBrandRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Reads a suggested name and description from a public website or GitHub repository for the setup form. Pass domain or githubRepo. A site that cannot be read returns found false.
+     * @param {string} [domain] 
+     * @param {string} [githubRepo] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    lookupBrandRaw(requestParameters: LookupBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandLookup>>;
+
+    /**
+     * Reads a suggested name and description from a public website or GitHub repository for the setup form. Pass domain or githubRepo. A site that cannot be read returns found false.
+     */
+    lookupBrand(requestParameters: LookupBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandLookup>;
+
+    /**
+     * Creates request options for recordOnboardingStep without sending the request
+     * @param {OnboardingEvent} onboardingEvent 
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    recordOnboardingStepRequestOpts(requestParameters: RecordOnboardingStepRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Records the first time the organization reached a setup step. Koi Cloud only.
+     * @param {OnboardingEvent} onboardingEvent 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BrandsApiInterface
+     */
+    recordOnboardingStepRaw(requestParameters: RecordOnboardingStepRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Records the first time the organization reached a setup step. Koi Cloud only.
+     */
+    recordOnboardingStep(requestParameters: RecordOnboardingStepRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for updateBrand without sending the request
@@ -436,6 +501,97 @@ export class BrandsApi extends runtime.BaseAPI implements BrandsApiInterface {
     async listBrands(requestParameters: ListBrandsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandPage> {
         const response = await this.listBrandsRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for lookupBrand without sending the request
+     */
+    async lookupBrandRequestOpts(requestParameters: LookupBrandRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['domain'] != null) {
+            queryParameters['domain'] = requestParameters['domain'];
+        }
+
+        if (requestParameters['githubRepo'] != null) {
+            queryParameters['githubRepo'] = requestParameters['githubRepo'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/brands/lookup`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Reads a suggested name and description from a public website or GitHub repository for the setup form. Pass domain or githubRepo. A site that cannot be read returns found false.
+     */
+    async lookupBrandRaw(requestParameters: LookupBrandRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BrandLookup>> {
+        const requestOptions = await this.lookupBrandRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BrandLookupFromJSON(jsonValue));
+    }
+
+    /**
+     * Reads a suggested name and description from a public website or GitHub repository for the setup form. Pass domain or githubRepo. A site that cannot be read returns found false.
+     */
+    async lookupBrand(requestParameters: LookupBrandRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BrandLookup> {
+        const response = await this.lookupBrandRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for recordOnboardingStep without sending the request
+     */
+    async recordOnboardingStepRequestOpts(requestParameters: RecordOnboardingStepRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['onboardingEvent'] == null) {
+            throw new runtime.RequiredError(
+                'onboardingEvent',
+                'Required parameter "onboardingEvent" was null or undefined when calling recordOnboardingStep().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/v1/onboarding/events`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: OnboardingEventToJSON(requestParameters['onboardingEvent']),
+        };
+    }
+
+    /**
+     * Records the first time the organization reached a setup step. Koi Cloud only.
+     */
+    async recordOnboardingStepRaw(requestParameters: RecordOnboardingStepRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.recordOnboardingStepRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Records the first time the organization reached a setup step. Koi Cloud only.
+     */
+    async recordOnboardingStep(requestParameters: RecordOnboardingStepRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.recordOnboardingStepRaw(requestParameters, initOverrides);
     }
 
     /**

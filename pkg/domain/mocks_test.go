@@ -4211,6 +4211,52 @@ func (_c *MockStore_MembershipRepo_Call) RunAndReturn(run func() MembershipRepos
 	return _c
 }
 
+// OnboardingRepo provides a mock function for the type MockStore
+func (_mock *MockStore) OnboardingRepo() OnboardingRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for OnboardingRepo")
+	}
+
+	var r0 OnboardingRepository
+	if returnFunc, ok := ret.Get(0).(func() OnboardingRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(OnboardingRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_OnboardingRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnboardingRepo'
+type MockStore_OnboardingRepo_Call struct {
+	*mock.Call
+}
+
+// OnboardingRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) OnboardingRepo() *MockStore_OnboardingRepo_Call {
+	return &MockStore_OnboardingRepo_Call{Call: _e.mock.On("OnboardingRepo")}
+}
+
+func (_c *MockStore_OnboardingRepo_Call) Run(run func()) *MockStore_OnboardingRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_OnboardingRepo_Call) Return(onboardingRepository OnboardingRepository) *MockStore_OnboardingRepo_Call {
+	_c.Call.Return(onboardingRepository)
+	return _c
+}
+
+func (_c *MockStore_OnboardingRepo_Call) RunAndReturn(run func() OnboardingRepository) *MockStore_OnboardingRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // OrganizationRepo provides a mock function for the type MockStore
 func (_mock *MockStore) OrganizationRepo() OrganizationRepository {
 	ret := _mock.Called()

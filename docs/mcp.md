@@ -18,7 +18,7 @@ Plugin or marketplace packages should point at this same endpoint. No host-speci
 
 ## Agent skills
 
-The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes two optional [Agent Skills](https://agentskills.io/specification) for coding agents: `koi-brief` prepares an evidence-based Markdown visibility brief, and `koi-setup` guides brand, prompt, and competitor setup. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
+The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes two optional [Agent Skills](https://agentskills.io/specification) for coding agents: `koi-brief` prepares an evidence-based Markdown visibility brief, and `koi-setup` guides brand, prompt, and competitor setup through the first visibility check. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
 
 From the agent's working directory, install either or both skills from the [Koi repository](https://github.com/koihq/koi):
 

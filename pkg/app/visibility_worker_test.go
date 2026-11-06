@@ -90,6 +90,10 @@ func (s *visibilityWorkerStore) SaveVisibilityResult(ctx context.Context, _ uuid
 	return nil
 }
 
+func (s *visibilityWorkerStore) EnqueueFirstCheckEmail(context.Context, uuid.UUID) error {
+	return nil
+}
+
 func (s *visibilityWorkerStore) FinishVisibilityAttempt(context.Context, uuid.UUID, int) error {
 	s.finished = true
 	return nil

@@ -4,10 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Credential } from "@/api/generated";
-import claudeLogo from "@/assets/mcp-clients/claude.svg";
-import cursorLogo from "@/assets/mcp-clients/cursor.svg";
-import openaiLogo from "@/assets/mcp-clients/openai.svg";
 import { BrandIcon } from "@/components/blocks/brand-icon";
+import { ClientLogo, clients } from "@/components/blocks/mcp-clients";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,71 +21,11 @@ import { formatDay } from "@/lib/format";
 import { capabilitiesOptions } from "@/lib/queries";
 import { credentialsKey } from "@/lib/query-keys";
 
-type McpClient = {
-  name: string;
-  logo: string;
-  instructions: "chatgptStep" | "claudeStep" | "commandStep" | "cursorStep";
-  signIn: "oauthStep" | "codexSignInStep" | "claudeCodeSignInStep";
-  docs: string;
-  /** Terminal clients take a whole command; the others take the URL in their settings. */
-  command?: (url: string) => string;
-};
-
-const clients: McpClient[] = [
-  {
-    name: "ChatGPT",
-    logo: openaiLogo,
-    instructions: "chatgptStep",
-    signIn: "oauthStep",
-    docs: "https://developers.openai.com/api/docs/guides/custom-mcp-server",
-  },
-  {
-    name: "Claude",
-    logo: claudeLogo,
-    instructions: "claudeStep",
-    signIn: "oauthStep",
-    docs: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
-  },
-  {
-    name: "Codex",
-    logo: openaiLogo,
-    instructions: "commandStep",
-    signIn: "codexSignInStep",
-    docs: "https://developers.openai.com/codex/mcp",
-    command: (url) => `codex mcp add koi --url ${url}`,
-  },
-  {
-    name: "Claude Code",
-    logo: claudeLogo,
-    instructions: "commandStep",
-    signIn: "claudeCodeSignInStep",
-    docs: "https://code.claude.com/docs/en/mcp",
-    command: (url) => `claude mcp add --transport http koi ${url}`,
-  },
-  {
-    name: "Cursor",
-    logo: cursorLogo,
-    instructions: "cursorStep",
-    signIn: "oauthStep",
-    docs: "https://cursor.com/docs/context/mcp",
-  },
-];
-
 const COPIED_FOR_MS = 2_000;
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/connections")({
   component: ConnectionsSettings,
 });
-
-function ClientLogo({ logo, className }: { logo: string; className: string }) {
-  return (
-    <img
-      src={logo}
-      alt=""
-      className={logo === claudeLogo ? className : `${className} dark:invert`}
-    />
-  );
-}
 
 function Step({ number, children }: { number: number; children: React.ReactNode }) {
   return (

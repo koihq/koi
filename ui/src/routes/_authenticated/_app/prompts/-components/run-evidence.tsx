@@ -91,11 +91,13 @@ export function EngineSwitch({
   results,
   selected,
   onSelect,
+  emphasize = false,
 }: {
   run: VisibilityRunStatus;
   results: VisibilityResult[];
   selected: VisibilityEngine;
   onSelect: (engine: VisibilityEngine) => void;
+  emphasize?: boolean;
 }) {
   const { t } = useTranslation("home");
 
@@ -113,6 +115,7 @@ export function EngineSwitch({
         >
           <OutcomeMark
             engine={engine.id}
+            emphasize={emphasize}
             state={getAnswerState(
               run,
               engine.id,

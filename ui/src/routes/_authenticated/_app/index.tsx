@@ -29,7 +29,7 @@ import { useFlip } from "@/hooks/use-flip";
 import { useTracking } from "@/hooks/use-tracking";
 import { brandGlow, brandRowTint } from "@/lib/brand-tint";
 import { formatDay, formatDayRange, formatPoints, formatRate } from "@/lib/format";
-import { keepPreviousDataForScope, visibilitySummaryOptions } from "@/lib/queries";
+import { billingOptions, keepPreviousDataForScope, visibilitySummaryOptions } from "@/lib/queries";
 import { promptKey } from "@/lib/query-keys";
 import {
   engines,
@@ -42,6 +42,7 @@ import {
   PromptManager,
   promptSearchParams,
 } from "@/routes/_authenticated/_app/-components/prompt-manager";
+import { FirstLook } from "./-components/first-look";
 import { TrackingStart } from "./-components/tracking-start";
 
 const graphSearchParams = {
@@ -64,7 +65,31 @@ export const Route = createFileRoute("/_authenticated/_app/")({
   component: Home,
 });
 
+const FIRST_LOOK_SCOPE: VisibilityScope = { days: 30, engines: [] };
+
 function Home() {
+  const api = useApi();
+  const { brand, capabilities, draftStartFailed, me } = Route.useRouteContext();
+  const { draftStart } = Route.useSearch();
+  const billing = useQuery({
+    ...billingOptions(api, me.organization.id),
+    enabled: capabilities.cloudBilling,
+  });
+
+  if (capabilities.cloudBilling && billing.data?.firstLook) {
+    return (
+      <FirstLook
+        brand={brand}
+        scope={FIRST_LOOK_SCOPE}
+        draftStartFailed={draftStartFailed || draftStart === "failed"}
+      />
+    );
+  }
+
+  return <Dashboard />;
+}
+
+function Dashboard() {
   const { t, i18n } = useTranslation("home");
   const { brand, draftStartFailed } = Route.useRouteContext();
   const { draftStart } = Route.useSearch();

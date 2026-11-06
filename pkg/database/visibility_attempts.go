@@ -26,7 +26,7 @@ func (s *Store) BeginVisibilityAttempt(ctx context.Context, runID uuid.UUID, job
 			if err := tx.First(&brand, "id = ?", run.BrandID).Error; err != nil {
 				return mapDBError(err)
 			}
-			allowed, err := cloudTrackingAllowed(ctx, tx, brand.OrganizationID)
+			allowed, err := cloudCollectionAllowed(ctx, tx, brand.OrganizationID, run.FastStart)
 			if err != nil {
 				return err
 			}
@@ -82,7 +82,11 @@ func (s *Store) ContactVisibilityTask(ctx context.Context, runID uuid.UUID, atte
 				Where("visibility_runs.id = ?", runID).Take(&brand).Error; err != nil {
 				return mapDBError(err)
 			}
-			allowed, err := cloudTrackingAllowed(ctx, tx, brand.OrganizationID)
+			var run domain.VisibilityRun
+			if err := tx.Select("fast_start").First(&run, "id = ?", runID).Error; err != nil {
+				return mapDBError(err)
+			}
+			allowed, err := cloudCollectionAllowed(ctx, tx, brand.OrganizationID, run.FastStart)
 			if err != nil {
 				return err
 			}

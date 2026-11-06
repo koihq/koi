@@ -29,6 +29,11 @@ type ServerOptions struct {
 	AIDrafting     bool
 	LiveCollection bool
 	Billing        *BillingHandler
+	BrandLooker    domain.BrandLooker
+}
+
+type OnboardingEventReq struct {
+	Step string `json:"step"`
 }
 
 // services is the single set of domain services shared by the HTTP routes and MCP tools.
@@ -140,7 +145,21 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 				billingGuard = middlewares.RequireBilling(billing.querier)
 			}
 
-			r.Route("/brands", NewBrandHandler(shared.brands, shared.brandCommands, sess, billingGuard).Routes())
+			brands := NewBrandHandler(shared.brands, shared.brandCommands, sess, billingGuard)
+			brands.looker = options.BrandLooker
+			r.Route("/brands", brands.Routes())
+			if billing != nil {
+				r.With(middlewares.DecodeBody[OnboardingEventReq]()).Post("/onboarding/events", func(w http.ResponseWriter, req *http.Request) {
+					input := middlewares.Body[OnboardingEventReq](req)
+					if err := domain.RecordOnboardingStep(req.Context(), store, input.Step); err != nil {
+						response.WriteDomainError(w, req, err)
+
+						return
+					}
+
+					w.WriteHeader(http.StatusNoContent)
+				})
+			}
 			r.Group(func(r chi.Router) {
 				r.Use(billingGuard)
 

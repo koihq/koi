@@ -28,7 +28,7 @@ export function billingNeedsConfirmation(
   checkoutReturned: boolean,
 ) {
   if (billingUpgradeExpired(status, change)) return false;
-  if (checkoutReturned && !status?.promptLimit) return true;
+  if (checkoutReturned && (!status?.promptLimit || status.firstLook)) return true;
   if (status?.subscription?.pendingUpgradeQuantity) return true;
 
   return (

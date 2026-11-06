@@ -52,6 +52,12 @@ export interface BillingStatus {
      * @memberof BillingStatus
      */
     trialAvailable: boolean;
+    /**
+     * The organization never had a subscription or trial, so it may run one free check and keep reading its results.
+     * @type {boolean}
+     * @memberof BillingStatus
+     */
+    firstLook: boolean;
 }
 
 /**
@@ -62,6 +68,7 @@ export function instanceOfBillingStatus(value: object): value is BillingStatus {
     if (!('promptLimit' in value) || value['promptLimit'] === undefined) return false;
     if (!('usedPrompts' in value) || value['usedPrompts'] === undefined) return false;
     if (!('trialAvailable' in value) || value['trialAvailable'] === undefined) return false;
+    if (!('firstLook' in value) || value['firstLook'] === undefined) return false;
     return true;
 }
 
@@ -79,6 +86,7 @@ export function BillingStatusFromJSONTyped(json: any, ignoreDiscriminator: boole
         'promptLimit': json['promptLimit'],
         'usedPrompts': json['usedPrompts'],
         'trialAvailable': json['trialAvailable'],
+        'firstLook': json['firstLook'],
     };
 }
 
@@ -97,6 +105,7 @@ export function BillingStatusToJSONTyped(value?: BillingStatus | null, ignoreDis
         'promptLimit': value['promptLimit'],
         'usedPrompts': value['usedPrompts'],
         'trialAvailable': value['trialAvailable'],
+        'firstLook': value['firstLook'],
     };
 }
 

@@ -47,6 +47,26 @@ function validGitHubRepo(value: string): boolean {
   );
 }
 
+/** True when one setup field holds a usable website or GitHub repository. */
+export function validBrandSite(value: string): boolean {
+  const site = value.trim();
+  if (!site) return false;
+
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(site) ? site : `https://${site}`;
+
+  try {
+    const url = new URL(withScheme);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === "github.com") {
+      return validGitHubRepo(`https://github.com${url.pathname.replace(/\/$/, "")}`);
+    }
+
+    return host.includes(".") && validHostname(host);
+  } catch {
+    return false;
+  }
+}
+
 export const brandFormSchema = z
   .object({
     name: z.string().trim().min(1),

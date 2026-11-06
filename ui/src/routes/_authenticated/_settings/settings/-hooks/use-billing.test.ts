@@ -14,6 +14,7 @@ const status: BillingStatus = {
   promptLimit: 25,
   usedPrompts: 0,
   trialAvailable: false,
+  firstLook: false,
 };
 
 describe("billing state", () => {
@@ -43,6 +44,13 @@ describe("billing state", () => {
   it("waits only while checkout or upgrade confirmation is outstanding", () => {
     expect(billingNeedsConfirmation(undefined, undefined, true)).toBe(true);
     expect(billingNeedsConfirmation(status, undefined, true)).toBe(false);
+    expect(
+      billingNeedsConfirmation(
+        { ...status, subscription: null, promptLimit: 5, firstLook: true },
+        undefined,
+        true,
+      ),
+    ).toBe(true);
     expect(
       billingNeedsConfirmation(status, { quantity: 50, effective: "after_payment" }, false),
     ).toBe(true);

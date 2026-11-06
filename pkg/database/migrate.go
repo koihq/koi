@@ -37,6 +37,7 @@ func Migrate(db *gorm.DB) error {
 		&domain.GenerationRun{},
 		&domain.VisibilityRun{},
 		&domain.VisibilityResult{},
+		&domain.OnboardingEvent{},
 		&sessionRow{},
 	)
 }

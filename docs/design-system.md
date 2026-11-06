@@ -48,6 +48,9 @@ The PNG Koi mark is unchanged in both themes; primary actions stay neutral.
 - `Checkbox`: 16px visual box with a 6px hit extension on each side, placed inside
   a 28px wrapper. Checked and indeterminate states remain visible in forced colors.
   Accessible name and state are required; Tab/Space operate the control. No animation.
+- `RadioGroup`: 16px circle with a hit extension, same focus outline as `Checkbox`. Arrow keys
+  move the choice. Setup wraps each item in a bordered label; the border is the control, not
+  grouping, and the selected border uses `foreground`.
 - `Select`: use for compact status and page-size choices; do not hand-style native
   selects in routes.
 - `Input` and `Textarea`: 16px below `sm`. Input is 14px from `sm`; Textarea is 14px

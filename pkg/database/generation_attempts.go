@@ -142,19 +142,24 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 	return promptCount, competitorCount, err
 }
 
+// SaveGenerationSummary stores what the research understood while the draft continues.
+func (s *Store) SaveGenerationSummary(ctx context.Context, runID uuid.UUID, summary domain.GenerationSummary) error {
+	return s.db.WithContext(ctx).Model(&domain.GenerationRun{}).Where("id = ?", runID).
+		Select("summary").Updates(&domain.GenerationRun{Summary: &summary}).Error
+}
+
 func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID) (int, error) {
 	var brand domain.Brand
 	if err := db.WithContext(ctx).Select("organization_id").Where("id = ?", brandID).Take(&brand).Error; err != nil {
 		return 0, err
 	}
 
-	subscription, err := cloudSubscription(ctx, db, brand.OrganizationID)
+	limit, err := cloudPromptLimit(ctx, db, brand.OrganizationID)
 	if err != nil {
 		return 0, err
 	}
 
-	now := time.Now().UTC()
-	if subscription.PromptLimit(now) == 0 {
+	if limit == 0 {
 		return 0, domain.ErrBillingRequired
 	}
 
@@ -163,7 +168,7 @@ func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID) 
 		return 0, err
 	}
 
-	return subscription.GenerationBudget(now, int(count)), nil
+	return domain.GenerationBudget(limit, int(count)), nil
 }
 
 func insertGeneratedPrompts(tx *gorm.DB, brandID uuid.UUID, suggestions []string, budget int) (int, error) {

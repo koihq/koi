@@ -60,7 +60,9 @@
     "collection_unavailable": "Live collection is unavailable. Ask your instance administrator to configure Cloro.",
     "start_required": "Start tracking to begin daily checks.",
     "prompts_required": "Resume or add a prompt to continue daily checks.",
-    "billing_inactive_or_over_limit": "Tracking is paused. Check billing and deactivate prompts above your allowance to resume collection."
+    "billing_inactive_or_over_limit": "Tracking is paused. Check billing and deactivate prompts above your allowance to resume collection.",
+    "first_look_used": "Your free check is done. Start your trial to check these prompts every day.",
+    "first_look_unavailable": "The free check isn't available for this brand right now. Start your trial to check it every day."
   },
   "whoAppeared": "Who appeared",
   "noAppearances": "No competitors identified in this answer.",

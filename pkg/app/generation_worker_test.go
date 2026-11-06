@@ -58,7 +58,15 @@ type workerProvider struct {
 	generate func(context.Context) (domain.GenerationResult, error)
 }
 
-func (p workerProvider) Generate(ctx context.Context, _ string, _ domain.GenerationInput) (domain.GenerationResult, error) {
+func (s *workerStore) SaveGenerationSummary(context.Context, uuid.UUID, domain.GenerationSummary) error {
+	return nil
+}
+
+func (s *workerStore) StartTrackingAsOwner(context.Context, uuid.UUID) error {
+	return nil
+}
+
+func (p workerProvider) Generate(ctx context.Context, _ string, _ domain.GenerationInput, _ func(domain.GenerationSummary)) (domain.GenerationResult, error) {
 	if p.generate != nil {
 		return p.generate(ctx)
 	}

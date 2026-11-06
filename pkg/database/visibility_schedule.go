@@ -68,7 +68,10 @@ func (r *GormVisibilityRepository) StartTracking(ctx context.Context, brandID uu
 			return nil
 		}
 
-		return NewVisibilityRepository(tx, r.client, r.enabled, r.cloudMode).schedule(ctx, brand, now)
+		repository := NewVisibilityRepository(tx, r.client, r.enabled, r.cloudMode)
+		repository.firstLookDailyLimit = r.firstLookDailyLimit
+
+		return repository.schedule(ctx, brand, now)
 	})
 }
 
@@ -104,7 +107,19 @@ func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *dom
 		return domain.TrackingBlockedReason(readiness), nil
 	}
 	if r.cloudMode {
-		allowed, err := cloudTrackingAllowed(ctx, r.db, brand.OrganizationID)
+		firstLook, err := cloudFirstLook(ctx, r.db, brand.OrganizationID)
+		if err != nil {
+			return "", err
+		}
+
+		if firstLook {
+			reason, err := r.firstLookBlockedReason(ctx, brand)
+			if err != nil || reason != "" {
+				return reason, err
+			}
+		}
+
+		allowed, err := cloudCollectionAllowed(ctx, r.db, brand.OrganizationID, firstLook)
 		if err != nil {
 			return "", err
 		}
@@ -118,6 +133,74 @@ func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *dom
 	}
 
 	return domain.TrackingBlockedReason(readiness), nil
+}
+
+// firstLookBlockedReason limits unpaid collection: one run per organization, one organization per
+// site, and a daily total that caps what abuse can spend, since sign-up is otherwise unmetered.
+func (r *GormVisibilityRepository) firstLookBlockedReason(ctx context.Context, brand *domain.Brand) (string, error) {
+	db := r.db.WithContext(ctx)
+
+	var used bool
+	if err := db.Raw(`SELECT EXISTS (SELECT 1 FROM visibility_runs
+		JOIN brands ON brands.id = visibility_runs.brand_id
+		WHERE brands.organization_id = ?)`, brand.OrganizationID).Scan(&used).Error; err != nil {
+		return "", err
+	}
+	if used {
+		return domain.TrackingBlockedFirstLookUsed, nil
+	}
+
+	var taken bool
+	if err := db.Raw(`SELECT EXISTS (SELECT 1 FROM visibility_runs
+		JOIN brands ON brands.id = visibility_runs.brand_id
+		WHERE brands.organization_id <> ? AND (
+			(? <> '' AND lower(brands.domain) = lower(?)) OR
+			(? <> '' AND lower(brands.github_repo) = lower(?))
+		))`, brand.OrganizationID, brand.Domain, brand.Domain, brand.GitHubRepo, brand.GitHubRepo).
+		Scan(&taken).Error; err != nil {
+		return "", err
+	}
+	if taken {
+		return domain.TrackingBlockedFirstLookUnavailable, nil
+	}
+
+	var today int64
+	if err := db.Model(&domain.VisibilityRun{}).
+		Where("fast_start AND created_at > ?", time.Now().UTC().Add(-24*time.Hour)).
+		Count(&today).Error; err != nil {
+		return "", err
+	}
+	if today >= int64(r.firstLookDailyLimit) {
+		return domain.TrackingBlockedFirstLookUnavailable, nil
+	}
+
+	return "", nil
+}
+
+func (s *Store) ownerContext(ctx context.Context, organizationID uuid.UUID) (context.Context, error) {
+	var owner domain.Membership
+	if err := s.db.WithContext(ctx).
+		Where("organization_id = ? AND role = ?", organizationID, domain.RoleOwner).
+		Take(&owner).Error; err != nil {
+		return nil, err
+	}
+
+	return auth.WithIdentity(ctx, auth.Identity{UserID: owner.UserID, OrganizationID: owner.OrganizationID, Role: owner.Role}), nil
+}
+
+// StartTrackingAsOwner starts collection from a worker, which has no request identity.
+func (s *Store) StartTrackingAsOwner(ctx context.Context, brandID uuid.UUID) error {
+	var brand domain.Brand
+	if err := s.db.WithContext(ctx).Select("organization_id").Where("id = ?", brandID).Take(&brand).Error; err != nil {
+		return mapDBError(err)
+	}
+
+	ownerCtx, err := s.ownerContext(ctx, brand.OrganizationID)
+	if err != nil {
+		return mapDBError(err)
+	}
+
+	return s.VisibilityRepo().StartTracking(ownerCtx, brandID)
 }
 
 // DispatchVisibility uses persisted UTC slots; a restart does not reset the cadence.
@@ -134,16 +217,13 @@ func (s *Store) DispatchVisibility(ctx context.Context, now time.Time) error {
 	}
 
 	for _, candidate := range brands {
-		var owner domain.Membership
-		if err := s.db.WithContext(ctx).
-			Where("organization_id = ? AND role = ?", candidate.OrganizationID, domain.RoleOwner).
-			Take(&owner).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue
-			}
+		ownerCtx, err := s.ownerContext(ctx, candidate.OrganizationID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			continue
+		}
+		if err != nil {
 			return err
 		}
-		ownerCtx := auth.WithIdentity(ctx, auth.Identity{UserID: owner.UserID, OrganizationID: owner.OrganizationID, Role: owner.Role})
 		if err := s.Atomic(ownerCtx, func(tx domain.Store) error {
 			brand, err := tx.BrandRepo().LockForUpdate(ownerCtx, candidate.ID)
 			if err != nil {

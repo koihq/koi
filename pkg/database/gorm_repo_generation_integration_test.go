@@ -42,14 +42,14 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 		require.NoError(t, db.Model(&domain.GenerationRun{}).
 			Where("brand_id = ? AND state = ?", brand.ID, domain.GenerationSucceeded).
 			Update("state", domain.GenerationFailed).Error)
-		run, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil)
+		run, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil, false)
 		require.NoError(t, err)
 
 		return run
 	}
 
 	// A missing River table makes InsertTx fail after GORM inserts the run; Atomic must roll it back.
-	_, _, err = domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, &key)
+	_, _, err = domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, &key, false)
 	require.Error(t, err)
 	var runCount, jobCount int64
 	require.NoError(t, db.Model(&domain.GenerationRun{}).Count(&runCount).Error)
@@ -71,7 +71,7 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	for range 2 {
 		go func() {
 			start.Wait()
-			run, _, createErr := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, &key)
+			run, _, createErr := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, &key, false)
 			results <- result{run: run, err: createErr}
 		}()
 	}
@@ -90,7 +90,7 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	var jobArgs string
 	require.NoError(t, sqlDB.QueryRowContext(t.Context(), "SELECT args::text FROM river_job WHERE id = $1", *first.run.RiverJobID).Scan(&jobArgs))
 	require.JSONEq(t, `{"run_id":"`+first.run.ID.String()+`"}`, jobArgs)
-	replayed, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil)
+	replayed, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil, false)
 	require.NoError(t, err)
 	require.Equal(t, first.run.ID, replayed.ID, "an active draft answers a new request")
 
@@ -115,9 +115,9 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	requireConstraint(t, db.Create(&duplicate).Error, "idx_generation_runs_key")
 	require.NoError(t, db.Model(&domain.GenerationRun{}).Where("id = ?", first.run.ID).
 		Update("created_at", time.Now().Add(-time.Hour)).Error)
-	newer, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil)
+	newer, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil, false)
 	require.NoError(t, err, "a failed draft can run again")
-	active, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil)
+	active, _, err := domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil, false)
 	require.NoError(t, err)
 	require.Equal(t, newer.ID, active.ID)
 	page1, err := domain.NewGenerationQuerier(store).List(ctx, domain.BrandFilter{BrandID: brand.ID}, domain.PageParams{Page: 1, PageSize: 1})
@@ -196,7 +196,7 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.Nil(t, started)
 
 	// One success ends drafting for the brand.
-	_, _, err = domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil)
+	_, _, err = domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil, false)
 	require.ErrorIs(t, err, domain.ErrInitialAlreadyCompleted)
 
 	raceRun := retryDraft()
@@ -311,12 +311,12 @@ func TestGenerationTransactionalEnqueueAndIndexes(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNotFound)
 	_, err = domain.NewGenerationQuerier(store).List(otherCtx, domain.BrandFilter{BrandID: brand.ID}, domain.PageParams{Page: 1, PageSize: 10})
 	require.ErrorIs(t, err, domain.ErrNotFound)
-	_, _, err = domain.NewGenerationCommander(store, true).Create(otherCtx, brand.ID, nil)
+	_, _, err = domain.NewGenerationCommander(store, true).Create(otherCtx, brand.ID, nil, false)
 	require.ErrorIs(t, err, domain.ErrNotFound)
 
 	// Tracking ends drafting too, even after a failed draft.
 	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
-	_, _, err = domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil)
+	_, _, err = domain.NewGenerationCommander(store, true).Create(ctx, brand.ID, nil, false)
 	require.ErrorIs(t, err, domain.ErrInitialAlreadyCompleted)
 
 	require.NoError(t, db.Delete(&domain.Brand{}, "id = ?", brand.ID).Error)

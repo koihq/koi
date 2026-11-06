@@ -87,16 +87,18 @@ func (s *billingService) Subscription(ctx context.Context) (BillingStatus, error
 		return BillingStatus{}, err
 	}
 
-	status := BillingStatus{
-		Subscription:   subscription,
-		UsedPrompts:    usedPrompts,
-		TrialAvailable: organization.TrialUsedAt == nil,
-	}
+	var current BillingSubscription
 	if subscription != nil {
-		status.PromptLimit = subscription.PromptLimit(time.Now().UTC())
+		current = *subscription
 	}
 
-	return status, nil
+	return BillingStatus{
+		Subscription:   subscription,
+		PromptLimit:    EffectivePromptLimit(current, organization.TrialUsedAt, time.Now().UTC()),
+		UsedPrompts:    usedPrompts,
+		TrialAvailable: organization.TrialUsedAt == nil,
+		FirstLook:      IsFirstLook(current, organization.TrialUsedAt),
+	}, nil
 }
 
 func (s *billingService) ConfirmCheckout(ctx context.Context, sessionID string) (BillingStatus, error) {

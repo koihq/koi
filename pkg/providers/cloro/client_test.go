@@ -195,3 +195,25 @@ func TestMalformedOptionalMetadataKeepsAnswer(t *testing.T) {
 		}
 	}
 }
+
+func TestEngineOutageIsNotAnInvalidRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"success":false,"error":{"code":"MODEL_UNAVAILABLE","message":"down"}}`))
+	}))
+	defer server.Close()
+
+	client := New("key")
+	client.syncHTTP.SetBaseURL(server.URL)
+
+	_, err := client.Fetch(t.Context(), domain.VisibilityResult{
+		PromptText: "Best tools?",
+		Engine:     domain.EnginePerplexity,
+	}, "US")
+
+	var failure *Error
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, "cloro_engine_unavailable", failure.Code)
+	require.False(t, failure.Retryable)
+	require.False(t, failure.AccountWide)
+}

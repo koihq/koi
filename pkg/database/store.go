@@ -16,16 +16,17 @@ import (
 var errNoDatabase = errors.New("database not connected")
 
 type Store struct {
-	liveCollection bool
-	cloudMode      bool
-	welcomeEmail   bool
-	passwordReset  bool
-	db             *gorm.DB
-	enqueueClient  *river.Client[*sql.Tx]
+	liveCollection      bool
+	cloudMode           bool
+	welcomeEmail        bool
+	passwordReset       bool
+	firstLookDailyLimit int
+	db                  *gorm.DB
+	enqueueClient       *river.Client[*sql.Tx]
 }
 
 func NewStore(db *gorm.DB) *Store {
-	return &Store{db: db}
+	return &Store{db: db, firstLookDailyLimit: domain.DefaultFirstLookDailyLimit}
 }
 
 func (s *Store) WithEnqueueClient(client *river.Client[*sql.Tx]) *Store {
@@ -82,6 +83,49 @@ func (s *Store) EnqueueWelcomeEmail(ctx context.Context, userID uuid.UUID) error
 	})
 
 	return err
+}
+
+// FirstCheckEmailJobArgs names the run; the worker reads the address and brand when sending.
+type FirstCheckEmailJobArgs struct {
+	RunID uuid.UUID `json:"run_id"`
+}
+
+func (FirstCheckEmailJobArgs) Kind() string { return "koi_first_check_email" }
+
+// EnqueueFirstCheckEmail tells the owner their first check is ready. Each run sends at most once.
+func (s *Store) EnqueueFirstCheckEmail(ctx context.Context, runID uuid.UUID) error {
+	if !s.welcomeEmail || s.enqueueClient == nil {
+		return nil
+	}
+
+	_, err := s.enqueueClient.Insert(ctx, FirstCheckEmailJobArgs{RunID: runID}, &river.InsertOpts{
+		Queue:       "email",
+		MaxAttempts: 3,
+		UniqueOpts:  river.UniqueOpts{ByArgs: true},
+	})
+
+	return err
+}
+
+// FirstCheckEmail returns the owner's address, the brand name and how many real answers the run
+// collected. Workers have no request identity, so this joins through the run itself.
+func (s *Store) FirstCheckEmail(ctx context.Context, runID uuid.UUID) (string, string, int, error) {
+	var row struct {
+		Email   string
+		Name    string
+		Answers int
+	}
+
+	err := s.db.WithContext(ctx).Raw(`SELECT users.email, brands.name,
+			(SELECT count(*) FROM visibility_results AS results
+			 WHERE results.run_id = runs.id AND results.outcome IN ('cited', 'mentioned', 'miss')) AS answers
+		FROM visibility_runs AS runs
+		JOIN brands ON brands.id = runs.brand_id
+		JOIN memberships ON memberships.organization_id = brands.organization_id AND memberships.role = ?
+		JOIN users ON users.id = memberships.user_id
+		WHERE runs.id = ?`, domain.RoleOwner, runID).Scan(&row).Error
+
+	return row.Email, row.Name, row.Answers, err
 }
 
 // PasswordResetJobArgs holds an address, never a token: the worker creates that when sending.
@@ -166,6 +210,19 @@ func (s *Store) WithCloudMode(enabled bool) *Store {
 	return s
 }
 
+func (s *Store) OnboardingRepo() domain.OnboardingRepository {
+	return NewOnboardingRepository(s.db)
+}
+
+func (s *Store) WithFirstLookDailyLimit(limit int) *Store {
+	s.firstLookDailyLimit = limit
+
+	return s
+}
+
 func (s *Store) VisibilityRepo() domain.VisibilityRepository {
-	return NewVisibilityRepository(s.db, s.enqueueClient, s.liveCollection, s.cloudMode)
+	repository := NewVisibilityRepository(s.db, s.enqueueClient, s.liveCollection, s.cloudMode)
+	repository.firstLookDailyLimit = s.firstLookDailyLimit
+
+	return repository
 }

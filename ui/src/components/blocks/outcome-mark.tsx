@@ -19,10 +19,13 @@ const tones: Record<AnswerState, string> = {
 export function OutcomeMark({
   engine,
   state,
+  emphasize = false,
   className,
 }: {
   engine: VisibilityEngine;
   state: AnswerState;
+  /** Colors a miss as a loss, for views that lead with who won instead. */
+  emphasize?: boolean;
   className?: string;
 }) {
   const { t } = useTranslation(["home", "visibility"]);
@@ -39,7 +42,7 @@ export function OutcomeMark({
       title={label}
       className={cn(
         "inline-grid size-6 shrink-0 place-items-center rounded-full",
-        tones[state],
+        emphasize && state === "miss" ? "bg-negative/15 text-negative" : tones[state],
         className,
       )}
     >

@@ -21,6 +21,7 @@ models/BillingQuote.ts
 models/BillingRedirect.ts
 models/BillingStatus.ts
 models/BillingSubscription.ts
+models/BrandLookup.ts
 models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
@@ -47,11 +48,13 @@ models/GenerationAccepted.ts
 models/GenerationPage.ts
 models/GenerationRequest.ts
 models/GenerationStatus.ts
+models/GenerationSummary.ts
 models/HealthResponse.ts
 models/MeRes.ts
 models/OAuthConsent.ts
 models/OAuthConsentDecision.ts
 models/OAuthConsentRedirect.ts
+models/OnboardingEvent.ts
 models/OrgRes.ts
 models/PromptHistoryRun.ts
 models/PromptHistoryRunPage.ts

@@ -30,13 +30,36 @@ func cloudSubscription(ctx context.Context, db *gorm.DB, organizationID uuid.UUI
 	return subscription, err
 }
 
-func cloudPromptLimit(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (int, error) {
+func cloudEntitlement(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (domain.BillingSubscription, *time.Time, error) {
 	subscription, err := cloudSubscription(ctx, db, organizationID)
+	if err != nil {
+		return domain.BillingSubscription{}, nil, err
+	}
+
+	var organization domain.Organization
+	if err := db.WithContext(ctx).Select("trial_used_at").Where("id = ?", organizationID).Take(&organization).Error; err != nil {
+		return domain.BillingSubscription{}, nil, mapDBError(err)
+	}
+
+	return subscription, organization.TrialUsedAt, nil
+}
+
+func cloudPromptLimit(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (int, error) {
+	subscription, trialUsedAt, err := cloudEntitlement(ctx, db, organizationID)
 	if err != nil {
 		return 0, err
 	}
 
-	return subscription.PromptLimit(time.Now().UTC()), nil
+	return domain.EffectivePromptLimit(subscription, trialUsedAt, time.Now().UTC()), nil
+}
+
+func cloudFirstLook(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (bool, error) {
+	subscription, trialUsedAt, err := cloudEntitlement(ctx, db, organizationID)
+	if err != nil {
+		return false, err
+	}
+
+	return domain.IsFirstLook(subscription, trialUsedAt), nil
 }
 
 func activePromptCount(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (int64, error) {
@@ -74,7 +97,12 @@ func requirePromptCapacity(ctx context.Context, db *gorm.DB, organizationID uuid
 	return nil
 }
 
-func cloudTrackingAllowed(ctx context.Context, db *gorm.DB, organizationID uuid.UUID) (bool, error) {
+// cloudCollectionAllowed gates a collection. A First Look organization may only run its first.
+func cloudCollectionAllowed(ctx context.Context, db *gorm.DB, organizationID uuid.UUID, firstRun bool) (bool, error) {
+	firstLook, err := cloudFirstLook(ctx, db, organizationID)
+	if err != nil || (firstLook && !firstRun) {
+		return false, err
+	}
 	limit, err := cloudPromptLimit(ctx, db, organizationID)
 	if err != nil || limit == 0 {
 		return false, err

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -330,4 +331,51 @@ func TestBrandHandlerOwnershipAndMultipleBrands(t *testing.T) {
 	readJSON(t, resp, &secondCreated)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
 	require.Equal(t, "Second", secondCreated.Name)
+}
+
+type stubBrandLooker struct {
+	lookup domain.BrandLookup
+	err    error
+	calls  int
+}
+
+func (s *stubBrandLooker) Lookup(context.Context, string, string) (domain.BrandLookup, error) {
+	s.calls++
+
+	return s.lookup, s.err
+}
+
+func TestBrandLookupValidatesBeforeFetching(t *testing.T) {
+	for _, test := range []struct {
+		name, host, repo string
+		wantErr          bool
+		wantCalls        int
+	}{
+		{"website", "acme.com", "", false, 1},
+		{"repository", "", "https://github.com/koihq/koi", false, 1},
+		{"neither", "", "", true, 0},
+		{"both", "acme.com", "https://github.com/koihq/koi", true, 0},
+		{"internal address", "169.254.169.254", "", true, 0},
+		{"not a hostname", "acme.com/admin", "", true, 0},
+		{"other repository host", "", "https://evil.example/koihq/koi", true, 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			looker := &stubBrandLooker{lookup: domain.BrandLookup{Found: true, Name: "Acme"}}
+
+			lookup, err := domain.LookupBrand(t.Context(), looker, test.host, test.repo)
+			require.Equal(t, test.wantErr, err != nil)
+			require.Equal(t, test.wantCalls, looker.calls)
+			require.Equal(t, !test.wantErr, lookup.Found)
+		})
+	}
+}
+
+func TestBrandLookupFailureIsNotFound(t *testing.T) {
+	lookup, err := domain.LookupBrand(t.Context(), &stubBrandLooker{err: errors.New("offline")}, "acme.com", "")
+	require.NoError(t, err)
+	require.False(t, lookup.Found)
+
+	lookup, err = domain.LookupBrand(t.Context(), nil, "acme.com", "")
+	require.NoError(t, err)
+	require.False(t, lookup.Found)
 }

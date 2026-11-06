@@ -24,4 +24,5 @@ type Store interface {
 	CompetitorRepo() CompetitorRepository
 	GenerationRepo() GenerationRepository
 	VisibilityRepo() VisibilityRepository
+	OnboardingRepo() OnboardingRepository
 }

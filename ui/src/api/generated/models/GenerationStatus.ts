@@ -14,12 +14,32 @@
  */
 
 import { mapValues } from '../runtime';
+import type { GenerationSummary } from './GenerationSummary';
+import {
+    GenerationSummaryFromJSON,
+    GenerationSummaryFromJSONTyped,
+    GenerationSummaryToJSON,
+    GenerationSummaryToJSONTyped,
+} from './GenerationSummary';
+
 /**
  * 
  * @export
  * @interface GenerationStatus
  */
 export interface GenerationStatus {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof GenerationStatus
+     */
+    startTracking: boolean;
+    /**
+     * 
+     * @type {GenerationSummary}
+     * @memberof GenerationStatus
+     */
+    summary?: GenerationSummary;
     /**
      * 
      * @type {string}
@@ -99,6 +119,7 @@ export type GenerationStatusStateEnum = typeof GenerationStatusStateEnum[keyof t
  * Check if a given object implements the GenerationStatus interface.
  */
 export function instanceOfGenerationStatus(value: object): value is GenerationStatus {
+    if (!('startTracking' in value) || value['startTracking'] === undefined) return false;
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('state' in value) || value['state'] === undefined) return false;
     if (!('attempt' in value) || value['attempt'] === undefined) return false;
@@ -118,6 +139,8 @@ export function GenerationStatusFromJSONTyped(json: any, ignoreDiscriminator: bo
     }
     return {
         
+        'startTracking': json['startTracking'],
+        'summary': json['summary'] == null ? undefined : GenerationSummaryFromJSON(json['summary']),
         'id': json['id'],
         'state': json['state'],
         'attempt': json['attempt'],
@@ -142,6 +165,8 @@ export function GenerationStatusToJSONTyped(value?: GenerationStatus | null, ign
 
     return {
         
+        'startTracking': value['startTracking'],
+        'summary': GenerationSummaryToJSON(value['summary']),
         'id': value['id'],
         'state': value['state'],
         'attempt': value['attempt'],

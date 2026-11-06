@@ -41,7 +41,9 @@ export function TrackingSummary({
       ) : null}
       {state.blockedReason ? <p>{t(`blocked.${state.blockedReason}`)}</p> : null}
       <div className="flex flex-wrap gap-4">
-        {state.blockedReason === "billing_inactive_or_over_limit" ? (
+        {state.blockedReason === "billing_inactive_or_over_limit" ||
+        state.blockedReason === "first_look_used" ||
+        state.blockedReason === "first_look_unavailable" ? (
           <Link to="/settings/billing" className="underline underline-offset-4">
             {t("reviewBilling")}
           </Link>

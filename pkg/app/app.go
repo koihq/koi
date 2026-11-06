@@ -30,6 +30,7 @@ import (
 	"github.com/koihq/koi/pkg/providers/logodev"
 	"github.com/koihq/koi/pkg/providers/openrouter"
 	resendprovider "github.com/koihq/koi/pkg/providers/resend"
+	"github.com/koihq/koi/pkg/providers/sitelookup"
 	"github.com/koihq/koi/pkg/providers/stripe"
 )
 
@@ -50,6 +51,7 @@ type Config struct {
 	StripeWebhookSecret string
 	StripePriceID       string
 	PublicURL           string
+	FirstLookDailyLimit int
 }
 
 func LoadConfig() (Config, error) {
@@ -121,6 +123,11 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	firstLookDailyLimit, err := positiveIntEnv("KOI_FIRST_LOOK_DAILY_LIMIT", domain.DefaultFirstLookDailyLimit)
+	if err != nil {
+		return Config{}, err
+	}
+
 	providerTimeout := 3 * time.Minute
 	if raw, ok := os.LookupEnv("KOI_PROVIDER_TIMEOUT"); ok {
 		providerTimeout, err = time.ParseDuration(raw)
@@ -153,6 +160,7 @@ func LoadConfig() (Config, error) {
 		StripeWebhookSecret: stripeWebhookSecret,
 		StripePriceID:       stripePriceID,
 		PublicURL:           publicURL,
+		FirstLookDailyLimit: firstLookDailyLimit,
 	}, nil
 }
 
@@ -280,6 +288,8 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 	var riverClient *river.Client[*sql.Tx]
 	workers := a.workers
+	// Workers start collection and emails, so their stores get the River client once it exists.
+	var workerStores []*database.Store
 	if sqlDB != nil && (a.cfg.OpenRouterAPIKey != "" || a.cfg.CloroAPIKey != "" || a.cfg.ResendAPIKey != "") {
 		queues := map[string]river.QueueConfig{}
 		if workers == nil {
@@ -288,8 +298,11 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 				if a.provider == nil {
 					a.provider = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
 				}
+				generationStore := database.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud").
+					WithLiveCollection(a.cfg.CloroAPIKey != "").WithFirstLookDailyLimit(a.cfg.FirstLookDailyLimit)
+				workerStores = append(workerStores, generationStore)
 				river.AddWorker(workers, &generationWorker{
-					store:    database.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud"),
+					store:    generationStore,
 					provider: a.provider,
 					timeout:  2*a.cfg.ProviderTimeout + 30*time.Second,
 				})
@@ -298,14 +311,21 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 				if a.cloroProvider == nil {
 					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey)
 				}
+				visibilityStore := database.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud").
+					WithWelcomeEmail(a.cfg.ResendAPIKey != "")
+				workerStores = append(workerStores, visibilityStore)
 				river.AddWorker(workers, &visibilityWorker{
-					store:     database.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud"),
+					store:     visibilityStore,
 					provider:  a.cloroProvider,
 					syncSlots: make(chan struct{}, a.cfg.WorkerConcurrency),
 				})
 			}
 			if a.cfg.ResendAPIKey != "" {
 				river.AddWorker(workers, &welcomeWorker{
+					store:  database.NewStore(db),
+					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
+				})
+				river.AddWorker(workers, &firstCheckEmailWorker{
 					store:  database.NewStore(db),
 					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
 				})
@@ -341,8 +361,12 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		if err != nil {
 			return fmt.Errorf("create river client: %w", err)
 		}
+		for _, workerStore := range workerStores {
+			workerStore.WithEnqueueClient(riverClient)
+		}
 		maintenance.store = database.NewStore(db).WithEnqueueClient(riverClient).
-			WithLiveCollection(a.cfg.CloroAPIKey != "").WithCloudMode(a.cfg.DeploymentMode == "cloud")
+			WithLiveCollection(a.cfg.CloroAPIKey != "").WithCloudMode(a.cfg.DeploymentMode == "cloud").
+			WithFirstLookDailyLimit(a.cfg.FirstLookDailyLimit)
 		if a.cfg.DeploymentMode == "cloud" {
 			maintenance.billing = domain.NewBillingCommander(maintenance.store, stripe.New(a.cfg.StripeSecretKey), a.cfg.StripePriceID, a.cfg.PublicURL)
 		}
@@ -354,11 +378,13 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	store := database.NewStore(db).WithEnqueueClient(riverClient).
 		WithWelcomeEmail(a.cfg.ResendAPIKey != "").
 		WithPasswordResetEmail(a.cfg.ResendAPIKey != "" && a.cfg.PublicURL != "").
-		WithLiveCollection(liveCollection).WithCloudMode(a.cfg.DeploymentMode == "cloud")
+		WithLiveCollection(liveCollection).WithCloudMode(a.cfg.DeploymentMode == "cloud").
+		WithFirstLookDailyLimit(a.cfg.FirstLookDailyLimit)
 	options := api.ServerOptions{
 		Searcher:       searcher,
 		AIDrafting:     a.cfg.OpenRouterAPIKey != "" && riverClient != nil,
 		LiveCollection: liveCollection,
+		BrandLooker:    sitelookup.New(),
 	}
 	if a.cfg.DeploymentMode == "cloud" {
 		stripeClient := stripe.New(a.cfg.StripeSecretKey)
