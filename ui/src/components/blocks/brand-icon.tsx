@@ -2,95 +2,76 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "cn";
 import { useState } from "react";
 import { useApi } from "@/api/apiProvider";
-import { useDarkMode } from "@/hooks/use-dark-mode";
+import { useLogoInfo } from "@/lib/logo-info";
 import { capabilitiesOptions } from "@/lib/queries";
 
-type LogoAppearance = {
-  fit?: "image" | "symbol";
-  background?: string;
-  theme?: "light" | "dark";
-};
+const LOGO_SIZE = 64;
 
-// These assets already contain a background or a circular badge. Keep them edge to edge.
-const logoOverrides: Record<string, LogoAppearance & { domain?: string }> = {
-  "amplitude.com": { fit: "image" },
-  "beehiiv.com": { fit: "image" },
-  "fillout.com": { fit: "image" },
-  "gitbook.com": { fit: "image" },
-  "jotform.com": { fit: "image" },
-  "kit.com": { fit: "image" },
-  "mintlify.com": { fit: "image" },
-  "mixpanel.com": { fit: "image" },
-  "peec.ai": { fit: "image" },
-  "posthog.com": { fit: "image" },
-  "readme.com": { domain: "readme.io", fit: "image" },
-  "readme.io": { fit: "image" },
-  "substack.com": { fit: "image" },
-  "tryprofound.com": { fit: "image" },
-};
-
-export function logoDevURL(
-  domain: string,
-  token: string | undefined,
-  theme: "light" | "dark" = "light",
-): string | null {
+/**
+ * Logo.dev CDN URL. Logos always come in their light variant: every logo sits on its own
+ * disc (its background, or white), so the page theme never changes how it is drawn.
+ */
+export function logoDevURL(domain: string, token: string | undefined): string | null {
   const key = token?.trim();
   if (!key || !domain) return null;
 
-  const logoDomain = logoOverrides[domain.toLowerCase()]?.domain ?? domain;
+  return `https://img.logo.dev/${encodeURIComponent(domain)}?token=${encodeURIComponent(key)}&size=${LOGO_SIZE}&format=webp&fallback=404&theme=light`;
+}
 
-  return `https://img.logo.dev/${encodeURIComponent(logoDomain)}?token=${encodeURIComponent(key)}&size=64&format=webp&fallback=404&theme=${theme}`;
+function useLogoURL(domain: string, enabled: boolean): string | null {
+  const capabilities = useQuery({ ...capabilitiesOptions(useApi()), enabled });
+
+  return enabled ? logoDevURL(domain, capabilities.data?.logoDevPublishableKey) : null;
+}
+
+/**
+ * The brand color read from a domain's logo, or null for monochrome logos, missing logos
+ * and instances without Logo.dev. Callers fall back to neutral tokens.
+ */
+export function useBrandColor(domain: string | undefined): string | null {
+  const url = useLogoURL(domain ?? "", Boolean(domain));
+
+  return useLogoInfo(url)?.color ?? null;
 }
 
 export function brandInitial(name: string, domain: string): string {
   return (name.trim() || domain.trim() || "?").charAt(0).toLocaleUpperCase();
 }
 
+/**
+ * A brand as a round coin: its logo when Logo.dev has one, otherwise its initial.
+ * Logos with their own background or round badge fill the coin; transparent glyphs sit
+ * smaller on a white disc. The shape is read from the image, not from a list of brands.
+ */
 export function BrandIcon({
   name,
   domain = "",
   src,
   lookupLogo = true,
-  appearance,
   className,
 }: {
   name: string;
   domain?: string;
   src?: string;
   lookupLogo?: boolean;
-  appearance?: LogoAppearance;
   className?: string;
 }) {
-  const dark = useDarkMode();
-  const capabilities = useQuery({ ...capabilitiesOptions(useApi()), enabled: lookupLogo && !src });
-  const {
-    fit = "symbol",
-    background,
-    theme,
-  } = { ...logoOverrides[domain.toLowerCase()], ...appearance };
-  const logoURL =
-    src ??
-    (lookupLogo
-      ? logoDevURL(
-          domain,
-          capabilities.data?.logoDevPublishableKey,
-          theme ?? (dark ? "dark" : "light"),
-        )
-      : null);
-  const logoKey = src ?? domain.toLowerCase();
-  const [failedLogoKey, setFailedLogoKey] = useState<string>();
-  const showLogo = logoURL !== null && failedLogoKey !== logoKey;
+  const lookupURL = useLogoURL(domain, lookupLogo && !src);
+  const logoURL = src ?? lookupURL;
+  const [failedURL, setFailedURL] = useState<string>();
+  const showLogo = logoURL !== null && failedURL !== logoURL;
+  const shape = useLogoInfo(showLogo ? logoURL : null)?.shape;
 
   return (
     <span
       aria-hidden="true"
       data-slot="brand-icon"
-      data-fit={showLogo ? fit : undefined}
-      style={showLogo && background ? { backgroundColor: background } : undefined}
+      data-shape={showLogo ? shape : undefined}
       className={cn(
-        "relative flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium text-muted-foreground",
-        showLogo && fit === "image" && "overflow-hidden",
+        "relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-medium text-muted-foreground",
         !showLogo && "bg-muted",
+        showLogo && shape === "symbol" && "bg-white",
+        "ring-1 ring-black/10 ring-inset dark:ring-white/10",
         className,
       )}
     >
@@ -98,11 +79,13 @@ export function BrandIcon({
         <img
           src={logoURL}
           alt=""
+          crossOrigin="anonymous"
           className={cn(
-            "block object-contain",
-            fit === "image" ? "size-full rounded-full" : "size-3/4",
+            "block",
+            shape === undefined && "invisible",
+            shape === "symbol" ? "size-[62%] object-contain" : "size-full object-cover",
           )}
-          onError={() => setFailedLogoKey(logoKey)}
+          onError={() => setFailedURL(logoURL)}
         />
       ) : (
         brandInitial(name, domain)

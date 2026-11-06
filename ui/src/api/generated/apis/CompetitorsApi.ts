@@ -15,11 +15,6 @@
 
 import * as runtime from '../runtime';
 import {
-    type BrandRequestScope,
-    BrandRequestScopeFromJSON,
-    BrandRequestScopeToJSON,
-} from '../models/BrandRequestScope';
-import {
     type CompetitorPage,
     CompetitorPageFromJSON,
     CompetitorPageToJSON,
@@ -49,10 +44,6 @@ import {
     SearchCompetitors200ResponseInnerFromJSON,
     SearchCompetitors200ResponseInnerToJSON,
 } from '../models/SearchCompetitors200ResponseInner';
-
-export interface ConfirmAllCompetitorsRequest {
-    brandRequestScope: BrandRequestScope;
-}
 
 export interface ConfirmCompetitorRequest {
     competitorID: string;
@@ -95,28 +86,6 @@ export interface SearchCompetitorsRequest {
  * @interface CompetitorsApiInterface
  */
 export interface CompetitorsApiInterface {
-    /**
-     * Creates request options for confirmAllCompetitors without sending the request
-     * @param {BrandRequestScope} brandRequestScope 
-     * @throws {RequiredError}
-     * @memberof CompetitorsApiInterface
-     */
-    confirmAllCompetitorsRequestOpts(requestParameters: ConfirmAllCompetitorsRequest): Promise<runtime.RequestOpts>;
-
-    /**
-     * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-     * @param {BrandRequestScope} brandRequestScope 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof CompetitorsApiInterface
-     */
-    confirmAllCompetitorsRaw(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
-
-    /**
-     * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-     */
-    confirmAllCompetitors(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
-
     /**
      * Creates request options for confirmCompetitor without sending the request
      * @param {string} competitorID 
@@ -283,52 +252,6 @@ export interface CompetitorsApiInterface {
  * 
  */
 export class CompetitorsApi extends runtime.BaseAPI implements CompetitorsApiInterface {
-
-    /**
-     * Creates request options for confirmAllCompetitors without sending the request
-     */
-    async confirmAllCompetitorsRequestOpts(requestParameters: ConfirmAllCompetitorsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandRequestScope'] == null) {
-            throw new runtime.RequiredError(
-                'brandRequestScope',
-                'Required parameter "brandRequestScope" was null or undefined when calling confirmAllCompetitors().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        headerParameters['Content-Type'] = 'application/json';
-
-
-        let urlPath = `/api/v1/competitors/confirm`;
-
-        return {
-            path: urlPath,
-            method: 'POST',
-            headers: headerParameters,
-            query: queryParameters,
-            body: BrandRequestScopeToJSON(requestParameters['brandRequestScope']),
-        };
-    }
-
-    /**
-     * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-     */
-    async confirmAllCompetitorsRaw(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        const requestOptions = await this.confirmAllCompetitorsRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.VoidApiResponse(response);
-    }
-
-    /**
-     * Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-     */
-    async confirmAllCompetitors(requestParameters: ConfirmAllCompetitorsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.confirmAllCompetitorsRaw(requestParameters, initOverrides);
-    }
 
     /**
      * Creates request options for confirmCompetitor without sending the request

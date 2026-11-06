@@ -18,7 +18,7 @@ Plugin or marketplace packages should point at this same endpoint. No host-speci
 
 ## Agent skills
 
-The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes two optional [Agent Skills](https://agentskills.io/specification) for coding agents: `koi-brief` prepares an evidence-based Markdown visibility brief, and `koi-setup` guides brand, prompt, and competitor setup. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
+The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes two optional [Agent Skills](https://agentskills.io/specification) for coding agents: `koi-brief` prepares an evidence-based Markdown visibility brief, and `koi-setup` guides brand, prompt, and competitor setup through the first visibility check. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
 
 From the agent's working directory, install either or both skills from the [Koi repository](https://github.com/koihq/koi):
 
@@ -34,18 +34,18 @@ The skills CLI prompts for the target agent and project or user-wide scope. Then
 | --- | --- |
 | Account identity | `account_me` |
 | Search countries; list/get/create/update brands | `brands_countries`, `brands_list`, `brands_get`, `brands_create`, `brands_update` |
-| List/get/create/update/delete/confirm prompts | `prompts_list`, `prompts_get`, `prompts_create`, `prompts_update`, `prompts_delete`, `prompts_confirm`, `prompts_confirm_all` |
-| Search/list/get/create/update/delete/confirm competitors | `competitors_search`, `competitors_list`, `competitors_get`, `competitors_create`, `competitors_update`, `competitors_delete`, `competitors_confirm`, `competitors_confirm_all` |
-| Start/list/get drafting jobs | `generations_create`, `generations_list`, `generations_get` |
-| Tracking; list/get runs and answers | `tracking_get`, `runs_list`, `runs_get`, `runs_results` |
-| Visibility summary and prompt history | `analysis_summary`, `prompt_visibility`, `prompt_history_list`, `prompt_history_runs` |
+| List/get/create/update/confirm prompts, stop or resume them (`prompts_update` with `inactive`), delete those with no saved answers | `prompts_list`, `prompts_get`, `prompts_create`, `prompts_update`, `prompts_delete`, `prompts_confirm` |
+| Search/list/get/create/update/delete/confirm competitors | `competitors_search`, `competitors_list`, `competitors_get`, `competitors_create`, `competitors_update`, `competitors_delete`, `competitors_confirm` |
+| Start/list/get the brand's one draft | `generations_create`, `generations_list`, `generations_get` |
+| Start or read tracking; list/get runs and answers | `tracking_start`, `tracking_get`, `runs_list`, `runs_get`, `runs_results` |
+| Visibility summary and prompt history | `analysis_summary`, `prompt_visibility`, `prompt_history_runs` |
 | Cloud catalog/quote/subscription/checkout/allowance/portal | `billing_catalog`, `billing_quote`, `billing_subscription`, `billing_checkout`, `billing_confirm_checkout`, `billing_change_allowance`, `billing_portal` |
 
 `brandId` must be supplied on collection and brand-scoped commands. Resource details use the resource UUID, as in the product API. Browser `active_brand_id` is never read by MCP. `generations_create` and `billing_change_allowance` require a stable `idempotencyKey` on retries. Drafting returns a job ID; poll `generations_get`. Checkout returns the hosted Stripe URL; after payment poll `billing_subscription` or confirm a known session ID. Billing tools are absent in self-hosted mode. Brand activation is a browser-only preference, and login and credential management use the dedicated Koi flows.
 
 ## OAuth implementation choice
 
-The MCP Go SDK implements the resource server and client primitives, not an authorization server. Koi therefore implements the issuer-specific endpoints in `koiapi`, while credential state and token lifecycle live in `koidomain` and GORM persistence lives in `koidatabase`. We evaluated [Fosite](https://github.com/ory/fosite), [go-oauth2](https://github.com/go-oauth2/oauth2), and [Hydra](https://www.ory.com/hydra). Fosite would replace the token protocol but require its request/session storage adapters; Hydra would add a separate service to every self-hosted deployment; go-oauth2 does not clearly document the MCP PKCE/CIMD requirements. The current narrow issuer avoids those additional adapters and services. Revisit this decision before broad public deployment, after interoperability and security tests against real clients.
+The MCP Go SDK implements the resource server and client primitives, not an authorization server. Koi therefore implements the issuer-specific endpoints in `api`, while credential state and token lifecycle live in `domain` and GORM persistence lives in `database`. We evaluated [Fosite](https://github.com/ory/fosite), [go-oauth2](https://github.com/go-oauth2/oauth2), and [Hydra](https://www.ory.com/hydra). Fosite would replace the token protocol but require its request/session storage adapters; Hydra would add a separate service to every self-hosted deployment; go-oauth2 does not clearly document the MCP PKCE/CIMD requirements. The current narrow issuer avoids those additional adapters and services. Revisit this decision before broad public deployment, after interoperability and security tests against real clients.
 
 ## Verification
 

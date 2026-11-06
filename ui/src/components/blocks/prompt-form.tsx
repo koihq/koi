@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { CreatePrompt } from "@/api/prompts.api";
+import { ApiErrorMessage } from "@/components/blocks/api-error-message";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ export function PromptForm({
   const { t } = useTranslation("management");
   const [text, setText] = useState(initialText);
   const [invalid, setInvalid] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<unknown>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,12 +34,12 @@ export function PromptForm({
     }
 
     setInvalid(false);
-    setFailed(false);
+    setFailure(null);
 
     try {
       await onSave(result.data);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailure(error);
     }
   }
 
@@ -55,7 +56,11 @@ export function PromptForm({
           placeholder={t("promptPlaceholder")}
         />
         {invalid ? <FieldError>{t("promptInvalid")}</FieldError> : null}
-        {failed ? <FieldError>{t("promptSaveError")}</FieldError> : null}
+        {failure ? (
+          <FieldError>
+            <ApiErrorMessage error={failure} fallback={t("promptSaveError")} />
+          </FieldError>
+        ) : null}
       </Field>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>

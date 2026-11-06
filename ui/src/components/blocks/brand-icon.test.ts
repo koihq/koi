@@ -10,11 +10,10 @@ describe("brand icon", () => {
     );
   });
 
-  it("requests a dark-background asset and replaces ReadMe's empty domain asset", () => {
-    const url = new URL(logoDevURL("readme.com", "public-key", "dark") as string);
+  it("always requests the light variant of a transparent asset", () => {
+    const url = new URL(logoDevURL("acme.com", "public-key") as string);
 
-    expect(url.pathname).toBe("/readme.io");
-    expect(url.searchParams.get("theme")).toBe("dark");
+    expect(url.searchParams.get("theme")).toBe("light");
     expect(url.searchParams.get("format")).toBe("webp");
   });
 

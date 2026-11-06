@@ -21,6 +21,7 @@ models/BillingQuote.ts
 models/BillingRedirect.ts
 models/BillingStatus.ts
 models/BillingSubscription.ts
+models/BrandLookup.ts
 models/BrandPage.ts
 models/BrandPatchRequest.ts
 models/BrandRequest.ts
@@ -42,17 +43,18 @@ models/ErrorBody.ts
 models/ErrorCode.ts
 models/FieldCode.ts
 models/FieldError.ts
+models/ForgotPasswordReq.ts
 models/GenerationAccepted.ts
 models/GenerationPage.ts
 models/GenerationRequest.ts
 models/GenerationStatus.ts
+models/GenerationSummary.ts
 models/HealthResponse.ts
-models/HistoricalPrompt.ts
-models/HistoricalPromptPage.ts
 models/MeRes.ts
 models/OAuthConsent.ts
 models/OAuthConsentDecision.ts
 models/OAuthConsentRedirect.ts
+models/OnboardingEvent.ts
 models/OrgRes.ts
 models/PromptHistoryRun.ts
 models/PromptHistoryRunPage.ts
@@ -60,6 +62,7 @@ models/PromptPage.ts
 models/PromptPatchRequest.ts
 models/PromptRequest.ts
 models/PromptRes.ts
+models/ResetPasswordReq.ts
 models/SearchCompetitors200ResponseInner.ts
 models/TrackingStatus.ts
 models/VisibilityDay.ts

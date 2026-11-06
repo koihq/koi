@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down compose-image ui-build ensure-ui run test dev mocks openapi format go-format-check
+.PHONY: compose-up compose-down compose-image ui-build ensure-ui run test dev seed-demo seed-demo-reset mocks openapi format go-format-check
 
 OPENAPI_GENERATOR_IMAGE := openapitools/openapi-generator-cli:v7.22.0
 
@@ -22,6 +22,12 @@ run: ensure-ui
 
 test: ensure-ui
 	go test ./...
+
+seed-demo:
+	go run ./cmd/seed-demo
+
+seed-demo-reset:
+	go run ./cmd/seed-demo --reset
 
 format:
 	pnpm --dir ui check:fix

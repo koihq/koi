@@ -66,16 +66,14 @@ describe("API wire contract", () => {
   it("retains generation idempotency and cancellation", async () => {
     const fetch = mockResponse({
       id: "g",
-      mode: "initial",
       state: "queued",
       statusUrl: "/api/v1/generations/g",
     });
     const api = createApi();
-    await api.generations.create({ brandId: "brand-a", mode: "initial" }, "setup-brand-a");
+    await api.generations.create({ brandId: "brand-a" }, "setup-brand-a");
     expect(fetch.mock.calls[0][1].headers["Idempotency-Key"]).toBe("setup-brand-a");
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
       brandId: "brand-a",
-      mode: "initial",
     });
     const controller = new AbortController();
     await api.generations.getById("g", { signal: controller.signal });

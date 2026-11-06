@@ -26,6 +26,19 @@ describe("account route loading", () => {
     }
   });
 
+  it("asks the server again on navigation but not on a hover preload", async () => {
+    const me = vi.fn().mockResolvedValue({ id: "user" });
+    const api = { auth: { me } } as unknown as Api;
+    const client = new QueryClient();
+
+    await requireAccount(api, client, true);
+    await requireAccount(api, client, true);
+    expect(me).toHaveBeenCalledTimes(1);
+
+    await requireAccount(api, client);
+    expect(me).toHaveBeenCalledTimes(2);
+  });
+
   it("redirects only unauthorized responses", async () => {
     for (const error of [
       new ApiError("unauthorized"),

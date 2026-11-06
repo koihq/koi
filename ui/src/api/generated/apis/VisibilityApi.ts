@@ -15,15 +15,15 @@
 
 import * as runtime from '../runtime';
 import {
+    type BrandRequestScope,
+    BrandRequestScopeFromJSON,
+    BrandRequestScopeToJSON,
+} from '../models/BrandRequestScope';
+import {
     type Envelope,
     EnvelopeFromJSON,
     EnvelopeToJSON,
 } from '../models/Envelope';
-import {
-    type HistoricalPromptPage,
-    HistoricalPromptPageFromJSON,
-    HistoricalPromptPageToJSON,
-} from '../models/HistoricalPromptPage';
 import {
     type PromptHistoryRunPage,
     PromptHistoryRunPageFromJSON,
@@ -81,17 +81,6 @@ export interface GetVisibilityTrackingRequest {
     brandId: string;
 }
 
-export interface ListHistoricalPromptsRequest {
-    brandId: string;
-    page?: number;
-    pageSize?: number;
-    q?: string;
-    sort?: ListHistoricalPromptsSortEnum;
-    descending?: boolean;
-    days?: ListHistoricalPromptsDaysEnum;
-    engines?: string;
-}
-
 export interface ListPromptHistoryRunsRequest {
     promptID: string;
     brandId: string;
@@ -109,6 +98,10 @@ export interface ListVisibilityRunsRequest {
     brandId: string;
     page?: number;
     pageSize?: number;
+}
+
+export interface StartVisibilityTrackingRequest {
+    brandRequestScope: BrandRequestScope;
 }
 
 /**
@@ -213,42 +206,6 @@ export interface VisibilityApiInterface {
     getVisibilityTracking(requestParameters: GetVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TrackingStatus>;
 
     /**
-     * Creates request options for listHistoricalPrompts without sending the request
-     * @param {string} brandId 
-     * @param {number} [page] 
-     * @param {number} [pageSize] 
-     * @param {string} [q] 
-     * @param {'original' | 'prompt' | 'rate' | 'change'} [sort] 
-     * @param {boolean} [descending] 
-     * @param {7 | 30 | 90} [days] 
-     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
-     * @throws {RequiredError}
-     * @memberof VisibilityApiInterface
-     */
-    listHistoricalPromptsRequestOpts(requestParameters: ListHistoricalPromptsRequest): Promise<runtime.RequestOpts>;
-
-    /**
-     * Deleted prompts with saved run results, newest snapshot first.
-     * @param {string} brandId 
-     * @param {number} [page] 
-     * @param {number} [pageSize] 
-     * @param {string} [q] 
-     * @param {'original' | 'prompt' | 'rate' | 'change'} [sort] 
-     * @param {boolean} [descending] 
-     * @param {7 | 30 | 90} [days] 
-     * @param {string} [engines] Comma-separated visibility engine IDs; omitted means all engines.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof VisibilityApiInterface
-     */
-    listHistoricalPromptsRaw(requestParameters: ListHistoricalPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HistoricalPromptPage>>;
-
-    /**
-     * Deleted prompts with saved run results, newest snapshot first.
-     */
-    listHistoricalPrompts(requestParameters: ListHistoricalPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage>;
-
-    /**
      * Creates request options for listPromptHistoryRuns without sending the request
      * @param {string} promptID 
      * @param {string} brandId 
@@ -326,6 +283,28 @@ export interface VisibilityApiInterface {
     /**
      */
     listVisibilityRuns(requestParameters: ListVisibilityRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<VisibilityRunPage>;
+
+    /**
+     * Creates request options for startVisibilityTracking without sending the request
+     * @param {BrandRequestScope} brandRequestScope 
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    startVisibilityTrackingRequestOpts(requestParameters: StartVisibilityTrackingRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     * @param {BrandRequestScope} brandRequestScope 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VisibilityApiInterface
+     */
+    startVisibilityTrackingRaw(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     */
+    startVisibilityTracking(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
 }
 
@@ -540,82 +519,6 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
     }
 
     /**
-     * Creates request options for listHistoricalPrompts without sending the request
-     */
-    async listHistoricalPromptsRequestOpts(requestParameters: ListHistoricalPromptsRequest): Promise<runtime.RequestOpts> {
-        if (requestParameters['brandId'] == null) {
-            throw new runtime.RequiredError(
-                'brandId',
-                'Required parameter "brandId" was null or undefined when calling listHistoricalPrompts().'
-            );
-        }
-
-        const queryParameters: any = {};
-
-        if (requestParameters['brandId'] != null) {
-            queryParameters['brandId'] = requestParameters['brandId'];
-        }
-
-        if (requestParameters['page'] != null) {
-            queryParameters['page'] = requestParameters['page'];
-        }
-
-        if (requestParameters['pageSize'] != null) {
-            queryParameters['pageSize'] = requestParameters['pageSize'];
-        }
-
-        if (requestParameters['q'] != null) {
-            queryParameters['q'] = requestParameters['q'];
-        }
-
-        if (requestParameters['sort'] != null) {
-            queryParameters['sort'] = requestParameters['sort'];
-        }
-
-        if (requestParameters['descending'] != null) {
-            queryParameters['descending'] = requestParameters['descending'];
-        }
-
-        if (requestParameters['days'] != null) {
-            queryParameters['days'] = requestParameters['days'];
-        }
-
-        if (requestParameters['engines'] != null) {
-            queryParameters['engines'] = requestParameters['engines'];
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-
-        let urlPath = `/api/v1/prompt-history`;
-
-        return {
-            path: urlPath,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        };
-    }
-
-    /**
-     * Deleted prompts with saved run results, newest snapshot first.
-     */
-    async listHistoricalPromptsRaw(requestParameters: ListHistoricalPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HistoricalPromptPage>> {
-        const requestOptions = await this.listHistoricalPromptsRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => HistoricalPromptPageFromJSON(jsonValue));
-    }
-
-    /**
-     * Deleted prompts with saved run results, newest snapshot first.
-     */
-    async listHistoricalPrompts(requestParameters: ListHistoricalPromptsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HistoricalPromptPage> {
-        const response = await this.listHistoricalPromptsRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
      * Creates request options for listPromptHistoryRuns without sending the request
      */
     async listPromptHistoryRunsRequestOpts(requestParameters: ListPromptHistoryRunsRequest): Promise<runtime.RequestOpts> {
@@ -786,6 +689,52 @@ export class VisibilityApi extends runtime.BaseAPI implements VisibilityApiInter
         return await response.value();
     }
 
+    /**
+     * Creates request options for startVisibilityTracking without sending the request
+     */
+    async startVisibilityTrackingRequestOpts(requestParameters: StartVisibilityTrackingRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['brandRequestScope'] == null) {
+            throw new runtime.RequiredError(
+                'brandRequestScope',
+                'Required parameter "brandRequestScope" was null or undefined when calling startVisibilityTracking().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/v1/tracking/start`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BrandRequestScopeToJSON(requestParameters['brandRequestScope']),
+        };
+    }
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     */
+    async startVisibilityTrackingRaw(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.startVisibilityTrackingRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Confirms the brand\'s manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+     */
+    async startVisibilityTracking(requestParameters: StartVisibilityTrackingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.startVisibilityTrackingRaw(requestParameters, initOverrides);
+    }
+
 }
 
 /**
@@ -806,22 +755,3 @@ export const GetVisibilitySummaryDaysEnum = {
     NUMBER_90: 90
 } as const;
 export type GetVisibilitySummaryDaysEnum = typeof GetVisibilitySummaryDaysEnum[keyof typeof GetVisibilitySummaryDaysEnum];
-/**
- * @export
- */
-export const ListHistoricalPromptsSortEnum = {
-    ORIGINAL: 'original',
-    PROMPT: 'prompt',
-    RATE: 'rate',
-    CHANGE: 'change'
-} as const;
-export type ListHistoricalPromptsSortEnum = typeof ListHistoricalPromptsSortEnum[keyof typeof ListHistoricalPromptsSortEnum];
-/**
- * @export
- */
-export const ListHistoricalPromptsDaysEnum = {
-    NUMBER_7: 7,
-    NUMBER_30: 30,
-    NUMBER_90: 90
-} as const;
-export type ListHistoricalPromptsDaysEnum = typeof ListHistoricalPromptsDaysEnum[keyof typeof ListHistoricalPromptsDaysEnum];

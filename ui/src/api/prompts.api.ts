@@ -13,6 +13,7 @@ export interface PromptListParams extends BaseListParams {
   pageSize?: 10 | 20 | 50;
   q?: string;
   confirmed?: boolean;
+  inactive?: boolean;
   sort?: PromptSort;
   descending?: boolean;
   scope?: VisibilityScope;
@@ -36,7 +37,5 @@ export function createPromptsApi(api: PromptsApi) {
       api.updatePrompt({ promptID: id, promptPatchRequest: request }),
     delete: (id: string): Promise<void> => api.deletePrompt({ promptID: id }),
     confirm: (id: string): Promise<Prompt> => api.confirmPrompt({ promptID: id }),
-    confirmAll: (brandId: string): Promise<void> =>
-      api.confirmAllPrompts({ brandRequestScope: { brandId } }),
   };
 }

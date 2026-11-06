@@ -1,5 +1,4 @@
 import type {
-  HistoricalPromptPage,
   PromptHistoryRunPage,
   VisibilityApi,
   VisibilityReport,
@@ -9,26 +8,17 @@ import type {
   VisibilityRunStatus,
   VisibilitySummary,
 } from "@/api/generated";
-import type { PromptSort } from "@/api/prompts.api";
 import type { VisibilityScope } from "@/lib/visibility";
 
 export type VisibilityRun = VisibilityRunStatus;
 
 export type { VisibilityResult };
-export type HistoricalPromptWithVisibility = HistoricalPromptPage["items"][number];
-
-export type HistoricalPromptListParams = {
-  page: number;
-  pageSize: 10 | 20 | 50;
-  q?: string;
-  sort?: PromptSort;
-  descending?: boolean;
-  scope: VisibilityScope;
-};
 
 export function createRunsApi(api: VisibilityApi) {
   return {
     tracking: (brandId: string, init?: RequestInit) => api.getVisibilityTracking({ brandId }, init),
+    startTracking: (brandId: string): Promise<void> =>
+      api.startVisibilityTracking({ brandRequestScope: { brandId } }),
     list: (
       brandId: string,
       page = 1,
@@ -43,15 +33,6 @@ export function createRunsApi(api: VisibilityApi) {
       pageSize = 40,
       init?: RequestInit,
     ): Promise<VisibilityResultPage> => api.listVisibilityResults({ runID, page, pageSize }, init),
-    historicalPrompts: (
-      brandId: string,
-      { scope, ...params }: HistoricalPromptListParams,
-      init?: RequestInit,
-    ): Promise<HistoricalPromptPage> =>
-      api.listHistoricalPrompts(
-        { ...params, brandId, days: scope.days, engines: scope.engines.join(",") || undefined },
-        init,
-      ),
     summary: (
       brandId: string,
       scope: VisibilityScope,

@@ -18,9 +18,6 @@ const colorTokens = [
   "border",
   "input",
   "ring",
-  "sidebar",
-  "sidebar-accent",
-  "sidebar-selected",
   "brand",
 ] as const;
 
@@ -100,7 +97,6 @@ function DevUiOverview() {
     { to: "/dev/ui/field", name: "Field and input", detail: "Labels, values, and errors" },
     { to: "/dev/ui/separator", name: "Separator", detail: "A structural split" },
     { to: "/dev/ui/mark", name: "Koi mark", detail: "The shipped PNG asset" },
-    { to: "/dev/ui/sidebar", name: "Sidebar", detail: "The product navigation block" },
   ] as const;
 
   return (
@@ -221,7 +217,7 @@ function DevUiOverview() {
       </CatalogSection>
       <CatalogSection
         title="Typography"
-        description="Inter Variable is the only typeface used in the product."
+        description="Hanken Grotesk Variable is the only typeface used in the product."
       >
         <div className="grid gap-6">
           <div>

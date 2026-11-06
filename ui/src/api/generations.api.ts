@@ -6,8 +6,6 @@ import type {
   GenerationsApi,
 } from "@/api/generated";
 
-export type GenerationMode = GenerationRequest["mode"];
-
 export type Generation = GenerationStatus;
 
 export function createGenerationsApi(api: GenerationsApi) {

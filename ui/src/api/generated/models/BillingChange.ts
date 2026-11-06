@@ -54,7 +54,8 @@ export const BillingChangeEffectiveEnum = {
     CURRENT: 'current',
     TRIAL_END: 'trial_end',
     NEXT_CYCLE: 'next_cycle',
-    AFTER_PAYMENT: 'after_payment'
+    AFTER_PAYMENT: 'after_payment',
+    STARTED: 'started'
 } as const;
 export type BillingChangeEffectiveEnum = typeof BillingChangeEffectiveEnum[keyof typeof BillingChangeEffectiveEnum];
 

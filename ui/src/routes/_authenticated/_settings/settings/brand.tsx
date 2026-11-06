@@ -1,12 +1,16 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Add01Icon, PencilEdit02Icon, Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Brand, CreateBrand } from "@/api/brands.api";
 import { BrandForm } from "@/components/blocks/brand-form";
-import { BrandIcon } from "@/components/blocks/brand-icon";
+import { BrandLabel } from "@/components/blocks/brand-label";
 import { DataTable, type DataTableColumn } from "@/components/blocks/data-table";
+import { PageNav } from "@/components/blocks/page-nav";
+import { RowAction, RowActions } from "@/components/blocks/row-actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -46,16 +50,28 @@ function BrandSettings() {
   const [dialog, setDialog] = useState<BrandDialog | null>(null);
   const brands = useQuery(brandListOptions(api, brand.organizationId, { page, pageSize: 10 }));
   const items = brands.data?.items ?? [];
+  const activation = useMutation({
+    mutationFn: (id: string) => api.brands.activate(id),
+    onSuccess: async () => {
+      await router.invalidate();
+      await router.navigate({ to: "/" });
+    },
+  });
+  const headClass = "h-auto px-3 py-1.5 text-xs text-muted-foreground";
+  const cellClass = "px-3 py-3.5 text-body";
   const columns: DataTableColumn<Brand>[] = [
     {
       id: "name",
       header: t("fields.name.label"),
+      headClassName: `${headClass} w-[40%]`,
+      cellClassName: `${cellClass} whitespace-normal [overflow-wrap:anywhere]`,
       cell: (item) => (
-        <span className="inline-flex items-center gap-2">
-          <BrandIcon name={item.name} domain={item.domain} lookupLogo={false} className="size-6" />
-          <span>{item.name}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <BrandLabel name={item.name} domain={item.domain} lookupLogo={false} />
           {item.id === brand.id && (
-            <span className="text-muted-foreground">{t("settings.active")}</span>
+            <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              {t("settings.active")}
+            </span>
           )}
         </span>
       ),
@@ -63,21 +79,49 @@ function BrandSettings() {
     {
       id: "domain",
       header: t("fields.domain.label"),
-      cell: (item) => item.domain || item.githubRepo,
-    },
-    { id: "country", header: t("fields.country.label"), cell: (item) => item.country },
-    {
-      id: "actions",
-      header: t("settings.actions"),
-      headClassName: "text-end",
-      cellClassName: "text-end",
+      headClassName: `${headClass} w-[32%]`,
+      cellClassName: `${cellClass} text-muted-foreground`,
       cell: (item) => (
-        <Button variant="ghost" size="sm" onClick={() => setDialog({ kind: "edit", brand: item })}>
-          {t("settings.edit")}
-        </Button>
+        <span className="block truncate" title={item.domain || item.githubRepo}>
+          {item.domain || item.githubRepo}
+        </span>
       ),
     },
+    {
+      id: "country",
+      header: t("fields.country.label"),
+      headClassName: headClass,
+      cellClassName: `${cellClass} text-muted-foreground`,
+      cell: (item) => item.country,
+    },
+    {
+      id: "actions",
+      header: <span className="sr-only">{t("settings.actions")}</span>,
+      headClassName: `${headClass} w-28 text-end`,
+      cellClassName: `${cellClass} text-end`,
+      cell: renderActions,
+    },
   ];
+
+  function renderActions(item: Brand) {
+    return (
+      <RowActions>
+        {item.id !== brand.id && (
+          <RowAction
+            label={t("settings.switch")}
+            icon={Tick02Icon}
+            disabled={activation.isPending}
+            onClick={() => activation.mutate(item.id)}
+          />
+        )}
+        <RowAction
+          label={t("settings.edit")}
+          icon={PencilEdit02Icon}
+          onClick={() => setDialog({ kind: "edit", brand: item })}
+        />
+      </RowActions>
+    );
+  }
 
   async function saveBrand(body: CreateBrand) {
     if (!dialog) return;
@@ -97,16 +141,32 @@ function BrandSettings() {
   }
 
   return (
-    <div className="w-full pb-24">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("settings.title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{t("settings.description")}</p>
-        </div>
-        <Button onClick={() => setDialog({ kind: "create" })}>{t("settings.create")}</Button>
+    <section
+      className="min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
+      aria-labelledby="brands-heading"
+    >
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 id="brands-heading" className="text-section font-semibold">
+          {t("settings.title")}
+        </h1>
+        <Button
+          variant="icon-outline"
+          size="circle-sm"
+          aria-label={t("settings.create")}
+          title={t("settings.create")}
+          className="text-muted-foreground"
+          onClick={() => setDialog({ kind: "create" })}
+        >
+          <HugeiconsIcon icon={Add01Icon} aria-hidden="true" />
+        </Button>
       </div>
+      {activation.isError && (
+        <p role="alert" className="mb-4 text-sm text-destructive">
+          {t("settings.switchError")}
+        </p>
+      )}
 
-      <div className="mt-10">
+      <div>
         {brands.isError ? (
           <p role="alert" className="text-sm text-destructive">
             {t("settings.loadError")}{" "}
@@ -118,38 +178,49 @@ function BrandSettings() {
           <p className="text-sm text-muted-foreground">{t("settings.loading")}</p>
         ) : (
           <>
-            <DataTable
-              ariaLabel={t("settings.title")}
-              data={items}
-              columns={columns}
-              getRowId={(item) => item.id}
+            <div className="@container">
+              <div className="-mx-3 hidden @2xl:block">
+                <DataTable
+                  interactive
+                  ariaLabel={t("settings.title")}
+                  className="table-fixed"
+                  data={items}
+                  columns={columns}
+                  getRowId={(item) => item.id}
+                />
+              </div>
+              <ul className="list-rows -mx-2 grid gap-0.5 @2xl:hidden">
+                {items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="group flex min-w-0 items-center gap-3 rounded-control px-2 py-3 hover:bg-signal-pill"
+                  >
+                    <div className="grid min-w-0 flex-1 gap-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <BrandLabel name={item.name} domain={item.domain} lookupLogo={false} />
+                        {item.id === brand.id && (
+                          <span className="rounded-chip bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                            {t("settings.active")}
+                          </span>
+                        )}
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {[item.domain || item.githubRepo, item.country].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    {renderActions(item)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <PageNav
+              page={page}
+              pageSize={10}
+              total={brands.data.totalItems}
+              hasPrev={brands.data.hasPrev}
+              hasNext={brands.data.hasNext}
+              onPage={setPage}
             />
-            {brands.data.totalPages > 1 && (
-              <nav
-                aria-label={t("settings.pagination")}
-                className="mt-5 flex items-center justify-between gap-4 text-xs text-muted-foreground"
-              >
-                <span>{t("settings.page", { current: page, total: brands.data.totalPages })}</span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!brands.data.hasPrev}
-                    onClick={() => setPage(page - 1)}
-                  >
-                    {t("settings.previous")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!brands.data.hasNext}
-                    onClick={() => setPage(page + 1)}
-                  >
-                    {t("settings.next")}
-                  </Button>
-                </div>
-              </nav>
-            )}
           </>
         )}
       </div>
@@ -177,6 +248,6 @@ function BrandSettings() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </section>
   );
 }

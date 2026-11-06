@@ -1,13 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { Credential } from "@/api/generated";
-import claudeLogo from "@/assets/mcp-clients/claude.svg";
-import cursorLogo from "@/assets/mcp-clients/cursor.svg";
-import openaiLogo from "@/assets/mcp-clients/openai.svg";
 import { BrandIcon } from "@/components/blocks/brand-icon";
+import { ClientLogo, clients } from "@/components/blocks/mcp-clients";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,52 +17,36 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { formatDay } from "@/lib/format";
 import { capabilitiesOptions } from "@/lib/queries";
 import { credentialsKey } from "@/lib/query-keys";
 
-const clients = [
-  {
-    name: "ChatGPT",
-    logo: openaiLogo,
-    instructions: "chatgptStep",
-    docs: "https://developers.openai.com/api/docs/guides/custom-mcp-server",
-  },
-  {
-    name: "Claude",
-    logo: claudeLogo,
-    instructions: "claudeStep",
-    docs: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
-  },
-  {
-    name: "Codex",
-    logo: openaiLogo,
-    instructions: "codexStep",
-    docs: "https://developers.openai.com/resources/docs-mcp",
-  },
-  {
-    name: "Claude Code",
-    logo: claudeLogo,
-    instructions: "claudeCodeStep",
-    docs: "https://docs.claude.com/en/docs/claude-code/mcp",
-  },
-  {
-    name: "Cursor",
-    logo: cursorLogo,
-    instructions: "cursorStep",
-    docs: "https://docs.cursor.com/context/model-context-protocol",
-  },
-] as const;
+const COPIED_FOR_MS = 2_000;
 
 export const Route = createFileRoute("/_authenticated/_settings/settings/connections")({
   component: ConnectionsSettings,
 });
+
+function Step({ number, children }: { number: number; children: React.ReactNode }) {
+  return (
+    <li className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-3">
+      <span
+        aria-hidden="true"
+        className="grid size-6 place-items-center rounded-full bg-muted text-xs text-muted-foreground tabular-nums"
+      >
+        {number}
+      </span>
+      <div className="grid min-w-0 gap-3 pt-0.5 text-sm">{children}</div>
+    </li>
+  );
+}
 
 function ConnectionsSettings() {
   const { t, i18n } = useTranslation("connections");
   const api = useApi();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
-  const [client, setClient] = useState<(typeof clients)[number]>(clients[0]);
+  const [client, setClient] = useState(clients[0]);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const capabilities = useQuery(capabilitiesOptions(api));
@@ -83,6 +65,25 @@ function ConnectionsSettings() {
   });
   const items = credentials.data?.items ?? [];
   const mcpUrl = capabilities.data?.mcpUrl;
+  const copyValue = mcpUrl && (client.command ? client.command(mcpUrl) : mcpUrl);
+
+  useEffect(() => {
+    if (!copied) return;
+
+    const timer = window.setTimeout(() => setCopied(false), COPIED_FOR_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setCopyError(false);
+    } catch {
+      setCopyError(true);
+    }
+  }
 
   function credentialRow(item: Credential) {
     const knownClient = clients.find(
@@ -90,31 +91,30 @@ function ConnectionsSettings() {
     );
 
     return (
-      <li key={item.id} className="flex flex-wrap items-center justify-between gap-4 py-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-3 break-words font-medium">
-            {knownClient ? (
-              <img
-                src={knownClient.logo}
-                alt=""
-                className={knownClient.logo === claudeLogo ? "size-5" : "size-5 dark:invert"}
-              />
-            ) : (
-              <BrandIcon
-                name={item.name || item.clientId || "?"}
-                lookupLogo={false}
-                className="size-5"
-              />
-            )}
-            {item.name || item.clientId}
-          </p>
-          {item.expiresAt && (
-            <p className="text-xs text-muted-foreground">
-              {t("expires", {
-                date: new Intl.DateTimeFormat(i18n.language).format(item.expiresAt),
-              })}
-            </p>
+      <li
+        key={item.id}
+        className="flex min-w-0 items-center justify-between gap-3 rounded-control px-2 py-2 hover:bg-signal-pill"
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          {knownClient ? (
+            <ClientLogo logo={knownClient.logo} className="size-5 shrink-0" />
+          ) : (
+            <BrandIcon
+              name={item.name || item.clientId || "?"}
+              lookupLogo={false}
+              className="size-5 shrink-0"
+            />
           )}
+          <div className="min-w-0">
+            <p className="truncate text-body font-medium" title={item.name || item.clientId}>
+              {item.name || item.clientId}
+            </p>
+            {item.expiresAt && (
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {t("expires", { date: formatDay(item.expiresAt, i18n.language) })}
+              </p>
+            )}
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -131,37 +131,39 @@ function ConnectionsSettings() {
   }
 
   return (
-    <div className="max-w-2xl pb-24">
-      <h1 className="text-[30px] font-semibold tracking-[-0.035em]">{t("title")}</h1>
-      <section className="mt-10" aria-labelledby="connect-heading">
-        <h2 id="connect-heading" className="text-lg font-medium tracking-tight">
+    <div className="grid gap-6 pb-24 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <section
+        className="min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
+        aria-labelledby="connect-heading"
+      >
+        <h1 id="connect-heading" className="flex min-h-8 items-center text-section font-semibold">
           {t("connectTitle")}
-        </h2>
-        <fieldset className="mt-5 flex flex-wrap gap-2">
+        </h1>
+        <fieldset className="-ms-1 mt-3 flex flex-wrap gap-0.5">
           <legend className="sr-only">{t("agent")}</legend>
           {clients.map((entry) => (
             <Button
               key={entry.name}
-              size="lg"
-              variant={client.name === entry.name ? "secondary" : "ghost"}
+              type="button"
+              variant="ghost"
+              size="pill"
               aria-pressed={client.name === entry.name}
+              className="gap-2 pe-3 text-muted-foreground"
               onClick={() => {
                 setClient(entry);
                 setCopied(false);
+                setCopyError(false);
               }}
             >
-              <img
-                src={entry.logo}
-                alt=""
-                className={entry.logo === claudeLogo ? "size-4" : "size-4 dark:invert"}
-              />
+              <ClientLogo logo={entry.logo} className="size-4" />
               {entry.name}
             </Button>
           ))}
         </fieldset>
-        <div className="mt-7 rounded-lg bg-muted/40 p-5">
-          <p className="text-xs text-muted-foreground">{t("serverUrl")}</p>
-          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
+
+        <ol className="mt-7 grid max-w-2xl gap-6">
+          <Step number={1}>
+            <p>{t(client.instructions)}</p>
             {capabilities.isPending ? (
               <output className="text-sm text-muted-foreground">{t("loadingUrl")}</output>
             ) : capabilities.isError ? (
@@ -171,43 +173,36 @@ function ConnectionsSettings() {
                   {t("retry")}
                 </Button>
               </p>
-            ) : !mcpUrl ? (
+            ) : !copyValue ? (
               <p role="alert" className="text-sm text-muted-foreground">
                 {t("urlNotConfigured")}
               </p>
             ) : (
-              <>
+              <div className="flex min-w-0 items-center gap-3 rounded-control bg-muted/40 py-2 ps-3 pe-2">
                 <span className="min-w-0 flex-1 break-all text-sm font-medium select-all">
-                  {mcpUrl}
+                  {copyValue}
                 </span>
-                <Button
-                  size="sm"
-                  disabled={!mcpUrl}
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(mcpUrl);
-                      setCopied(true);
-                      setCopyError(false);
-                    } catch {
-                      setCopyError(true);
-                    }
-                  }}
-                >
-                  {copied ? t("copied") : t("copyUrl")}
+                <Button variant="secondary" size="lg" onClick={() => void copy(copyValue)}>
+                  {copied ? t("copied") : t("copy")}
                 </Button>
-              </>
+              </div>
             )}
-          </div>
-          {copyError && (
-            <p role="alert" className="mt-2 text-sm text-destructive">
-              {t("copyError")}
-            </p>
-          )}
-        </div>
-        <p className="mt-6 text-sm">{t(client.instructions)}</p>
-        <p className="mt-2 text-sm text-muted-foreground">{t("oauthStep")}</p>
+            {copyError && (
+              <p role="alert" className="text-sm text-destructive">
+                {t("copyError")}
+              </p>
+            )}
+          </Step>
+          <Step number={2}>
+            <p>{t(client.signIn)}</p>
+          </Step>
+          <Step number={3}>
+            <p>{t("tryStep")}</p>
+          </Step>
+        </ol>
+
         <a
-          className="mt-4 inline-block text-sm underline underline-offset-4"
+          className="mt-7 inline-block text-sm underline underline-offset-4"
           href={client.docs}
           target="_blank"
           rel="noreferrer"
@@ -216,30 +211,33 @@ function ConnectionsSettings() {
         </a>
       </section>
 
-      <section className="mt-16" aria-labelledby="connected-heading">
-        <h2 id="connected-heading" className="text-lg font-medium tracking-tight">
+      <aside
+        className="min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9 xl:px-5"
+        aria-labelledby="connected-heading"
+      >
+        <h2 id="connected-heading" className="flex min-h-8 items-center text-section font-semibold">
           {t("connectedTitle")}
         </h2>
 
         {credentials.isPending ? (
-          <p className="mt-8 text-sm text-muted-foreground">{t("loading")}</p>
+          <p className="mt-3 text-sm text-muted-foreground">{t("loading")}</p>
         ) : credentials.isError ? (
-          <p role="alert" className="mt-8 text-sm text-destructive">
+          <p role="alert" className="mt-3 text-sm text-destructive">
             {t("loadError")}{" "}
             <Button variant="link" onClick={() => void credentials.refetch()}>
               {t("retry")}
             </Button>
           </p>
         ) : items.length ? (
-          <ul className="mt-8 space-y-1">{items.map(credentialRow)}</ul>
+          <ul className="list-rows -mx-2 mt-3 grid gap-0.5">{items.map(credentialRow)}</ul>
         ) : (
-          <p className="mt-8 text-sm text-muted-foreground">{t("emptyConnections")}</p>
+          <p className="mt-3 text-xs text-muted-foreground">{t("emptyConnections")}</p>
         )}
 
         {credentials.data && credentials.data.totalPages > 1 && (
           <nav
             aria-label={t("pagination")}
-            className="mt-8 flex items-center justify-between gap-4 text-xs text-muted-foreground"
+            className="mt-4 flex items-center justify-between gap-4 text-xs text-muted-foreground"
           >
             <span>{t("page", { current: page, total: credentials.data.totalPages })}</span>
             <div className="flex gap-2">
@@ -262,7 +260,7 @@ function ConnectionsSettings() {
             </div>
           </nav>
         )}
-      </section>
+      </aside>
 
       <AlertDialog
         open={toRevoke !== null}

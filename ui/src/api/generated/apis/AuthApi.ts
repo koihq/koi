@@ -30,13 +30,31 @@ import {
     EnvelopeToJSON,
 } from '../models/Envelope';
 import {
+    type ForgotPasswordReq,
+    ForgotPasswordReqFromJSON,
+    ForgotPasswordReqToJSON,
+} from '../models/ForgotPasswordReq';
+import {
     type MeRes,
     MeResFromJSON,
     MeResToJSON,
 } from '../models/MeRes';
+import {
+    type ResetPasswordReq,
+    ResetPasswordReqFromJSON,
+    ResetPasswordReqToJSON,
+} from '../models/ResetPasswordReq';
+
+export interface ForgotPasswordRequest {
+    forgotPasswordReq: ForgotPasswordReq;
+}
 
 export interface LoginRequest {
     credentialsReq: CredentialsReq;
+}
+
+export interface ResetPasswordRequest {
+    resetPasswordReq: ResetPasswordReq;
 }
 
 export interface SignupRequest {
@@ -50,6 +68,28 @@ export interface SignupRequest {
  * @interface AuthApiInterface
  */
 export interface AuthApiInterface {
+    /**
+     * Creates request options for forgotPassword without sending the request
+     * @param {ForgotPasswordReq} forgotPasswordReq 
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    forgotPasswordRequestOpts(requestParameters: ForgotPasswordRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Answers the same for every well-formed address, registered or not.
+     * @param {ForgotPasswordReq} forgotPasswordReq 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    forgotPasswordRaw(requestParameters: ForgotPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Answers the same for every well-formed address, registered or not.
+     */
+    forgotPassword(requestParameters: ForgotPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
     /**
      * Creates request options for login without sending the request
      * @param {CredentialsReq} credentialsReq 
@@ -110,6 +150,28 @@ export interface AuthApiInterface {
     me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes>;
 
     /**
+     * Creates request options for resetPassword without sending the request
+     * @param {ResetPasswordReq} resetPasswordReq 
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    resetPasswordRequestOpts(requestParameters: ResetPasswordRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Sets a new password with a one-time link and ends the user\'s sessions.
+     * @param {ResetPasswordReq} resetPasswordReq 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    resetPasswordRaw(requestParameters: ResetPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Sets a new password with a one-time link and ends the user\'s sessions.
+     */
+    resetPassword(requestParameters: ResetPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
      * Creates request options for signup without sending the request
      * @param {CredentialsReq} credentialsReq 
      * @throws {RequiredError}
@@ -136,6 +198,52 @@ export interface AuthApiInterface {
  * 
  */
 export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
+
+    /**
+     * Creates request options for forgotPassword without sending the request
+     */
+    async forgotPasswordRequestOpts(requestParameters: ForgotPasswordRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['forgotPasswordReq'] == null) {
+            throw new runtime.RequiredError(
+                'forgotPasswordReq',
+                'Required parameter "forgotPasswordReq" was null or undefined when calling forgotPassword().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/v1/auth/password/forgot`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ForgotPasswordReqToJSON(requestParameters['forgotPasswordReq']),
+        };
+    }
+
+    /**
+     * Answers the same for every well-formed address, registered or not.
+     */
+    async forgotPasswordRaw(requestParameters: ForgotPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.forgotPasswordRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Answers the same for every well-formed address, registered or not.
+     */
+    async forgotPassword(requestParameters: ForgotPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.forgotPasswordRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for login without sending the request
@@ -249,6 +357,52 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
     async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MeRes> {
         const response = await this.meRaw(initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for resetPassword without sending the request
+     */
+    async resetPasswordRequestOpts(requestParameters: ResetPasswordRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['resetPasswordReq'] == null) {
+            throw new runtime.RequiredError(
+                'resetPasswordReq',
+                'Required parameter "resetPasswordReq" was null or undefined when calling resetPassword().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/v1/auth/password/reset`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ResetPasswordReqToJSON(requestParameters['resetPasswordReq']),
+        };
+    }
+
+    /**
+     * Sets a new password with a one-time link and ends the user\'s sessions.
+     */
+    async resetPasswordRaw(requestParameters: ResetPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.resetPasswordRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Sets a new password with a one-time link and ends the user\'s sessions.
+     */
+    async resetPassword(requestParameters: ResetPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.resetPasswordRaw(requestParameters, initOverrides);
     }
 
     /**

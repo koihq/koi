@@ -27,31 +27,18 @@ export interface GenerationRequest {
      */
     brandId: string;
     /**
-     * 
-     * @type {GenerationRequestModeEnum}
+     * Start collection as soon as the draft succeeds. Used by setup for the free check.
+     * @type {boolean}
      * @memberof GenerationRequest
      */
-    mode: GenerationRequestModeEnum;
+    startTracking?: boolean;
 }
-
-
-/**
- * @export
- */
-export const GenerationRequestModeEnum = {
-    INITIAL: 'initial',
-    PROMPTS: 'prompts',
-    COMPETITORS: 'competitors'
-} as const;
-export type GenerationRequestModeEnum = typeof GenerationRequestModeEnum[keyof typeof GenerationRequestModeEnum];
-
 
 /**
  * Check if a given object implements the GenerationRequest interface.
  */
 export function instanceOfGenerationRequest(value: object): value is GenerationRequest {
     if (!('brandId' in value) || value['brandId'] === undefined) return false;
-    if (!('mode' in value) || value['mode'] === undefined) return false;
     return true;
 }
 
@@ -66,7 +53,7 @@ export function GenerationRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     return {
         
         'brandId': json['brandId'],
-        'mode': json['mode'],
+        'startTracking': json['startTracking'] == null ? undefined : json['startTracking'],
     };
 }
 
@@ -82,7 +69,7 @@ export function GenerationRequestToJSONTyped(value?: GenerationRequest | null, i
     return {
         
         'brandId': value['brandId'],
-        'mode': value['mode'],
+        'startTracking': value['startTracking'],
     };
 }
 

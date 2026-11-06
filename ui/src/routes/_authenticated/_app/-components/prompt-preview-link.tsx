@@ -1,20 +1,22 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Prompt } from "@/api/prompts.api";
 import { BrandPill } from "@/components/blocks/brand-pill";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatRate } from "@/lib/format";
 import { trendPath } from "@/lib/trend-path";
 import { rate, series as visibilitySeries } from "@/lib/visibility";
 
 export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
-  const { t } = useTranslation("home");
+  const { t, i18n } = useTranslation("home");
   const [open, setOpen] = useState(false);
+  const areaId = useId();
   const link = (
     <Link
       to="/prompts/$promptId"
       params={{ promptId: prompt.id }}
-      className="block max-w-2xl text-sm/normal font-medium text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline"
+      className="block max-w-2xl text-sm/normal font-semibold text-foreground underline-offset-[3px] [overflow-wrap:anywhere] hover:underline"
     >
       {prompt.text}
     </Link>
@@ -30,11 +32,15 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
     .slice(0, 3);
   const width = 320;
   const height = 96;
+  // The line spans the days with readings, so a day still waiting for its run leaves no gap.
+  const hasReading = series.map((point) => point.rate !== null);
+  const firstReading = hasReading.indexOf(true);
+  const lastReading = hasReading.lastIndexOf(true);
   const points = series.map((point, index) =>
     point.rate === null
       ? null
       : {
-          x: (index / Math.max(1, series.length - 1)) * width,
+          x: ((index - firstReading) / Math.max(1, lastReading - firstReading)) * width,
           y: 8 + ((100 - point.rate) / 100) * (height - 16),
         },
   );
@@ -44,6 +50,15 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
       if (!segments.length || points[index - 1] === null) segments.push([]);
       segments.at(-1)?.push(point);
     }
+  }
+
+  // One reading has no trend yet, so hold its level across the chart.
+  const readings = points.filter((point) => point !== null);
+  if (readings.length === 1) {
+    segments.splice(0, segments.length, [
+      { x: 0, y: readings[0].y },
+      { x: width, y: readings[0].y },
+    ]);
   }
 
   return (
@@ -68,26 +83,21 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
           side="right"
           align="start"
           sideOffset={14}
-          className="flex w-[min(290px,calc(100vw-32px))] max-w-[calc(100vw-32px)] flex-col items-stretch gap-0 overflow-hidden rounded-[12px] border border-[var(--metric-tooltip-border)] [background:linear-gradient(165deg,#ffffff0c,#ffffff02_55%),color-mix(in_srgb,var(--popover)_80%,transparent)]! p-[14px_14px_0] text-foreground shadow-[0_16px_60px_var(--metric-tooltip-shadow)] backdrop-blur-[24px] backdrop-saturate-[130%] animate-none! [&>[data-slot=tooltip-arrow]]:hidden"
+          className="surface-float flex w-72 max-w-[calc(100vw-2rem)] flex-col items-stretch gap-0 overflow-hidden px-4 pt-4 text-foreground animate-none! pb-0 [&>[data-slot=tooltip-arrow]]:hidden"
         >
           <div className="flex items-start justify-between gap-4">
             <div className="grid gap-1.5">
               <span className="text-xs text-muted-foreground">{t("dashboard.yourRate")}</span>
-              <strong className="text-xl font-medium tabular-nums leading-none">
-                {currentRate === null ? "—" : `${currentRate.toFixed(1)}%`}
+              <strong className="text-section font-semibold tabular-nums">
+                {currentRate === null ? "—" : formatRate(currentRate, i18n.language)}
               </strong>
             </div>
             <div className="grid justify-items-end gap-1.5 text-right">
               <span className="text-xs text-muted-foreground">{t("dashboard.competitors")}</span>
               {rivals.length ? (
-                <span className="pointer-events-none inline-flex pe-2">
+                <span className="pointer-events-none inline-flex gap-1">
                   {rivals.map(({ item }) => (
-                    <span
-                      key={item.id}
-                      className="relative -me-[7px] grid size-6 place-items-center rounded-full bg-surface shadow-[0_0_0_1px_var(--surface)] [&_[data-slot=brand-icon]]:size-4"
-                    >
-                      <BrandPill name={item.name} domain={item.domain} iconOnly />
-                    </span>
+                    <BrandPill key={item.id} name={item.name} domain={item.domain} iconOnly />
                   ))}
                 </span>
               ) : (
@@ -97,14 +107,30 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
               )}
             </div>
           </div>
-          {segments.length ? (
+          {segments.length > 0 && (
             <svg
               viewBox={`0 0 ${width} ${height}`}
               preserveAspectRatio="none"
-              className="mt-3 -mx-3.5 block h-24 w-[calc(100%+28px)]"
+              className="mt-3 -mx-4 block h-24 w-[calc(100%+32px)]"
               role="img"
               aria-label={t("dashboard.chartDescription")}
             >
+              <defs>
+                <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="currentColor" stopOpacity="0.16" />
+                  <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {segments.map((segment) =>
+                segment.length > 1 ? (
+                  <path
+                    key={`area-${segment[0].x}`}
+                    d={`${trendPath(segment)} L ${segment[segment.length - 1].x} ${height} L ${segment[0].x} ${height} Z`}
+                    fill={`url(#${areaId})`}
+                    stroke="none"
+                  />
+                ) : null,
+              )}
               {segments.map((segment) =>
                 segment.length > 1 ? (
                   <path
@@ -119,7 +145,7 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
                 ) : (
                   <circle
                     key={segment[0].x}
-                    cx={segment[0].x}
+                    cx={Math.min(width - 6, Math.max(6, segment[0].x))}
                     cy={segment[0].y}
                     r="3"
                     fill="currentColor"
@@ -127,10 +153,6 @@ export function PromptPreviewLink({ prompt }: { prompt: Prompt }) {
                 ),
               )}
             </svg>
-          ) : (
-            <div className="mt-3 -mx-3.5 grid h-24 w-[calc(100%+28px)] place-items-center text-xs text-muted-foreground">
-              {t("dashboard.noComparison")}
-            </div>
           )}
         </TooltipContent>
       )}

@@ -11,7 +11,6 @@ export const errorCodes = [
   "invalid_json",
   "internal",
   "feature_unavailable",
-  "generation_conflict",
   "idempotency_conflict",
   "initial_already_completed",
   "run_not_ready",
@@ -21,6 +20,7 @@ export const errorCodes = [
   "billing_checkout_pending",
   "billing_subscription_exists",
   "billing_price_mismatch",
+  "password_reset_invalid",
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

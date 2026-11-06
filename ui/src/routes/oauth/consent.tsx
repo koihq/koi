@@ -79,7 +79,7 @@ function Consent() {
         </>
       ) : (
         <>
-          <h1 className="text-2xl font-medium tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("title", { client: consent.clientName })}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">{t("signedIn", { email })}</p>

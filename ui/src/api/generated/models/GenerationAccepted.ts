@@ -28,12 +28,6 @@ export interface GenerationAccepted {
     id: string;
     /**
      * 
-     * @type {GenerationAcceptedModeEnum}
-     * @memberof GenerationAccepted
-     */
-    mode: GenerationAcceptedModeEnum;
-    /**
-     * 
      * @type {GenerationAcceptedStateEnum}
      * @memberof GenerationAccepted
      */
@@ -46,16 +40,6 @@ export interface GenerationAccepted {
     statusUrl: string;
 }
 
-
-/**
- * @export
- */
-export const GenerationAcceptedModeEnum = {
-    INITIAL: 'initial',
-    PROMPTS: 'prompts',
-    COMPETITORS: 'competitors'
-} as const;
-export type GenerationAcceptedModeEnum = typeof GenerationAcceptedModeEnum[keyof typeof GenerationAcceptedModeEnum];
 
 /**
  * @export
@@ -74,7 +58,6 @@ export type GenerationAcceptedStateEnum = typeof GenerationAcceptedStateEnum[key
  */
 export function instanceOfGenerationAccepted(value: object): value is GenerationAccepted {
     if (!('id' in value) || value['id'] === undefined) return false;
-    if (!('mode' in value) || value['mode'] === undefined) return false;
     if (!('state' in value) || value['state'] === undefined) return false;
     if (!('statusUrl' in value) || value['statusUrl'] === undefined) return false;
     return true;
@@ -91,7 +74,6 @@ export function GenerationAcceptedFromJSONTyped(json: any, ignoreDiscriminator: 
     return {
         
         'id': json['id'],
-        'mode': json['mode'],
         'state': json['state'],
         'statusUrl': json['statusUrl'],
     };
@@ -109,7 +91,6 @@ export function GenerationAcceptedToJSONTyped(value?: GenerationAccepted | null,
     return {
         
         'id': value['id'],
-        'mode': value['mode'],
         'state': value['state'],
         'statusUrl': value['statusUrl'],
     };

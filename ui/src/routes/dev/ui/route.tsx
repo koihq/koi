@@ -12,7 +12,6 @@ const NAV = [
   { to: "/dev/ui/button", key: "button" },
   { to: "/dev/ui/field", key: "field" },
   { to: "/dev/ui/separator", key: "separator" },
-  { to: "/dev/ui/sidebar", key: "sidebar" },
 ] as const;
 
 export const Route = createFileRoute("/dev/ui")({

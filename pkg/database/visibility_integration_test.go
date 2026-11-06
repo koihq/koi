@@ -1,0 +1,298 @@
+package database
+
+import (
+	"context"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
+	"github.com/riverqueue/river/rivermigrate"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
+
+	"github.com/koihq/koi/internal/testdb"
+	"github.com/koihq/koi/pkg/auth"
+	"github.com/koihq/koi/pkg/domain"
+)
+
+func liveVisibilityFixture(t *testing.T, riverTables bool) (*gorm.DB, *Store, context.Context, *domain.Brand) {
+	t.Helper()
+	db, err := Open(testdb.URL(t))
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	require.NoError(t, Migrate(db))
+	client, err := river.NewClient(riverdatabasesql.New(sqlDB), &river.Config{})
+	require.NoError(t, err)
+	if riverTables {
+		migrator, err := rivermigrate.New(riverdatabasesql.New(sqlDB), nil)
+		require.NoError(t, err)
+		_, err = migrator.Migrate(t.Context(), rivermigrate.DirectionUp, nil)
+		require.NoError(t, err)
+	}
+
+	store := NewStore(db).WithEnqueueClient(client).WithLiveCollection(true)
+	user := &domain.User{Email: uuid.NewString() + "@example.com", PasswordHash: "hash"}
+	require.NoError(t, store.UserRepo().Create(t.Context(), user))
+	organizationID := testOrganizationForUser(t, store, user.ID)
+	ctx := testIdentity(t, store, user.ID)
+	brand := &domain.Brand{OrganizationID: organizationID, Name: "Koi", Domain: "koi.dev", Country: "US"}
+	require.NoError(t, store.BrandRepo().Create(ctx, brand))
+	_, err = domain.NewPromptCommander(store).Create(ctx, brand.ID, domain.CreatePromptParams{Text: "Best analytics tools?"})
+	require.NoError(t, err)
+
+	return db, store, ctx, brand
+}
+
+func testOrganizationForUser(t *testing.T, store *Store, userID uuid.UUID) uuid.UUID {
+	t.Helper()
+	if membership, err := store.MembershipRepo().GetByUserID(t.Context(), userID); err == nil {
+		return membership.OrganizationID
+	}
+	organization := &domain.Organization{Name: "Test"}
+	require.NoError(t, store.OrganizationRepo().Create(t.Context(), organization))
+	require.NoError(t, store.MembershipRepo().Create(t.Context(), &domain.Membership{
+		UserID: userID, OrganizationID: organization.ID, Role: domain.RoleOwner,
+	}))
+
+	return organization.ID
+}
+
+func startVisibilityTracking(t *testing.T, store *Store, ctx context.Context, brandID uuid.UUID) *domain.VisibilityRun {
+	t.Helper()
+	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brandID))
+	run, err := store.VisibilityRepo().Active(ctx, brandID)
+	require.NoError(t, err)
+
+	return run
+}
+
+func TestStartTrackingEnqueueRollback(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, false)
+	require.Error(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
+	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	require.False(t, status.Confirmed)
+	require.Nil(t, status.StartedAt)
+	var count int64
+	require.NoError(t, db.Model(&domain.VisibilityRun{}).Count(&count).Error)
+	require.Zero(t, count)
+	require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&count).Error)
+	require.Zero(t, count)
+}
+
+func TestVisibilityScheduleKeepsRunningAfterListChanges(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+	// Manual rows are already confirmed; tracking still needs an explicit start.
+	require.NoError(t, store.DispatchVisibility(ctx, time.Now()))
+	_, err := store.VisibilityRepo().Active(ctx, brand.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
+	require.Equal(t, int64(4), run.TotalResults)
+	require.True(t, run.FastStart)
+	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	require.Equal(t, status.StartedAt.Add(24*time.Hour), *status.NextRunAt)
+	anchor := *status.StartedAt
+
+	// Starting again and early dispatch never enqueue an extra paid run.
+	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
+	require.NoError(t, store.DispatchVisibility(ctx, anchor.Add(23*time.Hour)))
+	require.NoError(t, db.Model(run).Update("state", domain.VisibilitySucceeded).Error)
+
+	// Two dispatchers race on the same due slot: the brand lock and unique index fence it.
+	var group sync.WaitGroup
+	errors := make(chan error, 2)
+	for range 2 {
+		group.Go(func() { errors <- store.DispatchVisibility(context.Background(), anchor.Add(24*time.Hour)) })
+	}
+	group.Wait()
+	close(errors)
+	for err := range errors {
+		require.NoError(t, err)
+	}
+	runs, err := store.VisibilityRepo().List(ctx, domain.BrandFilter{BrandID: brand.ID}, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Equal(t, int64(2), runs.TotalItems)
+	current, err := store.VisibilityRepo().Active(ctx, brand.ID)
+	require.NoError(t, err)
+	require.False(t, current.FastStart)
+	require.Equal(t, anchor.Add(24*time.Hour), *current.ScheduledFor)
+	require.NoError(t, db.Model(current).Update("state", domain.VisibilitySucceeded).Error)
+
+	// Changing either list keeps tracking running, and the next run uses the new text.
+	prompts, err := store.PromptRepo().List(ctx, domain.PromptFilter{BrandFilter: domain.BrandFilter{BrandID: brand.ID}}, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	text := "New question"
+	_, err = domain.NewPromptCommander(store).Update(ctx, prompts.Items[0].ID, domain.UpdatePromptParams{Text: &text})
+	require.NoError(t, err)
+	competitor, err := domain.NewCompetitorCommander(store).Create(ctx, brand.ID, domain.CreateCompetitorParams{Name: "Acme", Domain: "acme.dev"})
+	require.NoError(t, err)
+	require.NoError(t, domain.NewCompetitorCommander(store).Delete(ctx, competitor.ID))
+	status, err = store.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	require.True(t, status.Confirmed)
+	require.Nil(t, status.BlockedReason)
+	require.Equal(t, anchor, *status.StartedAt)
+	require.NoError(t, store.DispatchVisibility(ctx, anchor.Add(48*time.Hour)))
+	runs, err = store.VisibilityRepo().List(ctx, domain.BrandFilter{BrandID: brand.ID}, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Equal(t, int64(3), runs.TotalItems)
+	edited, err := store.VisibilityRepo().Active(ctx, brand.ID)
+	require.NoError(t, err)
+	require.Equal(t, anchor.Add(48*time.Hour), *edited.ScheduledFor)
+	require.NoError(t, db.Model(edited).Update("state", domain.VisibilitySucceeded).Error)
+
+	// After downtime, collect the latest due slot only. Restarting the Store changes nothing.
+	restarted := NewStore(db).WithEnqueueClient(store.enqueueClient).WithLiveCollection(true)
+	require.NoError(t, restarted.DispatchVisibility(ctx, anchor.Add(6*24*time.Hour+time.Hour)))
+	latest, err := restarted.VisibilityRepo().Active(ctx, brand.ID)
+	require.NoError(t, err)
+	require.Equal(t, anchor.Add(6*24*time.Hour), *latest.ScheduledFor)
+	status, err = restarted.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	require.Equal(t, anchor.Add(7*24*time.Hour), *status.NextRunAt)
+	cells, err := restarted.VisibilityRepo().ListResults(ctx, latest.ID, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Equal(t, "New question", cells.Items[0].PromptText)
+	old, err := restarted.VisibilityRepo().ListResults(ctx, run.ID, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Equal(t, "Best analytics tools?", old.Items[0].PromptText)
+
+	// Mutations from another owner fail before touching reviews or list rows.
+	stranger := auth.WithIdentity(t.Context(), auth.Identity{UserID: uuid.New(), OrganizationID: uuid.New()})
+	require.ErrorIs(t, store.VisibilityRepo().StartTracking(stranger, brand.ID), domain.ErrNotFound)
+	require.ErrorIs(t, domain.NewPromptCommander(store).Delete(stranger, prompts.Items[0].ID), domain.ErrNotFound)
+	_, err = store.VisibilityRepo().Get(stranger, run.ID)
+	require.ErrorIs(t, err, domain.ErrNotFound)
+}
+
+func TestOnlyFirstOrganizationRunUsesFastStart(t *testing.T) {
+	_, store, ctx, first := liveVisibilityFixture(t, true)
+	second := &domain.Brand{
+		OrganizationID: first.OrganizationID,
+		Name:           "Second",
+		Domain:         "second.dev",
+		Country:        "US",
+	}
+	require.NoError(t, store.BrandRepo().Create(ctx, second))
+	_, err := domain.NewPromptCommander(store).Create(ctx, second.ID, domain.CreatePromptParams{Text: "Best tools?"})
+	require.NoError(t, err)
+	var group sync.WaitGroup
+	errors := make(chan error, 2)
+	for _, brand := range []*domain.Brand{first, second} {
+		group.Go(func() { errors <- store.VisibilityRepo().StartTracking(ctx, brand.ID) })
+	}
+	group.Wait()
+	close(errors)
+	for err := range errors {
+		require.NoError(t, err)
+	}
+	firstRun, err := store.VisibilityRepo().Active(ctx, first.ID)
+	require.NoError(t, err)
+	secondRun, err := store.VisibilityRepo().Active(ctx, second.ID)
+	require.NoError(t, err)
+	require.NotEqual(t, firstRun.FastStart, secondRun.FastStart)
+}
+
+func TestVisibilityCellsResumeAndPreserveAnswers(t *testing.T) {
+	_, store, ctx, brand := liveVisibilityFixture(t, true)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
+	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
+	require.NoError(t, err)
+	cell := cells[0]
+	now := time.Now().UTC()
+	require.NoError(t, store.ContactVisibilityTask(ctx, run.ID, 1, &cell, now))
+	taskID := uuid.NewString()
+	require.NoError(t, store.SaveVisibilityTask(ctx, run.ID, 1, cell.ID, taskID))
+	require.Error(t, store.SaveVisibilityTask(ctx, run.ID, 1, cell.ID, uuid.NewString()))
+	_, resumed, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 2)
+	require.NoError(t, err)
+	var saved domain.VisibilityResult
+	for _, item := range resumed {
+		if item.ID == cell.ID {
+			saved = item
+		}
+	}
+	require.Equal(t, taskID, *saved.CloroTaskID)
+	require.WithinDuration(t, now, *saved.SubmittedAt, time.Microsecond)
+	cell.RawAnswer = "Koi is recommended."
+	cell.Sources = []string{"https://koi.dev"}
+	outcome := domain.OutcomeCited
+	cell.Outcome, cell.FetchedAt = &outcome, &now
+	require.Error(t, store.SaveVisibilityResult(ctx, run.ID, 1, cell)) // stale attempt
+	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 2, cell))
+	cell.RawAnswer = "overwrite"
+	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 2, cell))
+	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Equal(t, "Koi is recommended.", read.Items[0].RawAnswer)
+	require.Error(t, store.FinishVisibilityAttempt(ctx, run.ID, 2))
+	progress, err := store.VisibilityRepo().Get(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), progress.CompletedResults)
+}
+
+func TestStartTrackingWithCollectionDisabledRunsWhenEnabled(t *testing.T) {
+	_, store, ctx, brand := liveVisibilityFixture(t, true)
+	store.WithLiveCollection(false)
+	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
+	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	require.True(t, status.Confirmed)
+	require.Equal(t, "collection_unavailable", *status.BlockedReason)
+	require.Nil(t, status.StartedAt)
+	store.WithLiveCollection(true)
+	require.NoError(t, store.DispatchVisibility(ctx, time.Now().UTC()))
+	_, err = store.VisibilityRepo().Active(ctx, brand.ID)
+	require.NoError(t, err)
+}
+
+func TestStartTrackingConfirmsDraftsOnceAndRefusesWhatCannotRun(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+
+	empty := &domain.Brand{OrganizationID: brand.OrganizationID, Name: "Empty", Domain: "empty.dev", Country: "US"}
+	require.NoError(t, store.BrandRepo().Create(ctx, empty))
+	require.ErrorIs(t, store.VisibilityRepo().StartTracking(ctx, empty.ID), domain.ErrValidation)
+
+	draft := &domain.Prompt{BrandID: brand.ID, Text: "Drafted question?", Source: domain.PromptSourceDrafted}
+	require.NoError(t, db.Create(draft).Error)
+	drafted := &domain.Competitor{BrandID: brand.ID, Name: "Drafted", Domain: "drafted.dev", Source: domain.CompetitorSourceDrafted}
+	require.NoError(t, db.Create(drafted).Error)
+	observed := &domain.Competitor{BrandID: brand.ID, Name: "Observed", Domain: "observed.dev", Source: domain.CompetitorSourceObserved}
+	require.NoError(t, db.Create(observed).Error)
+
+	active := &domain.GenerationRun{
+		BrandID:       brand.ID,
+		State:         domain.GenerationQueued,
+		ModelSlug:     domain.GenerationModelSlug,
+		BrandSnapshot: brand.Snapshot(),
+	}
+	require.NoError(t, db.Create(active).Error)
+	require.ErrorIs(t, store.VisibilityRepo().StartTracking(ctx, brand.ID), domain.ErrValidation)
+	require.NoError(t, db.Model(active).Update("state", domain.GenerationFailed).Error)
+
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
+	require.Equal(t, int64(8), run.TotalResults, "the confirmed draft joins the first run")
+
+	require.NoError(t, db.First(draft, "id = ?", draft.ID).Error)
+	require.True(t, draft.Confirmed)
+	require.NoError(t, db.First(drafted, "id = ?", drafted.ID).Error)
+	require.True(t, drafted.Confirmed)
+	require.NoError(t, db.First(observed, "id = ?", observed.ID).Error)
+	require.False(t, observed.Confirmed, "observed suggestions stay individually confirmed")
+
+	// A repeat confirms nothing new and creates no run.
+	later := &domain.Competitor{BrandID: brand.ID, Name: "Later", Domain: "later.dev", Source: domain.CompetitorSourceDrafted}
+	require.NoError(t, db.Create(later).Error)
+	require.NoError(t, store.VisibilityRepo().StartTracking(ctx, brand.ID))
+	require.NoError(t, db.First(later, "id = ?", later.ID).Error)
+	require.False(t, later.Confirmed)
+	runs, err := store.VisibilityRepo().List(ctx, domain.BrandFilter{BrandID: brand.ID}, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.Equal(t, int64(1), runs.TotalItems)
+}

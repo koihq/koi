@@ -80,12 +80,38 @@ paths:
         "402":
           $ref: "#/components/responses/Error"
         "200":
-          description: Review and daily collection schedule
+          description: Confirmation and daily collection schedule
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrackingStatus"
         default:
+          $ref: "#/components/responses/Error"
+  /api/v1/tracking/start:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandRequestScope"
+      tags: [visibility]
+      operationId: startVisibilityTracking
+      description: Confirms the brand's manual and drafted rows and starts daily collection. It runs once per brand; repeating it changes nothing. Observed suggestions require individual confirmation.
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Tracking confirmed
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "402":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
   /api/v1/runs:
     get:
@@ -111,33 +137,6 @@ paths:
         "402":
           $ref: "#/components/responses/Error"
         "404":
-          $ref: "#/components/responses/Error"
-  /api/v1/prompt-history:
-    get:
-      tags: [visibility]
-      operationId: listHistoricalPrompts
-      description: Deleted prompts with saved run results, newest snapshot first.
-      security:
-        - cookieAuth: []
-      parameters:
-        - $ref: "#/components/parameters/BrandID"
-        - $ref: "#/components/parameters/Page"
-        - $ref: "#/components/parameters/PageSize"
-        - $ref: "#/components/parameters/Query"
-        - $ref: "#/components/parameters/PromptSort"
-        - $ref: "#/components/parameters/Descending"
-        - $ref: "#/components/parameters/VisibilityDays"
-        - $ref: "#/components/parameters/VisibilityEngines"
-      responses:
-        "402":
-          $ref: "#/components/responses/Error"
-        "200":
-          description: Page of historical prompts
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HistoricalPromptPage"
-        default:
           $ref: "#/components/responses/Error"
   /api/v1/prompt-history/{promptID}/runs:
     parameters:
@@ -327,6 +326,40 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/auth/password/forgot:
+    post:
+      tags: [auth]
+      operationId: forgotPassword
+      description: Answers the same for every well-formed address, registered or not.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordReq"
+      responses:
+        "202":
+          description: Accepted
+        "400":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+  /api/v1/auth/password/reset:
+    post:
+      tags: [auth]
+      operationId: resetPassword
+      description: Sets a new password with a one-time link and ends the user's sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordReq"
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/logout:
     post:
       tags: [auth]
@@ -474,6 +507,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillingChange"
+  /api/v1/billing/start-plan:
+    post:
+      tags: [billing]
+      operationId: billingStartPlan
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      responses:
+        "200":
+          description: Trial ended and plan active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "202":
+          description: Payment not completed, the trial continues
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingChange"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
   /api/v1/billing/portal:
     post:
       tags: [billing]
@@ -550,6 +614,55 @@ paths:
         "401":
           $ref: "#/components/responses/Error"
         "409":
+          $ref: "#/components/responses/Error"
+  /api/v1/onboarding/events:
+    post:
+      tags: [brands]
+      operationId: recordOnboardingStep
+      description: Records the first time the organization reached a setup step. Koi Cloud only.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OnboardingEvent"
+      responses:
+        "204":
+          description: Recorded, or already recorded
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/v1/brands/lookup:
+    get:
+      tags: [brands]
+      operationId: lookupBrand
+      description: Reads a suggested name and description from a public website or GitHub repository for the setup form. Pass domain or githubRepo. A site that cannot be read returns found false.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: domain
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: githubRepo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: What the site or repository says about itself
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandLookup"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
           $ref: "#/components/responses/Error"
   /api/v1/brands/countries:
     get:
@@ -663,6 +776,7 @@ paths:
         - $ref: "#/components/parameters/PageSize"
         - $ref: "#/components/parameters/Query"
         - $ref: "#/components/parameters/Confirmed"
+        - $ref: "#/components/parameters/Inactive"
         - $ref: "#/components/parameters/PromptSort"
         - $ref: "#/components/parameters/Descending"
         - $ref: "#/components/parameters/VisibilityDays"
@@ -758,6 +872,7 @@ paths:
     delete:
       tags: [prompts]
       operationId: deletePrompt
+      description: Deletes a prompt with no saved results. A prompt with results returns resource_conflict; stop it by setting inactive instead.
       security:
         - cookieAuth: []
       responses:
@@ -768,6 +883,8 @@ paths:
         "402":
           $ref: "#/components/responses/Error"
         "404":
+          $ref: "#/components/responses/Error"
+        "409":
           $ref: "#/components/responses/Error"
   /api/v1/prompts/{promptID}/confirm:
     parameters:
@@ -784,27 +901,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PromptRes"
-        "401":
-          $ref: "#/components/responses/Error"
-        "402":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/Error"
-  /api/v1/prompts/confirm:
-    post:
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BrandRequestScope"
-      tags: [prompts]
-      operationId: confirmAllPrompts
-      security:
-        - cookieAuth: []
-      responses:
-        "204":
-          description: All prompts confirmed
         "401":
           $ref: "#/components/responses/Error"
         "402":
@@ -992,33 +1088,11 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
-  /api/v1/competitors/confirm:
-    post:
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BrandRequestScope"
-      tags: [competitors]
-      operationId: confirmAllCompetitors
-      description: Finishes competitor review and confirms manual or drafted rows. Observed suggestions require individual confirmation.
-      security:
-        - cookieAuth: []
-      responses:
-        "204":
-          description: Review finished; observed suggestions remain unchanged
-        "401":
-          $ref: "#/components/responses/Error"
-        "402":
-          $ref: "#/components/responses/Error"
-        "404":
-          $ref: "#/components/responses/Error"
   /api/v1/generations:
     post:
       tags: [generations]
       operationId: createGeneration
-      description: Creates a run and River job atomically. A compatible active run is returned instead. A terminal replay of the same idempotency key returns 200.
+      description: Starts the brand's one draft, creating a run and River job atomically. An active run is returned instead. A failed draft can run again until tracking starts. A terminal replay of the same idempotency key returns 200.
       security:
         - cookieAuth: []
       parameters:
@@ -1029,24 +1103,21 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/GenerationRequest"
-            example:
-              mode: initial
       responses:
         "200":
-          description: Terminal run replayed with the same idempotency key and mode
+          description: Terminal run replayed with the same idempotency key
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationAccepted"
         "202":
-          description: New or compatible active run
+          description: New or active run
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerationAccepted"
               example:
                 id: 22222222-2222-4222-8222-222222222222
-                mode: initial
                 state: queued
                 statusUrl: /api/v1/generations/22222222-2222-4222-8222-222222222222
         "400":
@@ -1058,7 +1129,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
         "409":
-          description: Active mode conflict, idempotency key reused for another mode, or initial already completed. Active mode conflicts include error.statusUrl.
+          description: The draft already succeeded or tracking has started.
           content:
             application/json:
               schema:
@@ -1106,7 +1177,6 @@ paths:
                 $ref: "#/components/schemas/GenerationStatus"
               example:
                 id: 22222222-2222-4222-8222-222222222222
-                mode: initial
                 state: queued
                 attempt: 0
                 promptCount: 0
@@ -1164,6 +1234,12 @@ components:
     Confirmed:
       name: confirmed
       in: query
+      schema:
+        type: boolean
+    Inactive:
+      name: inactive
+      in: query
+      description: Filter by stopped (true) or not stopped (false) prompts.
       schema:
         type: boolean
     Query:
@@ -1278,20 +1354,6 @@ components:
         brandId:
           type: string
           format: uuid
-    HistoricalPrompt:
-      type: object
-      required: [promptId, promptText, lastSeenAt]
-      properties:
-        promptId:
-          type: string
-          format: uuid
-        promptText:
-          type: string
-        lastSeenAt:
-          type: string
-          format: date-time
-        visibility:
-          $ref: "#/components/schemas/VisibilityReport"
     VisibilityMetric:
       type: object
       required: [completed, cited, mentioned, rate]
@@ -1348,27 +1410,7 @@ components:
           properties:
             hasConfirmedPrompts:
               type: boolean
-              description: Whether the brand has any current confirmed prompts, including paused prompts, regardless of the selected period and engines
-    HistoricalPromptPage:
-      type: object
-      required: [items, totalItems, totalPages, currentPage, hasNext, hasPrev]
-      properties:
-        items:
-          type: array
-          items:
-            $ref: "#/components/schemas/HistoricalPrompt"
-        totalItems:
-          type: integer
-          format: int64
-        totalPages:
-          type: integer
-          format: int64
-        currentPage:
-          type: integer
-        hasNext:
-          type: boolean
-        hasPrev:
-          type: boolean
+              description: Whether the brand has any current confirmed prompts, including stopped prompts, regardless of the selected period and engines
     PromptHistoryRun:
       type: object
       required: [run, results]
@@ -1556,11 +1598,9 @@ components:
           type: boolean
     TrackingStatus:
       type: object
-      required: [promptsReviewed, competitorsReviewed, startedAt, nextRunAt, blockedReason]
+      required: [confirmed, startedAt, nextRunAt, blockedReason]
       properties:
-        promptsReviewed:
-          type: boolean
-        competitorsReviewed:
+        confirmed:
           type: boolean
         startedAt:
           type: string
@@ -1573,7 +1613,7 @@ components:
         blockedReason:
           type: string
           nullable: true
-          enum: [collection_unavailable, reviews_required, prompts_required, generation_active, billing_inactive_or_over_limit]
+          enum: [collection_unavailable, start_required, prompts_required, billing_inactive_or_over_limit, first_look_used, first_look_site_used, first_look_paused]
     BrandRequest:
       type: object
       description: At least one of domain or githubRepo is required.
@@ -1718,7 +1758,7 @@ components:
           type: boolean
     PromptRes:
       type: object
-      required: [id, brandId, text, source, confirmed, inactive]
+      required: [id, brandId, text, source, confirmed, inactive, hasResults]
       properties:
         id:
           type: string
@@ -1735,6 +1775,9 @@ components:
           type: boolean
         inactive:
           type: boolean
+        hasResults:
+          type: boolean
+          description: Whether any run recorded this prompt. Such a prompt cannot be deleted; stop it by setting inactive.
         visibility:
           $ref: "#/components/schemas/VisibilityReport"
     CompetitorRequest:
@@ -1853,6 +1896,20 @@ components:
       required: [email, password]
       properties:
         email:
+          type: string
+        password:
+          type: string
+    ForgotPasswordReq:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+    ResetPasswordReq:
+      type: object
+      required: [token, password]
+      properties:
+        token:
           type: string
         password:
           type: string
@@ -1981,7 +2038,7 @@ components:
           type: boolean
     BillingStatus:
       type: object
-      required: [subscription, promptLimit, trialAvailable]
+      required: [subscription, promptLimit, usedPrompts, trialAvailable, firstLook]
       properties:
         subscription:
           allOf:
@@ -1989,8 +2046,14 @@ components:
           nullable: true
         promptLimit:
           type: integer
+        usedPrompts:
+          type: integer
+          format: int64
         trialAvailable:
           type: boolean
+        firstLook:
+          type: boolean
+          description: The organization never had a subscription or trial, so it may run one free check and keep reading its results.
     BillingConfirmCheckoutRequest:
       type: object
       required: [sessionId]
@@ -2012,33 +2075,64 @@ components:
           type: integer
         effective:
           type: string
-          enum: [current, trial_end, next_cycle, after_payment]
+          enum: [current, trial_end, next_cycle, after_payment, started]
         paymentUrl:
           type: string
           format: uri
         expiresAt:
           type: string
           format: date-time
+    OnboardingEvent:
+      type: object
+      required: [step]
+      properties:
+        step:
+          type: string
+          enum: [choice, website, confirm, agent_connect, agent_prompt, first_look, first_answer, trial_clicked, agent_handoff]
+    BrandLookup:
+      type: object
+      required: [found, name, description, source]
+      properties:
+        found:
+          type: boolean
+        name:
+          type: string
+        description:
+          type: string
+        source:
+          type: string
+          description: Where the values came from, website or github. Empty when nothing was found.
+    GenerationSummary:
+      type: object
+      required: [product, category, audience, functions]
+      properties:
+        product:
+          type: string
+        category:
+          type: string
+        audience:
+          type: string
+        functions:
+          type: array
+          items:
+            type: string
     GenerationRequest:
       type: object
-      required: [brandId, mode]
+      required: [brandId]
       properties:
         brandId:
           type: string
           format: uuid
-        mode:
-          type: string
-          enum: [initial, prompts, competitors]
+        startTracking:
+          type: boolean
+          description: Start collection as soon as the draft succeeds. Used by setup for the free check.
     GenerationAccepted:
       type: object
-      required: [id, mode, state, statusUrl]
+      required: [id, state, statusUrl]
       properties:
         id:
           type: string
           format: uuid
-        mode:
-          type: string
-          enum: [initial, prompts, competitors]
         state:
           type: string
           enum: [queued, running, succeeded, failed]
@@ -2046,14 +2140,15 @@ components:
           type: string
     GenerationStatus:
       type: object
-      required: [id, mode, state, attempt, promptCount, competitorCount, createdAt]
+      required: [id, state, attempt, promptCount, competitorCount, createdAt, startTracking]
       properties:
+        startTracking:
+          type: boolean
+        summary:
+          $ref: "#/components/schemas/GenerationSummary"
         id:
           type: string
           format: uuid
-        mode:
-          type: string
-          enum: [initial, prompts, competitors]
         state:
           type: string
           enum: [queued, running, succeeded, failed]
@@ -2120,9 +2215,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/FieldError"
-        statusUrl:
-          type: string
-          description: Present for generation_conflict to locate the active run.
     FieldError:
       type: object
       required: [field, code]
@@ -2144,7 +2236,6 @@ components:
         - invalid_json
         - internal
         - feature_unavailable
-        - generation_conflict
         - idempotency_conflict
         - initial_already_completed
         - billing_required

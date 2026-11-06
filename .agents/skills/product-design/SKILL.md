@@ -11,6 +11,37 @@ Read [primitives.md](primitives.md) and `docs/design-system.md` for the current 
 
 This file owns Koi judgment. Accessibility, layout, writing, type, color, and polish rules live in the installed `better-*` skills — point at them, do not copy them here.
 
+## References
+
+Koi is ultra clean and air spaced: an answer to the default shadcn, sidebar-first
+dashboard. Each reference governs named qualities; borrow those, not the brand.
+
+| Reference | Governs |
+| --- | --- |
+| **Fey** | Composition and surfaces: one quiet panel per signal on the canvas, a sentence as the heading with the state word emphasized, a chart without grid chrome, text range pills, borderless tables with right-aligned numbers |
+| **Trade Republic** | Lists: the hovered row lights up as one rounded fill across the whole row; large numbers, few columns, generous row height |
+| **Family** | Restraint and spacing: big type for the one number that matters, everything else quiet, wide gaps instead of dividers. Charts are only the line, its endpoint and the range control: no grid, axes, guides or scale labels, even when the line is flat |
+
+Typeface follows Fey's Calibre through its open substitute, Hanken Grotesk (see
+[primitives.md](primitives.md)).
+
+## Stageshow lens
+
+Stageshow (`.agents/skills/stageshow`) builds faux product UI, but its still-frame rules
+judge real screens well. Ask them of every viewport before calling it done:
+
+- Where does the eye land first? It must be the result (visibility, who wins instead).
+- How many real strings compete in the first viewport? Aim for 3 to 7 that carry
+  meaning; the rest is quiet structure.
+- Is it flat, every object the same weight in the same box? One surface leads.
+- Are there dead corners, empty bands, cut controls, or decorative shadows?
+- Any stock AI marks: sparkles, purple, a letter in a colored square?
+- Do values swap in place where they should move (numbers, scope changes)?
+
+Its scripts validate rendered pages: `scripts/layout.mjs` (insets, stacks, crops on
+ordinary UI), `scripts/film.mjs --hover` (row highlight in and out), `scripts/jumps.mjs`
+(layout jumps during scope changes). A clean report is a lead, not approval.
+
 ## Reader
 
 Two speeds on every product surface:
@@ -81,7 +112,7 @@ These are disallowed, not taste. Name them when rejecting work.
 
 | Name | Never | Instead |
 | --- | --- | --- |
-| **Mono chrome** | `--font-mono`, `font-mono`, Geist Mono, JetBrains, mono on IDs, timestamps, KPIs, tables, “code-like” labels | Inter Variable for everything. Aligned numbers use `tabular-nums` |
+| **Mono chrome** | `--font-mono`, `font-mono`, Geist Mono, JetBrains, mono on IDs, timestamps, KPIs, tables, “code-like” labels | Hanken Grotesk for everything. Aligned numbers use `tabular-nums` |
 | **Card kit** | shadcn `Card`; boxed metrics, metadata, sections, or lists “to group them” | Gap, alignment, type role. The main signal and answer panel may use a surface |
 | **Hairline habit** | `Separator` / `FieldSeparator` between fields, under headings, between timeline rows | Space owns grouping. One structural split at most (rail \| body, facts \| activity) |
 | **Decorative shadow** | Shadows on static panels or sections, including the authenticated main surface | Use canvas contrast and a single structural border. Add a shadow only when it clarifies meaningful overlap or elevation |

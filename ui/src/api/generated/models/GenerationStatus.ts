@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { GenerationSummary } from './GenerationSummary';
+import {
+    GenerationSummaryFromJSON,
+    GenerationSummaryFromJSONTyped,
+    GenerationSummaryToJSON,
+    GenerationSummaryToJSONTyped,
+} from './GenerationSummary';
+
 /**
  * 
  * @export
@@ -22,16 +30,22 @@ import { mapValues } from '../runtime';
 export interface GenerationStatus {
     /**
      * 
+     * @type {boolean}
+     * @memberof GenerationStatus
+     */
+    startTracking: boolean;
+    /**
+     * 
+     * @type {GenerationSummary}
+     * @memberof GenerationStatus
+     */
+    summary?: GenerationSummary;
+    /**
+     * 
      * @type {string}
      * @memberof GenerationStatus
      */
     id: string;
-    /**
-     * 
-     * @type {GenerationStatusModeEnum}
-     * @memberof GenerationStatus
-     */
-    mode: GenerationStatusModeEnum;
     /**
      * 
      * @type {GenerationStatusStateEnum}
@@ -92,16 +106,6 @@ export interface GenerationStatus {
 /**
  * @export
  */
-export const GenerationStatusModeEnum = {
-    INITIAL: 'initial',
-    PROMPTS: 'prompts',
-    COMPETITORS: 'competitors'
-} as const;
-export type GenerationStatusModeEnum = typeof GenerationStatusModeEnum[keyof typeof GenerationStatusModeEnum];
-
-/**
- * @export
- */
 export const GenerationStatusStateEnum = {
     QUEUED: 'queued',
     RUNNING: 'running',
@@ -115,8 +119,8 @@ export type GenerationStatusStateEnum = typeof GenerationStatusStateEnum[keyof t
  * Check if a given object implements the GenerationStatus interface.
  */
 export function instanceOfGenerationStatus(value: object): value is GenerationStatus {
+    if (!('startTracking' in value) || value['startTracking'] === undefined) return false;
     if (!('id' in value) || value['id'] === undefined) return false;
-    if (!('mode' in value) || value['mode'] === undefined) return false;
     if (!('state' in value) || value['state'] === undefined) return false;
     if (!('attempt' in value) || value['attempt'] === undefined) return false;
     if (!('promptCount' in value) || value['promptCount'] === undefined) return false;
@@ -135,8 +139,9 @@ export function GenerationStatusFromJSONTyped(json: any, ignoreDiscriminator: bo
     }
     return {
         
+        'startTracking': json['startTracking'],
+        'summary': json['summary'] == null ? undefined : GenerationSummaryFromJSON(json['summary']),
         'id': json['id'],
-        'mode': json['mode'],
         'state': json['state'],
         'attempt': json['attempt'],
         'promptCount': json['promptCount'],
@@ -160,8 +165,9 @@ export function GenerationStatusToJSONTyped(value?: GenerationStatus | null, ign
 
     return {
         
+        'startTracking': value['startTracking'],
+        'summary': GenerationSummaryToJSON(value['summary']),
         'id': value['id'],
-        'mode': value['mode'],
         'state': value['state'],
         'attempt': value['attempt'],
         'promptCount': value['promptCount'],

@@ -20,16 +20,16 @@ After `pnpm --dir ui exec shadcn add …`, append the new primitive here in the 
 | Motion out | `--ease-out` | `cubic-bezier(0.23, 1, 0.32, 1)` |
 | Motion on-screen | `--ease-in-out` | `cubic-bezier(0.77, 0, 0.175, 1)` |
 
-Type: Inter Variable (`--font-sans`) only. **Never add `--font-mono` or `font-mono`.** Tabular numbers: `tabular-nums`.
+Type: Hanken Grotesk Variable (`--font-sans`, `@fontsource-variable/hanken-grotesk`), the open stand-in for Fey's Calibre. One typeface only. **Never add `--font-mono` or `font-mono`.** Tabular numbers: `tabular-nums`.
 
-Type roles already in screens:
+Type roles are tokens in `styles.css` `@theme`. Never write `text-[13px]`-style sizes in routes. One strong weight: `font-semibold`; `font-bold` is not used.
 
 | Role | Classes |
 | --- | --- |
-| Page title | `text-[30px] font-semibold tracking-[-0.035em]` |
-| Section title | `text-lg font-medium tracking-tight` |
-| Main metric | `text-[38px] font-medium tabular-nums` |
-| Body | inherit `foreground` |
+| Page title | `text-title font-semibold` (30px, -0.03em) |
+| Section title | `text-section font-semibold` (16px) |
+| Main metric | `text-metric font-medium tabular-nums` (40px) |
+| Body / table cell | `text-body` (14px) |
 | Supporting | `text-muted-foreground` |
 | Control / label | primitive default (`text-xs/relaxed`, `FieldLabel`) |
 | Changing digits | `tabular-nums` |
@@ -42,7 +42,9 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 
 | Need | Use |
 | --- | --- |
-| Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| icon \| icon-xs \| icon-sm \| icon-lg` |
+| Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| icon \| icon-xs \| icon-sm \| icon-lg \| circle \| circle-sm \| pill` |
+| Checkbox | `Checkbox` with checked/indeterminate states; 16px box and 28px hit target |
+| One of a few options | `RadioGroup` / `RadioGroupItem`; 16px circle in neutral `primary`, arrow keys move the choice. A large choice may wrap the item in a bordered label, as in setup |
 | Text field | `Input` + `Field` / `FieldLabel` / `FieldError` / `FieldGroup` |
 | Searchable choice | `Combobox` / `ComboboxInput` / `ComboboxContent` / `ComboboxItem` |
 | Action menu | `DropdownMenu` / `DropdownMenuTrigger` / `DropdownMenuContent` / `DropdownMenuItem` |
@@ -54,13 +56,30 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 | Structural split | `Separator` — **one split**, never as grouping. Do not put `FieldSeparator` between form fields |
 | Data chart | `ChartContainer` / `ChartTooltip` with Recharts series |
 
-`FieldGroup` gap is the default grouping. Do not add `Card`, `Table`, or `Tabs` until a product screen needs the behavior.
+`FieldGroup` gap is the default grouping. Do not add `Card` for grouping. Product data tables use the installed `Table` primitives through `DataTable`.
 
-Authenticated navigation uses `AppHeader`: one brand link, competitors, account menu, theme, and sign out. The old Sidebar remains in the repository only for unused legacy code until cleanup.
+Shared product blocks and utilities:
+
+| Need | Use |
+| --- | --- |
+| Interactive list table | `DataTable interactive`: no rules, one rounded `signal-pill` fill per row on hover, focus and selection; siblings recede to 0.55 |
+| Row list (mobile, run history, rivals) | `ul.list-rows` with row buttons using `hover:bg-signal-pill`; same sibling fade |
+| Floating surface (bulk bar, hover previews, metric tooltip) | `surface-float` utility; never re-type the glass recipe |
+| Engine identity | `EngineIcon` (monochrome Hugeicons). Never draw engines with favicons |
+| Engine outcome | `OutcomeMark` (filled = cited, tinted = mentioned, outlined = not in answer) with `OutcomeLegend` |
+| Dates, rates, deltas | `lib/format.ts`: `formatDay`, `formatDateTime`, `formatDayRange`, `formatRate`, `formatPoints` ("−16.0 pp") |
+| Chart period and engine filter | `RangeControl`, `EngineFilter` (`chart-controls`): one row beside the chart title, on every chart |
+| Amount picker | `TickPicker` (`tick-picker`): large value over a tick ruler, for a few uneven amounts. Plain props, reusable outside the app |
+| Row selection | A controls-only column left of the text, as in Linear: the checkbox hangs in the panel's 44px side padding, with 12px on each side of it, so row text stays aligned with the panel title |
+| Way back | `BackLink` (`back-link`): arrow icon only, named by `aria-label` |
+| Add to a list | `icon-outline` `circle-sm` button with `Add01Icon`, beside the list's search |
+| Re-sorting lists | `useFlip` so rows move instead of jumping |
+
+Authenticated navigation uses `AppHeader`: one brand link, competitors, account menu, theme, and sign out. There is no sidebar; the legacy Sidebar and Sheet were removed.
 
 ## Authenticated shell baseline
 
-The compact header and main share a 1320px max width. Side padding is 16px on mobile and 28px from `sm`. Header actions use 40px hit targets. The brand icon is 28px. A single structural border around the signal separates it from the canvas. Keep focus rings separate from borders.
+The compact header and main share a 1376px outer max width (1320px content after desktop padding). Side padding is 16px on mobile and 28px from `sm`. Header actions use 40px hit targets. The brand icon remains compact. A single structural border around the signal separates it from the canvas. Keep focus rings separate from borders.
 
 ## Motion contract
 
@@ -72,8 +91,20 @@ Tokens live in `ui/src/styles.css`. Button press is on `[data-slot="button"]` �
 
 | Primitive | Motion |
 | --- | --- |
-| `Button` | Press: `:active` `scale(0.97)` at **160ms** `var(--ease-out)`, keep `:not([aria-haspopup])`. Color/hover: **160ms** `ease`, no hover scale. Reduced motion: no scale on `:active` |
+| `Button` | Press: `:active` `scale(0.97)` at **160ms** `var(--ease-out)`, keep `:not([aria-haspopup]):not(:focus-visible)`. Color/hover: **160ms** `ease`, no hover scale. Reduced motion: no scale on `:active` |
 | `Input` | `transition-colors ease` only. No press scale |
 | `Label`, `Field`, `Separator` | None |
 
 Do not animate theme flips, keyboard actions, or page navigation. Do not add popover/tooltip/modal recipes until those primitives exist.
+
+## Current production decisions
+
+See `docs/design-system.md` for the current contract and historical exploration provenance.
+Competitors show name, domain, visibility and gap vs the brand. Checkbox uses shadcn with a 28px hit target.
+Input and Textarea use 16px below `sm`; preserve their desktop density. Button `circle`
+and `pill` sizes provide 40px targets without route-level size overrides. Tables with
+overflow use a localized hint and keyboard-focusable scroll container.
+
+Header account/competitor controls use `circle-sm`: 32px visible, 40px hit target.
+Account uses `icon-outline` for a transparent idle background in both themes.
+Summary owns the shared visibility-chart style, including detail and boundary values.

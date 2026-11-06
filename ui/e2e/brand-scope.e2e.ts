@@ -72,12 +72,19 @@ test("an open form keeps its explicit brand when another tab changes the prefere
   const first = await context.newPage();
   const second = await context.newPage();
   await first.goto("/settings/brand");
-  await expect(first.getByRole("textbox", { name: "Brand name" })).toHaveValue("Brand A");
+  await first
+    .getByRole("row", { name: /^Brand A / })
+    .getByRole("button", { name: "Edit", exact: true })
+    .click();
+  const form = first.getByRole("dialog");
+  await expect(form.getByRole("textbox", { name: "Brand name" })).toHaveValue("Brand A");
   await second.goto("/settings/brand");
   await second.evaluate(async () => {
     await fetch("/api/v1/brands/brand-b/activate", { method: "POST" });
   });
-  await first.getByRole("textbox", { name: "Description" }).fill("Edited in first tab");
-  await first.getByRole("button", { name: "Save changes" }).click();
+  await form.getByRole("textbox", { name: "Description" }).fill("Edited in first tab");
+  await form.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect.poll(() => updates).toEqual(["brand-a"]);
+  expect(brands[0].description).toBe("Edited in first tab");
+  expect(brands[1].description).toBe("Second");
 });

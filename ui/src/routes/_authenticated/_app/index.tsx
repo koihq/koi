@@ -1,15 +1,8 @@
-import {
-  ChatGptIcon,
-  GoogleGeminiIcon,
-  GoogleIcon,
-  InformationCircleIcon,
-  PerplexityAiIcon,
-  Settings01Icon,
-} from "@hugeicons/core-free-icons";
+import { InformationCircleIcon, RankingIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow, { useCanAnimate } from "@number-flow/react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import {
   createStandardSchemaV1,
   parseAsNumberLiteral,
@@ -17,17 +10,26 @@ import {
   parseAsStringLiteral,
   useQueryStates,
 } from "nuqs";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine } from "@/api/generated";
-import { BrandPill } from "@/components/blocks/brand-pill";
-import { TrackingSummary } from "@/components/blocks/tracking-review";
+import { useBrandColor } from "@/components/blocks/brand-icon";
+import { BrandLabel } from "@/components/blocks/brand-label";
+import { chartRanges, EngineFilter, RangeControl } from "@/components/blocks/chart-controls";
+import { QueryRefreshIndicator } from "@/components/blocks/query-refresh-indicator";
+import { TrackingSummary } from "@/components/blocks/tracking-summary";
 import { type InspectionInput, VisibilityChart } from "@/components/blocks/visibility-chart";
 import { VisibilityHeadline } from "@/components/blocks/visibility-headline";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCollection } from "@/hooks/use-collection";
+import { useFlip } from "@/hooks/use-flip";
 import { useTracking } from "@/hooks/use-tracking";
+import { brandGlow, brandRowTint } from "@/lib/brand-tint";
+import { formatDay, formatDayRange, formatPoints, formatRate } from "@/lib/format";
+import { billingOptions, keepPreviousDataForScope, visibilitySummaryOptions } from "@/lib/queries";
 import { promptKey } from "@/lib/query-keys";
 import {
   engines,
@@ -40,20 +42,13 @@ import {
   PromptManager,
   promptSearchParams,
 } from "@/routes/_authenticated/_app/-components/prompt-manager";
+import { FirstLook } from "./-components/first-look";
+import { TrackingStart } from "./-components/tracking-start";
 
 const graphSearchParams = {
-  days: parseAsNumberLiteral([7, 30, 90] as const)
-    .withDefault(30)
-    .withOptions({ clearOnDefault: true }),
+  days: parseAsNumberLiteral(chartRanges).withDefault(30).withOptions({ clearOnDefault: true }),
   engines: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   compareId: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
-};
-
-const engineIcons = {
-  chatgpt: ChatGptIcon,
-  perplexity: PerplexityAiIcon,
-  gemini: GoogleGeminiIcon,
-  google_ai_overviews: GoogleIcon,
 };
 
 const MemoPromptManager = memo(PromptManager);
@@ -70,28 +65,59 @@ export const Route = createFileRoute("/_authenticated/_app/")({
   component: Home,
 });
 
+const FIRST_LOOK_SCOPE: VisibilityScope = { days: 30, engines: [] };
+
 function Home() {
+  const api = useApi();
+  const { brand, capabilities, draftStartFailed, me } = Route.useRouteContext();
+  const { draftStart } = Route.useSearch();
+  const billing = useQuery({
+    ...billingOptions(api, me.organization.id),
+    enabled: capabilities.cloudBilling,
+  });
+
+  if (capabilities.cloudBilling && billing.data?.firstLook) {
+    return (
+      <FirstLook
+        brand={brand}
+        scope={FIRST_LOOK_SCOPE}
+        draftStartFailed={draftStartFailed || draftStart === "failed"}
+      />
+    );
+  }
+
+  return <Dashboard />;
+}
+
+function Dashboard() {
   const { t, i18n } = useTranslation("home");
   const { brand, draftStartFailed } = Route.useRouteContext();
   const { draftStart } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const hash = useLocation({ select: (location) => location.hash });
   const api = useApi();
+  const { collecting } = useCollection(brand.id);
   const tracking = useTracking(brand.id);
-  const latestRun = useQuery({
-    queryKey: [...promptKey(brand.id), "latest-run"],
-    queryFn: ({ signal }) => api.runs.list(brand.id, 1, 1, { signal }),
-    enabled: Boolean(tracking.data?.startedAt),
-    refetchInterval: (query) => {
-      const state = query.state.data?.items[0]?.state;
-      return state === "queued" || state === "running" ? 5_000 : false;
-    },
-  });
-  const collecting = ["queued", "running"].includes(latestRun.data?.items[0]?.state ?? "");
   const [graph, setGraph] = useQueryStates(graphSearchParams);
   const [inspected, setInspected] = useState<number | null>(null);
+
   const [inspectionInput, setInspectionInput] = useState<InspectionInput>("keyboard");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsPinned, setDetailsPinned] = useState(false);
   const canAnimateNumbers = useCanAnimate();
+
+  // The router scrolls to the hash again on every navigation, and each filter is one. Once the
+  // link has landed, drop the hash so a later filter change keeps the page where it is.
+  useEffect(() => {
+    if (!hash) return;
+
+    const frame = requestAnimationFrame(() => {
+      void navigate({ to: ".", search: true, replace: true, resetScroll: false });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [hash, navigate]);
+
   const selectedEngines = useMemo(
     () =>
       graph.engines
@@ -105,14 +131,15 @@ function Home() {
   );
 
   const summary = useQuery({
-    queryKey: [...promptKey(brand.id), "visibility-summary", scope],
-    queryFn: ({ signal }) => api.runs.summary(brand.id, scope, { signal }),
+    ...visibilitySummaryOptions(api, brand.id, scope),
+    placeholderData: keepPreviousDataForScope(promptKey(brand.id)),
     refetchInterval: collecting ? 5_000 : false,
   });
   const hasConfirmedPrompts = summary.data?.hasConfirmedPrompts;
   const comparison = summary.data?.competitors.find(
     (competitor) => competitor.id === graph.compareId,
   );
+  const compareColor = useBrandColor(comparison?.domain);
   const { series, comparedSeries, rate, change, rivals, comparisonRate } = useMemo(() => {
     const report = summary.data;
     const series = visibilitySeries(report);
@@ -124,11 +151,15 @@ function Home() {
         competitor,
         rate: competitor.metric.rate,
       }))
+      // A rival with no mentions in this period was not recommended instead of anyone.
+      .filter((rival) => rival.rate !== 0)
       .sort((left, right) => (right.rate ?? 0) - (left.rate ?? 0));
     const comparisonRate = comparison ? visibilityRate(report, undefined, comparison.id) : null;
 
     return { series, comparedSeries, rate, change, rivals, comparisonRate };
   }, [summary.data, comparison]);
+  const rivalList = useRef<HTMLDivElement>(null);
+  useFlip(rivalList, rivals.map(({ competitor }) => competitor.id).join(","));
   const selectedPoint = inspected === null ? undefined : series[inspected];
   const selectedComparisonPoint = inspected === null ? undefined : comparedSeries[inspected];
   const headlineRate = selectedPoint ? selectedPoint.rate : rate;
@@ -158,48 +189,99 @@ function Home() {
     }
   }, []);
 
+  const empty = summary.isSuccess && rate === null;
+
   return (
     <div className="grid gap-6 pb-24">
       <h1 className="sr-only">{t("dashboard.title")}</h1>
-      <section
-        className="min-w-0 rounded-lg bg-surface p-4 sm:p-7"
-        aria-labelledby="signal-heading"
-        onPointerDownCapture={(event) =>
-          setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
-        }
-        onKeyDownCapture={() => setInspectionInput("keyboard")}
-      >
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-          <div>
-            <time
-              className="text-xs font-normal text-muted-foreground"
-              dateTime={new Date().toISOString()}
-            >
-              {new Date().toLocaleDateString(i18n.language, {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-              })}
-            </time>
-            <h2 id="signal-heading" className="mt-0.5 text-xl leading-tight font-bold">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <section
+          className="group/refresh relative min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
+          style={brandGlow(compareColor)}
+          aria-busy={summary.isFetching}
+          data-refreshing={summary.isFetching && Boolean(summary.data)}
+          aria-labelledby="signal-heading"
+          onPointerDownCapture={(event) =>
+            setInspectionInput(event.pointerType === "touch" ? "touch" : "pointer")
+          }
+          onKeyDownCapture={() => setInspectionInput("keyboard")}
+        >
+          <QueryRefreshIndicator active={summary.isFetching} label={t("dashboard.loading")} />
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <h2 id="signal-heading" className="text-section font-semibold">
               {t("dashboard.aiVisibility")}
             </h2>
-            {summary.isPending ? (
-              <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
-            ) : summary.isError ? (
-              <p role="alert" className="mt-6 text-sm">
-                {t("dashboard.loadError")}{" "}
-                <Button
-                  variant="link"
-                  onClick={() => {
-                    void summary.refetch();
+            {!empty && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <EngineFilter
+                  selected={selectedEngines}
+                  onToggle={(engine) => {
+                    const next = selectedEngines.includes(engine)
+                      ? selectedEngines.filter((id) => id !== engine)
+                      : [...selectedEngines, engine];
+
+                    void setGraph({ engines: next.join(",") }, { history: "push" });
+                    setInspected(null);
                   }}
-                >
-                  {t("dashboard.retry")}
+                />
+                <RangeControl
+                  days={graph.days}
+                  onChange={(days) => {
+                    void setGraph({ days }, { history: "push" });
+                    setInspected(null);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {summary.isPending ? (
+            <output className="mt-4 block">
+              <span className="sr-only">{t("dashboard.loading")}</span>
+              <Skeleton className="h-[42px] w-40" />
+              <Skeleton className="mt-1 h-[18px] w-44" />
+              <div className="h-[236px]" />
+            </output>
+          ) : summary.isError ? (
+            <p role="alert" className="mt-6 text-sm">
+              {t("dashboard.loadError")}{" "}
+              <Button
+                variant="link"
+                onClick={() => {
+                  void summary.refetch();
+                }}
+              >
+                {t("dashboard.retry")}
+              </Button>
+            </p>
+          ) : empty && tracking.isPending ? (
+            <p className="mt-6 text-sm text-muted-foreground">{t("dashboard.loading")}</p>
+          ) : empty && tracking.data?.confirmed === false ? (
+            <TrackingStart
+              brandID={brand.id}
+              scope={scope}
+              draftStartFailed={draftStartFailed || draftStart === "failed"}
+            />
+          ) : empty ? (
+            <div className="grid min-h-60 content-center justify-items-start gap-4 group-data-[refreshing=true]/refresh:opacity-50">
+              <output className="block max-w-[48ch] text-body text-muted-foreground">
+                {t(
+                  collecting
+                    ? "dashboard.firstCheckRunning"
+                    : hasConfirmedPrompts
+                      ? "dashboard.noCompletedAnswers"
+                      : "dashboard.emptyDescription",
+                )}
+              </output>
+              {!hasConfirmedPrompts && (
+                <Button render={<Link to="/" hash="prompts" />} nativeButton={false} size="lg">
+                  {t("dashboard.managePrompts")}
                 </Button>
-              </p>
-            ) : (
-              <div className="mt-4 flex flex-wrap items-baseline gap-2 text-[13px]">
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 group-data-[refreshing=true]/refresh:opacity-50">
                 <VisibilityHeadline
                   brand={brand}
                   competitor={comparison}
@@ -212,40 +294,20 @@ function Home() {
                   animated={animateNumbers}
                   variant="home"
                 />
-                {(!comparison || comparisonRate === null) && (
+                {(!comparison || comparisonRate === null) && headlineChange !== null && (
                   <span
-                    className={
-                      headlineChange === null
-                        ? "text-muted-foreground"
-                        : headlineChange >= 0
-                          ? "text-positive"
-                          : "text-negative"
-                    }
+                    className={`rounded-chip px-1.5 py-0.5 text-xs tabular-nums ${headlineChange > 0 ? "bg-positive/12 text-positive" : headlineChange < 0 ? "bg-negative/12 text-negative" : "bg-muted text-muted-foreground"}`}
                   >
-                    {headlineChange === null ? (
-                      "—"
-                    ) : (
-                      <NumberFlow
-                        value={Math.abs(headlineChange)}
-                        prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
-                        locales={i18n.language}
-                        format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
-                        animated={animateNumbers}
-                        className="[--number-flow-mask-height:0.3em]"
-                      />
-                    )}
+                    <NumberFlow
+                      value={Math.abs(headlineChange)}
+                      prefix={headlineChange > 0 ? "+" : headlineChange < 0 ? "−" : undefined}
+                      suffix=" pp"
+                      locales={i18n.language}
+                      format={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                      animated={animateNumbers}
+                      className="[--number-flow-mask-height:0.3em]"
+                    />
                   </span>
-                )}
-                {selectedPoint && (
-                  <time
-                    className="text-xs font-normal text-muted-foreground"
-                    dateTime={selectedPoint.date.toISOString()}
-                  >
-                    {selectedPoint.date.toLocaleDateString(i18n.language, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </time>
                 )}
                 <TooltipProvider delay={350}>
                   <Tooltip
@@ -263,11 +325,7 @@ function Home() {
                   >
                     <TooltipTrigger
                       render={
-                        <Button
-                          variant="ghost"
-                          size="icon-lg"
-                          className="relative -top-[7px] self-end"
-                        />
+                        <Button variant="ghost" size="icon-lg" className="text-muted-foreground" />
                       }
                       aria-label={t("dashboard.metricDetails")}
                       aria-expanded={detailsOpen}
@@ -280,7 +338,7 @@ function Home() {
                       <HugeiconsIcon icon={InformationCircleIcon} size={16} aria-hidden="true" />
                     </TooltipTrigger>
                     <TooltipContent
-                      className="metric-details-tooltip block w-fit max-w-[32ch] rounded-[10px] border border-(--metric-tooltip-border) bg-(--metric-tooltip) p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
+                      className="metric-details-tooltip surface-float block w-fit max-w-[32ch] p-3 text-xs leading-normal text-foreground data-[state=delayed-open]:animate-none data-open:animate-none data-closed:animate-none"
                       data-input={inspectionInput}
                       side="bottom"
                       align="start"
@@ -288,10 +346,7 @@ function Home() {
                       <div className="metric-details grid gap-2">
                         <strong className="font-semibold">
                           {selectedPoint
-                            ? selectedPoint.date.toLocaleDateString(i18n.language, {
-                                month: "short",
-                                day: "numeric",
-                              })
+                            ? formatDay(selectedPoint.date, i18n.language)
                             : t("dashboard.metricHeading")}
                         </strong>
                         <p className="text-muted-foreground">
@@ -309,151 +364,122 @@ function Home() {
                               )}
                         </p>
                         <p className="text-muted-foreground">{t("dashboard.metricSavedAnswers")}</p>
+                        <p className="text-muted-foreground">
+                          {t("cadence", { ns: "visibility" })}
+                        </p>
                       </div>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-            )}
-          </div>
-          <fieldset className="flex shrink-0 gap-1" aria-label={t("dashboard.filterEngines")}>
-            {engines.map((engine) => {
-              const selected = selectedEngines.includes(engine.id);
-              return (
-                <button
-                  key={engine.id}
-                  type="button"
-                  title={engine.name}
-                  aria-label={engine.name}
-                  aria-pressed={selected}
-                  className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  onClick={() => {
-                    const next = selected
-                      ? selectedEngines.filter((id) => id !== engine.id)
-                      : [...selectedEngines, engine.id];
-                    void setGraph({ engines: next.join(",") }, { history: "push" });
-                    setInspected(null);
-                  }}
-                >
-                  <HugeiconsIcon icon={engineIcons[engine.id]} size={23} aria-hidden="true" />
-                </button>
-              );
-            })}
-          </fieldset>
-        </div>
+              <p className="mt-1 min-h-[18px] text-xs text-muted-foreground tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                {selectedPoint ? (
+                  <time dateTime={selectedPoint.date.toISOString()}>
+                    {formatDay(selectedPoint.date, i18n.language)}
+                  </time>
+                ) : (
+                  series.length > 0 &&
+                  t("dashboard.periodAverage", {
+                    range: formatDayRange(
+                      series[0].date,
+                      series[series.length - 1].date,
+                      i18n.language,
+                    ),
+                  })
+                )}
+              </p>
+              <VisibilityChart
+                series={series}
+                comparison={comparedSeries}
+                brand={brand}
+                competitor={comparison}
+                inspected={inspected}
+                inspectionInput={inspectionInput}
+                onInspect={inspect}
+                locale={i18n.language}
+                scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
+                competitorColor={compareColor}
+              />
+            </>
+          )}
+        </section>
 
-        {summary.isSuccess && rate === null ? (
-          <div className="grid min-h-[244px] content-center justify-items-start gap-3 text-[13px] text-muted-foreground">
-            <p>
-              {t(
-                hasConfirmedPrompts ? "dashboard.noCompletedAnswers" : "dashboard.emptyDescription",
-              )}
-            </p>
-            {!hasConfirmedPrompts && (
-              <a href="#prompts" className="underline underline-offset-4">
-                {t("dashboard.managePrompts")}
-              </a>
-            )}
-          </div>
-        ) : rate !== null ? (
-          <VisibilityChart
-            series={series}
-            comparison={comparedSeries}
-            brand={brand}
-            competitor={comparison}
-            inspected={inspected}
-            inspectionInput={inspectionInput}
-            onInspect={inspect}
-            locale={i18n.language}
-            scopeKey={`${brand.id}:${graph.days}:${graph.engines}:${graph.compareId}`}
-          />
-        ) : null}
-
-        <div className="mt-4 flex items-center justify-between gap-4">
-          <span className="text-xs font-normal text-muted-foreground">
-            {series.length > 0 &&
-              `${series[0].date.toLocaleDateString(i18n.language, { month: "short", day: "numeric" })} – ${series.at(-1)?.date.toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}`}
-          </span>
-          <fieldset className="flex gap-0.5" aria-label={t("dashboard.range")}>
-            {([7, 30, 90] as const).map((days) => (
-              <button
-                key={days}
-                type="button"
-                aria-pressed={graph.days === days}
-                className="min-h-10 min-w-10 rounded-full px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground aria-pressed:bg-muted aria-pressed:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                onClick={() => {
-                  void setGraph({ days }, { history: "push" });
-                  setInspected(null);
-                }}
-              >
-                {`${days}D`}
-              </button>
-            ))}
-          </fieldset>
-        </div>
-
-        <div className="mt-6 text-[13px]">
-          <div className="flex items-center justify-between">
-            <h3>{t("dashboard.competitors")}</h3>
-            <Link
-              to="/competitors"
-              className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        <aside
+          className="group/refresh min-w-0 rounded-panel bg-surface p-4 sm:px-11 sm:py-9 xl:px-5"
+          aria-labelledby="rivals-heading"
+          data-refreshing={summary.isFetching && Boolean(summary.data)}
+        >
+          <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
+            <h2 id="rivals-heading" className="text-section font-semibold">
+              {t("dashboard.recommendedInstead")}
+            </h2>
+            <Button
+              variant="ghost"
+              size="circle-sm"
+              render={<Link to="/competitors" />}
+              nativeButton={false}
               aria-label={t("dashboard.manageCompetitors")}
               title={t("dashboard.manageCompetitors")}
+              className="-me-2 text-muted-foreground"
             >
-              <HugeiconsIcon icon={Settings01Icon} size={16} aria-hidden="true" />
-            </Link>
+              <HugeiconsIcon icon={RankingIcon} aria-hidden="true" />
+            </Button>
           </div>
           {rivals.length ? (
-            rivals.map(({ competitor, rate: rivalRate }) => {
-              const gap = rivalRate !== null && rate !== null ? rivalRate - rate : null;
-              return (
-                <button
-                  key={competitor.id}
-                  type="button"
-                  aria-pressed={graph.compareId === competitor.id}
-                  onClick={() => {
-                    void setGraph(
-                      { compareId: graph.compareId === competitor.id ? "" : competitor.id },
-                      { history: "push" },
-                    );
-                    setInspected(null);
-                  }}
-                  className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_60px_65px] items-center gap-1.5 rounded-md p-2 text-start hover:bg-muted aria-pressed:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:grid-cols-[minmax(0,1fr)_76px_88px] sm:gap-4 max-[359px]:grid-cols-[minmax(0,1fr)_auto] max-[359px]:gap-y-2"
-                >
-                  <span className="min-w-0 justify-self-start max-[359px]:col-span-2">
-                    <BrandPill name={competitor.name} domain={competitor.domain} />
-                  </span>
-                  <span className="text-end tabular-nums max-[359px]:text-start">
-                    {rivalRate === null ? "—" : `${rivalRate.toFixed(1)}%`}
-                  </span>
-                  <span
-                    className={`text-end tabular-nums ${gap === null ? "" : gap > 0 ? "text-negative" : "text-positive"}`}
+            <div ref={rivalList} className="list-rows -mx-2 grid gap-0.5">
+              {rivals.map(({ competitor, rate: rivalRate }) => {
+                const gap = rivalRate !== null && rate !== null ? rivalRate - rate : null;
+                return (
+                  <button
+                    key={competitor.id}
+                    data-flip-key={competitor.id}
+                    type="button"
+                    aria-pressed={graph.compareId === competitor.id}
+                    style={
+                      graph.compareId === competitor.id ? brandRowTint(compareColor) : undefined
+                    }
+                    onClick={() => {
+                      void setGraph(
+                        { compareId: graph.compareId === competitor.id ? "" : competitor.id },
+                        { history: "push" },
+                      );
+                      setInspected(null);
+                    }}
+                    className="grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-control px-2 py-2 text-start text-body hover:bg-signal-pill aria-pressed:bg-signal-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
-                    {gap === null ? "—" : `${gap > 0 ? "+" : ""}${gap.toFixed(1)} pp`}
-                  </span>
-                </button>
-              );
-            })
+                    <span className="flex min-w-0">
+                      <BrandLabel name={competitor.name} domain={competitor.domain} />
+                    </span>
+                    <span className="text-end font-semibold tabular-nums group-data-[refreshing=true]/refresh:opacity-50">
+                      {rivalRate === null ? "—" : formatRate(rivalRate, i18n.language)}
+                    </span>
+                    <span
+                      className={`w-16 text-end text-xs tabular-nums group-data-[refreshing=true]/refresh:opacity-50 ${gap === null ? "text-muted-foreground" : gap > 0 ? "text-negative" : "text-positive"}`}
+                    >
+                      {gap === null ? "—" : formatPoints(gap, i18n.language)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           ) : summary.isSuccess ? (
-            <p className="text-xs font-normal text-muted-foreground py-2">
-              {t("dashboard.noCompetitors")}
+            <p className="py-2 text-xs text-muted-foreground">
+              {t(
+                tracking.data?.confirmed === false
+                  ? "dashboard.competitorsAfterStart"
+                  : summary.data?.competitors.length
+                    ? "dashboard.noneRecommended"
+                    : "dashboard.noCompetitors",
+              )}
             </p>
           ) : null}
-        </div>
-      </section>
+        </aside>
+      </div>
 
-      {tracking.data && hasConfirmedPrompts === false && (
-        <div className="mt-6 border-l-2 border-border pl-4">
-          <TrackingSummary brandID={brand.id} />
-        </div>
+      {hasConfirmedPrompts && tracking.data?.confirmed !== false && (
+        <TrackingSummary brandID={brand.id} showSchedule={false} />
       )}
-      <MemoPromptManager
-        brandID={brand.id}
-        scope={scope}
-        collecting={collecting}
-        draftStartFailed={draftStartFailed || draftStart === "failed"}
-      />
+      <MemoPromptManager brandID={brand.id} scope={scope} collecting={collecting} />
     </div>
   );
 }

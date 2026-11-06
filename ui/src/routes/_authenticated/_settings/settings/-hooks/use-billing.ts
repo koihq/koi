@@ -16,7 +16,10 @@ export function billingUpgradeExpired(
     (change?.effective === "after_payment" ? change.quantity : undefined);
   const expiry = subscription?.pendingUpgradeExpiresAt ?? change?.expiresAt;
 
-  return Boolean(target && subscription?.quantity !== target && expiry && expiry.getTime() <= now);
+  // Ending a trial keeps the quantity, so an unpaid attempt only shows as an open trial.
+  const unpaid = subscription?.quantity !== target || subscription?.status === "trialing";
+
+  return Boolean(target && unpaid && expiry && expiry.getTime() <= now);
 }
 
 export function billingNeedsConfirmation(
@@ -25,7 +28,7 @@ export function billingNeedsConfirmation(
   checkoutReturned: boolean,
 ) {
   if (billingUpgradeExpired(status, change)) return false;
-  if (checkoutReturned && !status?.promptLimit) return true;
+  if (checkoutReturned && (!status?.promptLimit || status.firstLook)) return true;
   if (status?.subscription?.pendingUpgradeQuantity) return true;
 
   return (
@@ -41,6 +44,7 @@ export function useBilling(checkoutReturned: boolean, organizationID: string, se
   const api = useApi();
   const queryClient = useQueryClient();
   const request = useRef<{ quantity: number; key: string } | null>(null);
+  const startRequest = useRef<string | null>(null);
   const [change, setChange] = useState<BillingChange>();
   const [pollStartedAt, setPollStartedAt] = useState(Date.now);
   const [pollExpired, setPollExpired] = useState(false);
@@ -99,6 +103,19 @@ export function useBilling(checkoutReturned: boolean, organizationID: string, se
     },
   });
 
+  const start = useMutation({
+    mutationFn: () => {
+      startRequest.current ??= crypto.randomUUID();
+      return api.billing.startPlan(startRequest.current);
+    },
+    onSuccess: async (result) => {
+      startRequest.current = null;
+      setChange(result);
+      setPollStartedAt(Date.now());
+      await queryClient.invalidateQueries({ queryKey: subscriptionKey });
+    },
+  });
+
   const checkout = useMutation({
     mutationFn: api.billing.checkout,
     onSuccess: (result) => window.location.assign(result.url),
@@ -119,6 +136,7 @@ export function useBilling(checkoutReturned: boolean, organizationID: string, se
     subscription,
     confirmation,
     update,
+    start,
     checkout,
     portal,
     change,

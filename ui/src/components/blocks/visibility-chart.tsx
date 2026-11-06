@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   type DotProps,
@@ -7,11 +15,13 @@ import {
   Line,
   LineChart,
   ReferenceDot,
+  useXAxisScale,
   XAxis,
   YAxis,
 } from "recharts";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
+import { formatDay, formatRate } from "@/lib/format";
 
 export type VisibilityPoint = { date: Date; rate: number | null };
 export type InspectionInput = "pointer" | "touch" | "keyboard";
@@ -19,11 +29,12 @@ export type InspectionInput = "pointer" | "touch" | "keyboard";
 type ChartBrand = { name: string; domain?: string };
 
 const HEIGHT = 220;
+const PLOT_INSET = 16;
 const PILL_WIDTH = 72;
 const PILL_HEIGHT = 28;
 const chartConfig = {
   own: { color: "var(--foreground)" },
-  other: { color: "var(--muted-foreground)" },
+  other: { color: "var(--compare-color, var(--muted-foreground))" },
 } satisfies ChartConfig;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -41,15 +52,19 @@ function endpointLabel(
     const rate = Number(value);
     let top = clamp(Number(y) - PILL_HEIGHT / 2, 8, HEIGHT - PILL_HEIGHT - 8);
 
-    if (
-      isComparison &&
-      otherRate !== null &&
-      (Math.abs(rate - otherRate) / 100) * (HEIGHT - 32) < PILL_HEIGHT + 8
-    ) {
-      top =
-        top + PILL_HEIGHT + 8 <= HEIGHT - PILL_HEIGHT - 8
-          ? top + PILL_HEIGHT + 8
-          : top - PILL_HEIGHT - 8;
+    if (isComparison && otherRate !== null) {
+      // The brand's pill keeps its place; this one moves only as far as it must to clear it.
+      const otherY = Number(y) - ((otherRate - rate) / 100) * (HEIGHT - PLOT_INSET * 2);
+      const otherTop = clamp(otherY - PILL_HEIGHT / 2, 8, HEIGHT - PILL_HEIGHT - 8);
+      const spacing = PILL_HEIGHT + 8;
+
+      if (Math.abs(top - otherTop) < spacing) {
+        const below = otherTop + spacing;
+        const above = otherTop - spacing;
+        const fitsBelow = below <= HEIGHT - PILL_HEIGHT - 8;
+
+        top = (rate <= otherRate && fitsBelow) || above < 8 ? below : above;
+      }
     }
 
     return (
@@ -69,7 +84,7 @@ function endpointLabel(
               className="size-3"
             />
           )}
-          <span>{`${rate.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`}</span>
+          <span>{formatRate(rate, locale ?? "en")}</span>
         </div>
       </foreignObject>
     );
@@ -87,6 +102,19 @@ function ActiveMarker({ cx, cy, fill }: DotProps) {
   );
 }
 
+function InspectionClip({ id, day }: { id: string; day: string }) {
+  const scale = useXAxisScale();
+  const x = scale?.(day);
+
+  return (
+    <defs>
+      <clipPath id={id}>
+        <rect x={-4} y={0} width={Math.max(0, x ?? 0) + 4} height={HEIGHT} />
+      </clipPath>
+    </defs>
+  );
+}
+
 export function VisibilityChart({
   series,
   comparison,
@@ -97,7 +125,7 @@ export function VisibilityChart({
   onInspect,
   locale,
   scopeKey,
-  variant = "home",
+  competitorColor,
 }: {
   series: VisibilityPoint[];
   comparison: VisibilityPoint[];
@@ -108,10 +136,12 @@ export function VisibilityChart({
   onInspect: (index: number | null, input: InspectionInput) => void;
   locale?: string;
   scopeKey?: string;
-  variant?: "home" | "detail";
+  /** The compared competitor's brand color, read from its logo. Neutral when absent. */
+  competitorColor?: string | null;
 }) {
   const { t } = useTranslation("home");
   const figure = useRef<HTMLElement>(null);
+  const clipId = useId();
   const previousScope = useRef(scopeKey);
   const [width, setWidth] = useState(320);
   const activeIndex = inspected === null ? null : clamp(inspected, 0, series.length - 1);
@@ -125,16 +155,18 @@ export function VisibilityChart({
         day: point.date.toISOString(),
         own: point.rate,
         other: comparison[index]?.rate ?? null,
-        ownPast: activeIndex !== null && index <= activeIndex ? point.rate : null,
-        otherPast:
-          activeIndex !== null && index <= activeIndex ? (comparison[index]?.rate ?? null) : null,
       })),
-    [series, comparison, activeIndex],
+    [series, comparison],
+  );
+  const availableIndices = useMemo(
+    () =>
+      data.flatMap((point, index) => (point.own !== null || point.other !== null ? [index] : [])),
+    [data],
   );
   const selected = activeIndex === null ? null : data[activeIndex];
   const selectedDate = activeIndex === null ? null : series[activeIndex]?.date;
   const readout = selectedDate
-    ? `${selectedDate.toLocaleDateString(locale, { month: "short", day: "numeric" })}: ${brand.name} ${selected?.own == null ? t("dashboard.noData") : `${selected.own.toFixed(1)}%`}${competitor && selected?.other != null ? `, ${competitor.name} ${selected.other.toFixed(1)}%` : ""}`
+    ? `${formatDay(selectedDate, locale ?? "en")}: ${brand.name} ${selected?.own == null ? t("dashboard.noData") : `${selected.own.toFixed(1)}%`}${competitor && selected?.other != null ? `, ${competitor.name} ${selected.other.toFixed(1)}%` : ""}`
     : undefined;
 
   useEffect(() => {
@@ -193,14 +225,23 @@ export function VisibilityChart({
       0,
       lastIndex,
     );
-    if (index !== inspected || input !== inspectionInput) onInspect(index, input);
+    const point = data[index];
+    const next = point && (point.own !== null || point.other !== null) ? index : null;
+    if (next !== inspected || input !== inspectionInput) onInspect(next, input);
   }
 
   return (
     <figure
       ref={figure}
       data-motion={inspectionInput === "pointer"}
-      className={variant === "detail" ? "relative -mx-5 mt-5 mb-2" : "relative -mx-4 mt-6 sm:-mx-7"}
+      style={
+        competitorColor
+          ? ({
+              "--compare-color": `color-mix(in oklch, ${competitorColor} 80%, var(--foreground))`,
+            } as CSSProperties)
+          : undefined
+      }
+      className="relative -mx-4 mt-6 sm:-mx-11 group-data-[refreshing=true]/refresh:opacity-50"
     >
       <ChartContainer
         config={chartConfig}
@@ -224,9 +265,10 @@ export function VisibilityChart({
           onInspect(null, event.pointerType === "touch" ? "touch" : "pointer")
         }
       >
-        <LineChart data={data} margin={{ top: 16, right: 0, bottom: 16, left: 0 }}>
+        <LineChart data={data} margin={{ top: PLOT_INSET, right: 0, bottom: PLOT_INSET, left: 0 }}>
           <XAxis dataKey="day" hide height={0} padding={{ right: rightPadding }} />
-          <YAxis hide width={0} domain={[0, 100]} allowDataOverflow />
+          {/* Rates are bounded to 0–100. Clipping at the domain edge cuts the 4px stroke in half. */}
+          <YAxis hide width={0} domain={[0, 100]} />
           <Line
             dataKey="other"
             type="monotone"
@@ -264,10 +306,12 @@ export function VisibilityChart({
               />
             )}
           </Line>
-          {activeIndex !== null && (
+          {selected && (
             <>
+              <InspectionClip id={clipId} day={selected.day} />
               <Line
-                dataKey="otherPast"
+                dataKey="other"
+                style={{ clipPath: `url(#${clipId})` }}
                 type="monotone"
                 stroke="var(--color-other)"
                 strokeWidth={1.75}
@@ -278,7 +322,8 @@ export function VisibilityChart({
                 connectNulls={false}
               />
               <Line
-                dataKey="ownPast"
+                dataKey="own"
+                style={{ clipPath: `url(#${clipId})` }}
                 type="monotone"
                 stroke="var(--color-own)"
                 strokeWidth={4}
@@ -291,39 +336,39 @@ export function VisibilityChart({
               />
             </>
           )}
+          {series.map((point, index) =>
+            index !== activeIndex &&
+            point.rate !== null &&
+            series[index - 1]?.rate == null &&
+            series[index + 1]?.rate == null ? (
+              <ReferenceDot
+                key={`own-${point.date.toISOString()}`}
+                x={point.date.toISOString()}
+                y={point.rate}
+                r={index === lastIndex ? 6 : 3}
+                fill="var(--color-own)"
+                stroke="none"
+              />
+            ) : null,
+          )}
+          {comparison.map((point, index) =>
+            index !== activeIndex &&
+            point.rate !== null &&
+            comparison[index - 1]?.rate == null &&
+            comparison[index + 1]?.rate == null ? (
+              <ReferenceDot
+                key={`other-${point.date.toISOString()}`}
+                x={point.date.toISOString()}
+                y={point.rate}
+                r={index === lastIndex ? 6 : 3}
+                fill="var(--color-other)"
+                stroke="none"
+              />
+            ) : null,
+          )}
           {activeIndex === null ? (
             <>
-              {series.map((point, index) =>
-                index < lastIndex &&
-                point.rate !== null &&
-                (index === 0 || series[index - 1].rate === null) &&
-                series[index + 1].rate === null ? (
-                  <ReferenceDot
-                    key={`own-${point.date.toISOString()}`}
-                    x={point.date.toISOString()}
-                    y={point.rate}
-                    r={3}
-                    fill="var(--color-own)"
-                    stroke="none"
-                  />
-                ) : null,
-              )}
-              {comparison.map((point, index) =>
-                index < lastIndex &&
-                point.rate !== null &&
-                (index === 0 || comparison[index - 1].rate === null) &&
-                comparison[index + 1].rate === null ? (
-                  <ReferenceDot
-                    key={`other-${point.date.toISOString()}`}
-                    x={point.date.toISOString()}
-                    y={point.rate}
-                    r={3}
-                    fill="var(--color-other)"
-                    stroke="none"
-                  />
-                ) : null,
-              )}
-              {last && last.rate !== null && (
+              {last && last.rate !== null && series[lastIndex - 1]?.rate != null && (
                 <ReferenceDot
                   x={last.date.toISOString()}
                   y={last.rate}
@@ -333,7 +378,7 @@ export function VisibilityChart({
                   strokeWidth={2}
                 />
               )}
-              {otherLast && otherLast.rate !== null && (
+              {otherLast && otherLast.rate !== null && comparison[lastIndex - 1]?.rate != null && (
                 <ReferenceDot
                   x={otherLast.date.toISOString()}
                   y={otherLast.rate}
@@ -366,16 +411,23 @@ export function VisibilityChart({
           )}
         </LineChart>
       </ChartContainer>
-      <label className="absolute inset-0 pointer-events-none has-focus-visible:rounded-md has-focus-visible:outline-2 has-focus-visible:outline-offset-4 has-focus-visible:outline-ring">
+      <label className="absolute inset-0 pointer-events-none has-focus-visible:rounded-control has-focus-visible:outline-2 has-focus-visible:outline-offset-4 has-focus-visible:outline-ring">
         <span className="sr-only">{t("dashboard.inspectDay")}</span>
         <input
           type="range"
           min={0}
-          max={lastIndex}
-          value={activeIndex ?? lastIndex}
+          max={Math.max(0, availableIndices.length - 1)}
+          disabled={availableIndices.length === 0}
+          value={
+            activeIndex === null
+              ? Math.max(0, availableIndices.length - 1)
+              : Math.max(0, availableIndices.indexOf(activeIndex))
+          }
           aria-valuetext={readout}
-          onFocus={() => onInspect(activeIndex ?? lastIndex, "keyboard")}
-          onChange={(event) => onInspect(Number(event.target.value), "keyboard")}
+          onFocus={() => onInspect(activeIndex ?? availableIndices.at(-1) ?? null, "keyboard")}
+          onChange={(event) =>
+            onInspect(availableIndices[Number(event.target.value)] ?? null, "keyboard")
+          }
           onKeyDown={(event) => {
             if (event.key === "Escape") onInspect(null, "keyboard");
           }}

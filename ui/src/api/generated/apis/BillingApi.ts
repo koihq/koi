@@ -72,6 +72,10 @@ export interface BillingQuoteRequest {
     prompts: number;
 }
 
+export interface BillingStartPlanRequest {
+    idempotencyKey: string;
+}
+
 export interface StripeWebhookRequest {
     stripeSignature: string;
     body: object;
@@ -149,15 +153,15 @@ export interface BillingApiInterface {
 
     /**
      * Creates request options for billingConfirmCheckout without sending the request
-     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest
+     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest 
      * @throws {RequiredError}
      * @memberof BillingApiInterface
      */
     billingConfirmCheckoutRequestOpts(requestParameters: BillingConfirmCheckoutOperationRequest): Promise<runtime.RequestOpts>;
 
     /**
-     *
-     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest
+     * 
+     * @param {BillingConfirmCheckoutRequest} billingConfirmCheckoutRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof BillingApiInterface
@@ -207,6 +211,27 @@ export interface BillingApiInterface {
     /**
      */
     billingQuote(requestParameters: BillingQuoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingQuote>;
+
+    /**
+     * Creates request options for billingStartPlan without sending the request
+     * @param {string} idempotencyKey 
+     * @throws {RequiredError}
+     * @memberof BillingApiInterface
+     */
+    billingStartPlanRequestOpts(requestParameters: BillingStartPlanRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * 
+     * @param {string} idempotencyKey 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BillingApiInterface
+     */
+    billingStartPlanRaw(requestParameters: BillingStartPlanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillingChange>>;
+
+    /**
+     */
+    billingStartPlan(requestParameters: BillingStartPlanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange>;
 
     /**
      * Creates request options for billingSubscription without sending the request
@@ -516,6 +541,52 @@ export class BillingApi extends runtime.BaseAPI implements BillingApiInterface {
      */
     async billingQuote(requestParameters: BillingQuoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingQuote> {
         const response = await this.billingQuoteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for billingStartPlan without sending the request
+     */
+    async billingStartPlanRequestOpts(requestParameters: BillingStartPlanRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['idempotencyKey'] == null) {
+            throw new runtime.RequiredError(
+                'idempotencyKey',
+                'Required parameter "idempotencyKey" was null or undefined when calling billingStartPlan().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (requestParameters['idempotencyKey'] != null) {
+            headerParameters['Idempotency-Key'] = String(requestParameters['idempotencyKey']);
+        }
+
+
+        let urlPath = `/api/v1/billing/start-plan`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     */
+    async billingStartPlanRaw(requestParameters: BillingStartPlanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BillingChange>> {
+        const requestOptions = await this.billingStartPlanRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BillingChangeFromJSON(jsonValue));
+    }
+
+    /**
+     */
+    async billingStartPlan(requestParameters: BillingStartPlanRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BillingChange> {
+        const response = await this.billingStartPlanRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

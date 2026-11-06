@@ -1,75 +1,49 @@
-import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { messageFromUnknown } from "@/api/errors";
-import type { GenerationMode } from "@/api/generations.api";
 import { Button } from "@/components/ui/button";
 import { useGeneration } from "@/hooks/use-generation";
+import { useTracking } from "@/hooks/use-tracking";
 
+/** The state of the brand's one draft. It has no role once tracking has started. */
 export function GenerationControls({
   brandID,
-  mode,
   setupStartFailed = false,
-  hideSuccessMessage = false,
 }: {
   brandID: string;
-  mode: "prompts" | "competitors";
   setupStartFailed?: boolean;
-  hideSuccessMessage?: boolean;
 }) {
   const { t } = useTranslation("management");
+  const tracking = useTracking(brandID);
   const { capabilities, runs, run, create } = useGeneration(brandID);
+
+  if (tracking.data?.confirmed !== false) return null;
+
   const enabled = capabilities.data?.aiDrafting === true;
-  const busy = run?.state === "queued" || run?.state === "running" || create.isPending;
+  const failed = run?.state === "failed";
+  const canRequest = enabled && runs.isSuccess && (failed || !run);
 
-  const showStatus =
-    !create.isPending && run && (busy || run.mode === "initial" || run.mode === mode);
-  const hasNewItems = run && run.promptCount + run.competitorCount > 0;
-  const showStatusMessage =
-    showStatus && !(hideSuccessMessage && run.state === "succeeded" && hasNewItems);
-
-  const retryMode: GenerationMode | undefined =
-    run?.state === "failed" && (run.mode === "initial" || run.mode === mode) ? run.mode : undefined;
-
-  const showMore = run && !retryMode && (run.mode !== "initial" || run.state === "succeeded");
   function statusCopy() {
-    if (!run) return "";
-
-    const subject = t(`draftSubject.${run.mode}`);
-    if (run.state === "queued") return t("draftQueued", { subject });
-
-    if (run.state === "running") return t("draftRunning", { subject });
-
-    if (run.state === "failed") return t("draftFailed", { subject });
-
-    if (run.mode === "initial") {
-      return run.promptCount + run.competitorCount === 0
-        ? t("draftEmpty")
-        : t("draftInitialDone", {
-            promptCount: run.promptCount,
-            competitorCount: run.competitorCount,
-          });
+    if (create.isPending) return t("draftStarting");
+    if (run?.state === "queued") return t("draftQueued");
+    if (run?.state === "running") return t("draftRunning");
+    if (failed) return t("draftFailed");
+    if (run?.state === "succeeded" && run.promptCount + run.competitorCount === 0) {
+      return t("draftEmpty");
     }
 
-    const count = run.mode === "prompts" ? run.promptCount : run.competitorCount;
+    return "";
+  }
 
-    return count === 0 ? t("draftEmpty") : t("draftListDone", { count, subject });
+  const status = statusCopy();
+  const setupFailed = setupStartFailed && enabled && !run && runs.isSuccess && !create.isError;
+
+  if (!status && !runs.isError && !capabilities.isError && !create.isError && !canRequest) {
+    return null;
   }
 
   return (
-    <div className="mb-6 space-y-3 text-sm">
-      <output className="block space-y-2">
-        {create.isPending ? (
-          <span className="block">
-            {t("draftStarting", { subject: t(`draftSubject.${create.variables ?? mode}`) })}
-          </span>
-        ) : null}
-        {showStatusMessage ? <span className="block">{statusCopy()}</span> : null}
-        {showStatus && run.mode === "initial" && run.state === "succeeded" && mode === "prompts" ? (
-          <Link to="/competitors" className="text-sm underline underline-offset-4">
-            {t("reviewCompetitors")}
-          </Link>
-        ) : null}
-      </output>
+    <div className="space-y-3 text-sm">
+      {status ? <output className="block">{status}</output> : null}
       {runs.isError ? (
         <p role="alert" className="text-destructive">
           {t("draftHistoryError")}{" "}
@@ -96,52 +70,21 @@ export function GenerationControls({
           {messageFromUnknown(create.error)} {t("draftRequestRecovery")}
         </p>
       ) : null}
-      {setupStartFailed && enabled && !run && runs.isSuccess && !create.isError ? (
+      {setupFailed ? (
         <p role="alert" className="text-destructive">
           {t("draftStartError")}
         </p>
       ) : null}
-      {enabled && runs.isSuccess ? (
-        <div className="flex flex-wrap items-center gap-3">
-          {retryMode ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => create.mutate(retryMode)}
-            >
-              {t("retryDraft")}
-            </Button>
-          ) : null}
-          {!run && mode === "prompts" ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => create.mutate("initial")}
-            >
-              {setupStartFailed ? t("retryDraft") : t("draftInitial")}
-            </Button>
-          ) : null}
-          {!run && mode === "competitors" ? (
-            <Link to="/" hash="prompts" className="underline underline-offset-4">
-              {t("startDraftOnPrompts")}
-            </Link>
-          ) : null}
-          {showMore ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => create.mutate(mode)}
-            >
-              {mode === "prompts" ? t("draftMorePrompts") : t("draftMoreCompetitors")}
-            </Button>
-          ) : null}
-        </div>
+      {canRequest ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={create.isPending}
+          onClick={() => create.mutate()}
+        >
+          {failed || setupStartFailed ? t("retryDraft") : t("draftInitial")}
+        </Button>
       ) : null}
     </div>
   );

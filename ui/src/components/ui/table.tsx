@@ -1,14 +1,49 @@
 import { cn } from "cn";
 import * as React from "react";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  scrollHint,
+  ...props
+}: React.ComponentProps<"table"> & { scrollHint?: string }) {
+  const container = React.useRef<HTMLDivElement>(null);
+  const hintID = React.useId();
+  const [overflowing, setOverflowing] = React.useState(false);
+
+  React.useEffect(() => {
+    const element = container.current;
+    if (!element || !scrollHint) return;
+
+    const measure = () => setOverflowing(element.scrollWidth > element.clientWidth + 1);
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    measure();
+    return () => observer.disconnect();
+  }, [scrollHint]);
+
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-xs", className)}
-        {...props}
-      />
+    <div className="min-w-0">
+      {overflowing && (
+        <p id={hintID} className="mb-2 text-xs text-muted-foreground">
+          {scrollHint}
+        </p>
+      )}
+      <div
+        ref={container}
+        data-slot="table-container"
+        role={overflowing ? "region" : undefined}
+        aria-label={overflowing ? (props["aria-label"] ?? scrollHint) : undefined}
+        aria-describedby={overflowing ? hintID : undefined}
+        tabIndex={overflowing ? 0 : undefined}
+        className="relative w-full overflow-x-auto rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <table
+          data-slot="table"
+          className={cn("w-full caption-bottom text-xs", className)}
+          {...props}
+        />
+      </div>
     </div>
   );
 }

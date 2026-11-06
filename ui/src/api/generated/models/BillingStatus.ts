@@ -42,10 +42,22 @@ export interface BillingStatus {
     promptLimit: number;
     /**
      * 
+     * @type {number}
+     * @memberof BillingStatus
+     */
+    usedPrompts: number;
+    /**
+     * 
      * @type {boolean}
      * @memberof BillingStatus
      */
     trialAvailable: boolean;
+    /**
+     * The organization never had a subscription or trial, so it may run one free check and keep reading its results.
+     * @type {boolean}
+     * @memberof BillingStatus
+     */
+    firstLook: boolean;
 }
 
 /**
@@ -54,7 +66,9 @@ export interface BillingStatus {
 export function instanceOfBillingStatus(value: object): value is BillingStatus {
     if (!('subscription' in value) || value['subscription'] === undefined) return false;
     if (!('promptLimit' in value) || value['promptLimit'] === undefined) return false;
+    if (!('usedPrompts' in value) || value['usedPrompts'] === undefined) return false;
     if (!('trialAvailable' in value) || value['trialAvailable'] === undefined) return false;
+    if (!('firstLook' in value) || value['firstLook'] === undefined) return false;
     return true;
 }
 
@@ -70,7 +84,9 @@ export function BillingStatusFromJSONTyped(json: any, ignoreDiscriminator: boole
         
         'subscription': BillingSubscriptionFromJSON(json['subscription']),
         'promptLimit': json['promptLimit'],
+        'usedPrompts': json['usedPrompts'],
         'trialAvailable': json['trialAvailable'],
+        'firstLook': json['firstLook'],
     };
 }
 
@@ -87,7 +103,9 @@ export function BillingStatusToJSONTyped(value?: BillingStatus | null, ignoreDis
         
         'subscription': BillingSubscriptionToJSON(value['subscription']),
         'promptLimit': value['promptLimit'],
+        'usedPrompts': value['usedPrompts'],
         'trialAvailable': value['trialAvailable'],
+        'firstLook': value['firstLook'],
     };
 }
 

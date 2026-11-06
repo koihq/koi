@@ -29,7 +29,6 @@ export const ErrorCode = {
     INVALID_JSON: 'invalid_json',
     INTERNAL: 'internal',
     FEATURE_UNAVAILABLE: 'feature_unavailable',
-    GENERATION_CONFLICT: 'generation_conflict',
     IDEMPOTENCY_CONFLICT: 'idempotency_conflict',
     INITIAL_ALREADY_COMPLETED: 'initial_already_completed',
     BILLING_REQUIRED: 'billing_required',

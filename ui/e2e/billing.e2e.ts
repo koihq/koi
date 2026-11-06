@@ -4,9 +4,9 @@ const catalog = {
   currency: "eur",
   interval: "month",
   options: [
-    { prompts: 5, amountCents: 900, currency: "eur", interval: "month" },
-    { prompts: 25, amountCents: 2900, currency: "eur", interval: "month" },
-    { prompts: 50, amountCents: 4900, currency: "eur", interval: "month" },
+    { prompts: 15, amountCents: 2900, currency: "eur", interval: "month" },
+    { prompts: 25, amountCents: 4500, currency: "eur", interval: "month" },
+    { prompts: 50, amountCents: 7500, currency: "eur", interval: "month" },
   ],
 };
 
@@ -90,9 +90,9 @@ test("starts from the current allowance and lets a pending downgrade be canceled
   await expect(page.getByRole("button", { name: "Change allowance" })).toBeDisabled();
 
   await page.screenshot({ path: testInfo.outputPath("billing-desktop.png"), fullPage: true });
-  state.subscription.pendingQuantity = 5;
+  state.subscription.pendingQuantity = 15;
   await page.reload();
-  await expect(page.getByRole("combobox", { name: "Tracked prompts" })).toHaveText("5");
+  await expect(page.getByRole("combobox", { name: "Tracked prompts" })).toHaveText("15");
   await page.route("**/api/v1/billing/change-allowance", async (route) => {
     expect(route.request().postDataJSON()).toEqual({ prompts: 25 });
     expect(route.request().headers()["idempotency-key"]).toBeTruthy();
@@ -139,7 +139,7 @@ test("stops waiting automatically and offers a manual refresh", async ({ page })
 });
 
 test("preserves useful billing errors and keeps the retry key", async ({ page }) => {
-  await mockAccount(page, { ...active, pendingQuantity: 5 });
+  await mockAccount(page, { ...active, pendingQuantity: 15 });
   const keys: string[] = [];
   await page.route("**/api/v1/billing/change-allowance", async (route) => {
     keys.push(route.request().headers()["idempotency-key"]);
@@ -158,7 +158,7 @@ test("preserves useful billing errors and keeps the retry key", async ({ page })
 
 test("keeps controls visible on a narrow viewport", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
-  await mockAccount(page, { ...active, pendingQuantity: 5 });
+  await mockAccount(page, { ...active, pendingQuantity: 15 });
   await page.goto("/settings/billing");
   await expect(page.getByRole("button", { name: "Keep current allowance" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
@@ -167,7 +167,7 @@ test("keeps controls visible on a narrow viewport", async ({ page }, testInfo) =
 
 test("changes the future allowance during trial", async ({ page }) => {
   const state = await mockAccount(page, { ...active, status: "trialing" });
-  state.promptLimit = 5;
+  state.promptLimit = 10;
   await page.route("**/api/v1/billing/change-allowance", async (route) => {
     expect(route.request().postDataJSON()).toEqual({ prompts: 50 });
     state.subscription.quantity = 50;
@@ -175,7 +175,7 @@ test("changes the future allowance during trial", async ({ page }) => {
   });
   await page.goto("/settings/billing");
   await expect(
-    page.getByText("Your trial end date and 5-prompt allowance stay the same.", { exact: false }),
+    page.getByText("Your trial end date and 10-prompt allowance stay the same.", { exact: false }),
   ).toBeVisible();
   await page.getByRole("combobox", { name: "Tracked prompts" }).click();
   await page.getByRole("option", { name: "50", exact: true }).click();
@@ -184,8 +184,69 @@ test("changes the future allowance during trial", async ({ page }) => {
     page.getByText("Your selected allowance will start when your trial ends."),
   ).toBeVisible();
   await expect(
-    page.getByText("Tracking allowance now: 5 active prompts across all brands."),
+    page.getByText("Tracking allowance now: 10 active prompts across all brands."),
   ).toBeVisible();
+});
+
+test("starts the plan during trial after confirming the charge", async ({ page }) => {
+  const state = await mockAccount(page, { ...active, status: "trialing" });
+  state.promptLimit = 10;
+  await page.route("**/api/v1/billing/start-plan", async (route) => {
+    expect(route.request().headers()["idempotency-key"]).toBeTruthy();
+    state.subscription.status = "active";
+    state.promptLimit = 25;
+    await route.fulfill({ json: { quantity: 25, effective: "started" } });
+  });
+  await page.goto("/settings/billing");
+
+  await page.getByRole("combobox", { name: "Tracked prompts" }).click();
+  await page.getByRole("option", { name: "50", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Start plan now" })).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Tracked prompts" }).click();
+  await page.getByRole("option", { name: "25", exact: true }).click();
+
+  await page.getByRole("button", { name: "Start plan now" }).click();
+  await expect(page.getByText("€45 is charged to your saved card", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Pay €45 now" }).click();
+  await expect(page.getByText("Your plan is active.")).toBeVisible();
+  await expect(page.getByText("25 tracked prompts · Active")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start plan now" })).toHaveCount(0);
+});
+
+test("keeps the trial and offers recovery when the payment fails", async ({ page }) => {
+  const state = await mockAccount(page, { ...active, status: "trialing" });
+  state.promptLimit = 10;
+  const expiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString();
+  await page.route("**/api/v1/billing/start-plan", async (route) => {
+    state.subscription = {
+      ...state.subscription,
+      pendingUpgradeQuantity: 25,
+      pendingUpgradeExpiresAt: expiresAt,
+      paymentUrl: "https://invoice.stripe.com/payment",
+    };
+    await route.fulfill({
+      status: 202,
+      json: {
+        quantity: 25,
+        effective: "after_payment",
+        paymentUrl: "https://invoice.stripe.com/payment",
+        expiresAt,
+      },
+    });
+  });
+  await page.goto("/settings/billing");
+  await page.getByRole("button", { name: "Start plan now" }).click();
+  await page.getByRole("button", { name: "Pay €45 now" }).click();
+
+  await expect(page.getByText("Your payment didn't go through", { exact: false })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Complete payment" })).toHaveAttribute(
+    "href",
+    "https://invoice.stripe.com/payment",
+  );
+  await expect(page.getByRole("button", { name: "Payment methods and invoices" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start plan now" })).toHaveCount(0);
+  await expect(page.getByText("25 tracked prompts · Trial")).toBeVisible();
+  await expect(page.getByText("being confirmed", { exact: false })).toHaveCount(0);
 });
 
 test("explains an expired upgrade and allows another attempt", async ({ page }) => {

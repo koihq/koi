@@ -65,6 +65,12 @@ export interface PromptRes {
      */
     inactive: boolean;
     /**
+     * Whether any run recorded this prompt. Such a prompt cannot be deleted; stop it by setting inactive.
+     * @type {boolean}
+     * @memberof PromptRes
+     */
+    hasResults: boolean;
+    /**
      * 
      * @type {VisibilityReport}
      * @memberof PromptRes
@@ -93,6 +99,7 @@ export function instanceOfPromptRes(value: object): value is PromptRes {
     if (!('source' in value) || value['source'] === undefined) return false;
     if (!('confirmed' in value) || value['confirmed'] === undefined) return false;
     if (!('inactive' in value) || value['inactive'] === undefined) return false;
+    if (!('hasResults' in value) || value['hasResults'] === undefined) return false;
     return true;
 }
 
@@ -112,6 +119,7 @@ export function PromptResFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'source': json['source'],
         'confirmed': json['confirmed'],
         'inactive': json['inactive'],
+        'hasResults': json['hasResults'],
         'visibility': json['visibility'] == null ? undefined : VisibilityReportFromJSON(json['visibility']),
     };
 }
@@ -133,6 +141,7 @@ export function PromptResToJSONTyped(value?: PromptRes | null, ignoreDiscriminat
         'source': value['source'],
         'confirmed': value['confirmed'],
         'inactive': value['inactive'],
+        'hasResults': value['hasResults'],
         'visibility': VisibilityReportToJSON(value['visibility']),
     };
 }
