@@ -74,6 +74,19 @@ collection and every 60 seconds at rest after tracking starts, with no backgroun
 polling. Detail history and analytics refresh during collection, including one final
 refresh when an observed run finishes. URL selection survives these updates.
 
+## First Look wait
+
+Between setup and the first answer, one centered column shows a stable heading and three steps:
+read the site, draft competitors and questions, ask the engines. Only saved data advances a step,
+never a timer or an estimate, and a finished step keeps what it found. The price column appears with
+the first verdict (`plans/ui/first-look-wait.md`).
+
+## Billing without a subscription
+
+With no subscription there is nothing to manage, so billing is one centered panel: what it costs
+today, what it costs after, the allowance control, the action. A subscription in any state, including
+canceled, keeps the two-column page with its status and management.
+
 ## Motion and verification
 
 Stillness is the default. Button pointer press uses the existing 160ms ease-out,

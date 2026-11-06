@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import type { VisibilityResult } from "@/api/generated";
 import {
   answerPassage,
+  displaySite,
   firstLookPlan,
   firstLookRows,
   firstLookScore,
   firstLookVerdict,
+  firstLookWait,
   keepVerdict,
   recognitionGap,
 } from "./first-look";
@@ -239,5 +241,50 @@ describe("answer passage", () => {
       passage: "Elmonet is here.",
       trimmed: false,
     });
+  });
+});
+
+describe("firstLookWait", () => {
+  const summary = { product: "Koi", category: "AEO tool", audience: "", functions: [] };
+
+  it("follows what the draft has saved", () => {
+    expect(firstLookWait({ state: "queued" })).toEqual({
+      read: "active",
+      draft: "pending",
+      ask: "pending",
+    });
+    expect(firstLookWait({ state: "running" })).toEqual({
+      read: "active",
+      draft: "pending",
+      ask: "pending",
+    });
+    expect(firstLookWait({ state: "running", summary })).toEqual({
+      read: "done",
+      draft: "active",
+      ask: "pending",
+    });
+    expect(firstLookWait({ state: "succeeded", summary })).toEqual({
+      read: "done",
+      draft: "done",
+      ask: "active",
+    });
+  });
+
+  it("does not wait on a summary that never came once the draft is done", () => {
+    expect(firstLookWait({ state: "succeeded" }).read).toBe("done");
+  });
+
+  it("only asks the engines without a live draft", () => {
+    const askOnly = { read: null, draft: null, ask: "active" };
+
+    expect(firstLookWait(undefined)).toEqual(askOnly);
+    expect(firstLookWait({ state: "failed" })).toEqual(askOnly);
+  });
+});
+
+describe("displaySite", () => {
+  it("drops the protocol and trailing slash", () => {
+    expect(displaySite("https://github.com/koihq/koi/")).toBe("github.com/koihq/koi");
+    expect(displaySite("koi.dev")).toBe("koi.dev");
   });
 });

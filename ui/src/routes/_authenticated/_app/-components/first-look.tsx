@@ -1,3 +1,5 @@
+import { Tick02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow from "@number-flow/react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -6,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine, VisibilityResult, VisibilityRunStatus } from "@/api/generated";
+import type { Generation } from "@/api/generations.api";
 import { BrandIcon, useBrandColor } from "@/components/blocks/brand-icon";
 import { MentionNote } from "@/components/blocks/mention-note";
 import { OutcomeMark } from "@/components/blocks/outcome-mark";
@@ -21,14 +24,17 @@ import { brandGlow } from "@/lib/brand-tint";
 import {
   agentHandoffPrompt,
   answerPassage,
+  displaySite,
   type FirstLookStep,
   type FirstLookVerdict,
   firstLookPlan,
   firstLookRows,
   firstLookScore,
   firstLookVerdict,
+  firstLookWait,
   keepVerdict,
   recognitionGap,
+  type WaitState,
 } from "@/lib/first-look";
 import { generationOptions, invalidateProduct } from "@/lib/queries";
 import { billingCatalogKey, competitorKey, credentialsKey, runResultsKey } from "@/lib/query-keys";
@@ -43,6 +49,8 @@ const DRAFT_POLL_MS = 3_000;
 const OUTAGE = "cloro_engine_unavailable";
 const VISIBLE_SOURCES = 6;
 const VISIBLE_COMPETITORS = 8;
+// The draft alone took about 30 seconds when measured, so twice that is worth saying out loud.
+const SLOW_WAIT_MS = 60_000;
 const MemoPromptManager = memo(PromptManager);
 
 type FirstLookBrand = { id: string; name: string; domain: string; githubRepo: string };
@@ -82,34 +90,45 @@ function useCompetitorDomains(brandID: string, enabled: boolean) {
   return competitors.data?.items ?? [];
 }
 
+function CompetitorChips({ brandID, total }: { brandID: string; total?: number }) {
+  const { t } = useTranslation("home");
+  const competitors = useCompetitorDomains(brandID, true);
+  const visible = competitors.slice(0, VISIBLE_COMPETITORS);
+  const hidden = Math.max(total ?? 0, competitors.length) - visible.length;
+
+  if (competitors.length === 0) return null;
+
+  return (
+    <ul className="flex flex-wrap items-center gap-1.5">
+      {visible.map((competitor) => (
+        <li
+          key={competitor.id}
+          className="flex h-8 items-center gap-1.5 rounded-full bg-muted/50 ps-1 pe-3 text-sm"
+        >
+          <BrandIcon name={competitor.name} domain={competitor.domain} className="size-6" />
+          {competitor.name}
+        </li>
+      ))}
+      {hidden > 0 && (
+        <li className="px-2 text-sm text-muted-foreground">
+          {t("firstLook.competitorsMore", { count: hidden })}
+        </li>
+      )}
+    </ul>
+  );
+}
+
 /** The lists a free check runs on. The full page edits them. */
 function CompetitorSummary({ brandID }: { brandID: string }) {
   const { t } = useTranslation("home");
   const competitors = useCompetitorDomains(brandID, true);
-  const visible = competitors.slice(0, VISIBLE_COMPETITORS);
-  const hidden = competitors.length - visible.length;
 
   if (competitors.length === 0) return null;
 
   return (
     <div className="grid justify-items-start gap-3">
       <h2 className="text-section font-semibold">{t("firstLook.competitorsTitle")}</h2>
-      <ul className="flex flex-wrap items-center gap-1.5">
-        {visible.map((competitor) => (
-          <li
-            key={competitor.id}
-            className="flex h-8 items-center gap-1.5 rounded-full bg-muted/50 ps-1 pe-3 text-sm"
-          >
-            <BrandIcon name={competitor.name} domain={competitor.domain} className="size-6" />
-            {competitor.name}
-          </li>
-        ))}
-        {hidden > 0 && (
-          <li className="px-2 text-sm text-muted-foreground">
-            {t("firstLook.competitorsMore", { count: hidden })}
-          </li>
-        )}
-      </ul>
+      <CompetitorChips brandID={brandID} />
       <Link to="/competitors" className="text-sm underline underline-offset-4">
         {t("firstLook.competitorsReview")}
       </Link>
@@ -237,39 +256,157 @@ function Questions({
   );
 }
 
-/** Reflects what the draft understood, in the time the customer would otherwise only wait. */
-function Mirror({ brandID, draftDone }: { brandID: string; draftDone: boolean }) {
-  const { t } = useTranslation("home");
-  const api = useApi();
-  const draft = useQuery(generationOptions(api, brandID));
-  const summary = draft.data?.items[0]?.summary;
-  const names = useCompetitorDomains(brandID, draftDone)
-    .slice(0, 4)
-    .map((competitor) => competitor.name);
+function WaitMark({ state }: { state: WaitState }) {
+  if (state === "done") {
+    return <HugeiconsIcon icon={Tick02Icon} className="size-4 text-muted-foreground" />;
+  }
 
-  if (!summary?.category) return null;
+  if (state === "active") {
+    return (
+      <span className="size-3.5 animate-spin rounded-full border-2 border-muted border-t-foreground motion-reduce:animate-pulse" />
+    );
+  }
+
+  return <span className="size-1.5 rounded-full bg-muted-foreground/50" />;
+}
+
+/** A finished step keeps what it found, and the steps below make room for it. */
+function WaitRow({
+  state,
+  label,
+  children,
+}: {
+  state: WaitState;
+  label: string;
+  children?: ReactNode;
+}) {
+  return (
+    <li className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2.5">
+      <span aria-hidden="true" className="grid h-5 place-items-center">
+        <WaitMark state={state} />
+      </span>
+      <p
+        className={`text-body leading-5 break-words ${state === "active" ? "font-medium" : "text-muted-foreground"}`}
+      >
+        {label}
+      </p>
+      {children && (
+        <div className="col-start-2 grid grid-rows-[1fr] transition-[grid-template-rows] duration-200 ease-out starting:grid-rows-[0fr] motion-reduce:transition-none">
+          <div className="min-h-0 overflow-hidden">
+            <div className="animate-in pt-2.5 fade-in duration-200">{children}</div>
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
+/** Says so only when the current step has really run long. A new step starts the clock again. */
+function useSlowWait(since: Date | undefined) {
+  const [slowSince, setSlowSince] = useState<number | null>(null);
+  const start = since?.getTime();
+
+  useEffect(() => {
+    if (start === undefined) return;
+
+    const timer = setTimeout(() => setSlowSince(start), start + SLOW_WAIT_MS - Date.now());
+
+    return () => clearTimeout(timer);
+  }, [start]);
+
+  return start !== undefined && slowSince === start;
+}
+
+/** From the first draft to the first answer: every finished step shows what it found. */
+function FirstLookWaiting({
+  brand,
+  draft,
+  run,
+}: {
+  brand: FirstLookBrand;
+  draft?: Generation;
+  run?: VisibilityRunStatus;
+}) {
+  const { t, i18n } = useTranslation("home");
+  const steps = firstLookWait(draft);
+  const summary = draft?.summary;
+  const slow = useSlowWait(run?.createdAt ?? draft?.createdAt);
+  const site = displaySite(brand.domain || brand.githubRepo);
+  const engineNames = new Intl.ListFormat(i18n.language, { type: "conjunction" }).format(
+    engines.map((engine) => engine.name),
+  );
+  const asking = t("firstLook.waitAsking", { engines: engineNames });
+  const drafted = draft?.promptCount
+    ? t("firstLook.waitDrafted", { count: draft.promptCount })
+    : t("firstLook.waitDraftReady");
+  const current =
+    steps.read === "active"
+      ? t("firstLook.waitReading", { site })
+      : steps.draft === "active"
+        ? t("firstLook.waitDrafting")
+        : asking;
 
   return (
-    <div className="grid max-w-[60ch] animate-in gap-3 fade-in duration-200">
-      <h3 className="text-section font-semibold">{t("firstLook.mirrorTitle")}</h3>
-      <dl className="grid gap-2 text-body sm:grid-cols-[8rem_minmax(0,1fr)]">
-        <dt className="text-muted-foreground">{t("firstLook.mirrorCategory")}</dt>
-        <dd>{summary.category}</dd>
-        {summary.audience && (
-          <>
-            <dt className="text-muted-foreground">{t("firstLook.mirrorAudience")}</dt>
-            <dd>{summary.audience}</dd>
-          </>
+    <div className="grid gap-8">
+      <div className="grid gap-1">
+        <h1 className="text-title font-semibold">
+          {t("firstLook.waitTitle", { brand: brand.name })}
+        </h1>
+        <p className="max-w-[56ch] text-body text-muted-foreground">
+          {t(slow ? "firstLook.waitSlow" : "firstLook.waitDescription")}
+        </p>
+      </div>
+      <output className="sr-only">{current}</output>
+      <ol className="grid gap-4">
+        {steps.read && (
+          <WaitRow
+            state={steps.read}
+            label={t(steps.read === "done" ? "firstLook.waitRead" : "firstLook.waitReading", {
+              site,
+            })}
+          >
+            {summary?.category && (
+              <dl className="grid gap-2 text-body sm:grid-cols-[8rem_minmax(0,1fr)]">
+                <dt className="text-muted-foreground">{t("firstLook.mirrorCategory")}</dt>
+                <dd>{summary.category}</dd>
+                {summary.audience && (
+                  <>
+                    <dt className="text-muted-foreground">{t("firstLook.mirrorAudience")}</dt>
+                    <dd>{summary.audience}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+          </WaitRow>
         )}
-        {names.length > 0 && (
-          <>
-            <dt className="animate-in text-muted-foreground fade-in duration-200">
-              {t("firstLook.mirrorCompetitors")}
-            </dt>
-            <dd className="animate-in fade-in duration-200">{names.join(", ")}</dd>
-          </>
+        {steps.draft && (
+          <WaitRow
+            state={steps.draft}
+            label={steps.draft === "done" ? drafted : t("firstLook.waitDrafting")}
+          >
+            {steps.draft === "done" && draft && draft.competitorCount > 0 && (
+              <dl className="grid gap-2 text-body sm:grid-cols-[8rem_minmax(0,1fr)]">
+                <dt className="text-muted-foreground sm:leading-8">
+                  {t("firstLook.competitorsTitle")}
+                </dt>
+                <dd>
+                  <CompetitorChips brandID={brand.id} total={draft.competitorCount} />
+                </dd>
+              </dl>
+            )}
+          </WaitRow>
         )}
-      </dl>
+        <WaitRow state={steps.ask} label={asking}>
+          {run && (
+            <p className="text-sm text-muted-foreground tabular-nums">
+              {t("firstLook.progress", {
+                completed: run.completedResults,
+                count: run.totalResults,
+              })}
+            </p>
+          )}
+        </WaitRow>
+      </ol>
     </div>
   );
 }
@@ -558,7 +695,6 @@ export function FirstLook({
   const tint = useBrandColor(rivalDomain || brand.domain || undefined);
 
   const engineName = (engine: VisibilityEngine) => visibility.t(`engines.${engine}`);
-  const site = brand.domain || brand.githubRepo;
   const score = firstLookScore(items);
   const unanswered = items.filter((result) => result.outcome === "error").length;
   const offline = engines.filter((engine) =>
@@ -590,24 +726,15 @@ export function FirstLook({
   });
 
   let main: ReactNode;
+  let waiting = false;
 
   if (tracking.isPending) {
+    waiting = true;
     main = <output className="block text-section font-semibold">{t("dashboard.loading")}</output>;
   } else if (tracking.data?.confirmed === false) {
+    waiting = checking;
     main = checking ? (
-      <div className="grid gap-8">
-        <div className="grid gap-1">
-          <output className="block text-title font-semibold">
-            {draftState === "succeeded"
-              ? t("firstLook.starting")
-              : t("firstLook.reading", { site })}
-          </output>
-          <p className="max-w-[48ch] text-body text-muted-foreground">
-            {t("firstLook.readingDescription")}
-          </p>
-        </div>
-        <Mirror brandID={brand.id} draftDone={draftState === "succeeded"} />
-      </div>
+      <FirstLookWaiting brand={brand} draft={draft} />
     ) : (
       <div className="grid gap-8">
         <TrackingStart
@@ -638,7 +765,8 @@ export function FirstLook({
       </div>
     );
   } else if (!run) {
-    main = <output className="block text-title font-semibold">{t("firstLook.starting")}</output>;
+    waiting = true;
+    main = <FirstLookWaiting brand={brand} draft={draft} />;
   } else if (!verdict && !collecting && !results.isFetching) {
     main = (
       <div className="grid gap-1">
@@ -649,15 +777,8 @@ export function FirstLook({
       </div>
     );
   } else if (!verdict) {
-    main = (
-      <div className="grid gap-8">
-        <div className="grid gap-1">
-          <output className="block text-title font-semibold">{t("firstLook.asking")}</output>
-          <p className="text-body text-muted-foreground">{t("firstLook.scoreWaiting")}</p>
-        </div>
-        <Mirror brandID={brand.id} draftDone />
-      </div>
-    );
+    waiting = true;
+    main = <FirstLookWaiting brand={brand} draft={draft} run={run} />;
   } else {
     const steps = collecting ? [] : firstLookPlan(items, brand.domain);
 
@@ -712,41 +833,46 @@ export function FirstLook({
   }
 
   return (
-    <div className="grid gap-4 pb-24">
+    <div className={`grid gap-4 pb-24 ${waiting ? "mx-auto w-full max-w-3xl" : ""}`}>
       {!(blocked && !run) && (
         <div className="justify-self-end">
           <SetupProgress current={progress.current} total={progress.total} />
         </div>
       )}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div
+        className={`grid items-start gap-6 ${waiting ? "" : "lg:grid-cols-[minmax(0,1fr)_22rem]"}`}
+      >
         <section
           className="min-w-0 rounded-panel bg-surface p-4 transition-colors sm:px-11 sm:py-9"
           style={brandGlow(tint)}
         >
           {main}
         </section>
-        <aside className="grid min-w-0 gap-8 rounded-panel bg-surface p-4 sm:p-6 lg:sticky lg:top-6">
-          <PriceBlock brand={brand.name} canHandOff={Boolean(verdict)} />
-          {run && items.length > 0 && (
-            <Questions
-              run={run}
-              results={items}
-              selected={promptId}
-              collecting={collecting}
-              onSelect={(id, rowAnswers) =>
-                setSelection({
-                  promptId: id,
-                  engine: firstLookVerdict(rowAnswers, brand.name)?.engine ?? engine ?? "chatgpt",
-                })
-              }
-            />
-          )}
-          {run && !collecting && (
-            <Link to="/competitors" className="text-sm underline underline-offset-4">
-              {t("firstLook.seeCompetitors")}
-            </Link>
-          )}
-        </aside>
+        {/* The offer waits for something worth keeping an eye on. */}
+        {!waiting && (
+          <aside className="grid min-w-0 gap-8 rounded-panel bg-surface p-4 sm:p-6 lg:sticky lg:top-6">
+            <PriceBlock brand={brand.name} canHandOff={Boolean(verdict)} />
+            {run && items.length > 0 && (
+              <Questions
+                run={run}
+                results={items}
+                selected={promptId}
+                collecting={collecting}
+                onSelect={(id, rowAnswers) =>
+                  setSelection({
+                    promptId: id,
+                    engine: firstLookVerdict(rowAnswers, brand.name)?.engine ?? engine ?? "chatgpt",
+                  })
+                }
+              />
+            )}
+            {run && !collecting && (
+              <Link to="/competitors" className="text-sm underline underline-offset-4">
+                {t("firstLook.seeCompetitors")}
+              </Link>
+            )}
+          </aside>
+        )}
       </div>
       {(reviewing || (blocked && !run)) && (
         <MemoPromptManager brandID={brand.id} scope={scope} collecting={false} />

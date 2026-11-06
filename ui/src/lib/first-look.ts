@@ -1,4 +1,4 @@
-import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
+import type { GenerationStatus, VisibilityEngine, VisibilityResult } from "@/api/generated";
 
 export type FirstLookVerdict = {
   kind: "unknown" | "confused" | "rival" | "cited" | "mentioned" | "absent";
@@ -62,6 +62,33 @@ export function firstLookVerdict(
   }
 
   return null;
+}
+
+export type WaitState = "done" | "active" | "pending";
+
+export type FirstLookWait = {
+  read: WaitState | null;
+  draft: WaitState | null;
+  ask: WaitState;
+};
+
+/**
+ * Where the wait stands, from what has actually been saved. Without a live draft there was nothing
+ * to read, so only the question to the engines remains.
+ */
+export function firstLookWait(
+  draft: Pick<GenerationStatus, "state" | "summary"> | undefined,
+): FirstLookWait {
+  if (!draft || draft.state === "failed") return { read: null, draft: null, ask: "active" };
+  if (draft.state === "succeeded") return { read: "done", draft: "done", ask: "active" };
+  if (draft.summary?.category) return { read: "done", draft: "active", ask: "pending" };
+
+  return { read: "active", draft: "pending", ask: "pending" };
+}
+
+/** A research address as a person would say it. */
+export function displaySite(site: string) {
+  return site.replace(/^https?:\/\//, "").replace(/\/$/, "");
 }
 
 export type FirstLookStep =
