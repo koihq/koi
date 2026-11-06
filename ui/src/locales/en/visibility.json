@@ -62,7 +62,8 @@
     "prompts_required": "Resume or add a prompt to continue daily checks.",
     "billing_inactive_or_over_limit": "Tracking is paused. Check billing and deactivate prompts above your allowance to resume collection.",
     "first_look_used": "Your free check is done. Start your trial to check these prompts every day.",
-    "first_look_unavailable": "The free check isn't available for this brand right now. Start your trial to check it every day."
+    "first_look_site_used": "This site already had its free check. Start your trial to check it every day.",
+    "first_look_paused": "Free checks are paused for today. Start your trial to run it right away."
   },
   "whoAppeared": "Who appeared",
   "noAppearances": "No competitors identified in this answer.",

@@ -1613,7 +1613,7 @@ components:
         blockedReason:
           type: string
           nullable: true
-          enum: [collection_unavailable, start_required, prompts_required, billing_inactive_or_over_limit, first_look_used, first_look_unavailable]
+          enum: [collection_unavailable, start_required, prompts_required, billing_inactive_or_over_limit, first_look_used, first_look_site_used, first_look_paused]
     BrandRequest:
       type: object
       description: At least one of domain or githubRepo is required.

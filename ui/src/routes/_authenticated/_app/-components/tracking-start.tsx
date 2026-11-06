@@ -18,10 +18,16 @@ export function TrackingStart({
   brandID,
   scope,
   draftStartFailed,
+  description,
+  actionLabel,
+  showCompetitorLink = true,
 }: {
   brandID: string;
   scope: VisibilityScope;
   draftStartFailed: boolean;
+  description?: string;
+  actionLabel?: string;
+  showCompetitorLink?: boolean;
 }) {
   const { t } = useTranslation("visibility");
   const api = useApi();
@@ -56,7 +62,9 @@ export function TrackingStart({
               ? t("start.ready", { prompts: promptLabel, competitors: competitorLabel })
               : t("start.readyPromptsOnly", { prompts: promptLabel })}
           </p>
-          <p className="max-w-[48ch] text-body text-muted-foreground">{t("start.description")}</p>
+          <p className="max-w-[48ch] text-body text-muted-foreground">
+            {description ?? t("start.description")}
+          </p>
         </div>
       ) : null}
       {view === "empty" ? <p className="text-body">{t("start.noPrompts")}</p> : null}
@@ -72,11 +80,13 @@ export function TrackingStart({
             disabled={view !== "ready" || start.isPending}
             onClick={() => start.mutate()}
           >
-            {t(start.isPending ? "start.starting" : "start.action")}
+            {start.isPending ? t("start.starting") : (actionLabel ?? t("start.action"))}
           </Button>
-          <Button variant="link" render={<Link to="/competitors" />} nativeButton={false}>
-            {t("reviewCompetitors")}
-          </Button>
+          {showCompetitorLink && (
+            <Button variant="link" render={<Link to="/competitors" />} nativeButton={false}>
+              {t("reviewCompetitors")}
+            </Button>
+          )}
         </div>
       )}
       {start.isError ? (

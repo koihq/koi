@@ -56,7 +56,8 @@ export const TrackingStatusBlockedReasonEnum = {
     PROMPTS_REQUIRED: 'prompts_required',
     BILLING_INACTIVE_OR_OVER_LIMIT: 'billing_inactive_or_over_limit',
     FIRST_LOOK_USED: 'first_look_used',
-    FIRST_LOOK_UNAVAILABLE: 'first_look_unavailable'
+    FIRST_LOOK_SITE_USED: 'first_look_site_used',
+    FIRST_LOOK_PAUSED: 'first_look_paused'
 } as const;
 export type TrackingStatusBlockedReasonEnum = typeof TrackingStatusBlockedReasonEnum[keyof typeof TrackingStatusBlockedReasonEnum];
 

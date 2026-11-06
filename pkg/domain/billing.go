@@ -18,8 +18,9 @@ const (
 
 // Reasons a First Look organization cannot collect, reported through tracking status.
 const (
-	TrackingBlockedFirstLookUsed        = "first_look_used"
-	TrackingBlockedFirstLookUnavailable = "first_look_unavailable"
+	TrackingBlockedFirstLookUsed     = "first_look_used"
+	TrackingBlockedFirstLookSiteUsed = "first_look_site_used"
+	TrackingBlockedFirstLookPaused   = "first_look_paused"
 )
 
 var (

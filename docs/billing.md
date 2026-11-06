@@ -137,7 +137,7 @@ trials never get it. `BillingStatus.firstLook` exposes the state to the UI and t
 
 Sign-up has no email verification or rate limit, so two limits bound the spend. A website or
 repository gets one First Look across organizations, and `KOI_FIRST_LOOK_DAILY_LIMIT` (default 100)
-caps the checks started in 24 hours. Either limit reports `first_look_unavailable`, and the
+caps the checks started in 24 hours. They report `first_look_site_used` and `first_look_paused`, and the
 organization can still start its trial.
 
 Setup asks the draft to start collection (`GenerationRequest.startTracking`), so the worker starts

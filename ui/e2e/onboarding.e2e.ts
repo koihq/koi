@@ -66,6 +66,29 @@ type State = {
   starts: number;
   credentials: unknown[];
   steps: string[];
+  blocked: string | null;
+};
+
+const draftedPrompt = {
+  id: "prompt_1",
+  brandId: brand.id,
+  text: "What is the best payment platform for startups?",
+  confirmed: true,
+  inactive: false,
+  source: "generated",
+  hasResults: false,
+  latestResults: [],
+};
+
+const draftedCompetitor = {
+  id: "competitor_1",
+  brandId: brand.id,
+  name: "Stripe",
+  domain: "stripe.com",
+  githubRepo: "",
+  aliases: [],
+  confirmed: true,
+  source: "generated",
 };
 
 async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
@@ -78,6 +101,7 @@ async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
     starts: 0,
     credentials: [],
     steps: [],
+    blocked: null,
   };
 
   await page.route("**/api/v1/**", async (route) => {
@@ -167,7 +191,7 @@ async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
         confirmed: state.started,
         startedAt: state.started ? now : null,
         nextRunAt: state.started ? now : null,
-        blockedReason: state.started ? "first_look_used" : "start_required",
+        blockedReason: state.blocked ?? (state.started ? "first_look_used" : "start_required"),
       };
     } else if (path === "/api/v1/tracking/start") {
       state.started = true;
@@ -175,11 +199,13 @@ async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
       await route.fulfill({ status: 204 });
       return;
     } else if (path === "/api/v1/runs") {
-      json = page1(state.started ? [run(state.completed, state.runState)] : []);
+      json = page1(state.started && !state.blocked ? [run(state.completed, state.runState)] : []);
     } else if (path === "/api/v1/runs/run_1/results") {
       json = page1(state.completed ? answers : answers.map((a) => ({ ...a, outcome: null })));
-    } else if (path === "/api/v1/prompts" || path === "/api/v1/competitors") {
-      json = page1([]);
+    } else if (path === "/api/v1/prompts") {
+      json = page1(state.brand ? [draftedPrompt] : []);
+    } else if (path === "/api/v1/competitors") {
+      json = page1(state.brand ? [draftedCompetitor] : []);
     } else {
       await route.fulfill({
         status: 404,
@@ -348,10 +374,44 @@ test("waits for the agent, then moves to its check without starting one", async 
   state.brand = brand;
   await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
 
-  // The agent may still be correcting its prompts, so the page must not spend the check.
-  await expect(page.getByRole("button", { name: "Start tracking" })).toBeVisible();
+  // The agent may still be correcting its prompts, so the page must not spend the check. Nothing
+  // has been asked yet, so this is not the last step, and there is nothing to hand back yet.
+  await expect(page.getByRole("button", { name: "Run my free check" })).toBeVisible();
+  await expect(page.getByText("Your agent drafted these.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Step 3 of 4")).toBeVisible();
+  await expect(page.getByRole("link", { name: draftedPrompt.text })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Stripe" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Review competitors" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Fix this with my agent" })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("agent-review.png"), fullPage: true });
   expect(state.starts).toBe(0);
 });
+
+for (const [reason, title, description] of [
+  [
+    "first_look_site_used",
+    "This site already had its free check",
+    "Each website or repo gets one.",
+  ],
+  ["first_look_paused", "Free checks are paused for today", "Yours starts by itself"],
+] as const) {
+  test(`explains ${reason} and offers the trial`, async ({ page }, testInfo) => {
+    const state = await mockOnboarding(page);
+    state.brand = brand;
+    state.started = true;
+    state.blocked = reason;
+
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    await expect(page.getByText(description, { exact: false })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Keep an eye on this" })).toBeVisible();
+    await expect(page.getByRole("link", { name: draftedPrompt.text })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Review competitors" })).toBeVisible();
+    await expect(page.getByText(/Step \d of \d/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Fix this with my agent" })).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(`${reason}.png`), fullPage: true });
+  });
+}
 
 test("hovering a link does not ask the server for the account again", async ({ page }) => {
   await mockOnboarding(page);

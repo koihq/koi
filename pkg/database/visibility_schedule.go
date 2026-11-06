@@ -161,7 +161,7 @@ func (r *GormVisibilityRepository) firstLookBlockedReason(ctx context.Context, b
 		return "", err
 	}
 	if taken {
-		return domain.TrackingBlockedFirstLookUnavailable, nil
+		return domain.TrackingBlockedFirstLookSiteUsed, nil
 	}
 
 	var today int64
@@ -171,7 +171,7 @@ func (r *GormVisibilityRepository) firstLookBlockedReason(ctx context.Context, b
 		return "", err
 	}
 	if today >= int64(r.firstLookDailyLimit) {
-		return domain.TrackingBlockedFirstLookUnavailable, nil
+		return domain.TrackingBlockedFirstLookPaused, nil
 	}
 
 	return "", nil

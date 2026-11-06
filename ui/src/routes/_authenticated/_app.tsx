@@ -48,7 +48,9 @@ function FirstLookHeader({ brand }: { brand: Brand }) {
   const { collecting, latest } = useCollection(brand.id);
   const draft = useQuery(generationOptions(api, brand.id)).data?.items[0];
 
-  const unavailable = tracking.data?.blockedReason === "first_look_unavailable";
+  const unavailable =
+    tracking.data?.blockedReason === "first_look_site_used" ||
+    tracking.data?.blockedReason === "first_look_paused";
   const drafting = Boolean(draft?.startTracking) && draft?.state !== "failed";
   const waitingForRun = !latest.data?.items[0] && drafting && !unavailable;
 

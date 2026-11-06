@@ -1,7 +1,7 @@
 import NumberFlow from "@number-flow/react";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useApi } from "@/api/apiProvider";
@@ -29,16 +29,19 @@ import {
   keepVerdict,
 } from "@/lib/first-look";
 import { generationOptions, invalidateProduct } from "@/lib/queries";
-import { billingCatalogKey, competitorKey, runResultsKey } from "@/lib/query-keys";
+import { billingCatalogKey, competitorKey, credentialsKey, runResultsKey } from "@/lib/query-keys";
 import { setupProgress } from "@/lib/setup-steps";
 import { safeSourceURL } from "@/lib/source-url";
 import { engines, type VisibilityScope } from "@/lib/visibility";
 import { EngineSwitch } from "../prompts/-components/run-evidence";
+import { PromptManager } from "./prompt-manager";
 import { TrackingStart } from "./tracking-start";
 
 const DRAFT_POLL_MS = 3_000;
 const OUTAGE = "cloro_engine_unavailable";
 const VISIBLE_SOURCES = 6;
+const VISIBLE_COMPETITORS = 8;
+const MemoPromptManager = memo(PromptManager);
 
 type FirstLookBrand = { id: string; name: string; domain: string; githubRepo: string };
 type Selection = { promptId: string; engine: VisibilityEngine };
@@ -77,7 +80,42 @@ function useCompetitorDomains(brandID: string, enabled: boolean) {
   return competitors.data?.items ?? [];
 }
 
-function PriceBlock({ brand }: { brand: string }) {
+/** The lists a free check runs on. The full page edits them. */
+function CompetitorSummary({ brandID }: { brandID: string }) {
+  const { t } = useTranslation("home");
+  const competitors = useCompetitorDomains(brandID, true);
+  const visible = competitors.slice(0, VISIBLE_COMPETITORS);
+  const hidden = competitors.length - visible.length;
+
+  if (competitors.length === 0) return null;
+
+  return (
+    <div className="grid justify-items-start gap-3">
+      <h2 className="text-section font-semibold">{t("firstLook.competitorsTitle")}</h2>
+      <ul className="flex flex-wrap items-center gap-1.5">
+        {visible.map((competitor) => (
+          <li
+            key={competitor.id}
+            className="flex h-8 items-center gap-1.5 rounded-full bg-muted/50 ps-1 pe-3 text-sm"
+          >
+            <BrandIcon name={competitor.name} domain={competitor.domain} className="size-6" />
+            {competitor.name}
+          </li>
+        ))}
+        {hidden > 0 && (
+          <li className="px-2 text-sm text-muted-foreground">
+            {t("firstLook.competitorsMore", { count: hidden })}
+          </li>
+        )}
+      </ul>
+      <Link to="/competitors" className="text-sm underline underline-offset-4">
+        {t("firstLook.competitorsReview")}
+      </Link>
+    </div>
+  );
+}
+
+function PriceBlock({ brand, canHandOff }: { brand: string; canHandOff: boolean }) {
   const { t } = useTranslation("home");
   const track = useOnboardingTracker();
   const price = useEntryPrice();
@@ -103,16 +141,18 @@ function PriceBlock({ brand }: { brand: string }) {
         >
           {t("firstLook.cta")}
         </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={() => {
-            track("agent_handoff");
-            void copy(agentHandoffPrompt(brand));
-          }}
-        >
-          {copied ? t("firstLook.handoffCopied") : t("firstLook.handoff")}
-        </Button>
+        {canHandOff && (
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => {
+              track("agent_handoff");
+              void copy(agentHandoffPrompt(brand));
+            }}
+          >
+            {copied ? t("firstLook.handoffCopied") : t("firstLook.handoff")}
+          </Button>
+        )}
       </div>
       {copied && (
         <output className="block text-sm text-muted-foreground">
@@ -509,7 +549,6 @@ export function FirstLook({
 
   const engineName = (engine: VisibilityEngine) => visibility.t(`engines.${engine}`);
   const site = brand.domain || brand.githubRepo;
-  const progress = setupProgress("first_look", { canChoose: true, cloud: true });
   const score = firstLookScore(items);
   const unanswered = items.filter((result) => result.outcome === "error").length;
   const offline = engines.filter((engine) =>
@@ -523,39 +562,69 @@ export function FirstLook({
   const engine = selection?.engine ?? verdict?.engine;
   const answers = items.filter((result) => result.promptId === promptId);
 
+  const credentials = useQuery({
+    queryKey: [...credentialsKey, "first-look"],
+    queryFn: () => api.credentials.list(),
+  });
+  const blockedReason = tracking.data?.blockedReason;
+  const blocked = blockedReason === "first_look_site_used" || blockedReason === "first_look_paused";
+  const drafting = draftState === "queued" || draftState === "running";
+  const startFailed = draftStartFailed || draftState === "failed" || start.isError;
+  const checking = autoStart && !startFailed && (drafting || draftState === "succeeded");
+  const reviewing = !tracking.isPending && tracking.data?.confirmed === false && !checking;
+
+  // Nothing has been asked yet while someone reviews, so the result step hasn't begun.
+  const progress = setupProgress(reviewing ? "agent_prompt" : "first_look", {
+    canChoose: true,
+    cloud: true,
+  });
+
   let main: ReactNode;
 
   if (tracking.isPending) {
     main = <output className="block text-section font-semibold">{t("dashboard.loading")}</output>;
   } else if (tracking.data?.confirmed === false) {
-    const drafting = draftState === "queued" || draftState === "running";
-    const failed = draftStartFailed || draftState === "failed" || start.isError;
-
-    main =
-      autoStart && !failed && (drafting || draftState === "succeeded") ? (
-        <div className="grid gap-8">
-          <div className="grid gap-1">
-            <output className="block text-title font-semibold">
-              {draftState === "succeeded"
-                ? t("firstLook.starting")
-                : t("firstLook.reading", { site })}
-            </output>
-            <p className="max-w-[48ch] text-body text-muted-foreground">
-              {t("firstLook.readingDescription")}
-            </p>
-          </div>
-          <Mirror brandID={brand.id} draftDone={draftState === "succeeded"} />
+    main = checking ? (
+      <div className="grid gap-8">
+        <div className="grid gap-1">
+          <output className="block text-title font-semibold">
+            {draftState === "succeeded"
+              ? t("firstLook.starting")
+              : t("firstLook.reading", { site })}
+          </output>
+          <p className="max-w-[48ch] text-body text-muted-foreground">
+            {t("firstLook.readingDescription")}
+          </p>
         </div>
-      ) : (
-        <TrackingStart brandID={brand.id} scope={scope} draftStartFailed={draftStartFailed} />
-      );
-  } else if (tracking.data?.blockedReason === "first_look_unavailable") {
+        <Mirror brandID={brand.id} draftDone={draftState === "succeeded"} />
+      </div>
+    ) : (
+      <div className="grid gap-8">
+        <TrackingStart
+          brandID={brand.id}
+          scope={scope}
+          draftStartFailed={draftStartFailed}
+          description={t(
+            credentials.data?.items.length ? "firstLook.reviewAgent" : "firstLook.reviewManual",
+          )}
+          actionLabel={t("firstLook.reviewAction")}
+          showCompetitorLink={false}
+        />
+        <CompetitorSummary brandID={brand.id} />
+      </div>
+    );
+  } else if (blocked && !run) {
+    const notice = blockedReason === "first_look_paused" ? "paused" : "siteUsed";
+
     main = (
-      <div className="grid gap-1">
-        <h1 className="text-title font-semibold">{t("firstLook.unavailable")}</h1>
-        <p className="max-w-[48ch] text-body text-muted-foreground">
-          {t("firstLook.unavailableDescription")}
-        </p>
+      <div className="grid gap-8">
+        <div className="grid gap-1">
+          <h1 className="text-title font-semibold">{t(`firstLook.${notice}Title`)}</h1>
+          <p className="max-w-[48ch] text-body text-muted-foreground">
+            {t(`firstLook.${notice}Description`)}
+          </p>
+        </div>
+        <CompetitorSummary brandID={brand.id} />
       </div>
     );
   } else if (!run) {
@@ -634,9 +703,11 @@ export function FirstLook({
 
   return (
     <div className="grid gap-4 pb-24">
-      <div className="justify-self-end">
-        <SetupProgress current={progress.current} total={progress.total} />
-      </div>
+      {!(blocked && !run) && (
+        <div className="justify-self-end">
+          <SetupProgress current={progress.current} total={progress.total} />
+        </div>
+      )}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section
           className="min-w-0 rounded-panel bg-surface p-4 transition-colors sm:px-11 sm:py-9"
@@ -645,7 +716,7 @@ export function FirstLook({
           {main}
         </section>
         <aside className="grid min-w-0 gap-8 rounded-panel bg-surface p-4 sm:p-6 lg:sticky lg:top-6">
-          <PriceBlock brand={brand.name} />
+          <PriceBlock brand={brand.name} canHandOff={Boolean(verdict)} />
           {run && items.length > 0 && (
             <Questions
               run={run}
@@ -667,6 +738,9 @@ export function FirstLook({
           )}
         </aside>
       </div>
+      {(reviewing || (blocked && !run)) && (
+        <MemoPromptManager brandID={brand.id} scope={scope} collecting={false} />
+      )}
     </div>
   );
 }

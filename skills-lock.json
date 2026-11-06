@@ -103,6 +103,18 @@
       "skillPath": "skills/interface-review/SKILL.md",
       "computedHash": "692fc5f2cfc2ad08951ea68ee6f5db9c99b759fa46b18e53101cd50d51a94f3a"
     },
+    "koi-brief": {
+      "source": "koihq/koi",
+      "sourceType": "github",
+      "skillPath": "skills/koi-brief/SKILL.md",
+      "computedHash": "361d01dd721ad51f7d8a62930f3c2f01f499d7f9a7ea6f31a0dbeb8c537991c9"
+    },
+    "koi-setup": {
+      "source": "koihq/koi",
+      "sourceType": "github",
+      "skillPath": "skills/koi-setup/SKILL.md",
+      "computedHash": "ef4fb85b1a8ac4a785d5a65ecf66d4745a469d37cbed66c50fe624364f0d7819"
+    },
     "pick-ui-library": {
       "source": "emilkowalski/skills",
       "sourceType": "github",

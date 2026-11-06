@@ -134,7 +134,7 @@ func TestFirstLookAllowsOneOrganizationPerSite(t *testing.T) {
 
 	_, err := store.VisibilityRepo().Active(otherCtx, other.ID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
-	require.Equal(t, domain.TrackingBlockedFirstLookUnavailable, blockedReason(t, store, otherCtx, other.ID))
+	require.Equal(t, domain.TrackingBlockedFirstLookSiteUsed, blockedReason(t, store, otherCtx, other.ID))
 
 	// The trial still works for that organization, and collection starts by itself.
 	db := store.db
@@ -155,7 +155,7 @@ func TestFirstLookStopsAtTheDailyLimit(t *testing.T) {
 
 	_, err := store.VisibilityRepo().Active(otherCtx, other.ID)
 	require.ErrorIs(t, err, domain.ErrNotFound)
-	require.Equal(t, domain.TrackingBlockedFirstLookUnavailable, blockedReason(t, store, otherCtx, other.ID))
+	require.Equal(t, domain.TrackingBlockedFirstLookPaused, blockedReason(t, store, otherCtx, other.ID))
 }
 
 func TestStartTrackingAsOwnerRunsWithoutARequestIdentity(t *testing.T) {
