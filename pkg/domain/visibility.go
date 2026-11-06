@@ -37,6 +37,35 @@ const (
 	OutcomeError     Outcome = "error"
 )
 
+// MentionVerdict records what the mention judge decided about an answer that names the brand.
+// A nil verdict means no judgment: the brand was cited, not named, or the judge was unavailable.
+type MentionVerdict string
+
+const (
+	MentionVerdictMention      MentionVerdict = "mention"
+	MentionVerdictNoInfo       MentionVerdict = "no_info"
+	MentionVerdictOtherCompany MentionVerdict = "other_company"
+	MentionVerdictOtherMeaning MentionVerdict = "other_meaning"
+)
+
+func (v MentionVerdict) Valid() bool {
+	switch v {
+	case MentionVerdictMention, MentionVerdictNoInfo, MentionVerdictOtherCompany, MentionVerdictOtherMeaning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Outcome keeps a named brand as a mention only when the answer is really about it.
+func (v MentionVerdict) Outcome() Outcome {
+	if v == MentionVerdictMention {
+		return OutcomeMentioned
+	}
+
+	return OutcomeMiss
+}
+
 type VisibilityState string
 
 const (
@@ -103,6 +132,8 @@ type VisibilityResult struct {
 	Sources         []string                `json:"sources" gorm:"type:jsonb;serializer:json;not null"`
 	ErrorCode       *string                 `json:"error_code"`
 	ProviderCredits *int                    `json:"-"`
+	MentionVerdict  *MentionVerdict         `json:"mention_verdict" gorm:"type:varchar(16);check:chk_visibility_mention_verdict,mention_verdict IS NULL OR mention_verdict IN ('mention','no_info','other_company','other_meaning')"`
+	MentionCostUSD  *float64                `json:"-" gorm:"column:mention_cost_usd"`
 	Run             *VisibilityRun          `json:"-" gorm:"foreignKey:RunID;constraint:OnDelete:CASCADE"`
 }
 
@@ -141,6 +172,12 @@ func (r VisibilityResult) Validate() error {
 			}
 		default:
 			return Validation(FieldError{Field: "outcome", Code: FieldInvalid})
+		}
+	}
+
+	if r.MentionVerdict != nil {
+		if !r.MentionVerdict.Valid() || r.Outcome == nil || *r.Outcome != r.MentionVerdict.Outcome() {
+			return Validation(FieldError{Field: "mention_verdict", Code: FieldInvalid})
 		}
 	}
 

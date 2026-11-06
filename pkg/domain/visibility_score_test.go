@@ -2,7 +2,9 @@ package domain
 
 import (
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,6 +58,55 @@ func TestContainsWord(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			require.Equal(t, test.want, containsWord(foldText(test.text), foldText(test.find)))
+		})
+	}
+}
+
+func TestMentionVerdictMatchesOutcome(t *testing.T) {
+	now := time.Now()
+	base := VisibilityResult{
+		BaseEntity: BaseEntity{
+			ID: uuid.New(),
+		},
+		BrandID:      uuid.New(),
+		RunCreatedAt: now,
+		RunID:        uuid.New(),
+		PromptID:     uuid.New(),
+		PromptText:   "What is Koi?",
+		Engine:       EngineChatGPT,
+		Collector:    CollectorCloro,
+		FetchedAt:    &now,
+		Sources:      []string{},
+	}
+
+	for _, test := range []struct {
+		verdict MentionVerdict
+		outcome Outcome
+		valid   bool
+	}{
+		{verdict: MentionVerdictMention, outcome: OutcomeMentioned, valid: true},
+		{verdict: MentionVerdictNoInfo, outcome: OutcomeMiss, valid: true},
+		{verdict: MentionVerdictOtherCompany, outcome: OutcomeMiss, valid: true},
+		{verdict: MentionVerdictOtherMeaning, outcome: OutcomeMiss, valid: true},
+		{verdict: MentionVerdictMention, outcome: OutcomeMiss},
+		{verdict: MentionVerdictNoInfo, outcome: OutcomeMentioned},
+		{verdict: MentionVerdictNoInfo, outcome: OutcomeCited},
+		{verdict: "maybe", outcome: OutcomeMiss},
+	} {
+		t.Run(string(test.verdict)+"/"+string(test.outcome), func(t *testing.T) {
+			result := base
+			result.Outcome = &test.outcome
+			result.MentionVerdict = &test.verdict
+
+			err := result.Validate()
+			if test.valid {
+				require.NoError(t, err)
+				require.Equal(t, test.outcome, test.verdict.Outcome())
+
+				return
+			}
+
+			require.ErrorIs(t, err, ErrValidation)
 		})
 	}
 }

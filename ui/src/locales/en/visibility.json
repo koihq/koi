@@ -84,10 +84,16 @@
     "error": "This answer could not be collected. Check the next scheduled run.",
     "empty": "No answer was returned."
   },
+  "mentionNotes": {
+    "no_info": "It says it doesn't know {brand}, so this doesn't count as a mention.",
+    "other_company": "It's about another company with this name, so this doesn't count as a mention.",
+    "other_meaning": "The word has another meaning here, so this doesn't count as a mention."
+  },
   "brandOutcomes": {
     "cited": "cited",
     "mentioned": "mentioned",
     "miss": "not in the answer",
+    "unrecognized": "not recognized",
     "error": "error",
     "pending": "pending",
     "not-collected": "not collected",

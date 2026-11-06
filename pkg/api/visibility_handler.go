@@ -58,6 +58,7 @@ type VisibilityResultRes struct {
 	Appearances    []CompetitorAppearanceRes `json:"appearances"`
 	Sources        []string                  `json:"sources"`
 	ErrorCode      *string                   `json:"errorCode"`
+	MentionVerdict *domain.MentionVerdict    `json:"mentionVerdict"`
 }
 
 func VisibilityResultToRes(v *domain.VisibilityResult) VisibilityResultRes {
@@ -75,6 +76,7 @@ func VisibilityResultToRes(v *domain.VisibilityResult) VisibilityResultRes {
 		Appearances:    mapItems(v.Appearances, CompetitorAppearanceToRes),
 		Sources:        v.Sources,
 		ErrorCode:      v.ErrorCode,
+		MentionVerdict: v.MentionVerdict,
 	}
 }
 

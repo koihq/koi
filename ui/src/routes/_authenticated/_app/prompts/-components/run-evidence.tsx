@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VisibilityEngine, VisibilityResult, VisibilityRunStatus } from "@/api/generated";
 import { BrandIcon } from "@/components/blocks/brand-icon";
+import { MentionNote } from "@/components/blocks/mention-note";
 import { OutcomeMark } from "@/components/blocks/outcome-mark";
 import { Button } from "@/components/ui/button";
 import { agentBrief } from "@/lib/agent-brief";
@@ -175,9 +176,16 @@ export function RunAnswer({
           <OutcomeMark engine={engine} state={state} />
           {t("home:detail.brandOutcome", {
             brand: brand.name,
-            outcome: t(`visibility:brandOutcomes.${state}`),
+            outcome: t(
+              result.mentionVerdict && result.mentionVerdict !== "mention"
+                ? "visibility:brandOutcomes.unrecognized"
+                : `visibility:brandOutcomes.${state}`,
+            ),
           })}
         </p>
+        <div className="mt-3 empty:hidden">
+          <MentionNote verdict={result.mentionVerdict} brand={brand.name} />
+        </div>
         {result.errorCode && (
           <p role="alert" className="mt-3 text-sm text-destructive">
             {t("visibility:error", { code: result.errorCode })}

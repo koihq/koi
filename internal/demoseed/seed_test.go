@@ -86,6 +86,11 @@ func TestRunScenarios(t *testing.T) {
 			if *cell.Outcome != domain.OutcomeError {
 				require.Contains(t, cell.RawAnswer, "simulated answer")
 				require.Contains(t, cell.AnswerMarkdown, "simulated answer")
+				if cell.MentionVerdict != nil {
+					require.Equal(t, *cell.Outcome, cell.MentionVerdict.Outcome())
+					continue
+				}
+
 				require.Equal(t, *cell.Outcome, domain.ScoreVisibility(domain.BrandSnapshot{
 					Name:       "Koi",
 					GitHubRepo: repository,

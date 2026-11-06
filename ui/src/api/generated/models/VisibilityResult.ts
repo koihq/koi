@@ -113,6 +113,12 @@ export interface VisibilityResult {
      * @memberof VisibilityResult
      */
     appearances: Array<CompetitorAppearance>;
+    /**
+     * Whether an answer naming the brand is really about it. Null when it was not judged; the outcome is then the name match.
+     * @type {VisibilityResultMentionVerdictEnum}
+     * @memberof VisibilityResult
+     */
+    mentionVerdict: VisibilityResultMentionVerdictEnum | null;
 }
 
 
@@ -136,6 +142,17 @@ export const VisibilityResultOutcomeEnum = {
 } as const;
 export type VisibilityResultOutcomeEnum = typeof VisibilityResultOutcomeEnum[keyof typeof VisibilityResultOutcomeEnum];
 
+/**
+ * @export
+ */
+export const VisibilityResultMentionVerdictEnum = {
+    MENTION: 'mention',
+    NO_INFO: 'no_info',
+    OTHER_COMPANY: 'other_company',
+    OTHER_MEANING: 'other_meaning'
+} as const;
+export type VisibilityResultMentionVerdictEnum = typeof VisibilityResultMentionVerdictEnum[keyof typeof VisibilityResultMentionVerdictEnum];
+
 
 /**
  * Check if a given object implements the VisibilityResult interface.
@@ -154,6 +171,7 @@ export function instanceOfVisibilityResult(value: object): value is VisibilityRe
     if (!('sources' in value) || value['sources'] === undefined) return false;
     if (!('errorCode' in value) || value['errorCode'] === undefined) return false;
     if (!('appearances' in value) || value['appearances'] === undefined) return false;
+    if (!('mentionVerdict' in value) || value['mentionVerdict'] === undefined) return false;
     return true;
 }
 
@@ -180,6 +198,7 @@ export function VisibilityResultFromJSONTyped(json: any, ignoreDiscriminator: bo
         'sources': json['sources'],
         'errorCode': json['errorCode'],
         'appearances': ((json['appearances'] as Array<any>).map(CompetitorAppearanceFromJSON)),
+        'mentionVerdict': json['mentionVerdict'],
     };
 }
 
@@ -207,6 +226,7 @@ export function VisibilityResultToJSONTyped(value?: VisibilityResult | null, ign
         'sources': value['sources'],
         'errorCode': value['errorCode'],
         'appearances': ((value['appearances'] as Array<any>).map(CompetitorAppearanceToJSON)),
+        'mentionVerdict': value['mentionVerdict'],
     };
 }
 

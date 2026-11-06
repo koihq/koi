@@ -11,6 +11,7 @@ describe("agentBrief", () => {
       collectedAt: "Nov 2, 8:22 AM",
       outcome: "Cited",
       result: {
+        mentionVerdict: null,
         rawAnswer: "Koi and Peec AI.\nBoth work.",
         sources: ["https://peec.ai/", "https://peec.ai/"],
         appearances: [
@@ -41,11 +42,34 @@ describe("agentBrief", () => {
       engine: "Gemini",
       collectedAt: "Nov 2",
       outcome: "Miss",
-      result: { rawAnswer: "", sources: [], appearances: [] },
+      result: { mentionVerdict: null, rawAnswer: "", sources: [], appearances: [] },
     });
 
     expect(brief).toContain("## Competitors in the answer\n- None");
     expect(brief).toContain("## Sources\n- None");
     expect(brief).toContain("> (empty)");
+  });
+
+  it("tells the agent when the engine doesn't recognize the brand", () => {
+    const brief = agentBrief({
+      brand: { name: "Koi" },
+      prompt: "What is Koi?",
+      engine: "ChatGPT",
+      collectedAt: "Nov 2, 8:22 AM",
+      outcome: "Not in the answer",
+      result: {
+        mentionVerdict: "no_info",
+        rawAnswer: "I couldn't identify Koi.",
+        sources: [],
+        appearances: [],
+      },
+    });
+
+    expect(brief).toContain(
+      "- Recognition: The engine named the brand but said it does not know it.",
+    );
+    expect(brief).toContain(
+      "make ChatGPT recognize Koi as the product it is, then recommend and cite Koi",
+    );
   });
 });

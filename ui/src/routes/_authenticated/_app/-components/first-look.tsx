@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/apiProvider";
 import type { VisibilityEngine, VisibilityResult, VisibilityRunStatus } from "@/api/generated";
 import { BrandIcon, useBrandColor } from "@/components/blocks/brand-icon";
+import { MentionNote } from "@/components/blocks/mention-note";
 import { OutcomeMark } from "@/components/blocks/outcome-mark";
 import { SetupProgress } from "@/components/blocks/setup-progress";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   firstLookScore,
   firstLookVerdict,
   keepVerdict,
+  recognitionGap,
 } from "@/lib/first-look";
 import { generationOptions, invalidateProduct } from "@/lib/queries";
 import { billingCatalogKey, competitorKey, credentialsKey, runResultsKey } from "@/lib/query-keys";
@@ -365,7 +367,9 @@ function SelectedAnswer({
   const [expanded, setExpanded] = useState(false);
   const answer = answers.find((candidate) => candidate.engine === engine);
   const rivals = answer?.appearances.map((appearance) => appearance.name) ?? [];
-  const { passage, trimmed } = answerPassage(answer?.rawAnswer ?? "", brand.name, rivals);
+  // When the engine doesn't recognize the brand, the proof is the passage about the brand.
+  const proofRivals = answer && recognitionGap(answer, brand.name) ? [] : rivals;
+  const { passage, trimmed } = answerPassage(answer?.rawAnswer ?? "", brand.name, proofRivals);
   const answered = Boolean(answer?.rawAnswer);
 
   return (
@@ -386,6 +390,7 @@ function SelectedAnswer({
           key={answer?.id}
           className="grid animate-in justify-items-start gap-2 fade-in duration-200"
         >
+          <MentionNote verdict={answer?.mentionVerdict} brand={brand.name} />
           <p className="max-w-[68ch] whitespace-pre-line break-words text-body leading-7">
             <MarkedText
               text={expanded ? (answer?.rawAnswer ?? "") : passage}
@@ -465,11 +470,16 @@ function Headline({
         <BrandIcon name={verdict.competitor} domain={rivalDomain} className="mt-0.5 size-9" />
       )}
       <h1 className="max-w-[26ch] text-title font-semibold">
-        {t(`firstLook.${verdict.kind}`, {
-          engine: engineName,
-          competitor: verdict.competitor,
-          brand,
-        })}
+        {t(
+          verdict.kind === "unknown" && verdict.competitor
+            ? "firstLook.unknownRival"
+            : `firstLook.${verdict.kind}`,
+          {
+            engine: engineName,
+            competitor: verdict.competitor,
+            brand,
+          },
+        )}
       </h1>
     </div>
   );
@@ -534,7 +544,7 @@ export function FirstLook({
 
   const items = results.data?.items ?? [];
   const held = useRef<FirstLookVerdict | null>(null);
-  held.current = keepVerdict(held.current, firstLookVerdict(items));
+  held.current = keepVerdict(held.current, firstLookVerdict(items, brand.name));
   const verdict = held.current;
 
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -726,7 +736,7 @@ export function FirstLook({
               onSelect={(id, rowAnswers) =>
                 setSelection({
                   promptId: id,
-                  engine: firstLookVerdict(rowAnswers)?.engine ?? engine ?? "chatgpt",
+                  engine: firstLookVerdict(rowAnswers, brand.name)?.engine ?? engine ?? "chatgpt",
                 })
               }
             />

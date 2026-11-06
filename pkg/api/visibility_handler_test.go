@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -241,4 +242,35 @@ func TestVisibilityHandlerStartTracking(t *testing.T) {
 	readJSON(t, resp, &invalid)
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	require.Equal(t, domain.CodeValidation, invalid.Error.Code)
+}
+
+func TestVisibilityResultExposesMentionVerdictWithoutCost(t *testing.T) {
+	cost := 0.0002
+	verdict := domain.MentionVerdictNoInfo
+
+	for _, test := range []struct {
+		name    string
+		verdict *domain.MentionVerdict
+		want    any
+	}{
+		{name: "judged", verdict: &verdict, want: "no_info"},
+		{name: "not judged", want: nil},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			raw, err := json.Marshal(VisibilityResultToRes(&domain.VisibilityResult{
+				MentionVerdict: test.verdict,
+				MentionCostUSD: &cost,
+			}))
+			require.NoError(t, err)
+
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(raw, &body))
+
+			value, present := body["mentionVerdict"]
+			require.True(t, present)
+			require.Equal(t, test.want, value)
+			require.NotContains(t, string(raw), "cost")
+			require.NotContains(t, string(raw), "Cost")
+		})
+	}
 }

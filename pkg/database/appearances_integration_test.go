@@ -235,3 +235,41 @@ func TestDiscoveryIgnoresSelfStubAndFailedAnswers(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, competitors.Items)
 }
+
+func TestMentionVerdictIsSavedAndConstrained(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
+	_, cells, err := store.BeginVisibilityAttempt(ctx, run.ID, *run.RiverJobID, 1)
+	require.NoError(t, err)
+
+	verdict := domain.MentionVerdictNoInfo
+	cost := 0.0002
+	cell := appearanceCell(cells[0], "Acme", "")
+	cell.MentionVerdict = &verdict
+	cell.MentionCostUSD = &cost
+	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 1, cell))
+
+	// Unjudged answers keep a NULL verdict rather than an empty value.
+	require.NoError(t, store.SaveVisibilityResult(ctx, run.ID, 1, appearanceCell(cells[1], "Acme", "")))
+
+	read, err := store.VisibilityRepo().ListResults(ctx, run.ID, domain.PageParams{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	for _, result := range read.Items {
+		switch result.ID {
+		case cell.ID:
+			require.Equal(t, &verdict, result.MentionVerdict)
+			require.NotNil(t, result.MentionCostUSD)
+			require.InDelta(t, cost, *result.MentionCostUSD, 1e-9)
+		case cells[1].ID:
+			require.Nil(t, result.MentionVerdict)
+			require.Nil(t, result.MentionCostUSD)
+		}
+	}
+
+	// A mismatch never reaches the database, and the database rejects unknown values itself.
+	mismatch := appearanceCell(cells[2], "Acme", "")
+	wrong := domain.MentionVerdictMention
+	mismatch.MentionVerdict = &wrong
+	require.ErrorIs(t, store.SaveVisibilityResult(ctx, run.ID, 1, mismatch), domain.ErrValidation)
+	require.Error(t, db.Exec("UPDATE visibility_results SET mention_verdict = 'maybe' WHERE id = ?", cell.ID).Error)
+}

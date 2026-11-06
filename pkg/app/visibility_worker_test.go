@@ -363,3 +363,194 @@ func TestVisibilityWorkerShutdownDoesNotFinalizeLastAttempt(t *testing.T) {
 	require.Empty(t, store.code)
 	require.False(t, store.finished)
 }
+
+type mentionJudgeFunc func(context.Context, domain.MentionInput) (domain.MentionJudgment, error)
+
+func (f mentionJudgeFunc) JudgeMention(ctx context.Context, input domain.MentionInput) (domain.MentionJudgment, error) {
+	return f(ctx, input)
+}
+
+func namedBrandProvider(text string, sources ...string) visibilityTestProvider {
+	return visibilityTestProvider{
+		poll: func(context.Context, string, domain.EngineID) (*cloro.Answer, error) {
+			return &cloro.Answer{
+				Text:    text,
+				Sources: sources,
+			}, nil
+		},
+	}
+}
+
+// finishVisibilityWork runs passes until the run is done, as River would after each snooze.
+func finishVisibilityWork(t *testing.T, worker *visibilityWorker, store *visibilityWorkerStore, job *river.Job[database.VisibilityJobArgs]) {
+	t.Helper()
+
+	for range 4 {
+		var snooze *river.JobSnoozeError
+		err := worker.Work(t.Context(), job)
+		if err != nil {
+			require.ErrorAs(t, err, &snooze)
+		}
+		if store.finished {
+			return
+		}
+	}
+
+	t.Fatal("visibility run did not finish")
+}
+
+func TestVisibilityWorkerJudgesNamedBrandOnly(t *testing.T) {
+	cost := 0.0002
+	for _, fastStart := range []bool{false, true} {
+		for _, test := range []struct {
+			name        string
+			answer      string
+			sources     []string
+			verdict     domain.MentionVerdict
+			judgeErr    error
+			wantCalls   int32
+			wantOutcome domain.Outcome
+			wantVerdict *domain.MentionVerdict
+			wantCost    *float64
+		}{
+			{
+				name:        "real mention stays mentioned",
+				answer:      "Koi tracks AI visibility.",
+				verdict:     domain.MentionVerdictMention,
+				wantCalls:   4,
+				wantOutcome: domain.OutcomeMentioned,
+				wantVerdict: new(domain.MentionVerdictMention),
+				wantCost:    &cost,
+			},
+			{
+				name:        "unknown brand becomes a miss",
+				answer:      "I couldn't reliably identify Koi.",
+				verdict:     domain.MentionVerdictNoInfo,
+				wantCalls:   4,
+				wantOutcome: domain.OutcomeMiss,
+				wantVerdict: new(domain.MentionVerdictNoInfo),
+				wantCost:    &cost,
+			},
+			{
+				name:        "other company becomes a miss",
+				answer:      "Koi Security protects endpoints.",
+				verdict:     domain.MentionVerdictOtherCompany,
+				wantCalls:   4,
+				wantOutcome: domain.OutcomeMiss,
+				wantVerdict: new(domain.MentionVerdictOtherCompany),
+				wantCost:    &cost,
+			},
+			{
+				name:        "other meaning becomes a miss",
+				answer:      "Koi are ornamental carp.",
+				verdict:     domain.MentionVerdictOtherMeaning,
+				wantCalls:   4,
+				wantOutcome: domain.OutcomeMiss,
+				wantVerdict: new(domain.MentionVerdictOtherMeaning),
+				wantCost:    &cost,
+			},
+			{
+				name:        "citation skips the judge",
+				answer:      "Koi tracks AI visibility.",
+				sources:     []string{"https://koi.dev"},
+				wantOutcome: domain.OutcomeCited,
+			},
+			{
+				name:        "absent name skips the judge",
+				answer:      "Try Elmo.",
+				wantOutcome: domain.OutcomeMiss,
+			},
+			{
+				name:        "failed judgment keeps the name match",
+				answer:      "Koi tracks AI visibility.",
+				judgeErr:    errors.New("provider unavailable"),
+				wantCalls:   4,
+				wantOutcome: domain.OutcomeMentioned,
+			},
+		} {
+			t.Run(fmt.Sprintf("%s fastStart=%t", test.name, fastStart), func(t *testing.T) {
+				store, job := newVisibilityWorkerFixture()
+				store.run.FastStart = fastStart
+
+				var calls atomic.Int32
+				worker := &visibilityWorker{
+					store:    store,
+					provider: namedBrandProvider(test.answer, test.sources...),
+					judge: mentionJudgeFunc(func(_ context.Context, input domain.MentionInput) (domain.MentionJudgment, error) {
+						calls.Add(1)
+						require.Equal(t, "Koi", input.Brand.Name)
+						require.Equal(t, "Best tools?", input.Prompt)
+						require.Equal(t, test.answer, input.Answer)
+
+						if test.judgeErr != nil {
+							return domain.MentionJudgment{}, test.judgeErr
+						}
+
+						return domain.MentionJudgment{
+							Verdict: test.verdict,
+							CostUSD: &cost,
+						}, nil
+					}),
+				}
+
+				finishVisibilityWork(t, worker, store, job)
+
+				require.Equal(t, test.wantCalls, calls.Load())
+				require.Len(t, store.saved, 4)
+				for _, result := range store.saved {
+					require.NoError(t, result.Validate())
+					require.Equal(t, test.wantOutcome, *result.Outcome)
+					require.Equal(t, test.wantVerdict, result.MentionVerdict)
+					require.Equal(t, test.wantCost, result.MentionCostUSD)
+				}
+			})
+		}
+	}
+}
+
+func TestVisibilityWorkerWithoutJudgeKeepsNameMatch(t *testing.T) {
+	store, job := newVisibilityWorkerFixture()
+	worker := &visibilityWorker{
+		store:    store,
+		provider: namedBrandProvider("I couldn't reliably identify Koi."),
+	}
+
+	finishVisibilityWork(t, worker, store, job)
+
+	require.Len(t, store.saved, 4)
+	for _, result := range store.saved {
+		require.Equal(t, domain.OutcomeMentioned, *result.Outcome)
+		require.Nil(t, result.MentionVerdict)
+	}
+}
+
+func TestVisibilityWorkerCancelledJudgmentDoesNotSave(t *testing.T) {
+	for _, fastStart := range []bool{false, true} {
+		t.Run(fmt.Sprintf("fastStart=%t", fastStart), func(t *testing.T) {
+			store, job := newVisibilityWorkerFixture()
+			store.run.FastStart = fastStart
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			worker := &visibilityWorker{
+				store:    store,
+				provider: namedBrandProvider("Koi tracks AI visibility."),
+				judge: mentionJudgeFunc(func(context.Context, domain.MentionInput) (domain.MentionJudgment, error) {
+					cancel()
+
+					return domain.MentionJudgment{}, errors.New("request aborted")
+				}),
+			}
+
+			if !fastStart {
+				var snooze *river.JobSnoozeError
+				require.ErrorAs(t, worker.Work(ctx, job), &snooze)
+			}
+
+			require.ErrorIs(t, worker.Work(ctx, job), context.Canceled)
+			require.Empty(t, store.saved)
+			require.False(t, store.finished)
+		})
+	}
+}

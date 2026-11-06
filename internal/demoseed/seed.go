@@ -348,5 +348,15 @@ func fillAnswer(result *domain.VisibilityResult, snapshot domain.BrandSnapshot, 
 
 	// Branded questions may themselves name Koi; score the actual persisted answer.
 	result.Outcome = new(domain.ScoreVisibility(snapshot, result.RawAnswer, result.Sources))
+
+	// One always-absent prompt shows an engine that names the brand without knowing it.
+	if prompt == 1 && engine == 0 {
+		unknown := "\n\nI couldn't reliably identify a product called Koi, so I can't compare it."
+		result.RawAnswer += unknown
+		result.AnswerMarkdown += unknown
+		result.Outcome = new(domain.OutcomeMiss)
+		result.MentionVerdict = new(domain.MentionVerdictNoInfo)
+	}
+
 	result.Observations = domain.ExtractObservations(*result)
 }

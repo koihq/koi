@@ -19,6 +19,9 @@ const (
 
 const GenerationModelSlug = "deepseek/deepseek-v4.1-flash"
 
+// MentionModelSlug was chosen by testing candidates against hand-labeled engine answers.
+const MentionModelSlug = "deepseek/deepseek-v4.1-flash"
+
 type BrandSnapshot struct {
 	Name        string `json:"name"`
 	Domain      string `json:"domain,omitempty"`

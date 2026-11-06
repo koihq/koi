@@ -1,14 +1,47 @@
 import type { VisibilityEngine, VisibilityResult } from "@/api/generated";
 
 export type FirstLookVerdict = {
-  kind: "rival" | "cited" | "mentioned" | "absent";
+  kind: "unknown" | "confused" | "rival" | "cited" | "mentioned" | "absent";
   engine: VisibilityEngine;
   competitor?: string;
   result: VisibilityResult;
 };
 
-/** Picks the one answer worth leading with: who won instead, then how the brand appeared. */
-export function firstLookVerdict(results: VisibilityResult[]): FirstLookVerdict | null {
+/**
+ * Whether an answer shows that the engine doesn't recognize the brand. Only a question that names
+ * the brand can show that: asked about car insurance, an answer about a namesake insurer is right.
+ */
+export function recognitionGap(
+  result: Pick<VisibilityResult, "mentionVerdict" | "promptText">,
+  brand: string,
+): "unknown" | "confused" | null {
+  if (!nameMatcher([brand])?.test(result.promptText)) return null;
+  if (result.mentionVerdict === "no_info") return "unknown";
+  if (result.mentionVerdict === "other_company") return "confused";
+
+  return null;
+}
+
+/**
+ * Picks the one answer worth leading with: that the engine doesn't recognize the brand, then who
+ * won instead, then how the brand appeared.
+ */
+export function firstLookVerdict(
+  results: VisibilityResult[],
+  brand: string,
+): FirstLookVerdict | null {
+  for (const kind of ["unknown", "confused"] as const) {
+    const gap = results.find((result) => recognitionGap(result, brand) === kind);
+    if (gap) {
+      return {
+        kind,
+        engine: gap.engine,
+        competitor: kind === "unknown" ? gap.appearances[0]?.name : undefined,
+        result: gap,
+      };
+    }
+  }
+
   const lost = results.find((result) => result.outcome === "miss" && result.appearances.length > 0);
   if (lost) {
     return {
@@ -124,6 +157,8 @@ const VERDICT_RANK: Record<FirstLookVerdict["kind"], number> = {
   mentioned: 1,
   cited: 2,
   rival: 3,
+  confused: 4,
+  unknown: 5,
 };
 
 /** Keeps the headline still as answers arrive; only a stronger finding may replace it. */
