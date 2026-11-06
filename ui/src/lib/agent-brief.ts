@@ -6,7 +6,13 @@ export type AgentBriefInput = {
   engine: string;
   collectedAt: string;
   outcome: string;
-  result: Pick<VisibilityResult, "rawAnswer" | "sources" | "appearances">;
+  result: Pick<VisibilityResult, "rawAnswer" | "sources" | "appearances" | "mentionVerdict">;
+};
+
+const RECOGNITION: Partial<Record<NonNullable<VisibilityResult["mentionVerdict"]>, string>> = {
+  no_info: "The engine named the brand but said it does not know it.",
+  other_company: "The answer is about a different company with this name.",
+  other_meaning: "The answer uses this name with an unrelated meaning.",
 };
 
 function quote(text: string) {
@@ -39,6 +45,7 @@ export function agentBrief({
       : `- ${appearance.name}`;
   });
   const sources = [...new Set(result.sources)].map((source) => `- ${source}`);
+  const recognition = result.mentionVerdict ? RECOGNITION[result.mentionVerdict] : undefined;
 
   return [
     `# AI answer evidence: ${prompt}`,
@@ -47,6 +54,7 @@ export function agentBrief({
     `- Engine: ${engine}`,
     `- Collected: ${collectedAt}`,
     `- Brand outcome: ${outcome}`,
+    ...(recognition ? [`- Recognition: ${recognition}`] : []),
     "",
     "## Competitors in the answer",
     ...(rivals.length ? rivals : ["- None"]),
@@ -58,7 +66,7 @@ export function agentBrief({
     result.rawAnswer.trim() ? quote(result.rawAnswer) : "> (empty)",
     "",
     "## Task",
-    `Propose specific content or page changes that would make ${engine} recommend and cite ${brand.name} for this question. Ground each change in the sources above.`,
+    `Propose specific content or page changes that would make ${engine} ${recognition ? `recognize ${brand.name} as the product it is, then ` : ""}recommend and cite ${brand.name} for this question. Ground each change in the sources above.`,
     "",
   ].join("\n");
 }

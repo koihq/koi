@@ -223,13 +223,19 @@ price. Cloro credits are the provider cost unit; converting them to money requir
 the operator's current Cloro plan and invoice because its plans have monthly credit
 allowances. Do not infer a fixed euro cost per task from this field.
 
+An answer that names the brand without citing it also gets one OpenRouter judgment when
+`KOI_OPENROUTER_API_KEY` is set. Its reported cost is stored in `mention_cost_usd`, is not
+exposed through the API, and stays empty when the judgment fails.
+
 Example internal query for a UTC month:
 
 ```sql
 SELECT b.organization_id, vr.engine,
        count(*) FILTER (WHERE vr.submitted_at IS NOT NULL) AS submissions,
        count(*) FILTER (WHERE vr.outcome IS NOT NULL) AS completed_cells,
-       sum(vr.provider_credits) AS reported_credits
+       sum(vr.provider_credits) AS reported_credits,
+       count(vr.mention_verdict) AS mention_judgments,
+       sum(vr.mention_cost_usd) AS mention_cost_usd
 FROM visibility_results vr
 JOIN visibility_runs run ON run.id = vr.run_id
 JOIN brands b ON b.id = run.brand_id

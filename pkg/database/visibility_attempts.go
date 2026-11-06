@@ -199,7 +199,7 @@ func (s *Store) SaveVisibilityResult(ctx context.Context, runID uuid.UUID, attem
 
 		// A replay never overwrites an answer or advances discovery counts.
 		saved := tx.Model(&domain.VisibilityResult{}).Where("id = ? AND run_id = ? AND outcome IS NULL", result.ID, runID).
-			Select("outcome", "fetched_at", "raw_answer", "answer_markdown", "named_entities", "observations", "sources", "error_code", "provider_credits").Updates(&result)
+			Select("outcome", "fetched_at", "raw_answer", "answer_markdown", "named_entities", "observations", "sources", "error_code", "provider_credits", "mention_verdict", "mention_cost_usd").Updates(&result)
 		if saved.Error != nil || saved.RowsAffected == 0 {
 			return saved.Error
 		}

@@ -79,6 +79,119 @@ function PromptUsage({ used, limit }: { used: number; limit: number }) {
   );
 }
 
+/** Nothing to manage yet, so the page is the offer: what it costs today, then what it costs. */
+function ChoosePlan({
+  trial,
+  today,
+  price,
+  quantity,
+  options,
+  pricesFailed,
+  pricesLoading,
+  disabled,
+  error,
+  onChange,
+  onRetry,
+  onSubmit,
+}: {
+  trial: boolean;
+  today: string | null;
+  price: string | null;
+  quantity: number;
+  options: number[];
+  pricesFailed: boolean;
+  pricesLoading: boolean;
+  disabled: boolean;
+  error: unknown;
+  onChange: (quantity: number) => void;
+  onRetry: () => void;
+  onSubmit: () => void;
+}) {
+  const { t, i18n } = useTranslation("billing");
+
+  return (
+    <section
+      className="mx-auto grid w-full max-w-xl gap-8 rounded-panel bg-surface p-4 sm:px-11 sm:py-9"
+      aria-labelledby="billing-heading"
+    >
+      <div className="grid gap-2">
+        {pricesLoading && (
+          <output className="block">
+            <span className="sr-only">{t("calculating")}</span>
+            <Skeleton className="h-[42px] w-44" />
+          </output>
+        )}
+        {!pricesLoading && (
+          <h1
+            id="billing-heading"
+            className={price ? "text-metric font-medium tabular-nums" : "text-title font-semibold"}
+          >
+            {!price ? (
+              t("chooseAllowance")
+            ) : trial ? (
+              t("trialToday", { price: today })
+            ) : (
+              <>
+                {price}
+                <span className="ms-1.5 text-section font-normal tracking-normal text-muted-foreground">
+                  {t("perMonthSuffix")}
+                </span>
+              </>
+            )}
+          </h1>
+        )}
+        {price && (
+          <p
+            className={
+              trial ? "text-section font-medium tabular-nums" : "text-body text-muted-foreground"
+            }
+          >
+            {t(trial ? "trialThen" : "description", { price })}
+          </p>
+        )}
+        {pricesFailed && (
+          <p role="alert" className="text-sm text-destructive">
+            {t("priceUnavailable")}{" "}
+            <Button variant="link" onClick={onRetry}>
+              {t("retry")}
+            </Button>
+          </p>
+        )}
+      </div>
+
+      {options.length > 0 && (
+        <TickPicker
+          compact
+          options={options}
+          value={quantity}
+          onChange={onChange}
+          unit={t("promptsUnit")}
+          label={t("trackedPrompts")}
+          locale={i18n.language}
+          disabled={disabled}
+        />
+      )}
+
+      <div className="grid gap-3">
+        <Button size="lg" disabled={disabled || !price} onClick={onSubmit}>
+          {t(trial ? "startTrial" : "checkout")}
+        </Button>
+        {price && (
+          <div className="grid gap-1 text-sm text-muted-foreground">
+            {trial && <p>{t("trialIncludes", { quantity })}</p>}
+            <p>{t(trial ? "trialTerms" : "rangeDescription")}</p>
+          </div>
+        )}
+        {error != null && (
+          <p role="alert" className="text-sm text-destructive">
+            {messageFromUnknown(error)}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function BillingSettings() {
   const { t, i18n } = useTranslation("billing");
   const search = Route.useSearch();
@@ -141,6 +254,34 @@ function BillingSettings() {
       portal.reset();
       checkout.mutate(quantity);
     }
+  }
+
+  // A returning checkout may not have its subscription yet, and that page says it is confirming.
+  const choosing =
+    subscription.isSuccess &&
+    !record &&
+    search.checkout !== "success" &&
+    !billing.awaitingConfirmation;
+
+  if (choosing) {
+    return (
+      <div className="pb-24">
+        <ChoosePlan
+          trial={subscription.data.trialAvailable}
+          today={money(0)}
+          price={price}
+          quantity={quantity}
+          options={options.map((option) => option.prompts)}
+          pricesFailed={catalog.isError}
+          pricesLoading={catalog.isPending}
+          disabled={busy}
+          error={formError}
+          onChange={setSelected}
+          onRetry={() => void catalog.refetch()}
+          onSubmit={submit}
+        />
+      </div>
+    );
   }
 
   return (

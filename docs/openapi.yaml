@@ -1486,7 +1486,7 @@ components:
       enum: [chatgpt, perplexity, gemini, google_ai_overviews]
     VisibilityResult:
       type: object
-      required: [id, runId, promptId, promptText, promptPosition, engine, collector, fetchedAt, outcome, rawAnswer, sources, errorCode, appearances]
+      required: [id, runId, promptId, promptText, promptPosition, engine, collector, fetchedAt, outcome, rawAnswer, sources, errorCode, appearances, mentionVerdict]
       properties:
         id:
           type: string
@@ -1531,6 +1531,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompetitorAppearance"
+        mentionVerdict:
+          type: string
+          enum: [mention, no_info, other_company, other_meaning]
+          nullable: true
+          description: Whether an answer naming the brand is really about it. Null when it was not judged; the outcome is then the name match.
     AppearanceEvidence:
       type: object
       required: [kind, value]

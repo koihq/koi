@@ -314,11 +314,15 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 				visibilityStore := database.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud").
 					WithWelcomeEmail(a.cfg.ResendAPIKey != "")
 				workerStores = append(workerStores, visibilityStore)
-				river.AddWorker(workers, &visibilityWorker{
+				worker := &visibilityWorker{
 					store:     visibilityStore,
 					provider:  a.cloroProvider,
 					syncSlots: make(chan struct{}, a.cfg.WorkerConcurrency),
-				})
+				}
+				if a.cfg.OpenRouterAPIKey != "" {
+					worker.judge = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
+				}
+				river.AddWorker(workers, worker)
 			}
 			if a.cfg.ResendAPIKey != "" {
 				river.AddWorker(workers, &welcomeWorker{

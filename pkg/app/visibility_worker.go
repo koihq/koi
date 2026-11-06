@@ -31,10 +31,14 @@ type visibilityProvider interface {
 	Fetch(context.Context, domain.VisibilityResult, string) (*domain.CollectedAnswer, error)
 }
 
+// mentionJudgeTimeout bounds one judgment; the answer is saved by name match when it runs out.
+const mentionJudgeTimeout = 20 * time.Second
+
 type visibilityWorker struct {
 	river.WorkerDefaults[database.VisibilityJobArgs]
 	store     visibilityStore
 	provider  visibilityProvider
+	judge     domain.MentionJudge
 	syncSlots chan struct{}
 }
 
@@ -141,7 +145,13 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[database.Vis
 			if answer.Sources != nil {
 				cell.Sources = answer.Sources
 			}
-			outcome = domain.ScoreVisibility(run.BrandSnapshot, answer.Text, answer.Sources)
+
+			scored, err := w.score(ctx, run, &cell, answer)
+			if err != nil {
+				return w.fail(ctx, job, err)
+			}
+
+			outcome = scored
 		}
 		cell.Outcome = &outcome
 		if err := w.store.SaveVisibilityResult(ctx, run.ID, job.Attempt, cell); err != nil {
@@ -255,10 +265,47 @@ func (w *visibilityWorker) syncCell(ctx context.Context, job *river.Job[database
 		if answer.Sources != nil {
 			cell.Sources = answer.Sources
 		}
-		outcome = domain.ScoreVisibility(run.BrandSnapshot, answer.Text, answer.Sources)
+
+		scored, err := w.score(ctx, run, &cell, answer)
+		if err != nil {
+			return err
+		}
+
+		outcome = scored
 	}
 	cell.Outcome = &outcome
 	return w.store.SaveVisibilityResult(ctx, run.ID, job.Attempt, cell)
+}
+
+// score asks the judge only about answers that name the brand without citing it. Collection is
+// already paid for, so a failed judgment keeps the name match instead of failing the answer.
+func (w *visibilityWorker) score(ctx context.Context, run *domain.VisibilityRun, cell *domain.VisibilityResult, answer *domain.CollectedAnswer) (domain.Outcome, error) {
+	outcome := domain.ScoreVisibility(run.BrandSnapshot, answer.Text, answer.Sources)
+	if outcome != domain.OutcomeMentioned || w.judge == nil {
+		return outcome, nil
+	}
+
+	judgeCtx, cancel := context.WithTimeout(ctx, mentionJudgeTimeout)
+	defer cancel()
+
+	judgment, err := w.judge.JudgeMention(judgeCtx, domain.MentionInput{
+		Brand:  run.BrandSnapshot,
+		Prompt: cell.PromptText,
+		Answer: answer.Text,
+	})
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
+	if err != nil {
+		slog.Warn("mention judgment failed", "result_id", cell.ID, "err", err)
+
+		return outcome, nil
+	}
+
+	cell.MentionVerdict = &judgment.Verdict
+	cell.MentionCostUSD = judgment.CostUSD
+
+	return judgment.Verdict.Outcome(), nil
 }
 
 func (w *visibilityWorker) fail(ctx context.Context, job *river.Job[database.VisibilityJobArgs], cause error) error {

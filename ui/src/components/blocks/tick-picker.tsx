@@ -18,6 +18,7 @@ export function TickPicker({
   locale,
   mark,
   markLabel,
+  compact = false,
   disabled = false,
 }: {
   options: number[];
@@ -29,6 +30,8 @@ export function TickPicker({
   /** An amount worth finding again, such as the current plan. */
   mark?: number;
   markLabel?: string;
+  /** For a page where another number leads, such as the price. */
+  compact?: boolean;
   disabled?: boolean;
 }) {
   const last = options.length - 1;
@@ -37,9 +40,16 @@ export function TickPicker({
 
   return (
     <div className={cn("grid gap-3", disabled && "opacity-50")}>
-      <p className="text-metric font-medium tabular-nums">
+      <p
+        className={cn(
+          "tabular-nums",
+          compact ? "text-section font-semibold" : "text-metric font-medium",
+        )}
+      >
         <NumberFlow value={value} locales={locale} />
-        <span className="ms-1.5 text-section font-normal text-muted-foreground">{unit}</span>
+        <span className="ms-1.5 text-section font-normal tracking-normal text-muted-foreground">
+          {unit}
+        </span>
       </p>
 
       <div className="relative rounded-sm px-2 has-focus-visible:outline-2 has-focus-visible:outline-offset-4 has-focus-visible:outline-ring">

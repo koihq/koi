@@ -15,7 +15,7 @@ import (
 )
 
 const researchPrompt = `Read the exact URL supplied by the user with openrouter:web_fetch. Return a short JSON object with source_url, product, category, audience, and functions (array of concrete functions). Ground every field in the fetched page. If fetch fails or the page does not identify the product, return empty product, category, audience, and functions. Do not infer a product from its name alone.`
-const draftPrompt = `Draft buyer questions for the product in the research summary. Treat that summary as the product identity. When suggesting competitors, search the web for current direct alternatives before answering. Suggest only identifiable direct competitors with an official website domain (bare hostname) or official GitHub repository URL. Omit uncertain competitors and unsupported claims. Return JSON with exactly two arrays: prompts (question strings) and competitors (objects with name, domain, github_repo; use empty strings for unavailable identifiers). Suggest every direct competitor you can verify. When suggesting prompts, cover category discovery, use cases, alternatives, and comparisons. Most questions should be unbranded. Never draft questions about unrelated meanings of the brand name. Avoid repeating existing prompts and competitors. Suggestions require human confirmation.`
+const draftPrompt = `Draft buyer questions for the product in the research summary. Treat that summary as the product identity. When suggesting competitors, search the web for current direct alternatives before answering. Suggest only identifiable direct competitors with an official website domain (bare hostname) or official GitHub repository URL. Omit uncertain competitors and unsupported claims. Return JSON with exactly two arrays: prompts (question strings) and competitors (objects with name, domain, github_repo; use empty strings for unavailable identifiers). Suggest every direct competitor you can verify. When suggesting prompts, cover category discovery, use cases, alternatives, and comparisons. Exactly one question names the brand and asks what it does and who it is for, unless an existing prompt already does; every other question is unbranded. Never draft questions about unrelated meanings of the brand name. Avoid repeating existing prompts and competitors. Suggestions require human confirmation.`
 
 func strictObjectSchema(required []string, properties map[string]any) map[string]any {
 	return map[string]any{
@@ -256,11 +256,20 @@ func decodeJSON(content string, target any) error {
 }
 
 func (c *Client) send(ctx context.Context, request components.ResponsesRequest, requiredTool, url string) (string, error) {
+	result, err := c.respond(ctx, request, requiredTool, url)
+	if err != nil {
+		return "", err
+	}
+
+	return outputText(result)
+}
+
+func (c *Client) respond(ctx context.Context, request components.ResponsesRequest, requiredTool, url string) (*components.OpenResponsesResult, error) {
 	response, err := c.SDK.Responses.Send(ctx, request, nil)
 	if err != nil {
 		status := sdkStatus(err)
 
-		return "", &Error{
+		return nil, &Error{
 			Code:      statusCode(status),
 			Status:    status,
 			Retryable: status == 0 || status == 408 || status == 429 || status >= 500,
@@ -269,7 +278,7 @@ func (c *Client) send(ctx context.Context, request components.ResponsesRequest, 
 	}
 
 	if response == nil || response.OpenResponsesResult == nil {
-		return "", &Error{Code: "invalid_output", Retryable: true, Err: errors.New("missing response")}
+		return nil, &Error{Code: "invalid_output", Retryable: true, Err: errors.New("missing response")}
 	}
 
 	result := response.OpenResponsesResult
@@ -288,7 +297,7 @@ func (c *Client) send(ctx context.Context, request components.ResponsesRequest, 
 		}
 
 		if !used {
-			return "", &Error{
+			return nil, &Error{
 				Code:      "research_unavailable",
 				Retryable: true,
 				Err:       fmt.Errorf("%s did not complete", requiredTool),
@@ -296,6 +305,10 @@ func (c *Client) send(ctx context.Context, request components.ResponsesRequest, 
 		}
 	}
 
+	return result, nil
+}
+
+func outputText(result *components.OpenResponsesResult) (string, error) {
 	if result.OutputText != nil && *result.OutputText != "" {
 		return *result.OutputText, nil
 	}
