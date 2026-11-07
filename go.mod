@@ -20,7 +20,7 @@ require (
 	github.com/riverqueue/river/riverdriver/riverdatabasesql v0.47.0
 	github.com/riverqueue/river/rivertype v0.47.0
 	github.com/stretchr/testify v1.12.1
-	github.com/stripe/stripe-go/v87 v87.0.0
+	github.com/stripe/stripe-go/v87 v87.1.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/text v0.43.0
 	gorm.io/driver/postgres v1.6.2
