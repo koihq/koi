@@ -158,6 +158,27 @@ func (s *Store) EnqueuePasswordResetEmail(ctx context.Context, email string) err
 	return err
 }
 
+// PasswordChangedJobArgs names the user; the worker reads the address when sending.
+type PasswordChangedJobArgs struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (PasswordChangedJobArgs) Kind() string { return "koi_password_changed_email" }
+
+// EnqueuePasswordChangedEmail tells the owner of the address that its password was reset.
+func (s *Store) EnqueuePasswordChangedEmail(ctx context.Context, userID uuid.UUID) error {
+	if !s.passwordReset || s.enqueueClient == nil {
+		return nil
+	}
+
+	_, err := s.enqueueClient.Insert(ctx, PasswordChangedJobArgs{UserID: userID}, &river.InsertOpts{
+		Queue:       "email",
+		MaxAttempts: 3,
+	})
+
+	return err
+}
+
 func (s *Store) PasswordResetRepo() domain.PasswordResetRepository {
 	return NewPasswordResetRepository(s.db)
 }
@@ -182,6 +203,10 @@ func (s *Store) BillingRepo() domain.BillingRepository {
 	return NewBillingRepository(s.db, s.cloudMode)
 }
 
+func (s *Store) AccountDataRepo() domain.AccountDataRepository {
+	return NewAccountDataRepository(s.db)
+}
+
 func (s *Store) BrandRepo() domain.BrandRepository {
 	return NewBrandRepository(s.db)
 }
@@ -195,7 +220,10 @@ func (s *Store) CompetitorRepo() domain.CompetitorRepository {
 }
 
 func (s *Store) GenerationRepo() domain.GenerationRepository {
-	return NewGenerationRepository(s.db, s.enqueueClient, s.cloudMode)
+	repository := NewGenerationRepository(s.db, s.enqueueClient, s.cloudMode)
+	repository.firstLookDailyLimit = s.firstLookDailyLimit
+
+	return repository
 }
 
 // WithLiveCollection enables paid collection only when the operator configured Cloro.

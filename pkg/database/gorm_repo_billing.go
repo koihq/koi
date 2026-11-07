@@ -34,6 +34,33 @@ func (r *GormBillingRepository) ReservePromptCapacity(ctx context.Context, organ
 	return requirePromptCapacity(ctx, r.db, organizationID, additional)
 }
 
+func (r *GormBillingRepository) ReserveBrandSlot(ctx context.Context, organizationID uuid.UUID) error {
+	if !r.cloudMode {
+		return nil
+	}
+
+	if err := lockOrganization(ctx, r.db, organizationID); err != nil {
+		return err
+	}
+
+	firstLook, err := cloudFirstLook(ctx, r.db, organizationID)
+	if err != nil || !firstLook {
+		return err
+	}
+
+	var brands int64
+	if err := r.db.WithContext(ctx).Model(&domain.Brand{}).
+		Where("organization_id = ?", organizationID).Count(&brands).Error; err != nil {
+		return err
+	}
+
+	if brands > 0 {
+		return domain.ErrBrandLimitReached
+	}
+
+	return nil
+}
+
 func (r *GormBillingRepository) OrganizationForUser(ctx context.Context) (*domain.Organization, error) {
 	identity, ok := auth.FromContext(ctx)
 	if !ok || identity.OrganizationID == uuid.Nil {

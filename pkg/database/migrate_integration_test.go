@@ -38,7 +38,7 @@ func TestEntityIndexesSurviveRepeatedMigration(t *testing.T) {
 		"idx_visibility_results_cell":       "(run_id, prompt_id, engine)",
 		"idx_competitors_brand_domain":      "(brand_id, domain)",
 		"idx_competitors_brand_github_repo": "(brand_id, github_repo)",
-		"idx_prompts_brand_text":            "(brand_id, lower(text))",
+		"idx_prompts_brand_text":            "(brand_id, md5(lower(text)))",
 		"idx_generation_runs_recent":        "(brand_id, created_at DESC, id DESC)",
 		"idx_generation_runs_key":           "(brand_id, idempotency_key)",
 		"idx_generation_runs_active":        "UNIQUE INDEX",

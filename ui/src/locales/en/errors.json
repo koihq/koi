@@ -19,7 +19,11 @@
     "billing_checkout_pending": "A checkout is already in progress. Return to it or try again later.",
     "billing_subscription_exists": "This organization already has a subscription.",
     "billing_price_mismatch": "The current subscription price could not be changed. Contact support.",
-    "password_reset_invalid": "This reset link no longer works. Request a new one."
+    "password_reset_invalid": "This reset link no longer works. Request a new one.",
+    "rate_limited": "Too many attempts. Wait a few minutes and try again.",
+    "signup_closed": "Sign-up is closed on this installation. Ask its owner for access.",
+    "first_look_unavailable": "Free drafts aren't available right now. Add prompts yourself, or start your trial and Koi drafts them for you.",
+    "cross_origin_request": "Reload the page and try again."
   },
   "fields": {
     "email": {
@@ -27,7 +31,8 @@
       "taken": "That email is already registered"
     },
     "password": {
-      "min_length": "Password must be at least 8 characters"
+      "min_length": "Password must be at least 12 characters",
+      "max_length": "Password must be 256 characters or fewer"
     }
   }
 }

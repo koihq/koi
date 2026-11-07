@@ -21,9 +21,14 @@ const (
 	CodeBillingPriceMismatch      = "billing_price_mismatch"
 	CodeBillingRequired           = "billing_required"
 	CodePasswordResetInvalid      = "password_reset_invalid"
+	CodeRateLimited               = "rate_limited"
+	CodeSignupClosed              = "signup_closed"
+	CodeFirstLookUnavailable      = "first_look_unavailable"
+	CodeCrossOriginRequest        = "cross_origin_request"
 
 	FieldInvalid   = "invalid"
 	FieldMinLength = "min_length"
+	FieldMaxLength = "max_length"
 	FieldTaken     = "taken"
 )
 
@@ -53,6 +58,10 @@ var (
 	ErrBillingConflict         = &Error{Code: CodeBillingConflict, Message: "billing conflict"}
 	ErrBillingRequired         = &Error{Code: CodeBillingRequired, Message: "trial or payment required"}
 	ErrPasswordResetInvalid    = &Error{Code: CodePasswordResetInvalid, Message: "password reset link invalid or expired"}
+	ErrRateLimited             = &Error{Code: CodeRateLimited, Message: "too many requests"}
+	ErrSignupClosed            = &Error{Code: CodeSignupClosed, Message: "sign-up is closed on this installation"}
+	ErrFirstLookUnavailable    = &Error{Code: CodeFirstLookUnavailable, Message: "free check unavailable"}
+	ErrCrossOriginRequest      = &Error{Code: CodeCrossOriginRequest, Message: "cross-origin request rejected"}
 )
 
 type FieldError struct {

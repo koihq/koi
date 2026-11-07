@@ -5,13 +5,30 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
 	"github.com/koihq/koi/pkg/auth"
 )
 
-const minPasswordLen = 8
+const (
+	minPasswordLen   = 12
+	maxPasswordBytes = 256
+)
+
+// validatePassword applies to new passwords only, so accounts with a shorter one can still sign in.
+func validatePassword(password string) error {
+	if utf8.RuneCountInString(password) < minPasswordLen {
+		return Validation(FieldError{Field: "password", Code: FieldMinLength})
+	}
+
+	if len(password) > maxPasswordBytes {
+		return Validation(FieldError{Field: "password", Code: FieldMaxLength})
+	}
+
+	return nil
+}
 
 type SignupParams struct {
 	Email    string
@@ -23,11 +40,7 @@ func (p SignupParams) Validate() error {
 		return Validation(FieldError{Field: "email", Code: FieldInvalid})
 	}
 
-	if len(p.Password) < minPasswordLen {
-		return Validation(FieldError{Field: "password", Code: FieldMinLength})
-	}
-
-	return nil
+	return validatePassword(p.Password)
 }
 
 type Me struct {
@@ -43,18 +56,26 @@ type AuthCommander interface {
 	RequestPasswordReset(ctx context.Context, email string) error
 	IssuePasswordReset(ctx context.Context, email string) (*User, string, error)
 	ResetPassword(ctx context.Context, token, password string) (uuid.UUID, error)
+	// SetPassword is the administrator's recovery path, for instances that cannot send email.
+	SetPassword(ctx context.Context, email, password string) (uuid.UUID, error)
 }
 
 type AuthQuerier interface {
 	Me(ctx context.Context, preferredBrandID uuid.UUID) (*Me, error)
 }
 
-type authCommander struct {
-	store Store
+// AuthOptions holds what differs between installations. OpenSignup false admits only the first user.
+type AuthOptions struct {
+	OpenSignup bool
 }
 
-func NewAuthCommander(store Store) AuthCommander {
-	return &authCommander{store: store}
+type authCommander struct {
+	store   Store
+	options AuthOptions
+}
+
+func NewAuthCommander(store Store, options AuthOptions) AuthCommander {
+	return &authCommander{store: store, options: options}
 }
 
 type authQuerier struct {
@@ -79,6 +100,17 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 	var me *Me
 
 	err = c.store.Atomic(ctx, func(s Store) error {
+		if !c.options.OpenSignup {
+			existing, err := s.UserRepo().LockAndCount(ctx)
+			if err != nil {
+				return err
+			}
+
+			if existing > 0 {
+				return ErrSignupClosed
+			}
+		}
+
 		local, _, _ := strings.Cut(p.Email, "@")
 		user := &User{Email: p.Email, PasswordHash: hash}
 		if err := user.Validate(); err != nil {

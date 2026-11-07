@@ -48,6 +48,9 @@ jobs:
       - name: Go formatting
         run: make go-format-check
 
+      - name: Known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
       - name: Test
         env:
           KOI_DATABASE_URL: postgres://koi:koi@localhost:5432/koi?sslmode=disable

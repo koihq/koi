@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/riverqueue/river"
 
 	"github.com/koihq/koi/pkg/database"
@@ -40,4 +41,30 @@ func (w *passwordResetWorker) Work(ctx context.Context, job *river.Job[database.
 	}
 
 	return w.sender.SendPasswordReset(ctx, user.Email, token)
+}
+
+type passwordChangedSender interface {
+	SendPasswordChanged(ctx context.Context, userID uuid.UUID, to string) error
+}
+
+type passwordChangedWorker struct {
+	river.WorkerDefaults[database.PasswordChangedJobArgs]
+	store  domain.Store
+	sender passwordChangedSender
+}
+
+func (w *passwordChangedWorker) Timeout(*river.Job[database.PasswordChangedJobArgs]) time.Duration {
+	return 30 * time.Second
+}
+
+func (w *passwordChangedWorker) Work(ctx context.Context, job *river.Job[database.PasswordChangedJobArgs]) error {
+	user, err := w.store.UserRepo().Get(ctx, job.Args.UserID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return river.JobCancel(err)
+	}
+	if err != nil {
+		return err
+	}
+
+	return w.sender.SendPasswordChanged(ctx, user.ID, user.Email)
 }

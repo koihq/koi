@@ -5,7 +5,7 @@
 
 @host = http://localhost:5173
 @baseUrl = {{host}}/api/v1
-@password = password123
+@password = password-1234
 
 ### Signed out: 401
 # @no-cookie-jar

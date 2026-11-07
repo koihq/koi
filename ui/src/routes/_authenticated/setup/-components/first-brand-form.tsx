@@ -6,7 +6,7 @@ import { useApi } from "@/api/apiProvider";
 import type { CreateBrand } from "@/api/brands.api";
 import { ApiError, messageFromUnknown } from "@/api/errors";
 import { CountryCombobox } from "@/components/blocks/brand-form";
-import { brandFormSchema } from "@/components/blocks/brand-form-schema";
+import { BRAND_NAME_MAX, brandFormSchema } from "@/components/blocks/brand-form-schema";
 import { BrandIcon } from "@/components/blocks/brand-icon";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -119,6 +119,7 @@ export function FirstBrandForm({
                 name="name"
                 value={name}
                 autoComplete="organization"
+                maxLength={BRAND_NAME_MAX}
                 aria-invalid={fieldErrors.name ? true : undefined}
                 aria-describedby={fieldErrors.name ? `${id}-name-error` : `${id}-name-source`}
                 onChange={(event) => setEdited(event.currentTarget.value)}

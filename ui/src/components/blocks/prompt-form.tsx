@@ -6,7 +6,7 @@ import { ApiErrorMessage } from "@/components/blocks/api-error-message";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { promptFormSchema } from "@/lib/prompt-form-schema";
+import { PROMPT_TEXT_MAX, promptFormSchema } from "@/lib/prompt-form-schema";
 
 export function PromptForm({
   initialText = "",
@@ -51,6 +51,7 @@ export function PromptForm({
           id="prompt-text"
           autoFocus
           value={text}
+          maxLength={PROMPT_TEXT_MAX}
           onChange={(event) => setText(event.target.value)}
           aria-invalid={invalid || undefined}
           placeholder={t("promptPlaceholder")}

@@ -67,6 +67,8 @@ type State = {
   credentials: unknown[];
   steps: string[];
   blocked: string | null;
+  draftBlocked: boolean;
+  noAnswers: boolean;
 };
 
 const draftedPrompt = {
@@ -102,6 +104,8 @@ async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
     credentials: [],
     steps: [],
     blocked: null,
+    draftBlocked: false,
+    noAnswers: false,
   };
 
   await page.route("**/api/v1/**", async (route) => {
@@ -156,6 +160,16 @@ async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
       json = page1(state.brand ? [state.brand] : []);
     } else if (path === "/api/v1/credentials") {
       json = page1(state.credentials);
+    } else if (
+      path === "/api/v1/generations" &&
+      request.method() === "POST" &&
+      state.draftBlocked
+    ) {
+      await route.fulfill({
+        status: 409,
+        json: { error: { code: "first_look_unavailable", message: "free check unavailable" } },
+      });
+      return;
     } else if (path === "/api/v1/generations" && request.method() === "POST") {
       state.autoStart = request.postDataJSON().startTracking === true;
       await route.fulfill({
@@ -199,7 +213,11 @@ async function mockOnboarding(page: Page, mcpUrl = "https://koi.example/mcp") {
       await route.fulfill({ status: 204 });
       return;
     } else if (path === "/api/v1/runs") {
-      json = page1(state.started && !state.blocked ? [run(state.completed, state.runState)] : []);
+      json = page1(
+        state.started && (!state.blocked || state.noAnswers)
+          ? [run(state.completed, state.runState)]
+          : [],
+      );
     } else if (path === "/api/v1/runs/run_1/results") {
       json = page1(state.completed ? answers : answers.map((a) => ({ ...a, outcome: null })));
     } else if (path === "/api/v1/prompts") {
@@ -388,11 +406,7 @@ test("waits for the agent, then moves to its check without starting one", async 
 });
 
 for (const [reason, title, description] of [
-  [
-    "first_look_site_used",
-    "This site already had its free check",
-    "Each website or repo gets one.",
-  ],
+  ["first_look_site_used", "This site has used its free checks", "Each website or repo gets 3."],
   ["first_look_paused", "Free checks are paused for today", "Yours starts by itself"],
 ] as const) {
   test(`explains ${reason} and offers the trial`, async ({ page }, testInfo) => {
@@ -410,6 +424,50 @@ for (const [reason, title, description] of [
     await expect(page.getByText(/Step \d of \d/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Fix this with my agent" })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`${reason}.png`), fullPage: true });
+  });
+}
+
+test("offers manual prompts and the trial when a free draft is unavailable", async ({ page }) => {
+  const state = await mockOnboarding(page);
+  state.draftBlocked = true;
+
+  await page.goto("/setup?path=koi&site=acme.com");
+  await page.getByRole("button", { name: "See what AI says" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "We couldn't draft your prompts for free today" }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/draftStart=unavailable/);
+  await expect(page.getByRole("link", { name: "Keep an eye on this" })).toBeVisible();
+  await expect(page.getByText("drafting didn’t start")).toHaveCount(0);
+});
+
+test("hides adding a second brand during the free check", async ({ page }) => {
+  const state = await mockOnboarding(page);
+  state.brand = brand;
+
+  await page.goto("/settings/brand");
+  await expect(page.getByRole("heading", { name: "Brands" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create brand" })).toHaveCount(0);
+});
+
+for (const [blocked, description] of [
+  ["", "Koi tries again for free within a day"],
+  ["first_look_used", "Start your trial to run the next check automatically"],
+] as const) {
+  test(`explains a check without answers when blocked is "${blocked}"`, async ({ page }) => {
+    const state = await mockOnboarding(page);
+    state.brand = brand;
+    state.started = true;
+    state.blocked = blocked;
+    state.runState = "failed";
+    state.noAnswers = true;
+
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: "Koi couldn't finish this check" }),
+    ).toBeVisible();
+    await expect(page.getByText(description)).toBeVisible();
   });
 }
 

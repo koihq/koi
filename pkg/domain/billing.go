@@ -12,6 +12,14 @@ const (
 	InitialDraftPromptLimit = 5
 	FirstLookPromptLimit    = InitialDraftPromptLimit
 
+	// FirstLookSiteLimit is how many organizations can run a First Look on one site. More than one
+	// lets colleagues sign up on their own, and keeps one account from using up a stranger's site.
+	FirstLookSiteLimit = 3
+
+	// FirstLookRunAttempts is how many runs an organization gets when none returns a real answer.
+	// The dispatcher starts each retry on its next daily slot.
+	FirstLookRunAttempts = 3
+
 	// DefaultFirstLookDailyLimit bounds what unpaid First Looks can spend on collection in a day.
 	DefaultFirstLookDailyLimit = 100
 )
@@ -182,6 +190,9 @@ type BillingRepository interface {
 	OrganizationForUser(context.Context) (*Organization, error)
 	OrganizationByCustomer(context.Context, string) (*Organization, error)
 	LockOrganization(context.Context, uuid.UUID) (*Organization, error)
+	// ReserveBrandSlot holds the organization until the transaction ends and fails with
+	// ErrBrandLimitReached when a First Look organization already has its one brand.
+	ReserveBrandSlot(ctx context.Context, organizationID uuid.UUID) error
 	// ReservePromptCapacity holds the organization until the transaction ends and fails if
 	// activating more prompts would exceed its allowance. Only Koi Cloud has an allowance.
 	ReservePromptCapacity(ctx context.Context, organizationID uuid.UUID, additional int64) error

@@ -2,8 +2,11 @@ import { z } from "zod";
 
 import type { CreateBrand } from "@/api/brands.api";
 
+export const BRAND_NAME_MAX = 255;
+export const BRAND_DESCRIPTION_MAX = 1000;
+
 export function validHostname(host: string): boolean {
-  if (host.length === 0 || host.length > 253) return false;
+  if (host.length === 0 || host.length > 253 || !host.includes(".")) return false;
 
   const ipv4 = host.split(".");
   if (
@@ -61,7 +64,7 @@ export function validBrandSite(value: string): boolean {
       return validGitHubRepo(`https://github.com${url.pathname.replace(/\/$/, "")}`);
     }
 
-    return host.includes(".") && validHostname(host);
+    return validHostname(host);
   } catch {
     return false;
   }
@@ -69,7 +72,7 @@ export function validBrandSite(value: string): boolean {
 
 export const brandFormSchema = z
   .object({
-    name: z.string().trim().min(1),
+    name: z.string().trim().min(1).max(BRAND_NAME_MAX),
     domain: z.string().trim(),
     githubRepo: z.string().trim(),
     country: z
@@ -77,7 +80,7 @@ export const brandFormSchema = z
       .trim()
       .transform((value) => value.toUpperCase())
       .pipe(z.string().regex(/^[A-Z]{2}$/)),
-    description: z.string().trim(),
+    description: z.string().trim().max(BRAND_DESCRIPTION_MAX),
   })
   .superRefine((value, context) => {
     if (!value.domain && !value.githubRepo) {

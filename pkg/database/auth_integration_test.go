@@ -17,8 +17,8 @@ func TestConcurrentSignupKeepsOneAccount(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, Migrate(db))
-	commander := domain.NewAuthCommander(NewStore(db))
-	params := domain.SignupParams{Email: uuid.NewString() + "@example.com", Password: "password123"}
+	commander := domain.NewAuthCommander(NewStore(db), domain.AuthOptions{OpenSignup: true})
+	params := domain.SignupParams{Email: uuid.NewString() + "@example.com", Password: "password-1234"}
 	results := make(chan error, 2)
 	for range 2 {
 		go func() {

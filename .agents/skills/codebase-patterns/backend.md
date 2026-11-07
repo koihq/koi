@@ -84,9 +84,11 @@ Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP map
 | code | HTTP |
 | --- | --- |
 | `validation`, `invalid_json` | 400 |
-| `email_taken` | 409 |
+| `email_taken`, `first_look_unavailable` | 409 |
 | `invalid_credentials`, `unauthorized` | 401 |
+| `signup_closed`, `cross_origin_request` | 403 |
 | `not_found` | 404 |
+| `rate_limited` | 429, with `Retry-After` |
 | anything else | 500 `{ code: "internal", message: "internal error" }` (log the real error) |
 
 `invalid_credentials` has no fields (do not leak which of email/password). Unique-violation on `users.email` maps to `email_taken` in `database`.

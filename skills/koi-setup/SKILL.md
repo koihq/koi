@@ -19,7 +19,11 @@ When the user asks to set up Koi and has no brand yet, take them to their first 
 6. Offer to prepare the brief with the `koi-brief` skill, including the changes you would make in this repository.
 7. Read `billing_subscription`. When `firstLook` is true, explain that this was a one-time free check and that daily tracking needs the trial. Create a link with `billing_checkout` only if the user asks; the user always completes the payment.
 
-If `tracking_get` reports `first_look_site_used`, this website or repository already had its free check. If it reports `first_look_paused`, free checks are paused for today and this one starts by itself when they resume. Say which, and offer the trial, which runs the check right away.
+If `generations_create` returns `first_look_unavailable`, write the prompts yourself with `prompts_create` and continue. `brands_create` returning `brand_limit_reached` means this organization already has its one brand before the trial: use `brands_list` and continue with it.
+
+If a run ends with no real answers, Koi retries it by itself within a day, up to 3 runs. Tell the user nothing was found yet, and do not call this a result about the brand.
+
+If `tracking_get` reports `first_look_site_used`, this website or repository has used its free checks: tell the user that a colleague may already have the results, or that the trial runs a first check. If it reports `first_look_paused`, free checks are paused for today and this one starts by itself when they resume. Say which, and offer the trial, which runs the check right away.
 
 ## Changing an existing setup
 

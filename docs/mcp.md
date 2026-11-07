@@ -39,9 +39,11 @@ The skills CLI prompts for the target agent and project or user-wide scope. Then
 | Start/list/get the brand's one draft | `generations_create`, `generations_list`, `generations_get` |
 | Start or read tracking; list/get runs and answers | `tracking_start`, `tracking_get`, `runs_list`, `runs_get`, `runs_results` |
 | Visibility summary and prompt history | `analysis_summary`, `prompt_visibility`, `prompt_history_runs` |
-| Cloud catalog/quote/subscription/checkout/allowance/portal | `billing_catalog`, `billing_quote`, `billing_subscription`, `billing_checkout`, `billing_confirm_checkout`, `billing_change_allowance`, `billing_portal` |
+| Cloud catalog/quote/subscription/checkout | `billing_catalog`, `billing_quote`, `billing_subscription`, `billing_checkout`, `billing_confirm_checkout` |
 
-`brandId` must be supplied on collection and brand-scoped commands. Resource details use the resource UUID, as in the product API. Browser `active_brand_id` is never read by MCP. `generations_create` and `billing_change_allowance` require a stable `idempotencyKey` on retries. Drafting returns a job ID; poll `generations_get`. Checkout returns the hosted Stripe URL; after payment poll `billing_subscription` or confirm a known session ID. Billing tools are absent in self-hosted mode. Brand activation is a browser-only preference, and login and credential management use the dedicated Koi flows.
+`brandId` must be supplied on collection and brand-scoped commands. Resource details use the resource UUID, as in the product API. Browser `active_brand_id` is never read by MCP. `generations_create` requires a stable `idempotencyKey` on retries. Drafting returns a job ID; poll `generations_get`. Checkout returns the hosted Stripe URL; after payment poll `billing_subscription` or confirm a known session ID. Billing tools are absent in self-hosted mode. Brand activation is a browser-only preference, and login and credential management use the dedicated Koi flows.
+
+An agent cannot change what the user pays. There is no tool to change the prompt allowance or open the billing portal, because answers collected from the web reach the agent and could steer it. `billing_checkout` only returns a link that the user completes. Changes happen in Settings > Billing.
 
 ## OAuth implementation choice
 

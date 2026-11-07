@@ -39,4 +39,6 @@ type UserRepository interface {
 	MutableRepository[User]
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	LockForUpdate(ctx context.Context, id uuid.UUID) error
+	// LockAndCount serializes sign-ups until the transaction ends, so two cannot both be the first.
+	LockAndCount(ctx context.Context) (int64, error)
 }

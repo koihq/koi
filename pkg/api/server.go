@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -30,6 +32,12 @@ type ServerOptions struct {
 	LiveCollection bool
 	Billing        *BillingHandler
 	BrandLooker    domain.BrandLooker
+	// OpenSignup false admits only the first user.
+	OpenSignup bool
+	// PublicURL enables HSTS when HTTPS and turns off the local dev origin when not localhost.
+	PublicURL string
+	// ClientIPHeader names the header a trusted proxy overwrites with the client's address.
+	ClientIPHeader string
 }
 
 type OnboardingEventReq struct {
@@ -69,6 +77,27 @@ func newServices(store domain.Store, options ServerOptions) services {
 	}
 }
 
+const (
+	maxRequestBytes = 1 << 20
+	devUIOrigin     = "http://localhost:5173"
+)
+
+// localPublicURL reports an instance that may be browsed through the Vite dev server.
+func localPublicURL(publicURL string) bool {
+	if publicURL == "" {
+		return true
+	}
+
+	parsed, err := url.Parse(publicURL)
+	if err != nil {
+		return false
+	}
+
+	host := parsed.Hostname()
+
+	return host == "localhost" || host == "127.0.0.1"
+}
+
 func passThrough(next http.Handler) http.Handler {
 	return next
 }
@@ -87,14 +116,32 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 	r.Use(middlewares.RequestIDHeader)
 	r.Use(middlewares.RequestLogger)
 	r.Use(middlewares.Recoverer)
+	r.Use(middleware.RequestSize(maxRequestBytes))
+	r.Use(middlewares.SecurityHeaders(options.PublicURL))
 	r.Use(render.SetContentType(render.ContentTypeJSON))
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Idempotency-Key"},
-		AllowCredentials: true,
+
+	var trustedOrigins []string
+	if localPublicURL(options.PublicURL) {
+		trustedOrigins = []string{devUIOrigin}
+
+		r.Use(cors.Handler(cors.Options{
+			AllowedOrigins:   trustedOrigins,
+			AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Idempotency-Key"},
+			AllowCredentials: true,
+		}))
+	}
+
+	r.Use(middlewares.CrossOriginProtection(trustedOrigins, []string{
+		"/mcp",
+		"/oauth/token",
+		"/oauth/register",
+		"/oauth/revoke",
+		"/api/v1/webhooks/stripe",
 	}))
 	r.Use(sess.LoadAndSave)
+
+	limiter := middlewares.NewRateLimiter(options.ClientIPHeader)
 
 	r.Get("/health", NewHealthHandler(store).Get)
 	var credentials domain.CredentialService
@@ -107,18 +154,21 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 		r.Handle("/.well-known/oauth-protected-resource/mcp", requireConfiguredRemoteMCP(metadata))
 		r.With(requireConfiguredRemoteMCP).Get("/.well-known/oauth-authorization-server", oauth.serverMetadata)
 		r.With(requireConfiguredRemoteMCP).Get("/.well-known/oauth-authorization-server/oauth", oauth.serverMetadata)
-		r.Post("/oauth/register", oauth.register)
-		r.Get("/oauth/authorize", oauth.authorize)
+		r.With(limiter.PerIP(20, time.Hour)).Post("/oauth/register", oauth.register)
+		r.With(limiter.PerIP(60, time.Minute)).Get("/oauth/authorize", oauth.authorize)
 		r.Get("/api/v1/oauth/consent", oauth.consent)
 		r.Post("/api/v1/oauth/consent", oauth.authorizePost)
-		r.Post("/oauth/token", oauth.token)
+		r.With(limiter.PerIP(60, time.Minute)).Post("/oauth/token", oauth.token)
 		r.Post("/oauth/revoke", oauth.revoke)
 	}
 	authenticate := middlewares.Authenticate(sess, func(ctx context.Context, userID uuid.UUID) (auth.Identity, error) {
 		return domain.ResolveIdentity(ctx, store, userID)
 	})
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Route("/auth", NewAuthHandler(domain.NewAuthQuerier(store), domain.NewAuthCommander(store), sess, authenticate).Routes())
+		authCommander := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: options.OpenSignup})
+		authHandler := NewAuthHandler(domain.NewAuthQuerier(store), authCommander, sess, authenticate)
+		authHandler.limiter = limiter
+		r.Route("/auth", authHandler.Routes())
 		if billing != nil {
 			r.Post("/webhooks/stripe", billing.Webhook)
 		}
@@ -147,6 +197,7 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 
 			brands := NewBrandHandler(shared.brands, shared.brandCommands, sess, billingGuard)
 			brands.looker = options.BrandLooker
+			brands.lookupLimit = limiter.PerIP(30, time.Minute)
 			r.Route("/brands", brands.Routes())
 			if billing != nil {
 				r.With(middlewares.DecodeBody[OnboardingEventReq]()).Post("/onboarding/events", func(w http.ResponseWriter, req *http.Request) {
@@ -176,7 +227,7 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 			})
 		})
 	})
-	r.Handle("/*", spaHandler(web.FileSystem()))
+	r.With(middlewares.ContentSecurityPolicy).Handle("/*", spaHandler(web.FileSystem()))
 
 	return r
 }

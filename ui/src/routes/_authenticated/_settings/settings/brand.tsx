@@ -41,9 +41,13 @@ export const Route = createFileRoute("/_authenticated/_settings/settings/brand")
 type BrandDialog = { kind: "create" } | { kind: "edit"; brand: Brand };
 
 function BrandSettings() {
-  const { brand } = Route.useRouteContext();
+  const { brand, capabilities, me } = Route.useRouteContext();
   const { t } = useTranslation("brand");
   const api = useApi();
+  const billing = useQuery({
+    ...billingOptions(api, me.organization.id),
+    enabled: capabilities.cloudBilling,
+  });
   const router = useRouter();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -149,16 +153,19 @@ function BrandSettings() {
         <h1 id="brands-heading" className="text-section font-semibold">
           {t("settings.title")}
         </h1>
-        <Button
-          variant="icon-outline"
-          size="circle-sm"
-          aria-label={t("settings.create")}
-          title={t("settings.create")}
-          className="text-muted-foreground"
-          onClick={() => setDialog({ kind: "create" })}
-        >
-          <HugeiconsIcon icon={Add01Icon} aria-hidden="true" />
-        </Button>
+        {/* The free check covers one brand; the trial lifts the limit. */}
+        {!billing.data?.firstLook && (
+          <Button
+            variant="icon-outline"
+            size="circle-sm"
+            aria-label={t("settings.create")}
+            title={t("settings.create")}
+            className="text-muted-foreground"
+            onClick={() => setDialog({ kind: "create" })}
+          >
+            <HugeiconsIcon icon={Add01Icon} aria-hidden="true" />
+          </Button>
+        )}
       </div>
       {activation.isError && (
         <p role="alert" className="mb-4 text-sm text-destructive">

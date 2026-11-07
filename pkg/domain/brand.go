@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"golang.org/x/text/collate"
@@ -14,6 +15,11 @@ import (
 	"golang.org/x/text/language/display"
 
 	"github.com/koihq/koi/pkg/auth"
+)
+
+const (
+	maxBrandNameLen        = 255
+	maxBrandDescriptionLen = 1000
 )
 
 type Brand struct {
@@ -44,7 +50,8 @@ func (b Brand) Snapshot() BrandSnapshot {
 
 func (b *Brand) Normalize() {
 	b.Name = strings.TrimSpace(b.Name)
-	b.Domain = strings.TrimSpace(b.Domain)
+	// One site is one identity, whichever way it was typed. The free check is limited per site.
+	b.Domain = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(b.Domain)), "www.")
 	b.GitHubRepo = strings.TrimSpace(b.GitHubRepo)
 	b.Country = strings.ToUpper(strings.TrimSpace(b.Country))
 	b.Description = strings.TrimSpace(b.Description)
@@ -57,6 +64,14 @@ func (b Brand) Validate() error {
 
 	if strings.TrimSpace(b.Name) == "" {
 		return Validation(FieldError{Field: "name", Code: FieldInvalid})
+	}
+
+	if utf8.RuneCountInString(b.Name) > maxBrandNameLen {
+		return Validation(FieldError{Field: "name", Code: FieldMaxLength})
+	}
+
+	if utf8.RuneCountInString(b.Description) > maxBrandDescriptionLen {
+		return Validation(FieldError{Field: "description", Code: FieldMaxLength})
 	}
 
 	if b.Domain == "" && b.GitHubRepo == "" {
@@ -156,7 +171,7 @@ func SearchSupportedCountries(query string) []CountryOption {
 }
 
 func validHostname(host string) bool {
-	if len(host) == 0 || len(host) > 253 || net.ParseIP(host) != nil {
+	if len(host) == 0 || len(host) > 253 || net.ParseIP(host) != nil || !strings.Contains(host, ".") {
 		return false
 	}
 
@@ -305,7 +320,14 @@ func (c *brandCommander) Create(ctx context.Context, params CreateBrandParams) (
 		return nil, err
 	}
 
-	if err := c.store.BrandRepo().Create(ctx, brand); err != nil {
+	err = c.store.Atomic(ctx, func(tx Store) error {
+		if err := tx.BillingRepo().ReserveBrandSlot(ctx, identity.OrganizationID); err != nil {
+			return err
+		}
+
+		return tx.BrandRepo().Create(ctx, brand)
+	})
+	if err != nil {
 		return nil, err
 	}
 

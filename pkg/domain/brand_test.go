@@ -102,6 +102,14 @@ func TestBrandCommanderCreate(t *testing.T) {
 		return nil
 	})
 
+	store.EXPECT().Atomic(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, fn func(Store) error) error { return fn(store) },
+	)
+
+	billing := NewMockBillingRepository(t)
+	store.EXPECT().BillingRepo().Return(billing)
+	billing.EXPECT().ReserveBrandSlot(mock.Anything, organizationID).Return(nil)
+
 	brand, err := NewBrandCommander(store).Create(auth.WithIdentity(t.Context(), auth.Identity{UserID: userID, OrganizationID: organizationID}), CreateBrandParams{
 		Name:        " Koi ",
 		Domain:      " koi.dev ",

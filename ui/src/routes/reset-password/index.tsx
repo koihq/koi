@@ -97,7 +97,8 @@ function ResetPassword() {
               autoComplete="new-password"
               autoFocus
               required
-              minLength={8}
+              minLength={12}
+              maxLength={256}
               aria-invalid={error ? true : undefined}
             />
           </Field>

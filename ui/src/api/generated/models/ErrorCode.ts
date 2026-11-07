@@ -32,7 +32,12 @@ export const ErrorCode = {
     IDEMPOTENCY_CONFLICT: 'idempotency_conflict',
     INITIAL_ALREADY_COMPLETED: 'initial_already_completed',
     BILLING_REQUIRED: 'billing_required',
-    PROMPT_LIMIT_REACHED: 'prompt_limit_reached'
+    PROMPT_LIMIT_REACHED: 'prompt_limit_reached',
+    PASSWORD_RESET_INVALID: 'password_reset_invalid',
+    RATE_LIMITED: 'rate_limited',
+    SIGNUP_CLOSED: 'signup_closed',
+    FIRST_LOOK_UNAVAILABLE: 'first_look_unavailable',
+    CROSS_ORIGIN_REQUEST: 'cross_origin_request'
 } as const;
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
 

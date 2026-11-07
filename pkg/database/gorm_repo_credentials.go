@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const unusedOAuthClientTTL = 30 * 24 * time.Hour
+
 type GormCredentialRepository struct{ db *gorm.DB }
 
 func NewCredentialRepository(db *gorm.DB) *GormCredentialRepository {
@@ -114,13 +116,67 @@ func (s *GormCredentialRepository) ConsumeRefreshToken(ctx context.Context, raw 
 	}
 	return &credential, nil
 }
+
+func (s *GormCredentialRepository) UsedRefreshToken(ctx context.Context, raw string) (*domain.Credential, error) {
+	var credential domain.Credential
+
+	err := s.db.WithContext(ctx).
+		Where("token_hash = ? AND kind = ? AND used_at IS NOT NULL", domain.HashCredential(raw), "oauth_refresh").
+		Take(&credential).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &credential, nil
+}
+
+func (s *GormCredentialRepository) RevokeConnection(ctx context.Context, userID, connectionID uuid.UUID) error {
+	return s.db.WithContext(ctx).
+		Where("user_id = ? AND connection_id = ?", userID, connectionID).
+		Delete(&domain.Credential{}).Error
+}
+
+func (s *GormCredentialRepository) RevokeAllForUser(ctx context.Context, userID uuid.UUID) error {
+	if err := s.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&domain.OAuthCode{}).Error; err != nil {
+		return err
+	}
+
+	return s.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&domain.Credential{}).Error
+}
+
+// RevokeToken ends the whole connection: either of its tokens stands for the same grant.
 func (s *GormCredentialRepository) RevokeToken(ctx context.Context, raw string) error {
-	return s.db.WithContext(ctx).Where("token_hash = ?", domain.HashCredential(raw)).Delete(&domain.Credential{}).Error
+	var credential domain.Credential
+
+	err := s.db.WithContext(ctx).Where("token_hash = ?", domain.HashCredential(raw)).Take(&credential).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	return s.RevokeConnection(ctx, credential.UserID, credential.ConnectionID)
 }
 
 func (s *GormCredentialRepository) CleanupExpired(ctx context.Context, now time.Time) error {
 	if err := s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain.OAuthCode{}).Error; err != nil {
 		return err
 	}
-	return s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain.Credential{}).Error
+	if err := s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain.Credential{}).Error; err != nil {
+		return err
+	}
+
+	if err := s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain.PasswordResetToken{}).Error; err != nil {
+		return err
+	}
+
+	// Registration is open, so clients that never connected must not pile up.
+	return s.db.WithContext(ctx).Where(`created_at < ?
+		AND NOT EXISTS (SELECT 1 FROM credentials WHERE credentials.client_id = oauth_clients.id)
+		AND NOT EXISTS (SELECT 1 FROM oauth_codes WHERE oauth_codes.client_id = oauth_clients.id)`,
+		now.Add(-unusedOAuthClientTTL)).Delete(&domain.OAuthClient{}).Error
 }

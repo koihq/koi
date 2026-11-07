@@ -3,9 +3,14 @@ package domain
 import (
 	"context"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
+
+// maxPromptTextLen is high on purpose: it leaves room for detailed prompts and only stops abuse,
+// since the text goes into paid calls.
+const maxPromptTextLen = 4000
 
 type PromptSource string
 
@@ -17,7 +22,7 @@ const (
 type Prompt struct {
 	BaseEntity
 	BrandID    uuid.UUID         `json:"brand_id" gorm:"type:uuid;not null;index;uniqueIndex:idx_prompts_brand_text,priority:1"`
-	Text       string            `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:lower(text)"`
+	Text       string            `json:"text" gorm:"not null;uniqueIndex:idx_prompts_brand_text,priority:2,expression:md5(lower(text))"`
 	Source     PromptSource      `json:"source" gorm:"not null;type:varchar(16)"`
 	Confirmed  bool              `json:"confirmed" gorm:"not null;default:false"`
 	Inactive   bool              `json:"inactive" gorm:"not null;default:false"`
@@ -43,6 +48,10 @@ func (p Prompt) Validate() error {
 
 	if strings.TrimSpace(p.Text) == "" {
 		fields = append(fields, FieldError{Field: "text", Code: FieldInvalid})
+	}
+
+	if utf8.RuneCountInString(p.Text) > maxPromptTextLen {
+		fields = append(fields, FieldError{Field: "text", Code: FieldMaxLength})
 	}
 
 	if p.Source != PromptSourceManual && p.Source != PromptSourceDrafted {

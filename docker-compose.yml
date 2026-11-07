@@ -27,7 +27,6 @@ services:
       KOI_PORT: :8080
       KOI_DEPLOYMENT_MODE: selfhosted
       KOI_DATABASE_URL: postgres://koi:koi@postgres:5432/koi?sslmode=disable
-      KOI_SESSION_SECRET: ${KOI_SESSION_SECRET:-}
       KOI_CLORO_API_KEY: ${KOI_CLORO_API_KEY:-}
       KOI_OPENROUTER_API_KEY: ${KOI_OPENROUTER_API_KEY:-}
       LOGODEV_SECRET_KEY: ${LOGODEV_SECRET_KEY:-}

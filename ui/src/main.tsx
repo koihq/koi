@@ -1,3 +1,6 @@
+// Schemas read this when they are defined, so it has to load before any of them.
+import "@/config/zod";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
