@@ -62,6 +62,10 @@ type CredentialRepository interface {
 	CreateOAuthCode(context.Context, *OAuthCode) error
 	ConsumeOAuthCode(context.Context, string) (*OAuthCode, error)
 	ConsumeRefreshToken(context.Context, string) (*Credential, error)
+	// UsedRefreshToken returns a rotated refresh token, or nil when the token was never issued.
+	UsedRefreshToken(context.Context, string) (*Credential, error)
+	RevokeConnection(ctx context.Context, userID, connectionID uuid.UUID) error
+	RevokeAllForUser(context.Context, uuid.UUID) error
 	RevokeToken(context.Context, string) error
 	CleanupExpired(context.Context, time.Time) error
 }

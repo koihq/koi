@@ -129,7 +129,6 @@ func visibilityHTTP(t *testing.T, client *http.Client, method, url, body string,
 func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	cfg := Config{
 		DatabaseURL:       testdb.URL(t),
-		SessionSecret:     "test-secret",
 		SessionLifetime:   8 * time.Hour,
 		WorkerConcurrency: 2,
 		ProviderTimeout:   45 * time.Second,
@@ -152,7 +151,7 @@ func TestVisibilityHTTPWithoutProviderKeysSurvivesRestart(t *testing.T) {
 	t.Cleanup(cancel)
 	base := "http://" + address + "/api/v1"
 	visibilityHTTP(t, client, http.MethodPost, base+"/auth/signup",
-		`{"email":"visibility-`+uuid.NewString()+`@example.com","password":"password123"}`, 201, nil)
+		`{"email":"visibility-`+uuid.NewString()+`@example.com","password":"password-1234"}`, 201, nil)
 	var capabilities struct {
 		AIDrafting     bool `json:"aiDrafting"`
 		LiveCollection bool `json:"liveCollection"`

@@ -61,9 +61,9 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
 	d.store.EXPECT().EnqueueWelcomeEmail(mock.Anything, mock.Anything).Return(nil)
 
-	me, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
+	me, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true}).Signup(t.Context(), SignupParams{
 		Email:    "You@Example.com",
-		Password: "password1",
+		Password: "password-1234",
 	})
 
 	require.NoError(t, err)
@@ -79,9 +79,9 @@ func TestSignup_DuplicateEmail(t *testing.T) {
 	d.mockAtomic()
 	d.users.EXPECT().Create(mock.Anything, mock.Anything).Return(ErrEmailTaken)
 
-	_, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
+	_, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true}).Signup(t.Context(), SignupParams{
 		Email:    "you@example.com",
-		Password: "password1",
+		Password: "password-1234",
 	})
 
 	require.ErrorIs(t, err, ErrEmailTaken)
@@ -95,9 +95,9 @@ func TestSignup_QueueFailureDoesNotFailSignup(t *testing.T) {
 	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
 	d.store.EXPECT().EnqueueWelcomeEmail(mock.Anything, mock.Anything).Return(errors.New("queue unavailable"))
 
-	me, err := NewAuthCommander(d.store).Signup(t.Context(), SignupParams{
+	me, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true}).Signup(t.Context(), SignupParams{
 		Email:    "you@example.com",
-		Password: "password1",
+		Password: "password-1234",
 	})
 
 	require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestSignup_QueueFailureDoesNotFailSignup(t *testing.T) {
 }
 
 func TestLogin_WrongPasswordAndUnknownEmail(t *testing.T) {
-	hash, err := HashPassword("password1")
+	hash, err := HashPassword("password-1234")
 	require.NoError(t, err)
 
 	user := &User{
@@ -118,18 +118,18 @@ func TestLogin_WrongPasswordAndUnknownEmail(t *testing.T) {
 
 	wrong := newAuthDeps(t)
 	wrong.users.EXPECT().GetByEmail(mock.Anything, "you@example.com").Return(user, nil)
-	_, err = NewAuthCommander(wrong.store).Login(t.Context(), "you@example.com", "wrongpass")
+	_, err = NewAuthCommander(wrong.store, AuthOptions{OpenSignup: true}).Login(t.Context(), "you@example.com", "wrongpass")
 	require.ErrorIs(t, err, ErrInvalidCredentials)
 
 	unknown := newAuthDeps(t)
 	unknown.users.EXPECT().GetByEmail(mock.Anything, "nobody@example.com").Return(nil, ErrNotFound)
-	_, err = NewAuthCommander(unknown.store).Login(t.Context(), "nobody@example.com", "password1")
+	_, err = NewAuthCommander(unknown.store, AuthOptions{OpenSignup: true}).Login(t.Context(), "nobody@example.com", "password-1234")
 	require.ErrorIs(t, err, ErrInvalidCredentials)
 }
 
 func TestSignup_Validate(t *testing.T) {
-	cmd := NewAuthCommander(NewMockStore(t))
-	_, err := cmd.Signup(t.Context(), SignupParams{Email: "not-an-email", Password: "password1"})
+	cmd := NewAuthCommander(NewMockStore(t), AuthOptions{OpenSignup: true})
+	_, err := cmd.Signup(t.Context(), SignupParams{Email: "not-an-email", Password: "password-1234"})
 	require.ErrorIs(t, err, ErrValidation)
 	var ve *Error
 	require.ErrorAs(t, err, &ve)
@@ -158,14 +158,14 @@ func TestUserValidate(t *testing.T) {
 }
 
 func TestCheckPassword(t *testing.T) {
-	hash, err := HashPassword("password1")
+	hash, err := HashPassword("password-1234")
 	require.NoError(t, err)
-	require.True(t, CheckPassword(hash, "password1"))
+	require.True(t, CheckPassword(hash, "password-1234"))
 	require.False(t, CheckPassword(hash, "password2"))
 }
 
 func TestLogin_Me(t *testing.T) {
-	hash, err := HashPassword("password1")
+	hash, err := HashPassword("password-1234")
 	require.NoError(t, err)
 	userID := uuid.New()
 	orgID := uuid.New()
@@ -189,7 +189,7 @@ func TestLogin_Me(t *testing.T) {
 	d.members.EXPECT().GetByUserID(mock.Anything, userID).Return(member, nil)
 	d.orgs.EXPECT().Get(mock.Anything, orgID).Return(org, nil)
 
-	me, err := NewAuthCommander(d.store).Login(t.Context(), "you@example.com", "password1")
+	me, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true}).Login(t.Context(), "you@example.com", "password-1234")
 	require.NoError(t, err)
 	require.Equal(t, "you@example.com", me.User.Email)
 	require.Equal(t, "you", me.Organization.Name)

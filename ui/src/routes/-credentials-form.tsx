@@ -66,7 +66,8 @@ export function CredentialsForm({
               type="password"
               autoComplete={passwordComplete}
               required
-              minLength={8}
+              minLength={intent === "sign-up" ? 12 : undefined}
+              maxLength={intent === "sign-up" ? 256 : undefined}
               aria-invalid={error ? true : undefined}
             />
             {intent === "sign-in" && !onSwitchIntent && (

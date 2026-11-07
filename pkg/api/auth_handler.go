@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
@@ -62,6 +63,7 @@ type AuthHandler struct {
 	commander domain.AuthCommander
 	sess      *scs.SessionManager
 	auth      func(http.Handler) http.Handler
+	limiter   *middlewares.RateLimiter
 }
 
 func NewAuthHandler(q domain.AuthQuerier, c domain.AuthCommander, sess *scs.SessionManager, auth func(http.Handler) http.Handler) *AuthHandler {
@@ -70,10 +72,27 @@ func NewAuthHandler(q domain.AuthQuerier, c domain.AuthCommander, sess *scs.Sess
 
 func (h *AuthHandler) Routes() func(r chi.Router) {
 	return func(r chi.Router) {
-		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/signup", h.Signup)
-		r.With(middlewares.DecodeBody[CredentialsReq]()).Post("/login", h.Login)
-		r.With(middlewares.DecodeBody[ForgotPasswordReq]()).Post("/password/forgot", h.ForgotPassword)
-		r.With(middlewares.DecodeBody[ResetPasswordReq]()).Post("/password/reset", h.ResetPassword)
+		r.With(
+			h.limiter.PerIP(10, time.Hour),
+			middlewares.DecodeBody[CredentialsReq](),
+			h.limiter.HashSlot,
+		).Post("/signup", h.Signup)
+		r.With(
+			h.limiter.PerIP(20, time.Minute),
+			middlewares.DecodeBody[CredentialsReq](),
+			middlewares.PerBodyEmail(h.limiter, 30, 15*time.Minute, func(req CredentialsReq) string { return req.Email }),
+			h.limiter.HashSlot,
+		).Post("/login", h.Login)
+		r.With(
+			h.limiter.PerIP(10, time.Hour),
+			middlewares.DecodeBody[ForgotPasswordReq](),
+			middlewares.PerBodyEmail(h.limiter, 5, time.Hour, func(req ForgotPasswordReq) string { return req.Email }),
+		).Post("/password/forgot", h.ForgotPassword)
+		r.With(
+			h.limiter.PerIP(20, time.Hour),
+			middlewares.DecodeBody[ResetPasswordReq](),
+			h.limiter.HashSlot,
+		).Post("/password/reset", h.ResetPassword)
 		r.Post("/logout", h.Logout)
 		r.With(h.auth).Get("/me", h.Me)
 	}
@@ -143,21 +162,21 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The password has already changed, so a failure here is logged rather than reported as one.
-	if err := h.endSessions(r.Context(), userID); err != nil {
+	if err := EndUserSessions(r.Context(), h.sess, userID); err != nil {
 		slog.Error("end sessions after password reset", "user_id", userID, "err", err)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// endSessions signs the user out everywhere, in case someone else was the reason for the reset.
-func (h *AuthHandler) endSessions(ctx context.Context, userID uuid.UUID) error {
-	return h.sess.Iterate(ctx, func(ctx context.Context) error {
-		if h.sess.GetString(ctx, "user_id") != userID.String() {
+// EndUserSessions signs the user out everywhere, in case someone else was the reason for the reset.
+func EndUserSessions(ctx context.Context, sess *scs.SessionManager, userID uuid.UUID) error {
+	return sess.Iterate(ctx, func(ctx context.Context) error {
+		if sess.GetString(ctx, "user_id") != userID.String() {
 			return nil
 		}
 
-		return h.sess.Destroy(ctx)
+		return sess.Destroy(ctx)
 	})
 }
 

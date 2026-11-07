@@ -57,6 +57,8 @@ type BrandHandler struct {
 	sess      *scs.SessionManager
 	billing   func(http.Handler) http.Handler
 	looker    domain.BrandLooker
+	// lookupLimit bounds a route that makes this server fetch third-party sites.
+	lookupLimit func(http.Handler) http.Handler
 }
 
 type BrandLookupRes struct {
@@ -68,7 +70,7 @@ type BrandLookupRes struct {
 
 // NewBrandHandler guards brand changes with billing. Self-hosted instances pass passThrough.
 func NewBrandHandler(q domain.BrandQuerier, c domain.BrandCommander, sess *scs.SessionManager, billing func(http.Handler) http.Handler) *BrandHandler {
-	return &BrandHandler{querier: q, commander: c, sess: sess, billing: billing}
+	return &BrandHandler{querier: q, commander: c, sess: sess, billing: billing, lookupLimit: passThrough}
 }
 
 func (h *BrandHandler) Routes() func(chi.Router) {
@@ -76,7 +78,7 @@ func (h *BrandHandler) Routes() func(chi.Router) {
 		r.With(middlewares.DecodeBody[CreateBrandReq]()).Post("/", Create(h.create, BrandToRes))
 		r.Get("/", List(brandListFilter, h.querier.List, BrandToRes))
 		r.Get("/countries", h.Countries)
-		r.Get("/lookup", h.Lookup)
+		r.With(h.lookupLimit).Get("/lookup", h.Lookup)
 		r.Get("/{id}", Get(h.querier.Get, BrandToRes))
 		r.With(h.billing).Post("/{id}/activate", Action(h.activate, BrandToRes))
 		r.With(h.billing, middlewares.DecodeBody[UpdateBrandReq]()).Patch("/{id}", Update(h.update, BrandToRes))

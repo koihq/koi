@@ -3,7 +3,7 @@
 ### Each request disables REST Client's cookie jar; explicit Cookie headers keep A and B sessions separate.
 
 @baseUrl = http://localhost:5173/api/v1
-@password = password1
+@password = password-1234
 
 ### No session: 401 unauthorized
 # @no-cookie-jar

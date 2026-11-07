@@ -80,22 +80,25 @@ function Setup() {
       }
     }
 
-    let draftStartFailed = false;
+    let draftStart: "failed" | "unavailable" | undefined;
     if (brand && capabilities.aiDrafting) {
       try {
         await api.generations.create(
           { brandId: brand.id, startTracking: capabilities.cloudBilling },
           `setup-${brand.id}`,
         );
-      } catch {
-        draftStartFailed = true;
+      } catch (error) {
+        draftStart =
+          error instanceof ApiError && error.code === "first_look_unavailable"
+            ? "unavailable"
+            : "failed";
       }
     }
 
     await router.invalidate();
     await router.navigate({
       to: "/",
-      search: draftStartFailed ? { draftStart: "failed" } : {},
+      search: draftStart ? { draftStart } : {},
     });
   }
 

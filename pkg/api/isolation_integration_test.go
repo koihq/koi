@@ -23,11 +23,11 @@ func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, database.Migrate(db))
-	server := httptest.NewServer(NewServer(database.NewStore(db), scs.New(), ServerOptions{}))
+	server := httptest.NewServer(NewServer(database.NewStore(db), scs.New(), ServerOptions{OpenSignup: true}))
 	t.Cleanup(server.Close)
 	first, second := newCookieClient(t), newCookieClient(t)
 	for _, client := range []*http.Client{first, second} {
-		resp := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"`+uuid.NewString()+`@example.com","password":"password123"}`)
+		resp := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"`+uuid.NewString()+`@example.com","password":"password-1234"}`)
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
 		require.NoError(t, resp.Body.Close())
 	}

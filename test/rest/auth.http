@@ -9,7 +9,7 @@
 @host = http://localhost:5173
 @baseUrl = {{host}}/api/v1
 @email = rest-{{$guid}}@example.com
-@password = password1
+@password = password-1234
 
 ### Health
 GET {{host}}/health

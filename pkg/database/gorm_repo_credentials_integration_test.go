@@ -20,9 +20,9 @@ func TestOAuthCredentialsRotateRevokeAndIsolate(t *testing.T) {
 	require.NoError(t, Migrate(db))
 	store := NewStore(db)
 	service := domain.NewCredentialService(store)
-	first, err := domain.NewAuthCommander(store).Signup(t.Context(), domain.SignupParams{Email: uuid.NewString() + "@example.com", Password: "password123"})
+	first, err := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: true}).Signup(t.Context(), domain.SignupParams{Email: uuid.NewString() + "@example.com", Password: "password-1234"})
 	require.NoError(t, err)
-	second, err := domain.NewAuthCommander(store).Signup(t.Context(), domain.SignupParams{Email: uuid.NewString() + "@example.com", Password: "password123"})
+	second, err := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: true}).Signup(t.Context(), domain.SignupParams{Email: uuid.NewString() + "@example.com", Password: "password-1234"})
 	require.NoError(t, err)
 	identity := auth.Identity{UserID: first.User.ID, OrganizationID: first.Organization.ID, Role: first.Role}
 	ctx := auth.WithIdentity(t.Context(), identity)

@@ -18,7 +18,6 @@ import (
 func TestMaintenanceRunsWithoutCloro(t *testing.T) {
 	cfg := Config{
 		DatabaseURL:       testdb.URL(t),
-		SessionSecret:     "test-secret",
 		SessionLifetime:   8 * time.Hour,
 		OpenRouterAPIKey:  "test-key",
 		WorkerConcurrency: 1,

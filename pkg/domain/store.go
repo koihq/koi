@@ -13,10 +13,12 @@ type Store interface {
 	Ping(context.Context) error
 	EnqueueWelcomeEmail(context.Context, uuid.UUID) error
 	EnqueuePasswordResetEmail(ctx context.Context, email string) error
+	EnqueuePasswordChangedEmail(ctx context.Context, userID uuid.UUID) error
 	UserRepo() UserRepository
 	OrganizationRepo() OrganizationRepository
 	MembershipRepo() MembershipRepository
 	BillingRepo() BillingRepository
+	AccountDataRepo() AccountDataRepository
 	CredentialRepo() CredentialRepository
 	PasswordResetRepo() PasswordResetRepository
 	BrandRepo() BrandRepository

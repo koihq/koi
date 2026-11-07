@@ -1,8 +1,13 @@
 import { useTranslation } from "react-i18next";
-import { messageFromUnknown } from "@/api/errors";
+import { ApiError, messageFromUnknown } from "@/api/errors";
 import { Button } from "@/components/ui/button";
 import { useGeneration } from "@/hooks/use-generation";
 import { useTracking } from "@/hooks/use-tracking";
+
+/** Its message already says what to do instead, and trying again would not help. */
+function isUnavailable(error: unknown): boolean {
+  return error instanceof ApiError && error.code === "first_look_unavailable";
+}
 
 /** The state of the brand's one draft. It has no role once tracking has started. */
 export function GenerationControls({
@@ -67,7 +72,8 @@ export function GenerationControls({
       ) : null}
       {create.isError ? (
         <p role="alert" className="text-destructive">
-          {messageFromUnknown(create.error)} {t("draftRequestRecovery")}
+          {messageFromUnknown(create.error)}{" "}
+          {isUnavailable(create.error) ? null : t("draftRequestRecovery")}
         </p>
       ) : null}
       {setupFailed ? (

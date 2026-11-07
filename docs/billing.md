@@ -90,8 +90,9 @@ After creating and validating the Price:
    HTTPS. In development Vite proxies `/api` to the Go server.
 
 Cloud mode requires `KOI_CLORO_API_KEY`, `KOI_STRIPE_SECRET_KEY`,
-`KOI_STRIPE_WEBHOOK_SECRET`, `KOI_STRIPE_PRICE_ID`, and `KOI_PUBLIC_URL` in
-addition to the common `KOI_PORT`, `KOI_DATABASE_URL`, and `KOI_SESSION_SECRET`.
+`KOI_STRIPE_WEBHOOK_SECRET`, `KOI_STRIPE_PRICE_ID`, `KOI_PUBLIC_URL`,
+`KOI_RESEND_API_KEY`, and `KOI_EMAIL_FROM` in addition to the common `KOI_PORT` and
+`KOI_DATABASE_URL`.
 The default self-hosted mode does not require Cloro or Stripe credentials.
 Startup checks that the Cloro key is present, but does not contact Cloro to verify it.
 
@@ -130,15 +131,29 @@ Email is never used as an identity key.
 ### First Look
 
 An organization with no subscription and an unused trial gets one free check before any payment.
-It can draft up to 5 prompts and run one collection, and it keeps reading those results. Later
-collections are blocked until Checkout, and `tracking_get` reports `first_look_used`; the daily
-dispatcher then resumes on the next slot without any other step. Canceled subscriptions and used
+It can draft up to 5 prompts and run one collection, and it keeps reading those results. A run that
+ends without a real answer does not spend the check: the daily dispatcher retries it on the next
+slot, up to 3 runs. Later collections are blocked until Checkout, and `tracking_get` reports
+`first_look_used`; the daily dispatcher then resumes on the next slot without any other step. Canceled subscriptions and used
 trials never get it. `BillingStatus.firstLook` exposes the state to the UI and to MCP.
 
-Sign-up has no email verification or rate limit, so two limits bound the spend. A website or
-repository gets one First Look across organizations, and `KOI_FIRST_LOOK_DAILY_LIMIT` (default 100)
-caps the checks started in 24 hours. They report `first_look_site_used` and `first_look_paused`, and the
-organization can still start its trial.
+Sign-up has no email verification and is only rate limited per address, so these limits bound the
+spend:
+
+- An organization has one brand until its trial (`brand_limit_reached`).
+- A website or repository gets First Looks from 3 organizations, for good (`first_look_site_used`).
+  More than one lets colleagues sign up on their own until invitations exist, and keeps one account
+  from using up a stranger's site. A check that ended without a real answer does not count; one still
+  running does. The comparison ignores case and `www.`, so a subdomain still counts as another site;
+  the daily limit bounds that.
+- `KOI_FIRST_LOOK_DAILY_LIMIT` (default 100) caps the checks started in 24 hours
+  (`first_look_paused`), and separately the drafts started in 24 hours.
+- An organization can start 3 drafts (`first_look_unavailable`). Each retries the provider up to 3
+  times.
+
+Organizations with a trial do not count toward the daily limits. Prompts can still be added by hand
+after `first_look_unavailable`, and the organization can always start its trial. A mention judgment
+needs no limit of its own: a First Look has at most 5 prompts on 4 engines, so 20 judgments.
 
 Setup asks the draft to start collection (`GenerationRequest.startTracking`), so the worker starts
 the check when the draft succeeds and closing the page cannot stop it. An agent does not set it,

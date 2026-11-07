@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -116,19 +117,45 @@ func (s *credentialService) IssueTokens(ctx context.Context, userID uuid.UUID, c
 	})
 	return tokens, err
 }
+
+// refreshReuseGrace spares a client that retries after losing the response to its first refresh.
+const refreshReuseGrace = 10 * time.Second
+
 func (s *credentialService) RefreshTokens(ctx context.Context, raw, clientID, audience string) (IssuedTokens, error) {
 	var tokens IssuedTokens
+	var replayed *Credential
+
 	err := s.store.Atomic(ctx, func(tx Store) error {
 		old, e := tx.CredentialRepo().ConsumeRefreshToken(ctx, raw)
 		if e != nil {
 			return e
 		}
-		if old == nil || old.ClientID != clientID || old.Audience != audience {
+
+		if old == nil {
+			replayed, e = tx.CredentialRepo().UsedRefreshToken(ctx, raw)
+			if e != nil {
+				return e
+			}
+
 			return ErrInvalidCredentials
 		}
+
+		if old.ClientID != clientID || old.Audience != audience {
+			return ErrInvalidCredentials
+		}
+
 		tokens, e = issueTokens(ctx, tx.CredentialRepo(), old.UserID, clientID, old.Name, old.Scope, audience, old.ConnectionID)
+
 		return e
 	})
+
+	// This runs after the failed transaction, whose rollback would otherwise undo the revocation.
+	if replayed != nil && replayed.UsedAt != nil && time.Since(*replayed.UsedAt) > refreshReuseGrace {
+		if e := s.store.CredentialRepo().RevokeConnection(ctx, replayed.UserID, replayed.ConnectionID); e != nil {
+			return tokens, errors.Join(err, e)
+		}
+	}
+
 	return tokens, err
 }
 func (s *credentialService) RevokeToken(ctx context.Context, raw string) error {

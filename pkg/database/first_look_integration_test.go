@@ -85,7 +85,9 @@ func TestFirstLookRunsOnceAndResumesAfterSubscribing(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, collect)
 
-	// The next daily slot does not spend anything, and the results stay readable.
+	// Once it returned an answer, the next daily slot spends nothing and the results stay readable.
+	require.NoError(t, db.Model(&domain.VisibilityResult{}).
+		Where("run_id = ?", run.ID).Update("outcome", domain.OutcomeMiss).Error)
 	require.NoError(t, db.Model(run).Update("state", domain.VisibilitySucceeded).Error)
 
 	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
@@ -124,10 +126,16 @@ func TestFirstLookEndsWithAnExpiredOrCanceledTrial(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrBillingRequired)
 }
 
-func TestFirstLookAllowsOneOrganizationPerSite(t *testing.T) {
+func TestFirstLookAllowsThreeOrganizationsPerSite(t *testing.T) {
 	_, store, ctx, brand := liveVisibilityFixture(t, true)
 	store.WithCloudMode(true)
 	startVisibilityTracking(t, store, ctx, brand.ID)
+
+	// Colleagues who sign up on their own can still run it.
+	for range domain.FirstLookSiteLimit - 1 {
+		colleagueCtx, colleague := firstLookBrand(t, store, "koi.dev")
+		startVisibilityTracking(t, store, colleagueCtx, colleague.ID)
+	}
 
 	otherCtx, other := firstLookBrand(t, store, "KOI.dev")
 	require.NoError(t, store.VisibilityRepo().StartTracking(otherCtx, other.ID))
@@ -232,4 +240,114 @@ func TestOnboardingKeepsOnlyTheFirstVisitToAStep(t *testing.T) {
 	require.NoError(t, store.db.Model(&domain.OnboardingEvent{}).
 		Where("organization_id = ?", brand.OrganizationID).Count(&events).Error)
 	require.Equal(t, int64(2), events)
+}
+
+func TestFirstLookWithoutARealAnswerDoesNotUseUpTheSite(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+	store.WithCloudMode(true)
+
+	// Each earlier organization ran a check on the site, and it ended with the given result.
+	finished := func(runCtx context.Context, brandID uuid.UUID, state domain.VisibilityState, outcome domain.Outcome) {
+		t.Helper()
+
+		run := startVisibilityTracking(t, store, runCtx, brandID)
+
+		require.NoError(t, db.Model(&domain.VisibilityResult{}).
+			Where("run_id = ?", run.ID).Update("outcome", outcome).Error)
+		require.NoError(t, db.Model(&domain.VisibilityRun{}).
+			Where("id = ?", run.ID).Update("state", state).Error)
+	}
+
+	finished(ctx, brand.ID, domain.VisibilityFailed, domain.OutcomeError)
+
+	for range domain.FirstLookSiteLimit - 1 {
+		failedCtx, failed := firstLookBrand(t, store, "koi.dev")
+		finished(failedCtx, failed.ID, domain.VisibilitySucceeded, domain.OutcomeError)
+	}
+
+	nextCtx, next := firstLookBrand(t, store, "koi.dev")
+	require.NoError(t, store.VisibilityRepo().StartTracking(nextCtx, next.ID))
+	require.NotEqual(t, domain.TrackingBlockedFirstLookSiteUsed, blockedReason(t, store, nextCtx, next.ID))
+
+	// A failed run that still returned an answer did give something, so it counts.
+	var active domain.VisibilityRun
+	require.NoError(t, db.Where("brand_id = ?", next.ID).Take(&active).Error)
+	require.NoError(t, db.Model(&domain.VisibilityResult{}).
+		Where("run_id = ?", active.ID).Update("outcome", domain.OutcomeMiss).Error)
+	require.NoError(t, db.Model(&active).Update("state", domain.VisibilityFailed).Error)
+
+	for range domain.FirstLookSiteLimit - 1 {
+		answeredCtx, answered := firstLookBrand(t, store, "koi.dev")
+		finished(answeredCtx, answered.ID, domain.VisibilitySucceeded, domain.OutcomeCited)
+	}
+
+	lastCtx, last := firstLookBrand(t, store, "koi.dev")
+	require.NoError(t, store.VisibilityRepo().StartTracking(lastCtx, last.ID))
+	require.Equal(t, domain.TrackingBlockedFirstLookSiteUsed, blockedReason(t, store, lastCtx, last.ID))
+}
+
+func TestFirstLookRetriesARunWithoutAnswersOnTheNextSlot(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+	store.WithCloudMode(true)
+
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
+
+	status, err := store.VisibilityRepo().Tracking(ctx, brand.ID)
+	require.NoError(t, err)
+	anchor := *status.StartedAt
+
+	fail := func(run *domain.VisibilityRun) {
+		t.Helper()
+
+		require.NoError(t, db.Model(&domain.VisibilityResult{}).
+			Where("run_id = ?", run.ID).Update("outcome", domain.OutcomeError).Error)
+		require.NoError(t, db.Model(run).Update("state", domain.VisibilityFailed).Error)
+	}
+
+	runCount := func() int64 {
+		t.Helper()
+
+		var count int64
+		require.NoError(t, db.Model(&domain.VisibilityRun{}).Where("brand_id = ?", brand.ID).Count(&count).Error)
+
+		return count
+	}
+
+	fail(run)
+	require.Empty(t, blockedReason(t, store, ctx, brand.ID))
+
+	// Each retry may collect, which the worker only allows for a fast start.
+	for attempt := int64(2); attempt <= domain.FirstLookRunAttempts; attempt++ {
+		require.NoError(t, store.DispatchVisibility(ctx, anchor.Add(time.Duration(attempt-1)*24*time.Hour)))
+		require.Equal(t, attempt, runCount())
+
+		retry, err := store.VisibilityRepo().Active(ctx, brand.ID)
+		require.NoError(t, err)
+		require.True(t, retry.FastStart)
+
+		collect, err := cloudCollectionAllowed(ctx, db, brand.OrganizationID, retry.FastStart)
+		require.NoError(t, err)
+		require.True(t, collect)
+
+		fail(retry)
+	}
+
+	require.Equal(t, domain.TrackingBlockedFirstLookUsed, blockedReason(t, store, ctx, brand.ID))
+	require.NoError(t, store.DispatchVisibility(ctx, anchor.Add(time.Duration(domain.FirstLookRunAttempts)*24*time.Hour)))
+	require.Equal(t, int64(domain.FirstLookRunAttempts), runCount())
+}
+
+func TestFirstLookStopsRetryingOnceARunAnswers(t *testing.T) {
+	db, store, ctx, brand := liveVisibilityFixture(t, true)
+	store.WithCloudMode(true)
+
+	run := startVisibilityTracking(t, store, ctx, brand.ID)
+
+	// Some engines failing still leaves something to show, so the free check is spent.
+	var result domain.VisibilityResult
+	require.NoError(t, db.Where("run_id = ?", run.ID).Take(&result).Error)
+	require.NoError(t, db.Model(&result).Update("outcome", domain.OutcomeMiss).Error)
+	require.NoError(t, db.Model(run).Update("state", domain.VisibilityFailed).Error)
+
+	require.Equal(t, domain.TrackingBlockedFirstLookUsed, blockedReason(t, store, ctx, brand.ID))
 }

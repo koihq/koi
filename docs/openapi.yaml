@@ -305,6 +305,8 @@ paths:
           $ref: "#/components/responses/Error"
         "409":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/login:
     post:
       tags: [auth]
@@ -326,6 +328,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/password/forgot:
     post:
       tags: [auth]
@@ -344,6 +348,8 @@ paths:
           $ref: "#/components/responses/Error"
         "503":
           $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/Error"
   /api/v1/auth/password/reset:
     post:
       tags: [auth]
@@ -359,6 +365,8 @@ paths:
         "204":
           description: Password changed
         "400":
+          $ref: "#/components/responses/Error"
+        "429":
           $ref: "#/components/responses/Error"
   /api/v1/auth/logout:
     post:
@@ -663,6 +671,8 @@ paths:
         "400":
           $ref: "#/components/responses/Error"
         "401":
+          $ref: "#/components/responses/Error"
+        "429":
           $ref: "#/components/responses/Error"
   /api/v1/brands/countries:
     get:
@@ -2245,9 +2255,15 @@ components:
         - initial_already_completed
         - billing_required
         - prompt_limit_reached
+        - password_reset_invalid
+        - rate_limited
+        - signup_closed
+        - first_look_unavailable
+        - cross_origin_request
     FieldCode:
       type: string
       enum:
         - invalid
         - min_length
+        - max_length
         - taken

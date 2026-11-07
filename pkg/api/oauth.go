@@ -148,15 +148,19 @@ func (h *oauthHandler) register(w http.ResponseWriter, r *http.Request) {
 	}
 	oauthJSON(w, 201, map[string]any{"client_id": id, "client_name": in.Name, "redirect_uris": in.RedirectURIs, "token_endpoint_auth_method": "none"})
 }
+
+var carrierGradeNAT = &net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+
 func publicIP(ip net.IP) bool {
-	return ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsMulticast() && !ip.IsUnspecified()
+	return ip != nil && !ip.IsLoopback() && !ip.IsPrivate() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsMulticast() && !ip.IsUnspecified() && !carrierGradeNAT.Contains(ip)
 }
 func fetchCIMD(ctx context.Context, id string) (*domain.OAuthClient, error) {
 	u, e := url.Parse(id)
 	if e != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Fragment != "" {
 		return nil, fmt.Errorf("invalid client id")
 	}
-	transport := &http.Transport{DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+	// Each call builds its own transport, so nothing should stay open after the response.
+	transport := &http.Transport{DisableKeepAlives: true, DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, port, e := net.SplitHostPort(address)
 		if e != nil {
 			return nil, e

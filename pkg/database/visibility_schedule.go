@@ -135,38 +135,63 @@ func (r *GormVisibilityRepository) blockedReason(ctx context.Context, brand *dom
 	return domain.TrackingBlockedReason(readiness), nil
 }
 
-// firstLookBlockedReason limits unpaid collection: one run per organization, one organization per
-// site, and a daily total that caps what abuse can spend, since sign-up is otherwise unmetered.
+// firstLookBlockedReason limits unpaid collection: one useful run per organization, a few
+// organizations per site, and a daily total that caps what abuse can spend, since sign-up is
+// otherwise unmetered.
 func (r *GormVisibilityRepository) firstLookBlockedReason(ctx context.Context, brand *domain.Brand) (string, error) {
 	db := r.db.WithContext(ctx)
 
-	var used bool
-	if err := db.Raw(`SELECT EXISTS (SELECT 1 FROM visibility_runs
+	// A run that ended without a real answer gave nothing, so the organization may try again.
+	var runs struct {
+		Total  int64
+		Useful int64
+	}
+	if err := db.Raw(`SELECT count(*) AS total, count(*) FILTER (WHERE
+			visibility_runs.state IN (?, ?) OR EXISTS (
+				SELECT 1 FROM visibility_results AS results
+				WHERE results.run_id = visibility_runs.id AND results.outcome IN (?, ?, ?)
+			)) AS useful
+		FROM visibility_runs
 		JOIN brands ON brands.id = visibility_runs.brand_id
-		WHERE brands.organization_id = ?)`, brand.OrganizationID).Scan(&used).Error; err != nil {
+		WHERE brands.organization_id = ?`,
+		domain.VisibilityQueued, domain.VisibilityRunning,
+		domain.OutcomeCited, domain.OutcomeMentioned, domain.OutcomeMiss,
+		brand.OrganizationID).Scan(&runs).Error; err != nil {
 		return "", err
 	}
-	if used {
+	if runs.Useful > 0 || runs.Total >= domain.FirstLookRunAttempts {
 		return domain.TrackingBlockedFirstLookUsed, nil
 	}
 
-	var taken bool
-	if err := db.Raw(`SELECT EXISTS (SELECT 1 FROM visibility_runs
+	// A check that ended without a real answer gave nobody anything, so it does not use up the site.
+	// One still running counts, or simultaneous sign-ups could all pass.
+	var organizations int64
+	if err := db.Raw(`SELECT count(DISTINCT brands.organization_id) FROM visibility_runs
 		JOIN brands ON brands.id = visibility_runs.brand_id
 		WHERE brands.organization_id <> ? AND (
 			(? <> '' AND lower(brands.domain) = lower(?)) OR
 			(? <> '' AND lower(brands.github_repo) = lower(?))
-		))`, brand.OrganizationID, brand.Domain, brand.Domain, brand.GitHubRepo, brand.GitHubRepo).
-		Scan(&taken).Error; err != nil {
+		) AND (
+			visibility_runs.state IN (?, ?) OR EXISTS (
+				SELECT 1 FROM visibility_results AS results
+				WHERE results.run_id = visibility_runs.id AND results.outcome IN (?, ?, ?)
+			)
+		)`, brand.OrganizationID, brand.Domain, brand.Domain, brand.GitHubRepo, brand.GitHubRepo,
+		domain.VisibilityQueued, domain.VisibilityRunning,
+		domain.OutcomeCited, domain.OutcomeMentioned, domain.OutcomeMiss).
+		Scan(&organizations).Error; err != nil {
 		return "", err
 	}
-	if taken {
+	if organizations >= domain.FirstLookSiteLimit {
 		return domain.TrackingBlockedFirstLookSiteUsed, nil
 	}
 
 	var today int64
 	if err := db.Model(&domain.VisibilityRun{}).
-		Where("fast_start AND created_at > ?", time.Now().UTC().Add(-24*time.Hour)).
+		Joins("JOIN brands ON brands.id = visibility_runs.brand_id").
+		Joins("JOIN organizations ON organizations.id = brands.organization_id").
+		Where("visibility_runs.fast_start AND organizations.trial_used_at IS NULL AND visibility_runs.created_at > ?",
+			time.Now().UTC().Add(-24*time.Hour)).
 		Count(&today).Error; err != nil {
 		return "", err
 	}
@@ -281,9 +306,19 @@ func (r *GormVisibilityRepository) schedule(ctx context.Context, brand *domain.B
 		Where("brands.organization_id = ?", brand.OrganizationID).Count(&existing).Error; err != nil {
 		return err
 	}
+	// A First Look retry has earlier runs too, and the worker only lets a First Look collect a fast
+	// start. blockedReason has already decided that this organization may run.
+	firstLook := false
+	if r.cloudMode {
+		firstLook, err = cloudFirstLook(ctx, r.db, brand.OrganizationID)
+		if err != nil {
+			return err
+		}
+	}
+
 	run := &domain.VisibilityRun{
 		BrandID:       brand.ID,
-		FastStart:     existing == 0,
+		FastStart:     existing == 0 || firstLook,
 		ScheduledFor:  &slot,
 		BrandSnapshot: brand.Snapshot(),
 		Engines:       domain.VisibilityEngines(),

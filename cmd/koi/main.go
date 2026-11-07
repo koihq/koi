@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/koihq/koi/pkg/app"
@@ -25,6 +28,16 @@ func main() {
 		case "healthcheck":
 			if err := healthcheck(); err != nil {
 				slog.Error("healthcheck failed", "err", err)
+				os.Exit(1)
+			}
+			return
+		case "admin":
+			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+
+			if err := app.RunAdmin(ctx, os.Args[2:], os.Stdin, os.Stdout); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				stop()
 				os.Exit(1)
 			}
 			return

@@ -58,7 +58,7 @@ export const Route = createFileRoute("/_authenticated/_app/")({
     {
       ...promptSearchParams,
       ...graphSearchParams,
-      draftStart: parseAsStringLiteral(["failed"] as const),
+      draftStart: parseAsStringLiteral(["failed", "unavailable"] as const),
     },
     { partialOutput: true },
   ),
@@ -82,6 +82,7 @@ function Home() {
         brand={brand}
         scope={FIRST_LOOK_SCOPE}
         draftStartFailed={draftStartFailed || draftStart === "failed"}
+        draftUnavailable={draftStart === "unavailable"}
       />
     );
   }

@@ -26,6 +26,10 @@ export function displayMessage(code: string, fields?: FieldError[]): string {
     return i18n.t("fields.password.min_length", { ns: "errors" });
   }
 
+  if (field?.field === "password" && field.code === "max_length") {
+    return i18n.t("fields.password.max_length", { ns: "errors" });
+  }
+
   if (field?.field === "email" && field.code === "invalid") {
     return i18n.t("fields.email.invalid", { ns: "errors" });
   }

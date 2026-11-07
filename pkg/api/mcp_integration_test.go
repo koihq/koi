@@ -40,14 +40,14 @@ func TestMCPOAuthTokenScopeIsolationAndRevocation(t *testing.T) {
 	require.NoError(t, database.Migrate(db))
 	store := database.NewStore(db)
 	service := domain.NewCredentialService(store)
-	server := httptest.NewServer(NewServer(store, scs.New(), ServerOptions{}))
+	server := httptest.NewServer(NewServer(store, scs.New(), ServerOptions{OpenSignup: true}))
 	t.Cleanup(server.Close)
 	first, second := newCookieClient(t), newCookieClient(t)
 	tokens := make([]string, 2)
 	ids := make([]uuid.UUID, 2)
 	var firstUserID uuid.UUID
 	for i, client := range []*http.Client{first, second} {
-		response := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"`+uuid.NewString()+`@example.com","password":"password123"}`)
+		response := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"`+uuid.NewString()+`@example.com","password":"password-1234"}`)
 		require.Equal(t, 201, response.StatusCode)
 		var account AuthRes
 		readJSON(t, response, &account)

@@ -110,7 +110,7 @@ func TestAuthHandler_SignupSetsCookie(t *testing.T) {
 	client := newCookieClient(t)
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/signup",
-		`{"email":"you@example.com","password":"password1"}`)
+		`{"email":"you@example.com","password":"password-1234"}`)
 
 	var body MeRes
 	readJSON(t, resp, &body)
@@ -180,7 +180,7 @@ func TestAuthHandler_SessionFlow(t *testing.T) {
 	q.EXPECT().Me(mock.Anything, uuid.Nil).Return(me, nil)
 	ts := newAuthTestServer(t, q, cmd)
 	client := newCookieClient(t)
-	creds := `{"email":"you@example.com","password":"password1"}`
+	creds := `{"email":"you@example.com","password":"password-1234"}`
 
 	resp := doJSON(t, client, http.MethodPost, ts.URL+"/api/v1/auth/signup", creds)
 	var created MeRes
@@ -226,7 +226,7 @@ func TestAuthHandlerMePassesBrandPreferenceAndReturnsResolvedBrand(t *testing.T)
 			q.EXPECT().Me(mock.Anything, preferred).Return(me, nil)
 			server := newAuthTestServer(t, q, cmd)
 			client := newCookieClient(t)
-			resp := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"you@example.com","password":"password123"}`)
+			resp := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"you@example.com","password":"password-1234"}`)
 			require.NoError(t, resp.Body.Close())
 			resp = doJSON(t, client, http.MethodGet, server.URL+"/test-brand-preference/"+raw, "")
 			require.NoError(t, resp.Body.Close())

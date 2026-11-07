@@ -38,7 +38,6 @@ type Config struct {
 	DeploymentMode      string
 	HTTPAddr            string
 	DatabaseURL         string
-	SessionSecret       string
 	SessionLifetime     time.Duration
 	OpenRouterAPIKey    string
 	CloroAPIKey         string
@@ -52,6 +51,8 @@ type Config struct {
 	StripePriceID       string
 	PublicURL           string
 	FirstLookDailyLimit int
+	AllowSignup         bool
+	ClientIPHeader      string
 }
 
 func LoadConfig() (Config, error) {
@@ -62,11 +63,6 @@ func LoadConfig() (Config, error) {
 	}
 
 	databaseURL, err := requireEnv("KOI_DATABASE_URL")
-	if err != nil {
-		return Config{}, err
-	}
-
-	sessionSecret, err := requireEnv("KOI_SESSION_SECRET")
 	if err != nil {
 		return Config{}, err
 	}
@@ -97,8 +93,8 @@ func LoadConfig() (Config, error) {
 	stripePriceID := strings.TrimSpace(os.Getenv("KOI_STRIPE_PRICE_ID"))
 	publicURL := strings.TrimSpace(os.Getenv("KOI_PUBLIC_URL"))
 	if mode == "cloud" && (cloroAPIKey == "" || stripeSecretKey == "" || stripeWebhookSecret == "" ||
-		stripePriceID == "" || publicURL == "") {
-		return Config{}, fmt.Errorf("cloud mode requires KOI_CLORO_API_KEY, KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID and KOI_PUBLIC_URL")
+		stripePriceID == "" || publicURL == "" || resendAPIKey == "") {
+		return Config{}, fmt.Errorf("cloud mode requires KOI_CLORO_API_KEY, KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID, KOI_PUBLIC_URL, KOI_RESEND_API_KEY and KOI_EMAIL_FROM")
 	}
 	if publicURL != "" {
 		publicURL = strings.TrimRight(publicURL, "/")
@@ -128,6 +124,15 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	// Self-hosted instances spend their owner's Cloro key, so only the first user may join by default.
+	allowSignup := mode == "cloud"
+	if raw := strings.TrimSpace(os.Getenv("KOI_ALLOW_SIGNUP")); raw != "" {
+		allowSignup, err = strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("KOI_ALLOW_SIGNUP must be true or false")
+		}
+	}
+
 	providerTimeout := 3 * time.Minute
 	if raw, ok := os.LookupEnv("KOI_PROVIDER_TIMEOUT"); ok {
 		providerTimeout, err = time.ParseDuration(raw)
@@ -147,7 +152,6 @@ func LoadConfig() (Config, error) {
 		DeploymentMode:      mode,
 		HTTPAddr:            httpAddr,
 		DatabaseURL:         databaseURL,
-		SessionSecret:       sessionSecret,
 		SessionLifetime:     sessionLifetime,
 		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
 		CloroAPIKey:         cloroAPIKey,
@@ -161,6 +165,8 @@ func LoadConfig() (Config, error) {
 		StripePriceID:       stripePriceID,
 		PublicURL:           publicURL,
 		FirstLookDailyLimit: firstLookDailyLimit,
+		AllowSignup:         allowSignup,
+		ClientIPHeader:      strings.TrimSpace(os.Getenv("KOI_CLIENT_IP_HEADER")),
 	}, nil
 }
 
@@ -334,7 +340,11 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
 				})
 				river.AddWorker(workers, &passwordResetWorker{
-					issuer: domain.NewAuthCommander(database.NewStore(db)),
+					issuer: domain.NewAuthCommander(database.NewStore(db), domain.AuthOptions{OpenSignup: a.cfg.AllowSignup}),
+					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
+				})
+				river.AddWorker(workers, &passwordChangedWorker{
+					store:  database.NewStore(db),
 					sender: resendprovider.New(a.cfg.ResendAPIKey, a.cfg.EmailFrom, a.cfg.PublicURL),
 				})
 			}
@@ -389,6 +399,9 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		AIDrafting:     a.cfg.OpenRouterAPIKey != "" && riverClient != nil,
 		LiveCollection: liveCollection,
 		BrandLooker:    sitelookup.New(),
+		OpenSignup:     a.cfg.AllowSignup,
+		PublicURL:      a.cfg.PublicURL,
+		ClientIPHeader: a.cfg.ClientIPHeader,
 	}
 	if a.cfg.DeploymentMode == "cloud" {
 		stripeClient := stripe.New(a.cfg.StripeSecretKey)
@@ -400,7 +413,17 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 
 	handler := api.NewServer(store, sess, options)
-	server := &http.Server{Handler: handler}
+	if a.cfg.DeploymentMode != "cloud" && a.cfg.PublicURL == "" {
+		slog.Warn("KOI_PUBLIC_URL is not set: the session cookie is not marked Secure, so serve this instance on localhost only")
+	}
+
+	server := &http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      2 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+	}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- server.Serve(listener) }()
 

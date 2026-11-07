@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	argonTime    = 1
-	argonMemory  = 32 * 1024
+	argonTime    = 2
+	argonMemory  = 19 * 1024
 	argonThreads = 1
 	argonKeyLen  = 32
 	argonSaltLen = 16

@@ -113,10 +113,6 @@ type mcpPromptVisibility struct {
 type mcpQuote struct {
 	Prompts int `json:"prompts"`
 }
-type mcpChange struct {
-	Prompts        int    `json:"prompts"`
-	IdempotencyKey string `json:"idempotencyKey"`
-}
 type mcpCheckoutConfirm struct {
 	SessionID string `json:"sessionId"`
 }
@@ -207,7 +203,7 @@ func addMCPTool[In any](server *mcp.Server, name, description string, readOnly b
 func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 	server := mcp.NewServer(
 		&mcp.Implementation{Name: "koi", Version: "1.0.0"},
-		&mcp.ServerOptions{Instructions: "Koi measures a brand's visibility in AI answers. Use brands_list to find the brand and pass its explicit brandId to brand-scoped tools; the browser's active brand does not scope MCP calls. analysis_summary aggregates a selected period and engines, while runs_results contains individual answers and citations; distinguish observed results from recommendations. Each brand gets one asynchronous draft: after generations_create, check generations_get with the returned ID, then call tracking_start to begin collection. On Koi Cloud, an organization that never had a trial gets one free check on up to 5 prompts: billing_subscription reports it as firstLook, runs_results fills in while it runs, and report those answers to the user as soon as they arrive. Daily collection then needs the trial; create a billing_checkout link only if the user asks, and let the user complete the payment. Reuse the same idempotencyKey when retrying generations_create or billing_change_allowance. Billing tools are available only on Koi Cloud."},
+		&mcp.ServerOptions{Instructions: "Koi measures a brand's visibility in AI answers. Use brands_list to find the brand and pass its explicit brandId to brand-scoped tools; the browser's active brand does not scope MCP calls. analysis_summary aggregates a selected period and engines, while runs_results contains individual answers and citations; distinguish observed results from recommendations. Each brand gets one asynchronous draft: after generations_create, check generations_get with the returned ID, then call tracking_start to begin collection. On Koi Cloud, an organization that never had a trial gets one free check on up to 5 prompts: billing_subscription reports it as firstLook, runs_results fills in while it runs, and report those answers to the user as soon as they arrive. Daily collection then needs the trial; create a billing_checkout link only if the user asks, and let the user complete the payment. Before the trial, an organization can have one brand and a limited number of drafts: first_look_unavailable means the user can add prompts by hand or start the trial. To change the prompt allowance or manage payment, send the user to Settings > Billing; agents cannot change what the user pays. Reuse the same idempotencyKey when retrying generations_create. Billing tools are available only on Koi Cloud."},
 	)
 	addMCPTool(server, "account_me", "Get your account and organization", true, billing, false, func(ctx context.Context, _ struct{}) (any, error) {
 		return mcpResult(AuthToRes)(shared.auth.Me(ctx, uuid.Nil))
@@ -426,20 +422,6 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 				return nil, e
 			}
 			return BillingStatusToRes(&v), nil
-		})
-		addMCPTool(server, "billing_change_allowance", "Change prompt allowance with idempotency key", false, billing, false, func(ctx context.Context, in mcpChange) (any, error) {
-			if !validIdempotencyKey(in.IdempotencyKey) {
-				return nil, domain.Validation(domain.FieldError{Field: "idempotencyKey", Code: domain.FieldInvalid})
-			}
-			v, e := billing.commander.ChangeAllowance(ctx, in.Prompts, in.IdempotencyKey)
-			if e != nil {
-				return nil, e
-			}
-			return BillingChangeToRes(&v), nil
-		})
-		addMCPTool(server, "billing_portal", "Get hosted billing portal URL", false, billing, false, func(ctx context.Context, _ struct{}) (any, error) {
-			url, e := billing.commander.Portal(ctx)
-			return map[string]string{"url": url}, e
 		})
 	}
 	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true})

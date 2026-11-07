@@ -21,6 +21,10 @@ export const errorCodes = [
   "billing_subscription_exists",
   "billing_price_mismatch",
   "password_reset_invalid",
+  "rate_limited",
+  "signup_closed",
+  "first_look_unavailable",
+  "cross_origin_request",
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

@@ -11,8 +11,6 @@ cp .env.example .env
 make dev
 ```
 
-Set `KOI_SESSION_SECRET` in `.env` to a random value (`openssl rand -base64 32`).
-It is currently required by configuration but is not used by the session manager.
 Live visibility collection requires a Cloro account and `KOI_CLORO_API_KEY`, including
 self-hosted installations. OpenRouter is optional: set `KOI_OPENROUTER_API_KEY` to enable
 onboarding research and prompt/competitor drafting. Without it, curate these lists manually.
@@ -44,8 +42,8 @@ make run
 
 API listens on `:8080`.
 
-To build and run the Docker image locally with PostgreSQL, set
-`KOI_SESSION_SECRET` in `.env`, then run `make compose-image`. The image profile
+To build and run the Docker image locally with PostgreSQL, run
+`make compose-image`. The image profile
 is separate from `make dev` so the Go API does not claim port 8080 twice.
 Use `make compose-down` to stop it.
 
@@ -165,13 +163,27 @@ Cloudflare. Live visibility collection requires your own Cloro account and API k
 ```bash
 cp .env.selfhosted.example .env.selfhosted
 openssl rand -hex 24      # POSTGRES_PASSWORD
-openssl rand -base64 32   # KOI_SESSION_SECRET
 ```
 
-Put those generated values and a published `KOI_IMAGE_TAG` (for example `v0.1.0`)
-in `.env.selfhosted`. `POSTGRES_PASSWORD` must be hex because Compose uses it in a
+Put that generated value and a published `KOI_IMAGE_TAG` (for example `v0.1.0`)
+in `.env.selfhosted`. Set `KOI_PUBLIC_URL` to your HTTPS address, because without it the session
+cookie is not marked `Secure`. Set `KOI_CLIENT_IP_HEADER` to the header your proxy overwrites with
+the client's address, or all visitors share one rate limit. `POSTGRES_PASSWORD` must be hex because Compose uses it in a
 PostgreSQL URL. Add `KOI_CLORO_API_KEY` to collect live answers. OpenRouter and
 Logo.dev are optional; manual prompt and competitor management work without them.
+
+Only the first user can sign up, so nobody else can spend your Cloro credits. To let someone in,
+set `KOI_ALLOW_SIGNUP=true`, restart, and turn it off again when they have signed up.
+
+Without Resend there is no reset email. To recover a password, run this on the server. It also
+signs out every session and connected agent:
+
+```bash
+printf '%s\n' 'the-new-password' | docker compose --env-file .env.selfhosted \
+  -f docker-compose.selfhosted.yml exec -T koi koi admin reset-password person@example.com
+```
+
+[docs/data-requests.md](docs/data-requests.md) covers requests to export or delete personal data.
 
 ```bash
 docker compose --env-file .env.selfhosted -f docker-compose.selfhosted.yml up -d --wait

@@ -6,6 +6,8 @@ import { useApi } from "@/api/apiProvider";
 import type { Brand, BrandCountry, CreateBrand } from "@/api/brands.api";
 import { ApiError, messageFromUnknown } from "@/api/errors";
 import {
+  BRAND_DESCRIPTION_MAX,
+  BRAND_NAME_MAX,
   type BrandField,
   brandFormFields,
   brandFormSchema,
@@ -113,6 +115,7 @@ export function BrandForm({
             name="name"
             defaultValue={brand?.name}
             autoComplete="organization"
+            maxLength={BRAND_NAME_MAX}
             required
             aria-invalid={fieldErrors.name ? true : undefined}
             aria-describedby={fieldErrors.name ? "brand-name-error" : undefined}
@@ -179,6 +182,7 @@ export function BrandForm({
             id="brand-description"
             name="description"
             defaultValue={brand?.description}
+            maxLength={BRAND_DESCRIPTION_MAX}
             placeholder={t("fields.description.placeholder")}
             aria-invalid={fieldErrors.description ? true : undefined}
             aria-describedby={

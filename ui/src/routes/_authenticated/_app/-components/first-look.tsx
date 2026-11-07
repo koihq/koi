@@ -627,10 +627,12 @@ export function FirstLook({
   brand,
   scope,
   draftStartFailed,
+  draftUnavailable,
 }: {
   brand: FirstLookBrand;
   scope: VisibilityScope;
   draftStartFailed: boolean;
+  draftUnavailable: boolean;
 }) {
   const { t } = useTranslation("home");
   const visibility = useTranslation("visibility");
@@ -737,6 +739,14 @@ export function FirstLook({
       <FirstLookWaiting brand={brand} draft={draft} />
     ) : (
       <div className="grid gap-8">
+        {draftUnavailable && (
+          <div className="grid gap-1">
+            <h1 className="text-title font-semibold">{t("firstLook.draftUnavailableTitle")}</h1>
+            <p className="max-w-[48ch] text-body text-muted-foreground">
+              {t("firstLook.draftUnavailableDescription")}
+            </p>
+          </div>
+        )}
         <TrackingStart
           brandID={brand.id}
           scope={scope}
@@ -772,7 +782,11 @@ export function FirstLook({
       <div className="grid gap-1">
         <h1 className="text-title font-semibold">{t("firstLook.failed")}</h1>
         <p className="max-w-[48ch] text-body text-muted-foreground">
-          {t("firstLook.failedDescription")}
+          {t(
+            blockedReason === "first_look_used"
+              ? "firstLook.failedDescription"
+              : "firstLook.failedRetryDescription",
+          )}
         </p>
       </div>
     );

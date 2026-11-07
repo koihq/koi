@@ -60,3 +60,33 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 		}
 	}
 }
+
+func TestMCPAgentsCannotChangeWhatTheUserPays(t *testing.T) {
+	handler := newMCPHandler(newServices(NewMockStore(t), ServerOptions{}), &BillingHandler{})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil)
+	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: server.URL, DisableStandaloneSSE: true}, nil)
+	require.NoError(t, err)
+	defer session.Close()
+
+	instructions := session.InitializeResult().Instructions
+	require.NotContains(t, instructions, "billing_change_allowance")
+	require.Contains(t, instructions, "Settings > Billing")
+
+	tools, err := session.ListTools(context.Background(), nil)
+	require.NoError(t, err)
+
+	names := make(map[string]bool)
+	for _, tool := range tools.Tools {
+		names[tool.Name] = true
+	}
+
+	require.False(t, names["billing_change_allowance"])
+	require.False(t, names["billing_portal"])
+
+	for _, name := range []string{"billing_catalog", "billing_quote", "billing_subscription", "billing_checkout", "billing_confirm_checkout"} {
+		require.True(t, names[name], name)
+	}
+}

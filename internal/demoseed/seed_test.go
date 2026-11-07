@@ -53,7 +53,7 @@ func TestRunScenarios(t *testing.T) {
 	ctx := demoContext(t.Context())
 	page := domain.PageParams{Page: 1, PageSize: 20}
 
-	me, err := domain.NewAuthCommander(store).Login(t.Context(), Email, Password)
+	me, err := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: true}).Login(t.Context(), Email, Password)
 	require.NoError(t, err)
 	require.Equal(t, demoID("user"), me.User.ID)
 	require.Equal(t, demoID("organization"), me.Organization.ID)
@@ -192,7 +192,7 @@ func TestRunScenarios(t *testing.T) {
 	t.Run("cookie login", func(t *testing.T) {
 		sess := scs.New()
 		sess.Cookie.Name = "koi_session"
-		server := httptest.NewServer(api.NewServer(store, sess, api.ServerOptions{}))
+		server := httptest.NewServer(api.NewServer(store, sess, api.ServerOptions{OpenSignup: true}))
 		t.Cleanup(server.Close)
 		jar, err := cookiejar.New(nil)
 		require.NoError(t, err)
@@ -214,7 +214,7 @@ func TestRunScenarios(t *testing.T) {
 	})
 
 	t.Run("preserve and reset", func(t *testing.T) {
-		foreign, err := domain.NewAuthCommander(store).Signup(t.Context(), domain.SignupParams{Email: "other@example.com", Password: "another-password"})
+		foreign, err := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: true}).Signup(t.Context(), domain.SignupParams{Email: "other@example.com", Password: "another-password"})
 		require.NoError(t, err)
 		foreignCtx := auth.WithIdentity(t.Context(), auth.Identity{UserID: foreign.User.ID, OrganizationID: foreign.Organization.ID, Role: domain.RoleOwner})
 		foreignBrand, err := domain.NewBrandCommander(store).Create(foreignCtx, domain.CreateBrandParams{Name: "Other brand", Domain: "example.com", Country: "US"})
@@ -249,7 +249,7 @@ func TestRunScenarios(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, db.Model(&domain.VisibilityResult{}).Count(&resultCount).Error)
 		require.EqualValues(t, 19820, resultCount)
-		_, err = domain.NewAuthCommander(store).Login(t.Context(), Email, Password)
+		_, err = domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: true}).Login(t.Context(), Email, Password)
 		require.NoError(t, err)
 	})
 }

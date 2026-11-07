@@ -20,8 +20,13 @@ func MapError(err error) (int, Envelope) {
 			domain.CodeBillingConflict, domain.CodeBillingCheckoutPending,
 			domain.CodeBillingSubscriptionExists, domain.CodeBillingPriceMismatch,
 			domain.CodeIdempotencyConflict,
-			domain.CodeInitialAlreadyCompleted, domain.CodeRunNotReady:
+			domain.CodeInitialAlreadyCompleted, domain.CodeRunNotReady,
+			domain.CodeFirstLookUnavailable:
 			return http.StatusConflict, envelope(de)
+		case domain.CodeSignupClosed, domain.CodeCrossOriginRequest:
+			return http.StatusForbidden, envelope(de)
+		case domain.CodeRateLimited:
+			return http.StatusTooManyRequests, envelope(de)
 		case domain.CodeInvalidCredentials, domain.CodeUnauthorized:
 			return http.StatusUnauthorized, envelope(de)
 		case domain.CodeBillingRequired:

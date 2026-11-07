@@ -22,7 +22,7 @@ func TestPasswordResetFlow(t *testing.T) {
 
 	store := NewStore(db)
 	ctx := t.Context()
-	auth := domain.NewAuthCommander(store)
+	auth := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: true})
 	const email = "you@example.com"
 
 	me, err := auth.Signup(ctx, domain.SignupParams{Email: email, Password: "old-password"})

@@ -13,7 +13,6 @@ import (
 func TestLoadConfig(t *testing.T) {
 	t.Setenv("KOI_PORT", ":8080")
 	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
-	t.Setenv("KOI_SESSION_SECRET", "test-secret")
 	t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
 	t.Setenv("KOI_CLORO_API_KEY", "")
 	t.Setenv("KOI_LOG_LEVEL", "info")
@@ -50,7 +49,6 @@ func TestLoadConfig(t *testing.T) {
 func TestLoadConfigWelcomeEmailPair(t *testing.T) {
 	t.Setenv("KOI_PORT", ":8080")
 	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
-	t.Setenv("KOI_SESSION_SECRET", "test-secret")
 	t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
 	t.Setenv("KOI_RESEND_API_KEY", "test-key")
 	t.Setenv("KOI_EMAIL_FROM", "")
@@ -71,26 +69,27 @@ func TestLoadConfigRequiredValues(t *testing.T) {
 	}{
 		{"selfhosted", "KOI_PORT"},
 		{"selfhosted", "KOI_DATABASE_URL"},
-		{"selfhosted", "KOI_SESSION_SECRET"},
 		{"cloud", "KOI_PORT"},
 		{"cloud", "KOI_DATABASE_URL"},
-		{"cloud", "KOI_SESSION_SECRET"},
 		{"cloud", "KOI_CLORO_API_KEY"},
 		{"cloud", "KOI_STRIPE_SECRET_KEY"},
 		{"cloud", "KOI_STRIPE_WEBHOOK_SECRET"},
 		{"cloud", "KOI_STRIPE_PRICE_ID"},
 		{"cloud", "KOI_PUBLIC_URL"},
+		{"cloud", "KOI_RESEND_API_KEY"},
+		{"cloud", "KOI_EMAIL_FROM"},
 	} {
 		t.Run(tc.mode+"/"+tc.key, func(t *testing.T) {
 			t.Setenv("KOI_DEPLOYMENT_MODE", tc.mode)
 			t.Setenv("KOI_PORT", ":8080")
 			t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
-			t.Setenv("KOI_SESSION_SECRET", "test-secret")
 			t.Setenv("KOI_CLORO_API_KEY", "cloro-key")
 			t.Setenv("KOI_STRIPE_SECRET_KEY", "stripe-key")
 			t.Setenv("KOI_STRIPE_WEBHOOK_SECRET", "webhook-key")
 			t.Setenv("KOI_STRIPE_PRICE_ID", "price-id")
 			t.Setenv("KOI_PUBLIC_URL", "https://koi.example")
+			t.Setenv("KOI_RESEND_API_KEY", "resend-key")
+			t.Setenv("KOI_EMAIL_FROM", "Koi <hello@mail.example.com>")
 			t.Setenv("KOI_LOG_LEVEL", "info")
 			t.Setenv("KOI_LOG_FORMAT", "text")
 
@@ -127,7 +126,6 @@ func TestLoadConfigRejectsInvalidValues(t *testing.T) {
 		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
 			t.Setenv("KOI_PORT", ":8080")
 			t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
-			t.Setenv("KOI_SESSION_SECRET", "test-secret")
 			t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
 			t.Setenv("KOI_LOG_LEVEL", "info")
 			t.Setenv("KOI_LOG_FORMAT", "text")

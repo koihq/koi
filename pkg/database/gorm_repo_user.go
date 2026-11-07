@@ -34,3 +34,18 @@ func (r *GormUserRepository) LockForUpdate(ctx context.Context, id uuid.UUID) er
 
 	return mapDBError(err)
 }
+
+// signupLockKey is an arbitrary constant that names this lock among Postgres advisory locks.
+const signupLockKey = 7246310
+
+func (r *GormUserRepository) LockAndCount(ctx context.Context) (int64, error) {
+	db := r.db.WithContext(ctx)
+	if err := db.Exec("SELECT pg_advisory_xact_lock(?)", signupLockKey).Error; err != nil {
+		return 0, err
+	}
+
+	var count int64
+	err := db.Model(&domain.User{}).Count(&count).Error
+
+	return count, err
+}

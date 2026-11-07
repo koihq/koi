@@ -916,6 +916,63 @@ func (_c *MockBillingRepository_RecordEvent_Call) RunAndReturn(run func(context1
 	return _c
 }
 
+// ReserveBrandSlot provides a mock function for the type MockBillingRepository
+func (_mock *MockBillingRepository) ReserveBrandSlot(ctx context.Context, organizationID uuid.UUID) error {
+	ret := _mock.Called(ctx, organizationID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReserveBrandSlot")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, organizationID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockBillingRepository_ReserveBrandSlot_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReserveBrandSlot'
+type MockBillingRepository_ReserveBrandSlot_Call struct {
+	*mock.Call
+}
+
+// ReserveBrandSlot is a helper method to define mock.On call
+//   - ctx context.Context
+//   - organizationID uuid.UUID
+func (_e *MockBillingRepository_Expecter) ReserveBrandSlot(ctx interface{}, organizationID interface{}) *MockBillingRepository_ReserveBrandSlot_Call {
+	return &MockBillingRepository_ReserveBrandSlot_Call{Call: _e.mock.On("ReserveBrandSlot", ctx, organizationID)}
+}
+
+func (_c *MockBillingRepository_ReserveBrandSlot_Call) Run(run func(ctx context.Context, organizationID uuid.UUID)) *MockBillingRepository_ReserveBrandSlot_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBillingRepository_ReserveBrandSlot_Call) Return(err error) *MockBillingRepository_ReserveBrandSlot_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockBillingRepository_ReserveBrandSlot_Call) RunAndReturn(run func(ctx context.Context, organizationID uuid.UUID) error) *MockBillingRepository_ReserveBrandSlot_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReserveChange provides a mock function for the type MockBillingRepository
 func (_mock *MockBillingRepository) ReserveChange(context1 context.Context, uUID uuid.UUID, s string, n int) (*BillingChangeRequest, error) {
 	ret := _mock.Called(context1, uUID, s, n)
@@ -3764,6 +3821,52 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
 }
 
+// AccountDataRepo provides a mock function for the type MockStore
+func (_mock *MockStore) AccountDataRepo() AccountDataRepository {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AccountDataRepo")
+	}
+
+	var r0 AccountDataRepository
+	if returnFunc, ok := ret.Get(0).(func() AccountDataRepository); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(AccountDataRepository)
+		}
+	}
+	return r0
+}
+
+// MockStore_AccountDataRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AccountDataRepo'
+type MockStore_AccountDataRepo_Call struct {
+	*mock.Call
+}
+
+// AccountDataRepo is a helper method to define mock.On call
+func (_e *MockStore_Expecter) AccountDataRepo() *MockStore_AccountDataRepo_Call {
+	return &MockStore_AccountDataRepo_Call{Call: _e.mock.On("AccountDataRepo")}
+}
+
+func (_c *MockStore_AccountDataRepo_Call) Run(run func()) *MockStore_AccountDataRepo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_AccountDataRepo_Call) Return(accountDataRepository AccountDataRepository) *MockStore_AccountDataRepo_Call {
+	_c.Call.Return(accountDataRepository)
+	return _c
+}
+
+func (_c *MockStore_AccountDataRepo_Call) RunAndReturn(run func() AccountDataRepository) *MockStore_AccountDataRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Atomic provides a mock function for the type MockStore
 func (_mock *MockStore) Atomic(context1 context.Context, fn func(Store) error) error {
 	ret := _mock.Called(context1, fn)
@@ -4001,6 +4104,63 @@ func (_c *MockStore_CredentialRepo_Call) Return(credentialRepository CredentialR
 }
 
 func (_c *MockStore_CredentialRepo_Call) RunAndReturn(run func() CredentialRepository) *MockStore_CredentialRepo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// EnqueuePasswordChangedEmail provides a mock function for the type MockStore
+func (_mock *MockStore) EnqueuePasswordChangedEmail(ctx context.Context, userID uuid.UUID) error {
+	ret := _mock.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnqueuePasswordChangedEmail")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockStore_EnqueuePasswordChangedEmail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnqueuePasswordChangedEmail'
+type MockStore_EnqueuePasswordChangedEmail_Call struct {
+	*mock.Call
+}
+
+// EnqueuePasswordChangedEmail is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID uuid.UUID
+func (_e *MockStore_Expecter) EnqueuePasswordChangedEmail(ctx interface{}, userID interface{}) *MockStore_EnqueuePasswordChangedEmail_Call {
+	return &MockStore_EnqueuePasswordChangedEmail_Call{Call: _e.mock.On("EnqueuePasswordChangedEmail", ctx, userID)}
+}
+
+func (_c *MockStore_EnqueuePasswordChangedEmail_Call) Run(run func(ctx context.Context, userID uuid.UUID)) *MockStore_EnqueuePasswordChangedEmail_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockStore_EnqueuePasswordChangedEmail_Call) Return(err error) *MockStore_EnqueuePasswordChangedEmail_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStore_EnqueuePasswordChangedEmail_Call) RunAndReturn(run func(ctx context.Context, userID uuid.UUID) error) *MockStore_EnqueuePasswordChangedEmail_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4811,6 +4971,66 @@ func (_c *MockUserRepository_GetByEmail_Call) Return(user *User, err error) *Moc
 }
 
 func (_c *MockUserRepository_GetByEmail_Call) RunAndReturn(run func(ctx context.Context, email string) (*User, error)) *MockUserRepository_GetByEmail_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LockAndCount provides a mock function for the type MockUserRepository
+func (_mock *MockUserRepository) LockAndCount(ctx context.Context) (int64, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LockAndCount")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (int64, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) int64); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockUserRepository_LockAndCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LockAndCount'
+type MockUserRepository_LockAndCount_Call struct {
+	*mock.Call
+}
+
+// LockAndCount is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockUserRepository_Expecter) LockAndCount(ctx interface{}) *MockUserRepository_LockAndCount_Call {
+	return &MockUserRepository_LockAndCount_Call{Call: _e.mock.On("LockAndCount", ctx)}
+}
+
+func (_c *MockUserRepository_LockAndCount_Call) Run(run func(ctx context.Context)) *MockUserRepository_LockAndCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockUserRepository_LockAndCount_Call) Return(n int64, err error) *MockUserRepository_LockAndCount_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockUserRepository_LockAndCount_Call) RunAndReturn(run func(ctx context.Context) (int64, error)) *MockUserRepository_LockAndCount_Call {
 	_c.Call.Return(run)
 	return _c
 }
