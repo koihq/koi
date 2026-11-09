@@ -1,0 +1,19 @@
+# Koi
+
+> Open source AEO tool. Koi asks ChatGPT, Perplexity, Gemini and Google AI Overviews what a product's buyers ask, every day, and shows whether the product is cited or mentioned, who is recommended instead, and a markdown brief the founder's agent can act on.
+
+- License: MIT
+- Pricing: per tracked prompt, from €29 a month for 15 prompts to €449 a month for 500. Tax included. Every engine and feature is included.
+- First check: free, no card needed. Then a 7-day trial.
+- Self-hosting: free software. Live answers use your own Cloro account.
+
+## Start
+
+- [Agent setup instructions](https://getkoi.co/SKILL.md): paste into a coding agent to set up Koi and run the first check.
+- [Sign up in the browser](https://app.getkoi.co/sign-up)
+
+## Docs
+
+- [Source code](https://github.com/koihq/koi)
+- [Self-hosting guide](https://github.com/koihq/koi#self-host-with-docker-compose)
+- [MCP server](https://github.com/koihq/koi/blob/main/docs/mcp.md)

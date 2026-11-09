@@ -1,0 +1,687 @@
+{
+  "recordedAt": "2026-11-07",
+  "brand": { "id": "78b26f58-56b6-562f-bb0c-5f03e7e60236", "name": "Koi", "domain": "getkoi.co" },
+  "summary": {
+    "metric": { "completed": 3080, "cited": 1063, "mentioned": 564, "rate": 52.824675324675326 },
+    "previous": { "completed": 3080, "cited": 1079, "mentioned": 582, "rate": 53.92857142857143 },
+    "series": [
+      {
+        "date": "2026-10-09",
+        "metric": { "completed": 103, "cited": 33, "mentioned": 21, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-10",
+        "metric": { "completed": 103, "cited": 37, "mentioned": 16, "rate": 51.45631067961165 }
+      },
+      {
+        "date": "2026-10-11",
+        "metric": { "completed": 102, "cited": 36, "mentioned": 16, "rate": 50.98039215686274 }
+      },
+      {
+        "date": "2026-10-12",
+        "metric": { "completed": 103, "cited": 33, "mentioned": 21, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-13",
+        "metric": { "completed": 103, "cited": 40, "mentioned": 16, "rate": 54.36893203883495 }
+      },
+      {
+        "date": "2026-10-14",
+        "metric": { "completed": 102, "cited": 33, "mentioned": 21, "rate": 52.94117647058823 }
+      },
+      {
+        "date": "2026-10-15",
+        "metric": { "completed": 103, "cited": 34, "mentioned": 21, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-10-16",
+        "metric": { "completed": 103, "cited": 38, "mentioned": 16, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-17",
+        "metric": { "completed": 102, "cited": 35, "mentioned": 18, "rate": 51.96078431372549 }
+      },
+      {
+        "date": "2026-10-18",
+        "metric": { "completed": 103, "cited": 32, "mentioned": 22, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-19",
+        "metric": { "completed": 103, "cited": 36, "mentioned": 19, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-10-20",
+        "metric": { "completed": 102, "cited": 34, "mentioned": 22, "rate": 54.90196078431372 }
+      },
+      {
+        "date": "2026-10-21",
+        "metric": { "completed": 103, "cited": 35, "mentioned": 20, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-10-22",
+        "metric": { "completed": 103, "cited": 39, "mentioned": 17, "rate": 54.36893203883495 }
+      },
+      {
+        "date": "2026-10-23",
+        "metric": { "completed": 102, "cited": 35, "mentioned": 19, "rate": 52.94117647058823 }
+      },
+      {
+        "date": "2026-10-24",
+        "metric": { "completed": 103, "cited": 32, "mentioned": 22, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-25",
+        "metric": { "completed": 103, "cited": 37, "mentioned": 17, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-26",
+        "metric": { "completed": 102, "cited": 38, "mentioned": 16, "rate": 52.94117647058823 }
+      },
+      {
+        "date": "2026-10-27",
+        "metric": { "completed": 103, "cited": 35, "mentioned": 20, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-10-28",
+        "metric": { "completed": 103, "cited": 38, "mentioned": 16, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-10-29",
+        "metric": { "completed": 102, "cited": 34, "mentioned": 21, "rate": 53.92156862745098 }
+      },
+      {
+        "date": "2026-10-30",
+        "metric": { "completed": 103, "cited": 34, "mentioned": 21, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-10-31",
+        "metric": { "completed": 103, "cited": 38, "mentioned": 16, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-11-01",
+        "metric": { "completed": 102, "cited": 36, "mentioned": 17, "rate": 51.96078431372549 }
+      },
+      {
+        "date": "2026-11-02",
+        "metric": { "completed": 103, "cited": 32, "mentioned": 22, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-11-03",
+        "metric": { "completed": 103, "cited": 39, "mentioned": 16, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-11-04",
+        "metric": { "completed": 102, "cited": 32, "mentioned": 21, "rate": 51.96078431372549 }
+      },
+      {
+        "date": "2026-11-05",
+        "metric": { "completed": 103, "cited": 34, "mentioned": 21, "rate": 53.398058252427184 }
+      },
+      {
+        "date": "2026-11-06",
+        "metric": { "completed": 103, "cited": 38, "mentioned": 16, "rate": 52.42718446601942 }
+      },
+      {
+        "date": "2026-11-07",
+        "metric": { "completed": 102, "cited": 36, "mentioned": 17, "rate": 51.96078431372549 }
+      }
+    ],
+    "engines": {
+      "chatgpt": { "completed": 770, "cited": 233, "mentioned": 117, "rate": 45.45454545454545 },
+      "gemini": { "completed": 770, "cited": 277, "mentioned": 159, "rate": 56.62337662337662 },
+      "google_ai_overviews": {
+        "completed": 770,
+        "cited": 296,
+        "mentioned": 159,
+        "rate": 59.09090909090909
+      },
+      "perplexity": { "completed": 770, "cited": 257, "mentioned": 129, "rate": 50.12987012987013 }
+    },
+    "competitors": [
+      {
+        "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+        "name": "AthenaHQ",
+        "domain": "athenahq.ai",
+        "metric": { "completed": 3080, "cited": 726, "mentioned": 277, "rate": 32.564935064935064 },
+        "series": []
+      },
+      {
+        "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+        "name": "Profound",
+        "domain": "tryprofound.com",
+        "metric": { "completed": 3080, "cited": 755, "mentioned": 308, "rate": 34.51298701298701 },
+        "series": []
+      },
+      {
+        "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+        "name": "OtterlyAI",
+        "domain": "otterly.ai",
+        "metric": { "completed": 3080, "cited": 777, "mentioned": 356, "rate": 36.785714285714285 },
+        "series": []
+      },
+      {
+        "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+        "name": "Scrunch",
+        "domain": "scrunch.com",
+        "metric": { "completed": 3080, "cited": 791, "mentioned": 250, "rate": 33.798701298701296 },
+        "series": []
+      },
+      {
+        "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+        "name": "Rankscale",
+        "domain": "rankscale.ai",
+        "metric": { "completed": 3080, "cited": 767, "mentioned": 220, "rate": 32.04545454545455 },
+        "series": []
+      },
+      {
+        "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+        "name": "Peec AI",
+        "domain": "peec.ai",
+        "metric": { "completed": 3080, "cited": 804, "mentioned": 300, "rate": 35.84415584415584 },
+        "series": []
+      }
+    ],
+    "hasConfirmedPrompts": true
+  },
+  "prompts": [
+    {
+      "id": "dd56d0f4-75f3-5977-8128-f446b80b7ac1",
+      "text": "What are the best tools to track whether ChatGPT recommends my SaaS?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 120, "cited": 80, "mentioned": 40, "rate": 100 },
+        "previous": { "completed": 120, "cited": 80, "mentioned": 40, "rate": 100 },
+        "engines": {
+          "chatgpt": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
+          "gemini": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
+          "google_ai_overviews": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
+          "perplexity": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": { "completed": 120, "cited": 4, "mentioned": 12, "rate": 13.333333333333334 },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": { "completed": 120, "cited": 44, "mentioned": 4, "rate": 40 },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": {
+              "completed": 120,
+              "cited": 40,
+              "mentioned": 16,
+              "rate": 46.666666666666664
+            },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": {
+              "completed": 120,
+              "cited": 24,
+              "mentioned": 14,
+              "rate": 31.666666666666668
+            },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": { "completed": 120, "cited": 22, "mentioned": 0, "rate": 18.333333333333332 },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 120, "cited": 46, "mentioned": 14, "rate": 50 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    },
+    {
+      "id": "4cbec9ef-91be-524f-ae6e-ca3ca7020bb3",
+      "text": "Which AEO tools help a bootstrapped founder understand AI search visibility?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 120, "cited": 0, "mentioned": 0, "rate": 0 },
+        "previous": { "completed": 120, "cited": 0, "mentioned": 0, "rate": 0 },
+        "engines": {
+          "chatgpt": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
+          "gemini": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
+          "google_ai_overviews": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
+          "perplexity": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": {
+              "completed": 120,
+              "cited": 26,
+              "mentioned": 12,
+              "rate": 31.666666666666668
+            },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": { "completed": 120, "cited": 18, "mentioned": 4, "rate": 18.333333333333332 },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": { "completed": 120, "cited": 44, "mentioned": 16, "rate": 50 },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": {
+              "completed": 120,
+              "cited": 42,
+              "mentioned": 14,
+              "rate": 46.666666666666664
+            },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": { "completed": 120, "cited": 16, "mentioned": 0, "rate": 13.333333333333334 },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 120, "cited": 34, "mentioned": 14, "rate": 40 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    },
+    {
+      "id": "3f3aae9a-a670-575f-8305-983da8c2723c",
+      "text": "How can I compare my brand's citations across Perplexity, Gemini, and ChatGPT?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 120, "cited": 55, "mentioned": 27, "rate": 68.33333333333333 },
+        "previous": { "completed": 120, "cited": 54, "mentioned": 26, "rate": 66.66666666666667 },
+        "engines": {
+          "chatgpt": { "completed": 30, "cited": 3, "mentioned": 1, "rate": 13.333333333333334 },
+          "gemini": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
+          "google_ai_overviews": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
+          "perplexity": { "completed": 30, "cited": 12, "mentioned": 6, "rate": 60 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": {
+              "completed": 120,
+              "cited": 40,
+              "mentioned": 16,
+              "rate": 46.666666666666664
+            },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": { "completed": 120, "cited": 4, "mentioned": 12, "rate": 13.333333333333334 },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": { "completed": 120, "cited": 44, "mentioned": 4, "rate": 40 },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": { "completed": 120, "cited": 46, "mentioned": 14, "rate": 50 },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": {
+              "completed": 120,
+              "cited": 24,
+              "mentioned": 14,
+              "rate": 31.666666666666668
+            },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 120, "cited": 22, "mentioned": 0, "rate": 18.333333333333332 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    },
+    {
+      "id": "d9696fcd-e125-557e-a1cc-c33dc2a4da1f",
+      "text": "Are there self-hosted alternatives to managed AI visibility platforms?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 120, "cited": 11, "mentioned": 5, "rate": 13.333333333333334 },
+        "previous": { "completed": 120, "cited": 27, "mentioned": 13, "rate": 33.333333333333336 },
+        "engines": {
+          "chatgpt": { "completed": 30, "cited": 8, "mentioned": 4, "rate": 40 },
+          "gemini": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
+          "google_ai_overviews": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
+          "perplexity": { "completed": 30, "cited": 3, "mentioned": 1, "rate": 13.333333333333334 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": { "completed": 120, "cited": 44, "mentioned": 16, "rate": 50 },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": {
+              "completed": 120,
+              "cited": 26,
+              "mentioned": 12,
+              "rate": 31.666666666666668
+            },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": { "completed": 120, "cited": 18, "mentioned": 4, "rate": 18.333333333333332 },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": { "completed": 120, "cited": 34, "mentioned": 14, "rate": 40 },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": {
+              "completed": 120,
+              "cited": 42,
+              "mentioned": 14,
+              "rate": 46.666666666666664
+            },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 120, "cited": 16, "mentioned": 0, "rate": 13.333333333333334 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    },
+    {
+      "id": "c8f44321-abe3-542f-b392-9ed1f72de87f",
+      "text": "How do Koi, Profound, Peec AI, and OtterlyAI approach AI visibility tracking?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 119, "cited": 48, "mentioned": 58, "rate": 89.07563025210084 },
+        "previous": { "completed": 120, "cited": 31, "mentioned": 68, "rate": 82.5 },
+        "engines": {
+          "chatgpt": { "completed": 30, "cited": 17, "mentioned": 13, "rate": 100 },
+          "gemini": { "completed": 30, "cited": 8, "mentioned": 22, "rate": 100 },
+          "google_ai_overviews": { "completed": 29, "cited": 12, "mentioned": 17, "rate": 100 },
+          "perplexity": { "completed": 30, "cited": 11, "mentioned": 6, "rate": 56.666666666666664 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": { "completed": 119, "cited": 44, "mentioned": 4, "rate": 40.33613445378151 },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": { "completed": 119, "cited": 40, "mentioned": 61, "rate": 84.87394957983193 },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": { "completed": 119, "cited": 4, "mentioned": 85, "rate": 74.78991596638656 },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": { "completed": 119, "cited": 22, "mentioned": 0, "rate": 18.48739495798319 },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": { "completed": 119, "cited": 46, "mentioned": 14, "rate": 50.42016806722689 },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 119, "cited": 23, "mentioned": 66, "rate": 74.78991596638656 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    },
+    {
+      "id": "e4012f9d-af9c-5208-bbc8-72589af76d77",
+      "text": "Which tools distinguish a brand mention from a citation in an AI answer?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 116, "cited": 40, "mentioned": 21, "rate": 52.58620689655172 },
+        "previous": { "completed": 120, "cited": 55, "mentioned": 26, "rate": 67.5 },
+        "engines": {
+          "chatgpt": { "completed": 29, "cited": 6, "mentioned": 2, "rate": 27.586206896551722 },
+          "gemini": { "completed": 29, "cited": 14, "mentioned": 7, "rate": 72.41379310344827 },
+          "google_ai_overviews": {
+            "completed": 29,
+            "cited": 7,
+            "mentioned": 4,
+            "rate": 37.93103448275862
+          },
+          "perplexity": { "completed": 29, "cited": 13, "mentioned": 8, "rate": 72.41379310344827 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": { "completed": 116, "cited": 18, "mentioned": 4, "rate": 18.96551724137931 },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": { "completed": 116, "cited": 43, "mentioned": 15, "rate": 50 },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": { "completed": 116, "cited": 25, "mentioned": 11, "rate": 31.03448275862069 },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": { "completed": 116, "cited": 15, "mentioned": 0, "rate": 12.931034482758621 },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": { "completed": 116, "cited": 33, "mentioned": 14, "rate": 40.51724137931034 },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 116, "cited": 40, "mentioned": 14, "rate": 46.55172413793103 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    },
+    {
+      "id": "aebf881e-2417-531e-9ab4-963928dfa7ef",
+      "text": "How can a developer turn AI visibility findings into an actionable brief?",
+      "confirmed": true,
+      "inactive": false,
+      "hasResults": true,
+      "visibility": {
+        "metric": { "completed": 116, "cited": 74, "mentioned": 38, "rate": 96.55172413793103 },
+        "previous": { "completed": 120, "cited": 69, "mentioned": 35, "rate": 86.66666666666667 },
+        "engines": {
+          "chatgpt": { "completed": 29, "cited": 19, "mentioned": 10, "rate": 100 },
+          "gemini": { "completed": 29, "cited": 19, "mentioned": 10, "rate": 100 },
+          "google_ai_overviews": {
+            "completed": 29,
+            "cited": 17,
+            "mentioned": 8,
+            "rate": 86.20689655172414
+          },
+          "perplexity": { "completed": 29, "cited": 19, "mentioned": 10, "rate": 100 }
+        },
+        "competitors": [
+          {
+            "id": "69b38bdc-77b6-571b-ae27-02d39ac436f6",
+            "name": "AthenaHQ",
+            "domain": "athenahq.ai",
+            "metric": { "completed": 116, "cited": 4, "mentioned": 11, "rate": 12.931034482758621 },
+            "series": []
+          },
+          {
+            "id": "7a773de2-bfb6-5059-8f78-e14f24793124",
+            "name": "Profound",
+            "domain": "tryprofound.com",
+            "metric": { "completed": 116, "cited": 43, "mentioned": 4, "rate": 40.51724137931034 },
+            "series": []
+          },
+          {
+            "id": "83950c04-02ac-5a7b-a167-589eef73e602",
+            "name": "OtterlyAI",
+            "domain": "otterly.ai",
+            "metric": { "completed": 116, "cited": 39, "mentioned": 15, "rate": 46.55172413793103 },
+            "series": []
+          },
+          {
+            "id": "9604e5d6-3548-5560-9cfc-899a9c6d4ddf",
+            "name": "Scrunch",
+            "domain": "scrunch.com",
+            "metric": { "completed": 116, "cited": 22, "mentioned": 14, "rate": 31.03448275862069 },
+            "series": []
+          },
+          {
+            "id": "b59e52f1-1fa3-5c5e-8907-7dcf967305ba",
+            "name": "Rankscale",
+            "domain": "rankscale.ai",
+            "metric": { "completed": 116, "cited": 22, "mentioned": 0, "rate": 18.96551724137931 },
+            "series": []
+          },
+          {
+            "id": "d45cf3c7-1063-5e32-98e2-86c4fb212629",
+            "name": "Peec AI",
+            "domain": "peec.ai",
+            "metric": { "completed": 116, "cited": 44, "mentioned": 14, "rate": 50 },
+            "series": []
+          }
+        ],
+        "series": []
+      },
+      "brandId": "78b26f58-56b6-562f-bb0c-5f03e7e60236",
+      "source": "manual"
+    }
+  ],
+  "counts": { "tracking": 26 }
+}

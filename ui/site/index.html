@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" class="dark" style="color-scheme: dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <title>Koi: see who AI recommends instead of you</title>
+    <meta
+      name="description"
+      content="Koi asks ChatGPT, Perplexity, Gemini and Google AI Overviews what your buyers ask, every day. See who gets named instead of you and hand the fix to your agent. Open source."
+    />
+    <meta property="og:title" content="Koi: see who AI recommends instead of you" />
+    <meta
+      property="og:description"
+      content="Open source AEO for founders. See who AI recommends instead of you, then let your agent fix it."
+    />
+    <meta property="og:url" content="https://getkoi.co" />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href="https://getkoi.co" />
+    <link rel="icon" type="image/png" href="/assets/koi-mark-64.png" />
+    <style>
+      /* The Stageshow kit must sit above Tailwind's reset, whichever stylesheet loads first. */
+      @layer theme, base, components, utilities, stageshow;
+    </style>
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Koi",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "url": "https://getkoi.co",
+        "license": "https://opensource.org/license/mit",
+        "codeRepository": "https://github.com/koihq/koi",
+        "description": "Open source tool that measures whether ChatGPT, Perplexity, Gemini and Google AI Overviews mention or cite a brand, who they recommend instead, and hands a markdown brief to the founder's agent."
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"><!--app--></div>
+    <script type="module" src="/entry-client.tsx"></script>
+  </body>
+</html>

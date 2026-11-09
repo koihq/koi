@@ -11,6 +11,7 @@ pkg/api/            chi HTTP
 pkg/domain/         entities, Store
 pkg/database/       GORM
 ui/                 React SPA (pnpm) — add with Vite
+ui/site/            Public landing at getkoi.co: separate static build, not embedded in the binary
 ```
 
 ## Commands
@@ -21,6 +22,8 @@ make dev                # Postgres + Air API (:8080) + Vite HMR (:5173)
 make compose-up          # Postgres
 make ui-build            # Vite → pkg/web/dist (embedded by Go)
 make run                 # Go API + embedded UI on :8080
+make site-dev            # Landing with HMR on :5174
+make site-build          # Prerendered landing → ui/site/dist
 make test                # go test ./...
 make format              # Biome safe fixes + gofmt
 make go-format-check     # fail if Go files need formatting

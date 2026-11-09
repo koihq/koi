@@ -1,0 +1,4 @@
+/* The app's own styles, with every source it uses, so the demo is the product pixel for pixel. */
+@import "../../src/styles.css";
+
+@source "../../src";

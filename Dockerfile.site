@@ -1,0 +1,25 @@
+# The public landing at getkoi.co: static files only. It is a separate image so the Koi binary, and
+# with it every self-hosted instance, never ships it.
+
+# The output is plain HTML, CSS and JS, the same on every architecture, so it is built once natively.
+FROM --platform=$BUILDPLATFORM node:24.22.1-alpine3.24 AS site
+WORKDIR /src/ui
+COPY ui/package.json ui/pnpm-lock.yaml ./
+RUN npm install --global pnpm@10.32.1 \
+    && HUSKY=0 pnpm install --frozen-lockfile
+COPY ui/ ./
+COPY pkg/pricing/catalog.json /src/pkg/pricing/catalog.json
+RUN pnpm site:build
+
+# Links, the FAQ and SKILL.md name the production app. Another environment's landing points to its
+# own app instead, so the dev landing never sends anyone to production.
+ARG APP_URL=https://app.getkoi.co
+RUN host="${APP_URL#https://}" && host="${host%/}" \
+    && if [ "$host" != app.getkoi.co ]; then \
+         grep -rl 'app\.getkoi\.co' site/dist | xargs sed -i "s#app\.getkoi\.co#${host}#g"; \
+       fi
+
+FROM nginx:1.30.6-alpine
+# SKILL.md is read by agents: serve it as text, not as a download.
+RUN sed -i '/^types {/a\    text/markdown md;' /etc/nginx/mime.types
+COPY --from=site /src/ui/site/dist /usr/share/nginx/html

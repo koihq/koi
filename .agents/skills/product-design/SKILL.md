@@ -62,7 +62,7 @@ Use the home-context geometry: compact brand header, one full-width visibility s
 
 Auth is a quiet centered column. Home uses a useful empty state until there are confirmed prompts; the analytical series can be deterministic mock values during the migration.
 
-Light and dark are the same layout. Invert the canvas, keep the hierarchy. No separate “marketing light” and “tool dark.”
+Light and dark are the same layout. Invert the canvas, keep the hierarchy. No separate “marketing light” and “tool dark.” The public landing in `ui/site` is the one scoped exception: true black, dark only (`docs/design-system.md`, Public landing).
 
 ## Copy
 
