@@ -238,10 +238,6 @@ func (s *Store) WithCloudMode(enabled bool) *Store {
 	return s
 }
 
-func (s *Store) OnboardingRepo() domain.OnboardingRepository {
-	return NewOnboardingRepository(s.db)
-}
-
 func (s *Store) WithFirstLookDailyLimit(limit int) *Store {
 	s.firstLookDailyLimit = limit
 
@@ -253,4 +249,29 @@ func (s *Store) VisibilityRepo() domain.VisibilityRepository {
 	repository.firstLookDailyLimit = s.firstLookDailyLimit
 
 	return repository
+}
+
+// VisibilityRunOwner returns the owner and organization of a run and how many real answers it
+// collected, for analytics. Workers have no request identity, so this joins through the run.
+func (s *Store) VisibilityRunOwner(ctx context.Context, runID uuid.UUID) (uuid.UUID, uuid.UUID, int, error) {
+	var row struct {
+		UserID         uuid.UUID
+		OrganizationID uuid.UUID
+		Answers        int
+	}
+
+	err := s.db.WithContext(ctx).Raw(`SELECT memberships.user_id, brands.organization_id,
+			(SELECT count(*) FROM visibility_results AS results
+			 WHERE results.run_id = runs.id AND results.outcome IN ('cited', 'mentioned', 'miss')) AS answers
+		FROM visibility_runs AS runs
+		JOIN brands ON brands.id = runs.brand_id
+		JOIN memberships ON memberships.organization_id = brands.organization_id AND memberships.role = ?
+		WHERE runs.id = ?
+		ORDER BY memberships.created_at
+		LIMIT 1`, domain.RoleOwner, runID).Scan(&row).Error
+	if err == nil && row.UserID == uuid.Nil {
+		err = domain.ErrNotFound
+	}
+
+	return row.UserID, row.OrganizationID, row.Answers, err
 }

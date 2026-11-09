@@ -2,7 +2,9 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useAnalytics } from "@/analytics/analyticsProvider";
 import { useApi } from "@/api/apiProvider";
 import type { Brand, CreateBrand } from "@/api/brands.api";
 import { ApiError } from "@/api/errors";
@@ -54,6 +56,7 @@ function currentStep({ path, site, stage }: SetupSearch, canChoose: boolean): Se
 function Setup() {
   const { t } = useTranslation("brand");
   const api = useApi();
+  const analytics = useAnalytics();
   const router = useRouter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -67,6 +70,13 @@ function Setup() {
   const progress = setupProgress(step, { canChoose, cloud: capabilities.cloudBilling });
 
   useOnboardingStep(step);
+
+  // Setup is where people stop, so it is the one place recorded, with consent and inputs masked.
+  useEffect(() => {
+    analytics.startReplay();
+
+    return () => analytics.stopReplay();
+  }, [analytics]);
 
   async function createBrand(body: CreateBrand) {
     let brand: Brand | undefined;

@@ -6,7 +6,7 @@ import gemini from "./assets/logos/gemini.svg";
 import github from "./assets/logos/github.svg";
 import githubDark from "./assets/logos/github-dark.svg";
 import google from "./assets/logos/google.svg";
-import { engineNames } from "./copy";
+import { engineNames, engineShortNames } from "./copy";
 
 export type Engine = keyof typeof engineNames;
 
@@ -73,6 +73,19 @@ export function EngineLogo({
       size={size}
       label={decorative ? "" : engineNames[engine]}
     />
+  );
+}
+
+/**
+ * A mark with its short name, set as one word in running text. The full name is the accessible
+ * label, so a screen reader hears "Google AI Mode" where the eye reads the G and "AI Mode".
+ */
+export function EngineChip({ engine, size = 18 }: { engine: Engine; size?: number }) {
+  return (
+    <span className="site-engine-chip" role="img" aria-label={engineNames[engine]}>
+      <EngineLogo engine={engine} size={size} decorative />
+      <span aria-hidden="true">{engineShortNames[engine]}</span>
+    </span>
   );
 }
 

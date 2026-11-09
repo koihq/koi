@@ -14,16 +14,23 @@ import (
 type billingService struct {
 	store     Store
 	gateway   BillingGateway
+	analytics Analytics
 	priceID   string
 	publicURL string
 }
 
-func NewBillingCommander(store Store, gateway BillingGateway, priceID, publicURL string) BillingCommander {
-	return &billingService{store: store, gateway: gateway, priceID: priceID, publicURL: publicURL}
+func NewBillingCommander(store Store, gateway BillingGateway, analytics Analytics, priceID, publicURL string) BillingCommander {
+	return &billingService{
+		store:     store,
+		gateway:   gateway,
+		analytics: orNop(analytics),
+		priceID:   priceID,
+		publicURL: publicURL,
+	}
 }
 
 func NewBillingQuerier(store Store, gateway BillingGateway, priceID string) BillingQuerier {
-	return &billingService{store: store, gateway: gateway, priceID: priceID}
+	return &billingService{store: store, gateway: gateway, analytics: NopAnalytics{}, priceID: priceID}
 }
 
 func (s *billingService) Catalog(ctx context.Context) (BillingCatalog, error) {
@@ -133,7 +140,7 @@ func (s *billingService) ReconcilePendingCheckouts(ctx context.Context, now time
 }
 
 func (s *billingService) reconcileCheckout(ctx context.Context, organizationID uuid.UUID, sessionID string) error {
-	return s.store.Atomic(ctx, func(store Store) error {
+	return s.atomic(ctx, func(ctx context.Context, store Store) error {
 		repo := store.BillingRepo()
 		organization, err := repo.LockOrganization(ctx, organizationID)
 		if err != nil {
@@ -231,7 +238,7 @@ func (s *billingService) Checkout(ctx context.Context, quantity int) (string, er
 
 		var checkoutURL string
 		var completed bool
-		err = s.store.Atomic(ctx, func(store Store) error {
+		err = s.atomic(ctx, func(ctx context.Context, store Store) error {
 			repo := store.BillingRepo()
 			locked, err := repo.LockOrganization(ctx, organization.ID)
 			if err != nil {
@@ -332,7 +339,7 @@ func (s *billingService) ChangeAllowance(ctx context.Context, quantity int, key 
 		var result BillingChange
 		var rejected error
 		var done bool
-		err := s.store.Atomic(ctx, func(store Store) error {
+		err := s.atomic(ctx, func(ctx context.Context, store Store) error {
 			repo := store.BillingRepo()
 			locked, err := repo.LockOrganization(ctx, organization.ID)
 			if err != nil {
@@ -390,7 +397,7 @@ func (s *billingService) StartPlan(ctx context.Context, key string) (BillingChan
 	}
 
 	var result BillingChange
-	err = s.store.Atomic(ctx, func(store Store) error {
+	err = s.atomic(ctx, func(ctx context.Context, store Store) error {
 		repo := store.BillingRepo()
 
 		locked, err := repo.LockOrganization(ctx, organization.ID)
@@ -556,7 +563,7 @@ func (s *billingService) ProcessEvent(ctx context.Context, event BillingEvent) e
 		return err
 	}
 
-	return s.store.Atomic(ctx, func(store Store) error {
+	return s.atomic(ctx, func(ctx context.Context, store Store) error {
 		repo := store.BillingRepo()
 		locked, err := repo.LockOrganization(ctx, organization.ID)
 		if err != nil {
@@ -631,6 +638,8 @@ func (s *billingService) saveSnapshot(ctx context.Context, repo BillingRepositor
 	if err != nil {
 		return err
 	}
+	events := billingTransitions(local, snapshot, time.Now().UTC())
+
 	if local == nil {
 		local = &BillingSubscription{OrganizationID: organization.ID}
 	}
@@ -661,5 +670,11 @@ func (s *billingService) saveSnapshot(ctx context.Context, repo BillingRepositor
 		}
 	}
 
-	return repo.SaveSubscription(ctx, local)
+	if err := repo.SaveSubscription(ctx, local); err != nil {
+		return err
+	}
+
+	recordBillingEvents(ctx, organization.ID, events)
+
+	return nil
 }

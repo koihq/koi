@@ -14,6 +14,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { BrowserAnalytics } from './BrowserAnalytics';
+import {
+    BrowserAnalyticsFromJSON,
+    BrowserAnalyticsFromJSONTyped,
+    BrowserAnalyticsToJSON,
+    BrowserAnalyticsToJSONTyped,
+} from './BrowserAnalytics';
+
 /**
  * 
  * @export
@@ -56,6 +64,12 @@ export interface CapabilitiesResponse {
      * @memberof CapabilitiesResponse
      */
     logoDevPublishableKey: string;
+    /**
+     * Product analytics for this instance; null when the instance sends none.
+     * @type {BrowserAnalytics}
+     * @memberof CapabilitiesResponse
+     */
+    analytics: BrowserAnalytics | null;
 }
 
 /**
@@ -68,6 +82,7 @@ export function instanceOfCapabilitiesResponse(value: object): value is Capabili
     if (!('aiDrafting' in value) || value['aiDrafting'] === undefined) return false;
     if (!('mcpUrl' in value) || value['mcpUrl'] === undefined) return false;
     if (!('logoDevPublishableKey' in value) || value['logoDevPublishableKey'] === undefined) return false;
+    if (!('analytics' in value) || value['analytics'] === undefined) return false;
     return true;
 }
 
@@ -87,6 +102,7 @@ export function CapabilitiesResponseFromJSONTyped(json: any, ignoreDiscriminator
         'aiDrafting': json['aiDrafting'],
         'mcpUrl': json['mcpUrl'],
         'logoDevPublishableKey': json['logoDevPublishableKey'],
+        'analytics': BrowserAnalyticsFromJSON(json['analytics']),
     };
 }
 
@@ -107,6 +123,7 @@ export function CapabilitiesResponseToJSONTyped(value?: CapabilitiesResponse | n
         'aiDrafting': value['aiDrafting'],
         'mcpUrl': value['mcpUrl'],
         'logoDevPublishableKey': value['logoDevPublishableKey'],
+        'analytics': BrowserAnalyticsToJSON(value['analytics']),
     };
 }
 

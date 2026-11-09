@@ -18,10 +18,12 @@ import (
 
 	"github.com/alexedwards/scs/postgresstore"
 	"github.com/alexedwards/scs/v2"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverdatabasesql"
 	"github.com/riverqueue/river/rivermigrate"
+	"gorm.io/gorm"
 
 	"github.com/koihq/koi/pkg/api"
 	"github.com/koihq/koi/pkg/database"
@@ -29,6 +31,7 @@ import (
 	"github.com/koihq/koi/pkg/providers/cloro"
 	"github.com/koihq/koi/pkg/providers/logodev"
 	"github.com/koihq/koi/pkg/providers/openrouter"
+	posthogprovider "github.com/koihq/koi/pkg/providers/posthog"
 	resendprovider "github.com/koihq/koi/pkg/providers/resend"
 	"github.com/koihq/koi/pkg/providers/sitelookup"
 	"github.com/koihq/koi/pkg/providers/stripe"
@@ -53,6 +56,9 @@ type Config struct {
 	FirstLookDailyLimit int
 	AllowSignup         bool
 	ClientIPHeader      string
+	PostHogKey          string
+	PostHogHost         string
+	AnalyticsExcluded   []string
 }
 
 func LoadConfig() (Config, error) {
@@ -148,6 +154,22 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("KOI_LOG_FORMAT must be text or json")
 	}
 
+	postHogKey := strings.TrimSpace(os.Getenv("KOI_POSTHOG_KEY"))
+	postHogHost := strings.TrimRight(strings.TrimSpace(os.Getenv("KOI_POSTHOG_HOST")), "/")
+	if postHogHost == "" {
+		postHogHost = posthogprovider.DefaultHost
+	}
+	if parsed, err := url.Parse(postHogHost); err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.Path != "" {
+		return Config{}, fmt.Errorf("KOI_POSTHOG_HOST must be an HTTPS origin")
+	}
+
+	var analyticsExcluded []string
+	for _, email := range strings.Split(os.Getenv("KOI_ANALYTICS_EXCLUDED_EMAILS"), ",") {
+		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
+			analyticsExcluded = append(analyticsExcluded, email)
+		}
+	}
+
 	return Config{
 		DeploymentMode:      mode,
 		HTTPAddr:            httpAddr,
@@ -167,6 +189,9 @@ func LoadConfig() (Config, error) {
 		FirstLookDailyLimit: firstLookDailyLimit,
 		AllowSignup:         allowSignup,
 		ClientIPHeader:      strings.TrimSpace(os.Getenv("KOI_CLIENT_IP_HEADER")),
+		PostHogKey:          postHogKey,
+		PostHogHost:         postHogHost,
+		AnalyticsExcluded:   analyticsExcluded,
 	}, nil
 }
 
@@ -288,6 +313,12 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		sess.Store = postgresstore.New(sqlDB)
 	}
 
+	analytics, closeAnalytics, err := a.analytics(db)
+	if err != nil {
+		return err
+	}
+	defer closeAnalytics()
+
 	var searcher domain.CompanySearcher
 	if key := strings.TrimSpace(os.Getenv("LOGODEV_SECRET_KEY")); key != "" {
 		searcher = logodev.NewSearcher(key)
@@ -324,6 +355,8 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 					store:     visibilityStore,
 					provider:  a.cloroProvider,
 					syncSlots: make(chan struct{}, a.cfg.WorkerConcurrency),
+					analytics: analytics,
+					owners:    visibilityStore,
 				}
 				if a.cfg.OpenRouterAPIKey != "" {
 					worker.judge = openrouter.New(a.cfg.OpenRouterAPIKey, a.cfg.ProviderTimeout)
@@ -382,7 +415,13 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 			WithLiveCollection(a.cfg.CloroAPIKey != "").WithCloudMode(a.cfg.DeploymentMode == "cloud").
 			WithFirstLookDailyLimit(a.cfg.FirstLookDailyLimit)
 		if a.cfg.DeploymentMode == "cloud" {
-			maintenance.billing = domain.NewBillingCommander(maintenance.store, stripe.New(a.cfg.StripeSecretKey), a.cfg.StripePriceID, a.cfg.PublicURL)
+			maintenance.billing = domain.NewBillingCommander(
+				maintenance.store,
+				stripe.New(a.cfg.StripeSecretKey),
+				analytics,
+				a.cfg.StripePriceID,
+				a.cfg.PublicURL,
+			)
 		}
 		if err := riverClient.Start(context.Background()); err != nil {
 			return fmt.Errorf("start river client: %w", err)
@@ -402,12 +441,14 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		OpenSignup:     a.cfg.AllowSignup,
 		PublicURL:      a.cfg.PublicURL,
 		ClientIPHeader: a.cfg.ClientIPHeader,
+		Analytics:      analytics,
+		Browser:        a.browserAnalytics(),
 	}
 	if a.cfg.DeploymentMode == "cloud" {
 		stripeClient := stripe.New(a.cfg.StripeSecretKey)
 		options.Billing = api.NewBillingHandler(
 			domain.NewBillingQuerier(store, stripeClient, a.cfg.StripePriceID),
-			domain.NewBillingCommander(store, stripeClient, a.cfg.StripePriceID, a.cfg.PublicURL),
+			domain.NewBillingCommander(store, stripeClient, analytics, a.cfg.StripePriceID, a.cfg.PublicURL),
 			a.cfg.StripeWebhookSecret,
 		)
 	}
@@ -455,6 +496,63 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 	}
 
 	return runErr
+}
+
+// analytics sends server events to PostHog when KOI_POSTHOG_KEY is set, and nothing otherwise.
+func (a *App) analytics(db *gorm.DB) (domain.Analytics, func(), error) {
+	if a.cfg.PostHogKey == "" {
+		return domain.NopAnalytics{}, func() {}, nil
+	}
+
+	lookup := func(ctx context.Context, userID uuid.UUID) (string, error) {
+		if db == nil {
+			return "", errors.New("database unavailable")
+		}
+
+		user, err := database.NewStore(db).UserRepo().Get(ctx, userID)
+		if err != nil {
+			return "", err
+		}
+
+		return user.Email, nil
+	}
+
+	client, err := posthogprovider.New(a.cfg.PostHogKey, a.cfg.PostHogHost, a.cfg.AnalyticsExcluded, lookup)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	closeClient := func() {
+		if err := client.Close(); err != nil {
+			slog.Warn("analytics close failed", "err", err)
+		}
+	}
+
+	return client, closeClient, nil
+}
+
+// browserAnalytics derives PostHog's asset and app hosts from its ingestion host. A custom host,
+// such as a managed proxy, serves both ingestion and assets.
+func (a *App) browserAnalytics() *api.BrowserAnalytics {
+	if a.cfg.PostHogKey == "" {
+		return nil
+	}
+
+	browser := &api.BrowserAnalytics{
+		Key:            a.cfg.PostHogKey,
+		IngestHost:     a.cfg.PostHogHost,
+		AssetsHost:     a.cfg.PostHogHost,
+		ExcludedEmails: a.cfg.AnalyticsExcluded,
+	}
+
+	for _, region := range []string{"eu", "us"} {
+		if a.cfg.PostHogHost == "https://"+region+".i.posthog.com" {
+			browser.AssetsHost = "https://" + region + "-assets.i.posthog.com"
+			browser.UIHost = "https://" + region + ".posthog.com"
+		}
+	}
+
+	return browser
 }
 
 func configurePool(db *sql.DB, maxOpen int) {

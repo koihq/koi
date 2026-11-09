@@ -305,4 +305,17 @@ func (r *GormBillingRepository) SaveChange(ctx context.Context, request *domain.
 	return r.db.WithContext(ctx).Save(request).Error
 }
 
+func (r *GormBillingRepository) OwnerUserID(ctx context.Context, orgID uuid.UUID) (uuid.UUID, error) {
+	var membership domain.Membership
+	err := r.db.WithContext(ctx).
+		Where("organization_id = ? AND role = ?", orgID, domain.RoleOwner).
+		Order("created_at ASC").
+		Take(&membership).Error
+	if err != nil {
+		return uuid.Nil, mapDBError(err)
+	}
+
+	return membership.UserID, nil
+}
+
 var _ domain.BillingRepository = (*GormBillingRepository)(nil)

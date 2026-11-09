@@ -35,6 +35,7 @@
     "i18next": "26.4.2",
     "lucide-react": "0.468.0",
     "nuqs": "2.10.1",
+    "posthog-js": "1.447.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-i18next": "17.0.12",

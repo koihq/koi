@@ -1,5 +1,10 @@
 {
   "brand": "Koi",
   "working": "Working…",
-  "tableScrollHint": "Scroll horizontally to see all columns."
+  "tableScrollHint": "Scroll horizontally to see all columns.",
+  "consent": {
+    "message": "Koi uses a cookie to see which pages help people get started.",
+    "accept": "Allow",
+    "reject": "Decline"
+  }
 }

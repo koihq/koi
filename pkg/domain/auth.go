@@ -67,6 +67,7 @@ type AuthQuerier interface {
 // AuthOptions holds what differs between installations. OpenSignup false admits only the first user.
 type AuthOptions struct {
 	OpenSignup bool
+	Analytics  Analytics
 }
 
 type authCommander struct {
@@ -150,6 +151,8 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 	if err := c.store.EnqueueWelcomeEmail(ctx, me.User.ID); err != nil {
 		slog.Warn("welcome email enqueue failed", "user_id", me.User.ID, "err", err)
 	}
+
+	orNop(c.options.Analytics).Track(me.User.ID, me.Organization.ID, "user_signed_up", nil)
 
 	return me, nil
 }

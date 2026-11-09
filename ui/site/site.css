@@ -200,13 +200,38 @@
   text-wrap: pretty;
 }
 
-/* The engines in the hero lead: four marks set as one word, centred on the line's x-height. */
-.site-lead-engines {
-  display: inline-flex;
-  gap: 0.5rem;
+/* Google's two surfaces share one card: the mark, then both names stacked beside it. */
+.site-engine-family {
+  display: flex;
+  gap: 1rem;
   align-items: center;
-  margin-inline: 0.125rem;
-  vertical-align: -0.3em;
+  justify-content: flex-start;
+  width: auto;
+  padding-inline: 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--foreground);
+}
+
+/* The engines in the hero lead: each mark and its name read as one word, and the line wraps
+   between them like between words. */
+.site-engine-chip {
+  display: inline-flex;
+  margin-block: 0.125rem;
+  vertical-align: middle;
+  gap: 0.375rem;
+  align-items: center;
+  height: 1.875rem;
+  padding-inline: 0.5rem 0.625rem;
+  border-radius: 9999px;
+  background: var(--signal-pill);
+  color: var(--foreground);
+  font-size: 0.9375rem;
+  white-space: nowrap;
+}
+
+.site-lead-engines {
+  display: inline;
 }
 
 .site-logo {

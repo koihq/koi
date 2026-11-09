@@ -38,6 +38,27 @@ type ServerOptions struct {
 	PublicURL string
 	// ClientIPHeader names the header a trusted proxy overwrites with the client's address.
 	ClientIPHeader string
+	// Analytics receives server events. Nil sends nothing.
+	Analytics domain.Analytics
+	// Browser turns on product analytics in the app and the /ingest proxy. Nil leaves both off.
+	Browser *BrowserAnalytics
+}
+
+// BrowserAnalytics is what the app needs to send its own events through the /ingest proxy.
+type BrowserAnalytics struct {
+	Key            string
+	IngestHost     string
+	AssetsHost     string
+	UIHost         string
+	ExcludedEmails []string
+}
+
+func (o ServerOptions) events() domain.Analytics {
+	if o.Analytics == nil {
+		return domain.NopAnalytics{}
+	}
+
+	return o.Analytics
 }
 
 type OnboardingEventReq struct {
@@ -58,6 +79,7 @@ type services struct {
 	visibility         domain.VisibilityQuerier
 	tracking           domain.TrackingCommander
 	analytics          *domain.VisibilityAnalyticsQuerier
+	events             domain.Analytics
 }
 
 func newServices(store domain.Store, options ServerOptions) services {
@@ -74,6 +96,7 @@ func newServices(store domain.Store, options ServerOptions) services {
 		visibility:         domain.NewVisibilityQuerier(store),
 		tracking:           domain.NewTrackingCommander(store),
 		analytics:          domain.NewVisibilityAnalyticsQuerier(store),
+		events:             options.events(),
 	}
 }
 
@@ -165,7 +188,10 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 		return domain.ResolveIdentity(ctx, store, userID)
 	})
 	r.Route("/api/v1", func(r chi.Router) {
-		authCommander := domain.NewAuthCommander(store, domain.AuthOptions{OpenSignup: options.OpenSignup})
+		authCommander := domain.NewAuthCommander(store, domain.AuthOptions{
+			OpenSignup: options.OpenSignup,
+			Analytics:  shared.events,
+		})
 		authHandler := NewAuthHandler(domain.NewAuthQuerier(store), authCommander, sess, authenticate)
 		authHandler.limiter = limiter
 		r.Route("/auth", authHandler.Routes())
@@ -188,6 +214,7 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 					"cloudBilling":          billing != nil,
 					"mcpUrl":                publicMCPURL(req),
 					"logoDevPublishableKey": logoKey,
+					"analytics":             browserAnalyticsRes(options.Browser),
 				})
 			})
 			billingGuard := passThrough
@@ -202,7 +229,7 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 			if billing != nil {
 				r.With(middlewares.DecodeBody[OnboardingEventReq]()).Post("/onboarding/events", func(w http.ResponseWriter, req *http.Request) {
 					input := middlewares.Body[OnboardingEventReq](req)
-					if err := domain.RecordOnboardingStep(req.Context(), store, input.Step); err != nil {
+					if err := domain.RecordOnboardingStep(req.Context(), shared.events, input.Step); err != nil {
 						response.WriteDomainError(w, req, err)
 
 						return
@@ -227,6 +254,9 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 			})
 		})
 	})
+	if options.Browser != nil {
+		r.Handle("/ingest/*", newIngestProxy(options.Browser.IngestHost, options.Browser.AssetsHost))
+	}
 	r.With(middlewares.ContentSecurityPolicy).Handle("/*", spaHandler(web.FileSystem()))
 
 	return r

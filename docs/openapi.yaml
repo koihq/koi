@@ -1968,7 +1968,7 @@ components:
           type: string
     CapabilitiesResponse:
       type: object
-      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey, mcpUrl]
+      required: [competitorSearch, aiDrafting, liveCollection, cloudBilling, logoDevPublishableKey, mcpUrl, analytics]
       properties:
         cloudBilling:
           type: boolean
@@ -1984,6 +1984,29 @@ components:
         logoDevPublishableKey:
           type: string
           description: Logo.dev publishable key for browser image requests; empty when unavailable.
+        analytics:
+          nullable: true
+          description: Product analytics for this instance; null when the instance sends none.
+          allOf:
+            - $ref: "#/components/schemas/BrowserAnalytics"
+    BrowserAnalytics:
+      type: object
+      required: [key, apiHost, uiHost, excludedEmails]
+      properties:
+        key:
+          type: string
+          description: Public PostHog project key.
+        apiHost:
+          type: string
+          description: Same-origin path that forwards events to PostHog.
+        uiHost:
+          type: string
+          description: PostHog app origin, used for links from the toolbar; empty for a custom host.
+        excludedEmails:
+          type: array
+          items:
+            type: string
+          description: Accounts whose browsers send nothing, such as the team's own.
     BillingAllowanceRequest:
       type: object
       required: [prompts]

@@ -61,7 +61,9 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
 	d.store.EXPECT().EnqueueWelcomeEmail(mock.Anything, mock.Anything).Return(nil)
 
-	me, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true}).Signup(t.Context(), SignupParams{
+	analytics := &trackedEvents{}
+
+	me, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true, Analytics: analytics}).Signup(t.Context(), SignupParams{
 		Email:    "You@Example.com",
 		Password: "password-1234",
 	})
@@ -72,19 +74,22 @@ func TestSignup_CreatesUserOrgMembership(t *testing.T) {
 	require.Equal(t, "you@example.com", me.User.Email)
 	require.Equal(t, "you", me.Organization.Name)
 	require.Equal(t, RoleOwner, me.Role)
+	require.Equal(t, []trackedEvent{{me.User.ID, me.Organization.ID, "user_signed_up", nil}}, analytics.events)
 }
 
 func TestSignup_DuplicateEmail(t *testing.T) {
 	d := newAuthDeps(t)
 	d.mockAtomic()
 	d.users.EXPECT().Create(mock.Anything, mock.Anything).Return(ErrEmailTaken)
+	analytics := &trackedEvents{}
 
-	_, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true}).Signup(t.Context(), SignupParams{
+	_, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true, Analytics: analytics}).Signup(t.Context(), SignupParams{
 		Email:    "you@example.com",
 		Password: "password-1234",
 	})
 
 	require.ErrorIs(t, err, ErrEmailTaken)
+	require.Empty(t, analytics.events, "a rolled back sign-up is not counted")
 }
 
 func TestSignup_QueueFailureDoesNotFailSignup(t *testing.T) {

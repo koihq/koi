@@ -154,6 +154,37 @@ type billingFixture struct {
 	organization *domain.Organization
 	user         *domain.User
 	ctx          context.Context
+	analytics    *recordedAnalytics
+}
+
+type recordedEvent struct {
+	userID uuid.UUID
+	name   string
+	props  map[string]any
+}
+
+type recordedAnalytics struct {
+	mu     sync.Mutex
+	events []recordedEvent
+}
+
+func (a *recordedAnalytics) Track(userID, _ uuid.UUID, event string, props map[string]any) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.events = append(a.events, recordedEvent{userID: userID, name: event, props: props})
+}
+
+func (a *recordedAnalytics) names() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	names := make([]string, 0, len(a.events))
+	for _, event := range a.events {
+		names = append(names, event.name)
+	}
+
+	return names
 }
 
 func newBillingFixture(t *testing.T) *billingFixture {
@@ -185,10 +216,12 @@ func newBillingFixture(t *testing.T) *billingFixture {
 		sessions: make(map[string]domain.BillingCheckout),
 	}
 	store := NewStore(db)
+	analytics := &recordedAnalytics{}
 	return &billingFixture{
 		db: db, store: store, repo: repo, gateway: gateway, organization: organization, user: user,
-		commander: domain.NewBillingCommander(store, gateway, "price_test", "https://koi.example"),
+		commander: domain.NewBillingCommander(store, gateway, analytics, "price_test", "https://koi.example"),
 		ctx:       testIdentity(t, store, user.ID),
+		analytics: analytics,
 	}
 }
 
@@ -244,6 +277,13 @@ func TestBillingWebhookIdentityReplayAndEntitlement(t *testing.T) {
 	require.Equal(t, 100, subscription.Quantity)
 	require.NoError(t, f.db.First(f.organization, "id = ?", f.organization.ID).Error)
 	require.NotNil(t, f.organization.TrialUsedAt)
+
+	// Analytics count each committed change once: not the duplicate, not the failed attempts.
+	require.Equal(t, []string{"subscription_activated", "allowance_changed", "allowance_changed"}, f.analytics.names())
+	for _, event := range f.analytics.events {
+		require.Equal(t, f.user.ID, event.userID, "billing is attributed to the owner")
+	}
+	require.Equal(t, int64(4500), f.analytics.events[0].props["amount_cents"])
 }
 
 func TestBillingCheckoutConfirmationWithoutWebhook(t *testing.T) {
@@ -442,6 +482,9 @@ func TestBillingStartPlanEndsTrialAfterPayment(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "started", replayed.Effective)
 	require.Equal(t, 1, f.gateway.endTrialCalls)
+
+	require.Equal(t, []string{"trial_started", "subscription_activated"}, f.analytics.names())
+	require.Equal(t, true, f.analytics.events[1].props["from_trial"])
 }
 
 func TestBillingStartPlanKeepsTrialWhenPaymentFails(t *testing.T) {

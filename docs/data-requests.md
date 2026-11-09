@@ -16,7 +16,7 @@ together with the Privacy Policy and Terms.
 koi admin export-account person@example.com > export.json
 ```
 
-The file holds the account, organization, subscription state, onboarding steps, connected agents,
+The file holds the account, organization, subscription state, connected agents,
 brands, prompts, competitors, drafts, runs and answers. It holds no password hash or token. Send
 it through a channel you trust and delete your copy afterwards.
 
@@ -37,6 +37,10 @@ The command refuses when:
 
 The command prints the Stripe customer when there is one. Delete it in the Stripe dashboard, and
 keep what tax law requires you to keep, such as invoices.
+
+On Koi Cloud, analytics and support conversations live in PostHog under the user's id. For a copy
+or a deletion, find the person in PostHog by that id or email, export or delete them there too,
+including their recordings and conversations. See [analytics](analytics.md).
 
 ## What remains
 
