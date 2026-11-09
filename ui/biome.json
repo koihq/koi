@@ -90,6 +90,18 @@
       "linter": {
         "enabled": false
       }
+    },
+    {
+      "includes": ["site/kit/**"],
+      "linter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
     }
   ]
 }

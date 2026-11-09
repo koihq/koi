@@ -127,3 +127,55 @@ A prompt is in exactly one tab: Tracking, Drafts or Stopped. Each row offers one
 list, chosen from its data rather than by the user: a prompt with saved answers is stopped and
 can be resumed with its history intact; a prompt with no answers is deleted, with a confirmation
 because that cannot be undone. Stopping and resuming need no confirmation.
+
+## Public landing
+
+`ui/site` is the page at `getkoi.co`: a static build that hydrates, so crawlers read its copy as
+HTML and self-hosted binaries never ship it. It uses the app's primitives; prices come from
+`pkg/pricing/catalog.json`. These exceptions apply to the landing only:
+
+- The page is true black and dark only (`:root.dark` in `site.css`), which is deliberately not the
+  product's colour. The product keeps its own greys inside `.site-product`.
+- The hero shows the summary page as a still mock (`ui/site/summary`): the app's own blocks
+  (headline, chart, chart controls, rivals, `DataTable`, `EngineMeterCell`) on data recorded from the
+  seeded Koi brand (`summary-data.json`). It is inert, so it routes, fetches and saves nothing and
+  scrolls past as cheaply as an image. Above 720px it is laid out at 1320px and scaled; below that it
+  takes the phone's width, as the app does. Keep its markup in step with the summary page.
+- The pond (`ui/site/pond`) appears twice: in pricing, one koi per prompt, and as a fixed shoal behind
+  the closing call to action. It is a halftone on black, in staggered rows so hundreds still read as
+  fish, beside a panel it never swims under. Orange means AI named you; nothing else on the page is
+  orange except the mark. It pauses off screen and holds still under reduced motion.
+- Pricing says you pay for prompts, not features. It names no competitor and has no comparison
+  table.
+- The page is 1360px wide (`max-w-340`). The hero is centred: headline, a lead with the four engine
+  marks set inline in place of their names (alt text carries them), then the agent pill.
+- Between the hero and pricing sits one bento (`Bento` in `app.tsx`, rules from Stageshow's
+  `references/bento.md`): its claim is that the founder keeps the agent they already use and Koi tells
+  it what to fix. Rounded tiles on a 16px gap, run-in copy at the top of every tile. The setup
+  scene is the only window with chrome; the fix scene is a bare card; the rest are a collection
+  (engine marks, for the daily re-check), namesake verdicts, a saved answer and, per question, the
+  competitor named instead. Free-check and trial terms live in pricing and the questions, stated
+  exactly: the first check needs no card, the trial does. Stages sit
+  on the copy's gutter. The setup window bleeds off the tile's right and bottom edges; the fix card
+  sits whole inside its tile.
+- The hero headline (`.site-hero`) and section titles are medium weight, not semibold. The summary mock
+  sits in one frame (`.site-app-frame`) with a single lighter edge, because the app's greys alone
+  disappear on true black, and fades out at the bottom where the frame crops it. Headings do not animate in on scroll; only the hero arrives once on first paint.
+- The agent call to action is a pill (`.site-agent-pill`): the agents it works with as overlapping
+  marks (`AgentStack`), beside the button that copies the prompt.
+- Open source is its own short section: one sentence (the Cloud code is on GitHub; self-hosting is
+  free, live answers need your own Cloro account), the repository and the self-hosting guide. It
+  does not repeat prices or the commands; the guide holds them.
+- Engines, agents and competitors appear as their real logos in color (`ui/site/logos.tsx`, sources
+  in `assets/logos/SOURCES.md`). The name stays as the accessible label. The app keeps monochrome
+  `EngineIcon`.
+- `.site-display` and `.site-heading` are larger than the product's type scale.
+- The agent setup and fix scenes are Stageshow scenes in `ui/site/demos`, on the kit vendored in
+  `ui/site/kit`. Each has a phone design and a poster, and plays once when it comes into view.
+- Frequently asked questions are the ones buyers ask (what it is, how answers are collected, engines,
+  trial, cancel, self-hosting), not objections we write ourselves; they also ship as `FAQPage` JSON-LD.
+  Claims about collection follow Cloro's documentation: real browser, logged out, the brand's country.
+- Everything except the pond and the hero chart is readable without JavaScript.
+
+`ui/site/public/SKILL.md` is what the "Start with an agent" prompt points to. Keep its steps in
+line with `skills/koi-setup/SKILL.md`.

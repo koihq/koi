@@ -94,6 +94,31 @@ jobs:
           KOI_IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
         run: bash scripts/deploy-coolify.sh
 
+      - name: Publish landing
+        if: steps.current.outputs.current == 'true' && vars.COOLIFY_SITE_APP_UUID != ''
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: Dockerfile.site
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-site:sha-${{ github.event.workflow_run.head_sha }}
+          build-args: |
+            APP_URL=${{ vars.KOI_SMOKE_URL }}
+
+      - name: Deploy dev landing
+        if: steps.current.outputs.current == 'true' && vars.COOLIFY_SITE_APP_UUID != ''
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_SITE_APP_UUID }}
+          KOI_SMOKE_URL: ${{ vars.KOI_SITE_URL }}
+          KOI_SMOKE_KIND: site
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          KOI_IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
+        run: bash scripts/deploy-coolify.sh
+
   release:
     needs: dev
     if: needs.dev.outputs.current == 'true' && vars.RELEASE_ENABLED == 'true'
@@ -145,6 +170,32 @@ jobs:
           COOLIFY_URL: ${{ vars.COOLIFY_URL }}
           COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
           KOI_SMOKE_URL: ${{ vars.KOI_SMOKE_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          KOI_IMAGE_TAG: ${{ needs.release.outputs.tag }}
+        run: bash scripts/deploy-coolify.sh
+
+      # The landing reads prices from the catalog, so it goes live with the release that bills them.
+      - name: Publish landing
+        if: vars.COOLIFY_SITE_APP_UUID != ''
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: Dockerfile.site
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-site:${{ needs.release.outputs.tag }}
+          build-args: |
+            APP_URL=${{ vars.KOI_SMOKE_URL }}
+
+      - name: Deploy production landing
+        if: vars.COOLIFY_SITE_APP_UUID != ''
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_SITE_APP_UUID }}
+          KOI_SMOKE_URL: ${{ vars.KOI_SITE_URL }}
+          KOI_SMOKE_KIND: site
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}

@@ -1,0 +1,428 @@
+/* Koi's look, mapped from the product's dark tokens. */
+.koi-demo .ss-stage {
+  --ss-font: var(--font-sans);
+  --ss-mono: var(--font-sans);
+  --ss-canvas: var(--background);
+  --ss-surface: var(--surface);
+  --ss-chrome: var(--background);
+  --ss-well: transparent;
+  --ss-raised: var(--popover);
+  --ss-line: var(--border);
+  --ss-line-faint: var(--border);
+  --ss-text-strong: var(--foreground);
+  --ss-text: var(--foreground);
+  --ss-text-faint: var(--muted-foreground);
+  --ss-icon: var(--muted-foreground);
+  --ss-icon-faint: var(--muted-foreground);
+  --ss-accent: var(--foreground);
+  --ss-accent-soft: var(--signal-pill);
+  --ss-success: var(--positive);
+  --ss-radius-sm: 6px;
+  --ss-radius-md: 10px;
+  --ss-radius-lg: 10px;
+  --ss-radius-window: 16px;
+  --ss-shadow-hero: 0 0 0 1px var(--border);
+  --ss-shadow-window: 0 0 0 1px var(--border);
+  --ss-shadow-satellite: 0 0 0 1px var(--border), 0 12px 32px rgb(0 0 0 / 0.22);
+  --ss-shadow-float: 0 0 0 1px var(--border), 0 24px 64px rgb(0 0 0 / 0.32);
+
+  overflow: hidden;
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+/* Shared parts. */
+.koi-demo {
+  .kd-disc {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--signal-pill);
+    color: var(--foreground);
+    font-weight: 600;
+    line-height: 1;
+    text-box: trim-both cap alphabetic;
+  }
+
+  .kd-card {
+    position: absolute;
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .kd-dot {
+    display: inline-block;
+    flex: none;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--border);
+    transition:
+      background-color 220ms ease,
+      box-shadow 220ms ease,
+      opacity 220ms ease;
+  }
+
+  .kd-dot[data-outcome="pending"] {
+    opacity: 0.55;
+  }
+
+  .kd-dot[data-outcome="cited"] {
+    background-color: var(--positive);
+    box-shadow: none;
+  }
+
+  .kd-dot[data-outcome="mentioned"] {
+    background-color: color-mix(in srgb, var(--positive) 26%, transparent);
+    box-shadow: none;
+  }
+
+  .kd-ticks {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .kd-ticks__bar {
+    width: 2px;
+    height: 13px;
+    border-radius: 1px;
+    background: var(--foreground);
+    opacity: 0.16;
+    transition: opacity 300ms ease;
+  }
+
+  .kd-ticks__bar[data-on] {
+    opacity: 1;
+  }
+
+  .kd-ticks__bar[data-gap] {
+    margin-inline-start: 3px;
+  }
+}
+
+.kd-caption {
+  margin-block-start: 8px;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* Fix: the agent at work, and the next check. */
+.kf {
+  /* A bare card, cropped by the tile's bottom edge. */
+  .kf-window {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 520px;
+    height: 264px;
+    overflow: hidden;
+    border-radius: 16px;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .kf-body {
+    display: grid;
+    align-content: start;
+    gap: 18px;
+    height: 100%;
+    padding: 20px;
+    background: var(--surface);
+  }
+
+  .kf-brief {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--signal-pill);
+  }
+
+  .kf-brief__label {
+    color: var(--muted-foreground);
+    font-size: 12px;
+  }
+
+  .kf-brief__q {
+    margin-block-start: 4px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .kf-brief__meta {
+    margin-block-start: 4px;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .kf-steps {
+    display: grid;
+    gap: 12px;
+    padding-inline: 4px;
+  }
+
+  .kf-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    opacity: 0.35;
+    transition: opacity 300ms ease;
+  }
+
+  .kf-step[data-on] {
+    opacity: 1;
+  }
+
+  .kf-next {
+    position: absolute;
+    top: 150px;
+    left: 470px;
+    width: 280px;
+    will-change: transform;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--popover);
+    box-shadow: var(--ss-shadow-satellite);
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+      opacity 500ms ease,
+      transform 800ms var(--ease-out);
+  }
+
+  .kf-next[data-on] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .kf-next__label {
+    color: var(--muted-foreground);
+    font-size: 12px;
+  }
+
+  .kf-next__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-block-start: 8px;
+    font-size: 14px;
+  }
+
+  .ss-stage[data-layout="compact"] {
+    .kf-window {
+      width: 358px;
+      height: 272px;
+    }
+
+    .kf-body {
+      padding: 14px;
+    }
+
+    .kf-step {
+      font-size: 13px;
+    }
+
+    .kf-next {
+      top: 232px;
+      left: 16px;
+      width: 326px;
+    }
+  }
+}
+
+/* Setup: the first check, in the agent's thread. */
+.ku {
+  /* Wider and taller than the stage: the tile's right and bottom edges crop it. */
+  .ku-window {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 880px;
+    height: 470px;
+  }
+
+  .ss-window__body {
+    position: relative;
+  }
+
+  .ku-body {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    height: 100%;
+    /* The window runs 44px past the stage, so the right padding keeps text inside the crop. */
+    padding: 18px 64px 60px 20px;
+    background: var(--surface);
+  }
+
+  .ku-thread {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 14px;
+    min-height: 0;
+    padding-block-end: 16px;
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, transparent, #000 48px);
+  }
+
+  .ku-me {
+    max-width: 84%;
+    margin-inline-start: auto;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: var(--signal-pill);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .ku-steps {
+    display: block;
+  }
+
+  .ku-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-block: 5px;
+    font-size: 14px;
+  }
+
+  .ku-engines {
+    display: inline-flex;
+    gap: 7px;
+    margin-inline-start: 4px;
+  }
+
+  .ku-engine {
+    display: inline-flex;
+    opacity: 0.22;
+    transition: opacity 240ms ease;
+  }
+
+  .ku-engine[data-on] {
+    opacity: 1;
+  }
+
+  .ku-report__q {
+    color: var(--muted-foreground);
+    font-size: 13px;
+  }
+
+  .ku-report__a {
+    display: block;
+    margin-block-start: 4px;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .ku-composer {
+    font-size: 13px;
+  }
+
+  .ku-scrim {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--surface) 62%, transparent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+  }
+
+  .ku-scrim[data-on] {
+    opacity: 1;
+  }
+
+  .ku-signin {
+    --ss-popover-bg: var(--popover);
+    position: absolute;
+    top: 90px;
+    left: 50%;
+    width: 340px;
+    margin-inline-start: -170px;
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .ku-signin__title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .ku-signin__body {
+    margin-block-start: 6px;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.45;
+  }
+
+  .ku-signin__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-block-start: 16px;
+    font-size: 12px;
+  }
+
+  .ku-signin__cancel,
+  .ku-signin__allow {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding-inline: 12px;
+    border-radius: 10px;
+  }
+
+  .ku-signin__cancel {
+    color: var(--muted-foreground);
+  }
+
+  .ku-signin__allow {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    transition: transform 160ms var(--ease-out);
+  }
+
+  .ku-signin__allow[data-pressed] {
+    transform: scale(0.97);
+  }
+
+  .ss-stage[data-layout="compact"] {
+    .ku-window {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 358px;
+      height: 490px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+
+    .ku-body {
+      padding: 14px 14px 56px;
+    }
+
+    .ku-me {
+      max-width: none;
+    }
+
+    .ku-step {
+      font-size: 13px;
+    }
+
+    .ku-engines {
+      display: none;
+    }
+
+    .ku-signin {
+      left: 16px;
+      width: 324px;
+      margin-inline-start: 0;
+    }
+  }
+}

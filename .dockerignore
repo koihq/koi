@@ -10,3 +10,5 @@ ui/.pnpm-store
 pkg/web/dist
 **/*.tsbuildinfo
 
+ui/site/dist
+ui/site/dist-ssr

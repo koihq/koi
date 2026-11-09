@@ -60,6 +60,23 @@ if [[ "$status" != finished ]]; then
   exit 1
 fi
 
+# The landing has no API: it is healthy when its page loads.
+if [[ "${KOI_SMOKE_KIND:-app}" == site ]]; then
+  for attempt in {1..12}; do
+    if curl --fail --silent --show-error --output /dev/null \
+      -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+      -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+      "${KOI_SMOKE_URL%/}/"; then
+      echo "Landing check passed: $KOI_IMAGE_TAG"
+      exit 0
+    fi
+    sleep 5
+  done
+
+  echo "Landing check did not pass" >&2
+  exit 1
+fi
+
 for attempt in {1..12}; do
   if curl --fail --silent --show-error \
     -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \

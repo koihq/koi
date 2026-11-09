@@ -1,0 +1,281 @@
+@import "../src/styles.css";
+
+@source "../src/components/ui";
+@source "../src/components/blocks";
+@source "../src/routes/_authenticated/_app/prompts/-components/run-evidence.tsx";
+@source "../src/routes/_authenticated/_app/-components/engine-meter.tsx";
+@source "../src/routes/_authenticated/_app/-components/prompt-select-checkbox.tsx";
+
+/* The landing is true black and dark only. It is not the product's colour: the product keeps its
+   own greys inside `.site-product`, and lifts off the page because of it. */
+:root.dark {
+  --background: #000;
+  --foreground: #f5f5f6;
+  --surface: #0b0b0d;
+  --surface-foreground: #f5f5f6;
+  --muted-foreground: #92929b;
+  --primary: #f5f5f6;
+  --primary-foreground: #000;
+  --signal-pill: #141417;
+  --border: #232327;
+  --input: #232327;
+}
+
+.site-product {
+  --background: #121316;
+  --foreground: #e4e4e8;
+  --surface: #0c0c10;
+  --surface-foreground: #e4e4e8;
+  --primary: #e6e6eb;
+  --primary-foreground: #111115;
+  --muted-foreground: #a4a4ad;
+  --signal-pill: #1d1e23;
+  --border: #29292f;
+  --input: #29292f;
+}
+
+/* The summary page, framed as a window onto the product. It is laid out at desktop width and
+   scaled. On true black the app's own greys sit too close to the page, so one lighter edge holds
+   it, and the bottom of the page fades out where the frame crops it. */
+.site-app-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--background);
+  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+}
+
+/* The edge is drawn inside, over the page, so the fade takes it away with the rest. */
+.site-app-frame::after {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px #2e2e35;
+  content: "";
+  pointer-events: none;
+}
+
+.site-app-canvas {
+  transform-origin: 0 0;
+}
+
+/* The agent call to action: the agents it works with, overlapped, beside the button that copies the
+   prompt. Each mark is ringed in the pill's colour so the overlap reads as a cut. */
+.site-agent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background: #0b0b0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.site-agent-mark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: #1a1a1e;
+  box-shadow: 0 0 0 2px #0b0b0d;
+}
+
+/* Bento: one frame for every tile, the variety lives inside. Rounded tiles on a 16px gap, a
+   lighter rim like the product bezel, copy always at the top. */
+.site-tile {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: #0a0a0c;
+  box-shadow: inset 0 0 0 1px #1f1f24;
+}
+
+/* Side by side, tiles share a row height; stacked on a phone, each is as tall as its picture. */
+@media (min-width: 48rem) {
+  .site-tile {
+    min-height: 22rem;
+  }
+}
+
+.site-tile-copy {
+  font-size: 1.1875rem;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.site-engine-mark {
+  display: grid;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 1.25rem;
+  background: #131317;
+  box-shadow: inset 0 0 0 1px #24242a;
+}
+
+/* A bento picture starts on the copy's gutter. In a slot wider than its design, the stage stays
+   against that gutter instead of centring, and the tile's right edge stays its crop. */
+.site-tile .ss-fit {
+  margin-inline: 0;
+}
+
+/* A saved answer, cropped by the tile's bottom and right edges. */
+.site-evidence {
+  height: 100%;
+  margin-block-start: 0.25rem;
+  padding: 1.25rem 1.5rem 2rem;
+  border-radius: 1rem 0 0;
+  background: var(--background);
+  box-shadow: inset 1px 1px 0 0 var(--border);
+  color: var(--foreground);
+}
+
+.site-evidence-brand {
+  padding-inline: 0.25rem;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--positive) 22%, transparent);
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.site-source {
+  display: inline-flex;
+  align-items: center;
+  height: 1.625rem;
+  padding-inline: 0.625rem;
+  border-radius: 9999px;
+  background: var(--signal-pill);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+/* Questions: the plus turns into a cross on the open one. State indication, so it eases out. */
+.site-question-icon {
+  transition: transform 200ms var(--ease-out);
+}
+
+.site-question[open] .site-question-icon {
+  transform: rotate(45deg);
+}
+
+.site-question summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* The landing's type roles beyond the product scale. The hero headline is the largest, and still
+   medium weight: the product below it is the picture, the words only introduce it. */
+.site-hero {
+  font-size: clamp(2.375rem, 1.6rem + 3vw, 4rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.site-display {
+  font-size: clamp(2.25rem, 1.5rem + 2.6vw, 3.5rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.site-heading {
+  font-size: clamp(1.75rem, 1.45rem + 1.2vw, 2.375rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.site-lead {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  font-weight: 400;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* The engines in the hero lead: four marks set as one word, centred on the line's x-height. */
+.site-lead-engines {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-inline: 0.125rem;
+  vertical-align: -0.3em;
+}
+
+.site-logo {
+  display: inline-flex;
+  flex: none;
+  vertical-align: middle;
+}
+
+.site-logo [data-theme-art="light"] {
+  display: none;
+}
+
+/* First paint: the hero arrives in reading order. Purpose: explanation, seen once per visit. */
+@keyframes site-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes site-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.js .site-rise {
+  animation: site-rise 700ms var(--ease-out) both;
+  animation-delay: calc(var(--rise, 0) * 60ms);
+}
+
+/* A window does not slide up with the words. It is simply there a beat later. */
+.js .site-fade {
+  animation: site-fade 500ms ease both;
+  animation-delay: calc(var(--rise, 0) * 60ms);
+}
+
+/* The agent button's label: one slot, the old words blur out as the new ones blur in. */
+.site-swap {
+  display: inline-grid;
+}
+
+.site-swap > span {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition:
+    opacity 200ms ease,
+    filter 200ms ease;
+}
+
+.site-swap > span[data-on="false"] {
+  opacity: 0;
+  filter: blur(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js .site-rise {
+    animation-name: site-fade;
+    animation-duration: 300ms;
+  }
+
+  .site-swap > span[data-on="false"] {
+    filter: none;
+  }
+
+  .site-question-icon {
+    transition: none;
+  }
+}

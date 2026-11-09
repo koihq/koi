@@ -42,7 +42,7 @@ Routes and blocks import `@/components/ui/*`. Base UI stays inside those files.
 
 | Need | Use |
 | --- | --- |
-| Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| icon \| icon-xs \| icon-sm \| icon-lg \| circle \| circle-sm \| pill` |
+| Action | `Button` variants `default \| outline \| secondary \| ghost \| destructive \| link`; sizes `xs \| sm \| default \| lg \| cta (landing only) \| icon \| icon-xs \| icon-sm \| icon-lg \| circle \| circle-sm \| pill` |
 | Checkbox | `Checkbox` with checked/indeterminate states; 16px box and 28px hit target |
 | One of a few options | `RadioGroup` / `RadioGroupItem`; 16px circle in neutral `primary`, arrow keys move the choice. A large choice may wrap the item in a bordered label, as in setup |
 | Text field | `Input` + `Field` / `FieldLabel` / `FieldError` / `FieldGroup` |
