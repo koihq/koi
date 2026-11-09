@@ -20,6 +20,7 @@ RUN host="${APP_URL#https://}" && host="${host%/}" \
        fi
 
 FROM nginx:1.30.6-alpine
+LABEL org.opencontainers.image.source="https://github.com/koihq/koi"
 # SKILL.md is read by agents: serve it as text, not as a download.
 RUN sed -i '/^types {/a\    text/markdown md;' /etc/nginx/mime.types
 COPY --from=site /src/ui/site/dist /usr/share/nginx/html
