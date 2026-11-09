@@ -17,6 +17,7 @@ export * from './BrandPatchRequest';
 export * from './BrandRequest';
 export * from './BrandRequestScope';
 export * from './BrandRes';
+export * from './BrowserAnalytics';
 export * from './CapabilitiesResponse';
 export * from './CompetitorAppearance';
 export * from './CompetitorPage';

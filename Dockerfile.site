@@ -9,7 +9,9 @@ RUN npm install --global pnpm@10.32.1 \
     && HUSKY=0 pnpm install --frozen-lockfile
 COPY ui/ ./
 COPY pkg/pricing/catalog.json /src/pkg/pricing/catalog.json
-RUN pnpm site:build
+# Only the production landing passes a PostHog project key; without one the page loads no analytics.
+ARG POSTHOG_KEY=""
+RUN VITE_POSTHOG_KEY="$POSTHOG_KEY" pnpm site:build
 
 # Links, the FAQ and SKILL.md name the production app. Another environment's landing points to its
 # own app instead, so the dev landing never sends anyone to production.
@@ -23,4 +25,5 @@ FROM nginx:1.30.6-alpine
 LABEL org.opencontainers.image.source="https://github.com/koihq/koi"
 # SKILL.md is read by agents: serve it as text, not as a download.
 RUN sed -i '/^types {/a\    text/markdown md;' /etc/nginx/mime.types
+COPY ui/site/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=site /src/ui/site/dist /usr/share/nginx/html

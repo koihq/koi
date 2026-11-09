@@ -14,11 +14,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { formatRate } from "@/lib/format";
 import catalog from "../../pkg/pricing/catalog.json";
 import mark from "./assets/koi-mark-64.png";
-import { agentPrompt, copy, engineNames, links } from "./copy";
+import { agentPrompt, copy, engineNames, engineShortNames, links } from "./copy";
 import { FixDemo } from "./demos/fix-demo";
 import { OutcomeDot } from "./demos/parts";
 import { SetupDemo } from "./demos/setup-demo";
-import { AgentStack, EngineLogo, engineList, GithubLogo } from "./logos";
+import { AgentStack, EngineChip, EngineLogo, engineList, GithubLogo } from "./logos";
 import { Pond } from "./pond/ponds";
 import recorded from "./summary/summary-data.json";
 import { SummaryMock } from "./summary/summary-mock";
@@ -146,8 +146,8 @@ function Actions({ align = "center" }: { align?: "center" | "start" }) {
 }
 
 /**
- * The lead, with the four engines as their marks alone: the colour says which engines at a glance.
- * Each mark's alt text is its name, and the separators are there for screen readers.
+ * The lead, with each engine as its mark and short name. Google's two share the G, so the name says
+ * which one. Each chip's label is the full name, and the separators are there for screen readers.
  */
 function HeroLead() {
   const { lead } = copy.hero;
@@ -158,7 +158,8 @@ function HeroLead() {
       <span className="site-lead-engines">
         {engineList.map((engine, index) => (
           <Fragment key={engine}>
-            <EngineLogo engine={engine} size={22} />
+            <EngineChip engine={engine} />
+            {index < engineList.length - 1 && " "}
             {index < engineList.length - 2 && <span className="sr-only">{", "}</span>}
             {index === engineList.length - 2 && <span className="sr-only">{` ${lead.and} `}</span>}
           </Fragment>
@@ -330,17 +331,29 @@ function Tile({
   );
 }
 
+/**
+ * ChatGPT and Gemini as tiles, and Google's two answer surfaces in one wide card, because they
+ * share the same mark.
+ */
 function EnginesPicture() {
   return (
     <ul
       aria-label={engineList.map((engine) => engineNames[engine]).join(", ")}
       className="mx-auto my-auto grid w-fit grid-cols-2 gap-3 px-6 pb-8"
     >
-      {engineList.map((engine) => (
-        <li key={engine} className="site-engine-mark">
-          <EngineLogo engine={engine} size={36} decorative />
-        </li>
-      ))}
+      <li className="site-engine-mark">
+        <EngineLogo engine="chatgpt" size={36} decorative />
+      </li>
+      <li className="site-engine-mark">
+        <EngineLogo engine="gemini" size={36} decorative />
+      </li>
+      <li className="site-engine-mark site-engine-family col-span-2">
+        <EngineLogo engine="google" size={36} decorative />
+        <span aria-hidden="true" className="grid gap-0.5">
+          <span>{engineShortNames.googleAiMode}</span>
+          <span>{engineShortNames.google}</span>
+        </span>
+      </li>
     </ul>
   );
 }

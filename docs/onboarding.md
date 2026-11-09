@@ -20,26 +20,6 @@ advice. See [billing](billing.md) for the First Look limits.
 
 ## Funnel
 
-Koi Cloud records the first time an organization reaches each step in `onboarding_events`. It stores
-the step name and nothing about the brand or its answers.
-
-```sql
-SELECT step, count(*) AS organizations
-FROM onboarding_events
-GROUP BY step
-ORDER BY organizations DESC;
-```
-
-Time from brand creation to the first real answer:
-
-```sql
-SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY seconds) AS median_seconds
-FROM (
-  SELECT extract(epoch FROM min(results.fetched_at) - brands.created_at) AS seconds
-  FROM brands
-  JOIN visibility_runs AS runs ON runs.brand_id = brands.id AND runs.fast_start
-  JOIN visibility_results AS results ON results.run_id = runs.id
-    AND results.outcome IN ('cited', 'mentioned', 'miss')
-  GROUP BY brands.id
-) AS first_answers;
-```
+Koi Cloud sends each setup step to PostHog as `onboarding_step` with the step name, and nothing
+about the brand or its answers. The funnel and the time to the first answer live on the Growth
+dashboard; see [analytics](analytics.md).

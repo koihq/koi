@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/koihq/koi/pkg/auth"
 	"github.com/koihq/koi/pkg/domain"
 )
 
@@ -424,5 +425,55 @@ func newMCPHandler(shared services, billing *BillingHandler) http.Handler {
 			return BillingStatusToRes(&v), nil
 		})
 	}
+	server.AddReceivingMiddleware(trackMCPToolCalls(shared.events))
+
 	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
+}
+
+// trackMCPToolCalls counts successful tool calls, because founders who work through their agent may
+// never open the app. It sends the tool name and client, never the arguments or the result.
+func trackMCPToolCalls(analytics domain.Analytics) mcp.Middleware {
+	return func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			result, err := next(ctx, method, req)
+			if err != nil || method != "tools/call" {
+				return result, err
+			}
+
+			call, ok := req.(*mcp.CallToolRequest)
+			if !ok || call.Params == nil {
+				return result, err
+			}
+
+			if toolResult, ok := result.(*mcp.CallToolResult); !ok || toolResult.IsError {
+				return result, err
+			}
+
+			identity, ok := auth.FromContext(ctx)
+			if !ok {
+				return result, err
+			}
+
+			analytics.Track(identity.UserID, identity.OrganizationID, "mcp_tool_called", map[string]any{
+				"tool":   call.Params.Name,
+				"client": mcpClientName(call),
+			})
+
+			return result, err
+		}
+	}
+}
+
+func mcpClientName(call *mcp.CallToolRequest) string {
+	session, ok := call.GetSession().(*mcp.ServerSession)
+	if !ok || session == nil {
+		return ""
+	}
+
+	params := session.InitializeParams()
+	if params == nil || params.ClientInfo == nil {
+		return ""
+	}
+
+	return params.ClientInfo.Name
 }

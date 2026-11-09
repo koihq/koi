@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /ingest/
+
+Sitemap: https://getkoi.co/sitemap.xml

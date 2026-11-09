@@ -3,20 +3,7 @@ package domain
 import (
 	"context"
 	"slices"
-
-	"github.com/google/uuid"
 )
-
-// OnboardingEvent records the first time an organization reached a setup step, so the funnel can
-// show where people stop. It holds no content from the brand or its answers.
-type OnboardingEvent struct {
-	BaseEntity
-	OrganizationID uuid.UUID     `json:"-" gorm:"type:uuid;not null;uniqueIndex:idx_onboarding_events_step,priority:1"`
-	Organization   *Organization `json:"-" gorm:"foreignKey:OrganizationID;constraint:OnDelete:CASCADE"`
-	Step           string        `json:"-" gorm:"type:varchar(32);not null;uniqueIndex:idx_onboarding_events_step,priority:2"`
-}
-
-func (OnboardingEvent) TableName() string { return "onboarding_events" }
 
 var onboardingSteps = []string{
 	"choice",
@@ -30,14 +17,14 @@ var onboardingSteps = []string{
 	"agent_handoff",
 }
 
-type OnboardingRepository interface {
-	RecordStep(ctx context.Context, step string) error
-}
-
-func RecordOnboardingStep(ctx context.Context, store Store, step string) error {
+// RecordOnboardingStep sends a setup step to analytics, so the funnel can show where people stop.
+// It sends the step name only, nothing about the brand or its answers.
+func RecordOnboardingStep(ctx context.Context, analytics Analytics, step string) error {
 	if !slices.Contains(onboardingSteps, step) {
 		return Validation(FieldError{Field: "step", Code: FieldInvalid})
 	}
 
-	return store.OnboardingRepo().RecordStep(ctx, step)
+	trackIdentity(ctx, orNop(analytics), "onboarding_step", map[string]any{"step": step})
+
+	return nil
 }

@@ -642,6 +642,74 @@ func (_c *MockBillingRepository_OrganizationForUser_Call) RunAndReturn(run func(
 	return _c
 }
 
+// OwnerUserID provides a mock function for the type MockBillingRepository
+func (_mock *MockBillingRepository) OwnerUserID(context1 context.Context, uUID uuid.UUID) (uuid.UUID, error) {
+	ret := _mock.Called(context1, uUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for OwnerUserID")
+	}
+
+	var r0 uuid.UUID
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (uuid.UUID, error)); ok {
+		return returnFunc(context1, uUID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) uuid.UUID); ok {
+		r0 = returnFunc(context1, uUID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(uuid.UUID)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = returnFunc(context1, uUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBillingRepository_OwnerUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OwnerUserID'
+type MockBillingRepository_OwnerUserID_Call struct {
+	*mock.Call
+}
+
+// OwnerUserID is a helper method to define mock.On call
+//   - context1 context.Context
+//   - uUID uuid.UUID
+func (_e *MockBillingRepository_Expecter) OwnerUserID(context1 interface{}, uUID interface{}) *MockBillingRepository_OwnerUserID_Call {
+	return &MockBillingRepository_OwnerUserID_Call{Call: _e.mock.On("OwnerUserID", context1, uUID)}
+}
+
+func (_c *MockBillingRepository_OwnerUserID_Call) Run(run func(context1 context.Context, uUID uuid.UUID)) *MockBillingRepository_OwnerUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBillingRepository_OwnerUserID_Call) Return(uUID1 uuid.UUID, err error) *MockBillingRepository_OwnerUserID_Call {
+	_c.Call.Return(uUID1, err)
+	return _c
+}
+
+func (_c *MockBillingRepository_OwnerUserID_Call) RunAndReturn(run func(context1 context.Context, uUID uuid.UUID) (uuid.UUID, error)) *MockBillingRepository_OwnerUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PendingChanges provides a mock function for the type MockBillingRepository
 func (_mock *MockBillingRepository) PendingChanges(context1 context.Context, uUID uuid.UUID) ([]BillingChangeRequest, error) {
 	ret := _mock.Called(context1, uUID)
@@ -4367,52 +4435,6 @@ func (_c *MockStore_MembershipRepo_Call) Return(membershipRepository MembershipR
 }
 
 func (_c *MockStore_MembershipRepo_Call) RunAndReturn(run func() MembershipRepository) *MockStore_MembershipRepo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// OnboardingRepo provides a mock function for the type MockStore
-func (_mock *MockStore) OnboardingRepo() OnboardingRepository {
-	ret := _mock.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for OnboardingRepo")
-	}
-
-	var r0 OnboardingRepository
-	if returnFunc, ok := ret.Get(0).(func() OnboardingRepository); ok {
-		r0 = returnFunc()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(OnboardingRepository)
-		}
-	}
-	return r0
-}
-
-// MockStore_OnboardingRepo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OnboardingRepo'
-type MockStore_OnboardingRepo_Call struct {
-	*mock.Call
-}
-
-// OnboardingRepo is a helper method to define mock.On call
-func (_e *MockStore_Expecter) OnboardingRepo() *MockStore_OnboardingRepo_Call {
-	return &MockStore_OnboardingRepo_Call{Call: _e.mock.On("OnboardingRepo")}
-}
-
-func (_c *MockStore_OnboardingRepo_Call) Run(run func()) *MockStore_OnboardingRepo_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockStore_OnboardingRepo_Call) Return(onboardingRepository OnboardingRepository) *MockStore_OnboardingRepo_Call {
-	_c.Call.Return(onboardingRepository)
-	return _c
-}
-
-func (_c *MockStore_OnboardingRepo_Call) RunAndReturn(run func() OnboardingRepository) *MockStore_OnboardingRepo_Call {
 	_c.Call.Return(run)
 	return _c
 }

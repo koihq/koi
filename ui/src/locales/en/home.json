@@ -29,7 +29,8 @@
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
     "signOutError": "Unable to sign out. Try again.",
-    "account": "Account"
+    "account": "Account",
+    "support": "Support"
   },
   "dashboard": {
     "title": "Visibility",

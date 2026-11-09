@@ -21,8 +21,21 @@ export const engineNames = {
   google: "Google AI Overviews",
 } as const;
 
+/** Beside a mark the logo already says whose engine it is, so Google's two keep only the product. */
+export const engineShortNames = {
+  chatgpt: "ChatGPT",
+  gemini: "Gemini",
+  googleAiMode: "AI Mode",
+  google: "AI Overviews",
+} as const;
+
 export const copy = {
   skipLink: "Skip to content",
+  consent: {
+    message: "Koi uses a cookie to see which pages help people get started.",
+    accept: "Allow",
+    reject: "Decline",
+  },
   nav: {
     home: "Koi home",
     pricing: "Pricing",

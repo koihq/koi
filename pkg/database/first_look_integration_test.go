@@ -228,20 +228,6 @@ func TestFirstCheckEmailCountsOnlyRealAnswers(t *testing.T) {
 	require.Equal(t, 1, answers)
 }
 
-func TestOnboardingKeepsOnlyTheFirstVisitToAStep(t *testing.T) {
-	_, store, ctx, brand := liveVisibilityFixture(t, false)
-
-	require.NoError(t, domain.RecordOnboardingStep(ctx, store, "website"))
-	require.NoError(t, domain.RecordOnboardingStep(ctx, store, "website"))
-	require.NoError(t, domain.RecordOnboardingStep(ctx, store, "confirm"))
-	require.Error(t, domain.RecordOnboardingStep(ctx, store, "unknown"))
-
-	var events int64
-	require.NoError(t, store.db.Model(&domain.OnboardingEvent{}).
-		Where("organization_id = ?", brand.OrganizationID).Count(&events).Error)
-	require.Equal(t, int64(2), events)
-}
-
 func TestFirstLookWithoutARealAnswerDoesNotUseUpTheSite(t *testing.T) {
 	db, store, ctx, brand := liveVisibilityFixture(t, true)
 	store.WithCloudMode(true)

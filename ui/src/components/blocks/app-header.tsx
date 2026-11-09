@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAnalytics } from "@/analytics/analyticsProvider";
 import { useApi } from "@/api/apiProvider";
 import type { Brand } from "@/api/brands.api";
 import { BrandSwitcher } from "@/components/blocks/brand-switcher";
@@ -21,6 +22,7 @@ import { capabilitiesOptions, clearAccountCache } from "@/lib/queries";
 /** `focused` keeps someone on their first check: no way off the page but theme and sign out. */
 export function AppHeader({ brand, focused = false }: { brand: Brand; focused?: boolean }) {
   const api = useApi();
+  const analytics = useAnalytics();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { theme, changeTheme } = useTheme();
@@ -33,6 +35,7 @@ export function AppHeader({ brand, focused = false }: { brand: Brand; focused?: 
 
     try {
       await api.auth.logout();
+      analytics.reset();
       await clearAccountCache(queryClient);
       await router.invalidate();
       await router.navigate({ to: "/sign-in" });
@@ -69,6 +72,11 @@ export function AppHeader({ brand, focused = false }: { brand: Brand; focused?: 
             {!focused && capabilities.data?.cloudBilling && (
               <DropdownMenuItem render={<Link to="/settings/billing" />}>
                 {t("billing")}
+              </DropdownMenuItem>
+            )}
+            {analytics.enabled && (
+              <DropdownMenuItem onClick={analytics.openSupport}>
+                {t("header.support")}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => changeTheme(theme === "dark" ? "light" : "dark")}>

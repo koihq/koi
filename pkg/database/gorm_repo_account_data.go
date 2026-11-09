@@ -61,7 +61,6 @@ func (r *GormAccountDataRepository) ExportAccount(ctx context.Context, userID, o
 		{"organization", `SELECT name, created_at, trial_used_at FROM organizations WHERE id = ?`, organizationID},
 		{"subscription", `SELECT status, quantity, current_period_end, trial_end, cancel_at_period_end
 			FROM billing_subscriptions WHERE organization_id = ?`, organizationID},
-		{"onboarding_events", `SELECT step, created_at FROM onboarding_events WHERE organization_id = ?`, organizationID},
 		{"brands", `SELECT name, domain, github_repo, country, description, created_at
 			FROM brands WHERE organization_id = ?`, organizationID},
 		{"prompts", `SELECT brands.name AS brand, t.text, t.source, t.confirmed, t.inactive, t.created_at

@@ -217,6 +217,8 @@ type BillingRepository interface {
 	ReserveChange(context.Context, uuid.UUID, string, int) (*BillingChangeRequest, error)
 	PendingChanges(context.Context, uuid.UUID) ([]BillingChangeRequest, error)
 	SaveChange(context.Context, *BillingChangeRequest) error
+	// OwnerUserID returns the organization's owner, to whom billing analytics are attributed.
+	OwnerUserID(context.Context, uuid.UUID) (uuid.UUID, error)
 }
 
 type BillingCommander interface {

@@ -27,6 +27,7 @@ models/BrandPatchRequest.ts
 models/BrandRequest.ts
 models/BrandRequestScope.ts
 models/BrandRes.ts
+models/BrowserAnalytics.ts
 models/CapabilitiesResponse.ts
 models/CompetitorAppearance.ts
 models/CompetitorPage.ts

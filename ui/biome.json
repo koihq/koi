@@ -41,7 +41,15 @@
       },
       "style": {
         "recommended": true,
-        "noJsxLiterals": "error"
+        "noJsxLiterals": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "posthog-js": "Use useAnalytics() from @/analytics: only posthog.adapter.ts knows the vendor."
+            }
+          }
+        }
       },
       "suspicious": {
         "recommended": true
@@ -69,6 +77,16 @@
         "rules": {
           "suspicious": {
             "noUnknownAtRules": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/analytics/posthog.adapter.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
           }
         }
       }

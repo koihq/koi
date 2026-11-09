@@ -82,8 +82,6 @@ func (f *adminFixture) account(t *testing.T) *domain.Me {
 	_, err = domain.NewCredentialService(f.store).IssueTokens(ctx, me.User.ID, "client-1", "Agent", "koi:read", "https://koi.example/mcp", uuid.Nil)
 	require.NoError(t, err)
 
-	require.NoError(t, domain.RecordOnboardingStep(ctx, f.store, "first_look"))
-
 	sqlDB, err := f.db.DB()
 	require.NoError(t, err)
 
@@ -156,7 +154,7 @@ func TestAdminExportAccount(t *testing.T) {
 
 	require.Contains(t, string(export["user"]), me.User.Email)
 	require.Contains(t, string(export["prompts"]), "Best private tools?")
-	require.Contains(t, string(export["onboarding_events"]), "first_look")
+	require.NotContains(t, export, "onboarding_events")
 	require.Contains(t, string(export["connections"]), "Agent")
 	require.Equal(t, 1, strings.Count(stdout.String(), `"Best private tools?"`), "another account's data stays out")
 
@@ -182,7 +180,7 @@ func TestAdminDeleteAccount(t *testing.T) {
 
 	for _, table := range []string{
 		"users", "organizations", "memberships", "brands", "prompts", "credentials",
-		"onboarding_events", "sessions", "river_job",
+		"sessions", "river_job",
 	} {
 		require.Zero(t, f.count(t, table), table)
 	}

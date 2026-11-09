@@ -34,12 +34,19 @@ type visibilityProvider interface {
 // mentionJudgeTimeout bounds one judgment; the answer is saved by name match when it runs out.
 const mentionJudgeTimeout = 20 * time.Second
 
+// visibilityRunOwners finds who to attribute a finished run to in analytics.
+type visibilityRunOwners interface {
+	VisibilityRunOwner(context.Context, uuid.UUID) (uuid.UUID, uuid.UUID, int, error)
+}
+
 type visibilityWorker struct {
 	river.WorkerDefaults[database.VisibilityJobArgs]
 	store     visibilityStore
 	provider  visibilityProvider
 	judge     domain.MentionJudge
 	syncSlots chan struct{}
+	analytics domain.Analytics
+	owners    visibilityRunOwners
 }
 
 func (w *visibilityWorker) Timeout(*river.Job[database.VisibilityJobArgs]) time.Duration {
@@ -168,7 +175,28 @@ func (w *visibilityWorker) Work(ctx context.Context, job *river.Job[database.Vis
 		return w.fail(ctx, job, err)
 	}
 
+	w.trackFinished(ctx, run)
+
 	return nil
+}
+
+// trackFinished counts a run that ended with answers. A lost event never retries the job.
+func (w *visibilityWorker) trackFinished(ctx context.Context, run *domain.VisibilityRun) {
+	if w.analytics == nil || w.owners == nil {
+		return
+	}
+
+	ownerID, organizationID, answers, err := w.owners.VisibilityRunOwner(ctx, run.ID)
+	if err != nil {
+		slog.Warn("run analytics skipped", "run_id", run.ID, "err", err)
+
+		return
+	}
+
+	w.analytics.Track(ownerID, organizationID, "visibility_run_completed", map[string]any{
+		"answers":    answers,
+		"first_look": run.FastStart,
+	})
 }
 
 func (w *visibilityWorker) workSync(ctx context.Context, job *river.Job[database.VisibilityJobArgs], run *domain.VisibilityRun, cells []domain.VisibilityResult) error {
@@ -176,6 +204,8 @@ func (w *visibilityWorker) workSync(ctx context.Context, job *river.Job[database
 		if err := w.store.FinishVisibilityAttempt(ctx, run.ID, job.Attempt); err != nil {
 			return err
 		}
+
+		w.trackFinished(ctx, run)
 
 		// The check is already saved, and the page shows it, so a lost email must not retry the job.
 		if err := w.store.EnqueueFirstCheckEmail(ctx, run.ID); err != nil {
