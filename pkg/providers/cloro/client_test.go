@@ -48,9 +48,9 @@ func TestAsyncContracts(t *testing.T) {
 						require.Len(t, request.Payload, 4)
 					} else {
 						wantType := map[domain.EngineID]string{
-							domain.EngineChatGPT:    "CHATGPT",
-							domain.EnginePerplexity: "PERPLEXITY",
-							domain.EngineGemini:     "GEMINI",
+							domain.EngineChatGPT:      "CHATGPT",
+							domain.EngineGoogleAIMode: "AIMODE",
+							domain.EngineGemini:       "GEMINI",
 						}[engine]
 						require.Equal(t, wantType, request.TaskType)
 						require.Equal(t, cell.PromptText, request.Payload["prompt"])
@@ -110,7 +110,12 @@ func TestSyncContracts(t *testing.T) {
 					fmt.Fprint(w, `{"success":true,"result":{"aioverview":{"text":"Koi","sources":[]}}}`)
 					return
 				}
-				require.Equal(t, "/v1/monitor/"+string(engine), r.URL.Path)
+				wantPath := map[domain.EngineID]string{
+					domain.EngineChatGPT:      "/v1/monitor/chatgpt",
+					domain.EngineGemini:       "/v1/monitor/gemini",
+					domain.EngineGoogleAIMode: "/v1/monitor/aimode",
+				}[engine]
+				require.Equal(t, wantPath, r.URL.Path)
 				require.Equal(t, "Best tools?", body["prompt"])
 				fmt.Fprint(w, `{"success":true,"result":{"text":"Koi","sources":[]}}`)
 			}))
@@ -208,7 +213,7 @@ func TestEngineOutageIsNotAnInvalidRequest(t *testing.T) {
 
 	_, err := client.Fetch(t.Context(), domain.VisibilityResult{
 		PromptText: "Best tools?",
-		Engine:     domain.EnginePerplexity,
+		Engine:     domain.EngineGoogleAIMode,
 	}, "US")
 
 	var failure *Error

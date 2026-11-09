@@ -1,6 +1,6 @@
 # Koi
 
-Developer- and agent-first AEO tool. When buyers ask ChatGPT, Perplexity, Gemini, or Google AI Overviews about your category, it shows whether you are mentioned or cited, who is recommended instead, and a markdown brief your existing agent can execute.
+Developer- and agent-first AEO tool. When buyers ask ChatGPT, Gemini, Google AI Mode, or Google AI Overviews about your category, it shows whether you are mentioned or cited, who is recommended instead, and a markdown brief your existing agent can execute.
 
 See [ROADMAP.md](ROADMAP.md) for MVP slices.
 
@@ -66,9 +66,9 @@ Use the existing brand selector to switch between these US-market examples:
 
 | Brand | Dataset |
 | --- | --- |
-| Koi · Storico | 180 daily collections, 32 current prompts, 2 historical-only prompts, 6 competitors |
-| Koi · Vuoto | Brand profile only; no prompts, competitors, or collections |
-| Koi · Prima raccolta | 5 confirmed prompts, 4 competitors, one completed collection today (20 answers) |
+| Koi · History | 180 daily collections, 32 current prompts, 2 historical-only prompts, 6 competitors |
+| Koi · Empty | Brand profile only; no prompts, competitors, or collections |
+| Koi · First check | 5 confirmed prompts, 4 competitors, one completed collection today (20 answers) |
 
 The populated example includes 26 active confirmed prompts, 3 inactive prompts,
 and 3 unconfirmed drafts. Inactive and deleted prompts have answers only in the

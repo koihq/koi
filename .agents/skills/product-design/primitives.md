@@ -34,7 +34,7 @@ Type roles are tokens in `styles.css` `@theme`. Never write `text-[13px]`-style 
 | Control / label | primitive default (`text-xs/relaxed`, `FieldLabel`) |
 | Changing digits | `tabular-nums` |
 
-Icons: Hugeicons only (`components.json` `iconLibrary`). No mixed sets. No icons in colored tiles.
+Icons: Hugeicons only (`components.json` `iconLibrary`), except engine marks in `EngineIcon`. No mixed sets. No icons in colored tiles.
 
 ## shadcn inventory
 
@@ -65,7 +65,7 @@ Shared product blocks and utilities:
 | Interactive list table | `DataTable interactive`: no rules, one rounded `signal-pill` fill per row on hover, focus and selection; siblings recede to 0.55 |
 | Row list (mobile, run history, rivals) | `ul.list-rows` with row buttons using `hover:bg-signal-pill`; same sibling fade |
 | Floating surface (bulk bar, hover previews, metric tooltip) | `surface-float` utility; never re-type the glass recipe |
-| Engine identity | `EngineIcon` (monochrome Hugeicons). Never draw engines with favicons |
+| Engine identity | `EngineIcon`: monochrome Simple Icons marks in `currentColor`. Both Google engines share the G, so name them in a label or tooltip. Never draw engines with favicons or hand-drawn glyphs |
 | Engine outcome | `OutcomeMark` (filled = cited, tinted = mentioned, outlined = not in answer) with `OutcomeLegend` |
 | Dates, rates, deltas | `lib/format.ts`: `formatDay`, `formatDateTime`, `formatDayRange`, `formatRate`, `formatPoints` ("−16.0 pp") |
 | Chart period and engine filter | `RangeControl`, `EngineFilter` (`chart-controls`): one row beside the chart title, on every chart |

@@ -21,9 +21,9 @@ var scenarios = []struct {
 	name string
 	days int
 }{
-	{"history", "Koi · Storico", 180},
-	{"empty", "Koi · Vuoto", 0},
-	{"first", "Koi · Prima raccolta", 1},
+	{"history", "Koi · History", 180},
+	{"empty", "Koi · Empty", 0},
+	{"first", "Koi · First check", 1},
 }
 
 func demoID(key string) uuid.UUID {

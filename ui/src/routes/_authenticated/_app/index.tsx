@@ -172,6 +172,7 @@ function Dashboard() {
       : null
     : change;
   const headlineChange = rawChange === null ? null : Number(rawChange.toFixed(1));
+  const trend = !headlineChange ? "Same" : headlineChange > 0 ? "Up" : "Down";
   const previousRate = selectedPoint
     ? inspected !== null && inspected > 0
       ? series[inspected - 1].rate
@@ -358,10 +359,16 @@ function Dashboard() {
                                   : "dashboard.metricNoPreviousPeriod",
                               )
                             : t(
-                                selectedPoint
-                                  ? "dashboard.metricPreviousDay"
-                                  : "dashboard.metricPreviousPeriod",
-                                { rate: previousRate.toFixed(1), days: graph.days },
+                                `dashboard.metricPrevious${selectedPoint ? "Day" : "Period"}${trend}`,
+                                {
+                                  rate: previousRate.toFixed(1),
+                                  // "Up" or "Down" already carries the sign.
+                                  points: formatPoints(headlineChange ?? 0, i18n.language).replace(
+                                    /^[+−]/,
+                                    "",
+                                  ),
+                                  days: graph.days,
+                                },
                               )}
                         </p>
                         <p className="text-muted-foreground">{t("dashboard.metricSavedAnswers")}</p>

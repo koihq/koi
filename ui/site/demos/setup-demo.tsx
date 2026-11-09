@@ -33,7 +33,7 @@ const STEPS = [
 ];
 
 const REPORT =
-  "ChatGPT and Perplexity name Profound and Peec AI, not you. ChatGPT cites tryprofound.com. Want a brief with the changes for this repo?";
+  "ChatGPT and Google AI Mode name Profound and Peec AI, not you. ChatGPT cites tryprofound.com. Want a brief with the changes for this repo?";
 const WORDS = REPORT.split(" ").length;
 
 const REST = { wide: { x: 700, y: 330 }, compact: { x: 310, y: 300 } };

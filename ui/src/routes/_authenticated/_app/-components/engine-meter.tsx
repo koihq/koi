@@ -10,8 +10,8 @@ const ticks = Array.from({ length: TICKS }, (_, index) => index);
 
 const shortNames: Record<VisibilityEngine, string> = {
   chatgpt: "ChatGPT",
-  perplexity: "Perplexity",
   gemini: "Gemini",
+  google_ai_mode: "AI Mode",
   google_ai_overviews: "AI Overviews",
 };
 

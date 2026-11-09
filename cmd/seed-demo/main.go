@@ -30,7 +30,7 @@ func main() {
 	}
 
 	fmt.Printf("Demo ready: http://localhost:5173\nEmail: %s\nPassword: %s\n", demoseed.Email, demoseed.Password)
-	fmt.Println("Brands (US): Koi · Storico, Koi · Vuoto, Koi · Prima raccolta")
+	fmt.Println("Brands (US): Koi · History, Koi · Empty, Koi · First check")
 	fmt.Println("Answers and metrics are simulated. No providers were contacted or jobs queued.")
 	fmt.Println("Existing scenarios are preserved; make seed-demo-reset refreshes the demo dates.")
 }

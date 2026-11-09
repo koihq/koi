@@ -58,7 +58,7 @@ func firstCheckContent(publicURL, brand string) (string, string) {
 	safeBrand := html.EscapeString(brand)
 
 	text := "Your first check for " + brand + " is ready.\n\n" +
-		"We asked ChatGPT, Perplexity, Gemini and Google AI Overviews. See what they said: " + appURL + "\n\n" +
+		"We asked ChatGPT, Gemini, Google AI Mode and Google AI Overviews. See what they said: " + appURL + "\n\n" +
 		"The Koi team"
 	markup := `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
 		`<meta name="viewport" content="width=device-width,initial-scale=1">` +
@@ -66,7 +66,7 @@ func firstCheckContent(publicURL, brand string) (string, string) {
 		`<body style="margin:0;padding:32px 24px;background:#f7f7f5;color:#171717;font-family:Arial,Helvetica,sans-serif">` +
 		`<p style="margin:0 0 12px;font-size:20px;font-weight:600">Your first check for ` + safeBrand + ` is ready.</p>` +
 		`<p style="margin:0 0 28px;font-size:14px;line-height:1.6;color:#656565">` +
-		`We asked ChatGPT, Perplexity, Gemini and Google AI Overviews.</p>` +
+		`We asked ChatGPT, Gemini, Google AI Mode and Google AI Overviews.</p>` +
 		`<a href="` + html.EscapeString(appURL) + `" style="display:inline-block;background:#171717;color:#ffffff;` +
 		`text-decoration:none;font-size:14px;font-weight:600;padding:13px 20px;border-radius:6px">See what they said</a>` +
 		`<p style="margin:28px 0 0;font-size:14px;color:#656565">The Koi team</p></body></html>`

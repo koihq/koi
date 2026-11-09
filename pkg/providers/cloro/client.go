@@ -77,10 +77,10 @@ func request(cell domain.VisibilityResult, country string) (string, map[string]a
 	case domain.EngineChatGPT:
 		path = "/v1/monitor/chatgpt"
 		payload["disableWebSearch"] = false
-	case domain.EnginePerplexity:
-		path = "/v1/monitor/perplexity"
 	case domain.EngineGemini:
 		path = "/v1/monitor/gemini"
+	case domain.EngineGoogleAIMode:
+		path = "/v1/monitor/aimode"
 	case domain.EngineGoogleAIOverviews:
 		path = "/v1/monitor/google"
 		payload = map[string]any{

@@ -12,13 +12,13 @@ type EngineID string
 
 const (
 	EngineChatGPT           EngineID = "chatgpt"
-	EnginePerplexity        EngineID = "perplexity"
 	EngineGemini            EngineID = "gemini"
+	EngineGoogleAIMode      EngineID = "google_ai_mode"
 	EngineGoogleAIOverviews EngineID = "google_ai_overviews"
 )
 
 func VisibilityEngines() []EngineID {
-	return []EngineID{EngineChatGPT, EnginePerplexity, EngineGemini, EngineGoogleAIOverviews}
+	return []EngineID{EngineChatGPT, EngineGemini, EngineGoogleAIMode, EngineGoogleAIOverviews}
 }
 
 type CollectorID string

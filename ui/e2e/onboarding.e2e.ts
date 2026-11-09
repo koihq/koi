@@ -22,7 +22,7 @@ const page1 = <T>(items: T[]) => ({
 const run = (completedResults: number, state = "running") => ({
   id: "run_1",
   brandId: brand.id,
-  engines: ["chatgpt", "perplexity", "gemini", "google_ai_overviews"],
+  engines: ["chatgpt", "gemini", "google_ai_mode", "google_ai_overviews"],
   state,
   totalResults: 20,
   completedResults,
@@ -53,7 +53,7 @@ const answers = [
   result("chatgpt", "miss", [
     { competitorId: null, name: "Stripe", confirmed: false, evidence: [] },
   ]),
-  result("perplexity", "mentioned"),
+  result("google_ai_mode", "mentioned"),
   result("gemini", null),
 ];
 
@@ -317,7 +317,7 @@ test("takes a person from the choice to a real answer before any payment", async
   // Choosing another engine shows its answer without moving the headline.
   await page
     .locator("fieldset")
-    .getByRole("button", { name: /Perplexity/ })
+    .getByRole("button", { name: /Google AI Mode/ })
     .click();
   await expect(
     page.getByRole("heading", { name: "ChatGPT recommends Stripe instead of Acme Pay" }),

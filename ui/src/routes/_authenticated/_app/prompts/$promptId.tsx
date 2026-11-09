@@ -64,8 +64,8 @@ const detailSearchParams = {
   runId: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   responseEngine: parseAsStringLiteral([
     "chatgpt",
-    "perplexity",
     "gemini",
+    "google_ai_mode",
     "google_ai_overviews",
   ] as const).withDefault("chatgpt"),
 };

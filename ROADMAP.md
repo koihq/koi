@@ -1,6 +1,6 @@
 # Koi roadmap
 
-Koi is a developer- and agent-first AEO tool. When buyers ask ChatGPT, Perplexity, Gemini, or Google AI Overviews about your category, it shows whether you are mentioned or cited, **who is recommended instead**, which URL is winning, and a markdown brief your existing agent can execute — then it remeasures.
+Koi is a developer- and agent-first AEO tool. When buyers ask ChatGPT, Gemini, Google AI Mode, or Google AI Overviews about your category, it shows whether you are mentioned or cited, **who is recommended instead**, which URL is winning, and a markdown brief your existing agent can execute — then it remeasures.
 
 Time-to-value is the first visibility run, not a week of empty charts. Daily tracking exists so the loop stays closed.
 
@@ -18,7 +18,7 @@ onboard → generate prompts + competitors → first run → inspect who-shows-u
 - **No composite score.** Per cell: `cited` > `mentioned` > `miss` (plus `error`). Brand name in the answer; brand domain/URL in sources. Same scoring for each confirmed competitor. Raw answer + citation URLs are the record.
 - **No writer.** Koi tells you what to fix. Your agent edits your repo. Koi does not open PRs or ship the page.
 - **Dual surface.** Every v1 job exists in the browser and via CLI/MCP, on the same objects. Neither is a sidecar.
-- **Engines included.** ChatGPT, Perplexity, Gemini, Google AI Overviews on every SKU. No engine add-on product. Claude stays out of operator-paid collect.
+- **Engines included.** ChatGPT, Gemini, Google AI Mode, Google AI Overviews on every SKU. No engine add-on product. Claude stays out of operator-paid collect.
 - **Human confirms before spend.** Generated prompts and competitors are curated before the first collect. Observed competitors from a run are suggestions until confirmed.
 - **One brand, founder copy.** No client packs, demo-call onboarding, or agency dashboards.
 
@@ -35,7 +35,7 @@ Onboarding and the first prompt × engine run. Includes competitor identificatio
   - ~10–15 buyer prompts: category, alternatives-to, comparison, use-case — not only vanity branded queries
   - ~5–8 likely competitors: `name`, `domain`
 - [ ] Human review of both lists (accept / edit / drop / add) before any collect
-- [ ] Live visibility collection through Cloro for ChatGPT, Perplexity, Gemini, and Google AI Overviews. OpenRouter handles onboarding research and drafting.
+- [ ] Live visibility collection through Cloro for ChatGPT, Gemini, Google AI Mode, and Google AI Overviews. OpenRouter handles onboarding research and drafting.
 - [ ] First run: persist prompt, engine, fetched_at, outcome, raw answer, sources, mentioned/cited entities
 - [ ] Who-shows-up: attach rows to confirmed competitors; repeating unknowns become suggestions, not silent adds
 - [ ] UI: live progress, per-engine breakdown, filters, answer detail, competitor panel

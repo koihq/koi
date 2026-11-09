@@ -38,8 +38,8 @@
   "close": "Close answer",
   "engines": {
     "chatgpt": "ChatGPT",
-    "perplexity": "Perplexity",
     "gemini": "Gemini",
+    "google_ai_mode": "Google AI Mode",
     "google_ai_overviews": "Google AI Overviews"
   },
   "outcomes": {

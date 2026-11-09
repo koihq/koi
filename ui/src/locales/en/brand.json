@@ -2,7 +2,7 @@
   "setup": {
     "title": "Let's find out what AI says about you.",
     "koiOption": "Show me here",
-    "koiOptionDescription": "Tell us your website. We'll ask ChatGPT, Perplexity, Gemini and Google for you. One free check, no card needed.",
+    "koiOptionDescription": "Tell us your website. We'll ask ChatGPT, Gemini and Google for you. One free check, no card needed.",
     "agentOption": "Let my agent handle it",
     "agentOptionDescription": "It can read your project. Paste one prompt and go make a coffee.",
     "back": "Back",
