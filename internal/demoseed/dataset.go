@@ -52,7 +52,7 @@ type promptSpec struct {
 var prompts = []promptSpec{
 	{"What are the best tools to track whether ChatGPT recommends my SaaS?", 0},
 	{"Which AEO tools help a bootstrapped founder understand AI search visibility?", 1},
-	{"How can I compare my brand's citations across Perplexity, Gemini, and ChatGPT?", 2},
+	{"How can I compare my brand's citations across ChatGPT, Gemini, and Google AI Mode?", 2},
 	{"Are there self-hosted alternatives to managed AI visibility platforms?", 3},
 	{"How do Koi, Profound, Peec AI, and OtterlyAI approach AI visibility tracking?", 4},
 	{"Which tools distinguish a brand mention from a citation in an AI answer?", 2},
@@ -68,7 +68,7 @@ var prompts = []promptSpec{
 	{"How can I inspect the sources behind an AI recommendation?", 2},
 	{"What are the tradeoffs between self-hosted and managed AEO software?", 3},
 	{"How can an existing coding agent use AI visibility research?", 5},
-	{"Why might my brand appear in Perplexity but not in ChatGPT?", 6},
+	{"Why might my brand appear in Google AI Mode but not in ChatGPT?", 6},
 	{"How should I interpret a visibility drop when some AI requests failed?", 7},
 	{"Which AEO workflows are practical for founders without a marketing team?", 1},
 	{"How do I compare AI visibility this month with the previous month?", 7},
@@ -85,7 +85,7 @@ var prompts = []promptSpec{
 }
 
 var topicNotes = []string{
-	"Track a consistent set of category questions across ChatGPT, Perplexity, Gemini, and Google AI Overviews. Keep the full answer and its source links so you can inspect why a brand was included.",
+	"Track a consistent set of category questions across ChatGPT, Gemini, Google AI Mode, and Google AI Overviews. Keep the full answer and its source links so you can inspect why a brand was included.",
 	"Start with the questions a prospective customer asks before choosing a product. A small founder-led team can review missing recommendations, inspect competing answers, and choose one concrete documentation improvement per week.",
 	"A mention means the brand is named in the answer. A citation means a source URL points to the brand's website or repository. Keep those signals separate: an answer can discuss a product without linking to it, or cite a source without naming it in the prose.",
 	"Self-hosting gives the operator control over the application's database and deployment. It still requires an external collection provider for live engine answers. Compare operating effort, data ownership, and integration needs before choosing a managed service.",

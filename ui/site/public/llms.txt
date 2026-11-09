@@ -1,6 +1,6 @@
 # Koi
 
-> Open source AEO tool. Koi asks ChatGPT, Perplexity, Gemini and Google AI Overviews what a product's buyers ask, every day, and shows whether the product is cited or mentioned, who is recommended instead, and a markdown brief the founder's agent can act on.
+> Open source AEO tool. Koi asks ChatGPT, Gemini, Google AI Mode and Google AI Overviews what a product's buyers ask, every day, and shows whether the product is cited or mentioned, who is recommended instead, and a markdown brief the founder's agent can act on.
 
 - License: MIT
 - Pricing: per tracked prompt, from €29 a month for 15 prompts to €449 a month for 500. Tax included. Every engine and feature is included.

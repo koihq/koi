@@ -5,7 +5,7 @@ description: Set up Koi for the user's product and report who AI answer engines 
 
 # Set up Koi
 
-Koi asks ChatGPT, Perplexity, Gemini and Google AI Overviews the questions a product's buyers ask,
+Koi asks ChatGPT, Gemini, Google AI Mode and Google AI Overviews the questions a product's buyers ask,
 then shows whether the product is cited or mentioned and who is named instead. It is open source:
 https://github.com/koihq/koi
 

@@ -14,7 +14,7 @@ import "./demos.css";
 const TEXT = {
   brief: "AI answer evidence",
   question: "Open source alternative to Profound",
-  meta: "Perplexity, not in answer, Profound and Peec AI cited",
+  meta: "Google AI Mode, not in answer, Profound and Peec AI cited",
   next: "Next daily check",
   miss: "Not in answer",
   cited: "Koi cited",
@@ -89,7 +89,7 @@ export function FixDemo() {
           <div className="kf-next" data-on={s.next || undefined}>
             <div className="kf-next__label">{TEXT.next}</div>
             <div className="kf-next__row">
-              <EngineLogo engine="perplexity" size={18} decorative />
+              <EngineLogo engine="googleAiMode" size={18} decorative />
               <OutcomeDot outcome={s.cited ? "cited" : "miss"} size={14} />
               <States
                 value={s.cited ? "cited" : "miss"}

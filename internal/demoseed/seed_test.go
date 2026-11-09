@@ -122,10 +122,10 @@ func TestRunScenarios(t *testing.T) {
 			}
 		}
 
-		_, report, err := store.VisibilityRepo().AggregateVisibility(ctx, demoID("history"), nil, 30, []domain.EngineID{domain.EnginePerplexity}, now)
+		_, report, err := store.VisibilityRepo().AggregateVisibility(ctx, demoID("history"), nil, 30, []domain.EngineID{domain.EngineGoogleAIMode}, now)
 		require.NoError(t, err)
 		require.Len(t, report.Engines, 1)
-		require.Contains(t, report.Engines, domain.EnginePerplexity)
+		require.Contains(t, report.Engines, domain.EngineGoogleAIMode)
 	})
 
 	t.Run("empty", func(t *testing.T) {
@@ -239,7 +239,7 @@ func TestRunScenarios(t *testing.T) {
 		require.NoError(t, Run(t.Context(), db, now.AddDate(0, 0, 2), true))
 		brand, err = store.BrandRepo().Get(ctx, demoID("history"))
 		require.NoError(t, err)
-		require.Equal(t, "Koi · Storico", brand.Name)
+		require.Equal(t, "Koi · History", brand.Name)
 		run, err := store.VisibilityRepo().Get(ctx, demoID("first/run/0"))
 		require.NoError(t, err)
 		require.Equal(t, now.AddDate(0, 0, 2), run.FinishedAt.UTC())

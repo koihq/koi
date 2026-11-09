@@ -2,8 +2,8 @@ import type { VisibilityEngine, VisibilityReport } from "@/api/generated";
 
 export const engines: { id: VisibilityEngine; name: string; domain: string }[] = [
   { id: "chatgpt", name: "ChatGPT", domain: "chatgpt.com" },
-  { id: "perplexity", name: "Perplexity", domain: "perplexity.ai" },
   { id: "gemini", name: "Gemini", domain: "gemini.google.com" },
+  { id: "google_ai_mode", name: "Google AI Mode", domain: "google.com" },
   { id: "google_ai_overviews", name: "Google AI Overviews", domain: "google.com" },
 ];
 

@@ -47,10 +47,14 @@ describe("first look verdict", () => {
   it("leads with the competitor recommended instead of the brand", () => {
     const verdict = verdictOf([
       answer({ outcome: "cited", engine: "chatgpt" }),
-      answer({ outcome: "miss", engine: "perplexity", appearances: [rival] }),
+      answer({ outcome: "miss", engine: "google_ai_mode", appearances: [rival] }),
     ]);
 
-    expect(verdict).toMatchObject({ kind: "rival", engine: "perplexity", competitor: "Stripe" });
+    expect(verdict).toMatchObject({
+      kind: "rival",
+      engine: "google_ai_mode",
+      competitor: "Stripe",
+    });
   });
 
   it("does not claim a win over a rival when the brand also appeared", () => {

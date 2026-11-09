@@ -1493,7 +1493,7 @@ components:
           type: string
     VisibilityEngine:
       type: string
-      enum: [chatgpt, perplexity, gemini, google_ai_overviews]
+      enum: [chatgpt, gemini, google_ai_mode, google_ai_overviews]
     VisibilityResult:
       type: object
       required: [id, runId, promptId, promptText, promptPosition, engine, collector, fetchedAt, outcome, rawAnswer, sources, errorCode, appearances, mentionVerdict]

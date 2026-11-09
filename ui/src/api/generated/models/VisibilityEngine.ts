@@ -20,8 +20,8 @@
  */
 export const VisibilityEngine = {
     CHATGPT: 'chatgpt',
-    PERPLEXITY: 'perplexity',
     GEMINI: 'gemini',
+    GOOGLE_AI_MODE: 'google_ai_mode',
     GOOGLE_AI_OVERVIEWS: 'google_ai_overviews'
 } as const;
 export type VisibilityEngine = typeof VisibilityEngine[keyof typeof VisibilityEngine];

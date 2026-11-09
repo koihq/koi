@@ -54,7 +54,7 @@ async function mockWorkspace(page: Page, rates: (number | null)[] = [50, 50], co
   const run = {
     id: "run",
     brandId: brand.id,
-    engines: ["chatgpt", "gemini", "perplexity"],
+    engines: ["chatgpt", "gemini", "google_ai_mode"],
     state: "running",
     totalResults: 3,
     completedResults: 0,

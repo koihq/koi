@@ -16,8 +16,8 @@ export const agentPrompt =
 
 export const engineNames = {
   chatgpt: "ChatGPT",
-  perplexity: "Perplexity",
   gemini: "Gemini",
+  googleAiMode: "Google AI Mode",
   google: "Google AI Overviews",
 } as const;
 
@@ -129,7 +129,7 @@ export const copy = {
     items: [
       {
         q: "What is Koi?",
-        a: "Koi asks ChatGPT, Perplexity, Gemini and Google AI Overviews the questions your buyers ask, every day. It shows whether you are named, who is named instead and the pages behind each answer, then hands your coding agent a brief to fix it.",
+        a: "Koi asks ChatGPT, Gemini, Google AI Mode and Google AI Overviews the questions your buyers ask, every day. It shows whether you are named, who is named instead and the pages behind each answer, then hands your coding agent a brief to fix it.",
       },
       {
         q: "What is AEO, and how is it different from SEO?",
@@ -145,7 +145,7 @@ export const copy = {
       },
       {
         q: "Which AI engines does Koi track?",
-        a: "ChatGPT, Perplexity, Gemini and Google AI Overviews, on every plan.",
+        a: "ChatGPT, Gemini, Google AI Mode and Google AI Overviews, on every plan.",
       },
       {
         q: "How is visibility measured?",

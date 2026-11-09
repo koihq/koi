@@ -6,17 +6,16 @@ import gemini from "./assets/logos/gemini.svg";
 import github from "./assets/logos/github.svg";
 import githubDark from "./assets/logos/github-dark.svg";
 import google from "./assets/logos/google.svg";
-import perplexity from "./assets/logos/perplexity.svg";
 import { engineNames } from "./copy";
 
 export type Engine = keyof typeof engineNames;
 
-export const engineList: Engine[] = ["chatgpt", "perplexity", "gemini", "google"];
+export const engineList: Engine[] = ["chatgpt", "gemini", "googleAiMode", "google"];
 
 const engineArt: Record<Engine, { light: string; dark?: string }> = {
   chatgpt: { light: chatgpt, dark: chatgptDark },
-  perplexity: { light: perplexity },
   gemini: { light: gemini },
+  googleAiMode: { light: google },
   google: { light: google },
 };
 

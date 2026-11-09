@@ -135,7 +135,12 @@
         "mentioned": 159,
         "rate": 59.09090909090909
       },
-      "perplexity": { "completed": 770, "cited": 257, "mentioned": 129, "rate": 50.12987012987013 }
+      "google_ai_mode": {
+        "completed": 770,
+        "cited": 257,
+        "mentioned": 129,
+        "rate": 50.12987012987013
+      }
     },
     "competitors": [
       {
@@ -197,7 +202,7 @@
           "chatgpt": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
           "gemini": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
           "google_ai_overviews": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
-          "perplexity": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 }
+          "google_ai_mode": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 }
         },
         "competitors": [
           {
@@ -271,7 +276,7 @@
           "chatgpt": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
           "gemini": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
           "google_ai_overviews": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
-          "perplexity": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 }
+          "google_ai_mode": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 }
         },
         "competitors": [
           {
@@ -334,7 +339,7 @@
     },
     {
       "id": "3f3aae9a-a670-575f-8305-983da8c2723c",
-      "text": "How can I compare my brand's citations across Perplexity, Gemini, and ChatGPT?",
+      "text": "How can I compare my brand's citations across ChatGPT, Gemini, and Google AI Mode?",
       "confirmed": true,
       "inactive": false,
       "hasResults": true,
@@ -345,7 +350,7 @@
           "chatgpt": { "completed": 30, "cited": 3, "mentioned": 1, "rate": 13.333333333333334 },
           "gemini": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
           "google_ai_overviews": { "completed": 30, "cited": 20, "mentioned": 10, "rate": 100 },
-          "perplexity": { "completed": 30, "cited": 12, "mentioned": 6, "rate": 60 }
+          "google_ai_mode": { "completed": 30, "cited": 12, "mentioned": 6, "rate": 60 }
         },
         "competitors": [
           {
@@ -419,7 +424,12 @@
           "chatgpt": { "completed": 30, "cited": 8, "mentioned": 4, "rate": 40 },
           "gemini": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
           "google_ai_overviews": { "completed": 30, "cited": 0, "mentioned": 0, "rate": 0 },
-          "perplexity": { "completed": 30, "cited": 3, "mentioned": 1, "rate": 13.333333333333334 }
+          "google_ai_mode": {
+            "completed": 30,
+            "cited": 3,
+            "mentioned": 1,
+            "rate": 13.333333333333334
+          }
         },
         "competitors": [
           {
@@ -493,7 +503,12 @@
           "chatgpt": { "completed": 30, "cited": 17, "mentioned": 13, "rate": 100 },
           "gemini": { "completed": 30, "cited": 8, "mentioned": 22, "rate": 100 },
           "google_ai_overviews": { "completed": 29, "cited": 12, "mentioned": 17, "rate": 100 },
-          "perplexity": { "completed": 30, "cited": 11, "mentioned": 6, "rate": 56.666666666666664 }
+          "google_ai_mode": {
+            "completed": 30,
+            "cited": 11,
+            "mentioned": 6,
+            "rate": 56.666666666666664
+          }
         },
         "competitors": [
           {
@@ -562,7 +577,12 @@
             "mentioned": 4,
             "rate": 37.93103448275862
           },
-          "perplexity": { "completed": 29, "cited": 13, "mentioned": 8, "rate": 72.41379310344827 }
+          "google_ai_mode": {
+            "completed": 29,
+            "cited": 13,
+            "mentioned": 8,
+            "rate": 72.41379310344827
+          }
         },
         "competitors": [
           {
@@ -631,7 +651,7 @@
             "mentioned": 8,
             "rate": 86.20689655172414
           },
-          "perplexity": { "completed": 29, "cited": 19, "mentioned": 10, "rate": 100 }
+          "google_ai_mode": { "completed": 29, "cited": 19, "mentioned": 10, "rate": 100 }
         },
         "competitors": [
           {

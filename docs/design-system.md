@@ -168,7 +168,7 @@ HTML and self-hosted binaries never ship it. It uses the app's primitives; price
   does not repeat prices or the commands; the guide holds them.
 - Engines, agents and competitors appear as their real logos in color (`ui/site/logos.tsx`, sources
   in `assets/logos/SOURCES.md`). The name stays as the accessible label. The app keeps monochrome
-  `EngineIcon`.
+  `EngineIcon` (Simple Icons marks).
 - `.site-display` and `.site-heading` are larger than the product's type scale.
 - The agent setup and fix scenes are Stageshow scenes in `ui/site/demos`, on the kit vendored in
   `ui/site/kit`. Each has a phone design and a poster, and plays once when it comes into view.
