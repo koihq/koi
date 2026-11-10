@@ -90,12 +90,13 @@ inside them. It preserves the account, login, sessions, other brands, and other
 users. An occupied demo email or unexpected organization aborts without changes.
 Keep this account for local development; its password is public.
 
-The Go command loads `.env`, requires only `KOI_DATABASE_URL`, and initializes the
-current schema. It works in `selfhosted` mode (the default) and rejects `cloud`.
-If your local `.env` uses cloud mode for billing tests, prefix the seed/reset and
-app commands with `KOI_DEPLOYMENT_MODE=selfhosted` to use these offline examples
-without changing that file.
-Start the app normally with `make dev`. Seeding needs no UI build, running API,
+Both run `koi admin seed-demo`, which loads `.env`, requires only `KOI_DATABASE_URL`, and
+applies pending migrations. It works in `selfhosted` mode (the default). In `cloud` mode it
+runs only with `KOI_LIVE_COLLECTION=false`, and it also gives the demo organization an active
+50-prompt plan that Stripe does not know about, so the brands show instead of the paywall;
+billing actions fail on that account. The Koi Cloud staging instance seeds itself this way after
+each deploy.
+Start the app normally with `make dev`. Seeding needs no running API,
 Cloro, OpenRouter, Logo.dev, or other service credentials. All results use the
 `stub` collector and disclose that their answers are simulated. No jobs, welcome
 emails, provider requests, or future collections are scheduled, even if Cloro is
@@ -199,5 +200,19 @@ docker compose --env-file .env.selfhosted -f docker-compose.selfhosted.yml up -d
 ```
 
 The `koi_pg` volume holds the database. Back it up before changing versions.
-The current schema is intended for a fresh installation; upgrades from earlier
-development schemas are unsupported.
+Koi applies pending schema migrations when it starts, so an upgrade needs no extra step.
+Going back to an older image is safe only if that version supports the current schema;
+otherwise restore the backup you took before upgrading.
+
+Each [release](https://github.com/koihq/koi/releases) also ships `koi` binaries for Linux and
+macOS (amd64 and arm64), with the UI embedded, and a checksums file. They take the same
+environment variables as the image.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Report
+security problems privately, as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)

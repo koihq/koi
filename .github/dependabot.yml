@@ -13,6 +13,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Node majors alternate between Current and LTS; move to a new LTS line by hand.
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

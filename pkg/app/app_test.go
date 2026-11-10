@@ -103,6 +103,44 @@ func TestLoadConfigRequiredValues(t *testing.T) {
 	}
 }
 
+// A cloud staging instance turns collection off: Cloro is no longer required, and a key that is
+// still set is ignored so the instance never spends credits.
+func TestLoadConfigCloudWithoutLiveCollection(t *testing.T) {
+	t.Setenv("KOI_DEPLOYMENT_MODE", "cloud")
+	t.Setenv("KOI_PORT", ":8080")
+	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
+	t.Setenv("KOI_CLORO_API_KEY", "")
+	t.Setenv("KOI_STRIPE_SECRET_KEY", "stripe-key")
+	t.Setenv("KOI_STRIPE_WEBHOOK_SECRET", "webhook-key")
+	t.Setenv("KOI_STRIPE_PRICE_ID", "price-id")
+	t.Setenv("KOI_PUBLIC_URL", "https://koi.example")
+	t.Setenv("KOI_RESEND_API_KEY", "resend-key")
+	t.Setenv("KOI_EMAIL_FROM", "Koi <hello@mail.example.com>")
+	t.Setenv("KOI_LOG_LEVEL", "info")
+	t.Setenv("KOI_LOG_FORMAT", "text")
+
+	t.Setenv("KOI_LIVE_COLLECTION", "")
+	_, err := LoadConfig()
+	require.ErrorContains(t, err, "KOI_CLORO_API_KEY")
+
+	t.Setenv("KOI_LIVE_COLLECTION", "false")
+	cfg, err := LoadConfig()
+	require.NoError(t, err)
+	require.False(t, cfg.LiveCollection)
+	require.Empty(t, cfg.CloroAPIKey)
+
+	t.Setenv("KOI_CLORO_API_KEY", "cloro-key")
+	cfg, err = LoadConfig()
+	require.NoError(t, err)
+	require.Empty(t, cfg.CloroAPIKey)
+
+	t.Setenv("KOI_LIVE_COLLECTION", "true")
+	cfg, err = LoadConfig()
+	require.NoError(t, err)
+	require.True(t, cfg.LiveCollection)
+	require.Equal(t, "cloro-key", cfg.CloroAPIKey)
+}
+
 func TestLoadConfigRejectsInvalidValues(t *testing.T) {
 	for _, tc := range []struct{ key, value string }{
 		{"KOI_SESSION_LIFETIME", ""},
@@ -122,6 +160,7 @@ func TestLoadConfigRejectsInvalidValues(t *testing.T) {
 		{"KOI_DB_MAX_OPEN_CONNS", "1.5"},
 		{"KOI_LOG_LEVEL", "verbose"},
 		{"KOI_LOG_FORMAT", "yaml"},
+		{"KOI_LIVE_COLLECTION", "maybe"},
 	} {
 		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
 			t.Setenv("KOI_PORT", ":8080")

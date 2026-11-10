@@ -44,6 +44,7 @@ type Config struct {
 	SessionLifetime     time.Duration
 	OpenRouterAPIKey    string
 	CloroAPIKey         string
+	LiveCollection      bool
 	ResendAPIKey        string
 	EmailFrom           string
 	WorkerConcurrency   int
@@ -89,6 +90,21 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("KOI_DEPLOYMENT_MODE must be selfhosted or cloud")
 	}
 	cloroAPIKey := strings.TrimSpace(os.Getenv("KOI_CLORO_API_KEY"))
+
+	// A staging instance turns collection off explicitly: it never spends Cloro credits and cloud
+	// mode stops requiring the key. Production leaves it unset, so a missing key still fails.
+	liveCollection := true
+	if raw := strings.TrimSpace(os.Getenv("KOI_LIVE_COLLECTION")); raw != "" {
+		liveCollection, err = strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("KOI_LIVE_COLLECTION must be true or false")
+		}
+	}
+	if !liveCollection && cloroAPIKey != "" {
+		slog.Warn("KOI_LIVE_COLLECTION=false: ignoring KOI_CLORO_API_KEY")
+		cloroAPIKey = ""
+	}
+
 	resendAPIKey := strings.TrimSpace(os.Getenv("KOI_RESEND_API_KEY"))
 	emailFrom := strings.TrimSpace(os.Getenv("KOI_EMAIL_FROM"))
 	if (resendAPIKey == "") != (emailFrom == "") {
@@ -98,9 +114,9 @@ func LoadConfig() (Config, error) {
 	stripeWebhookSecret := strings.TrimSpace(os.Getenv("KOI_STRIPE_WEBHOOK_SECRET"))
 	stripePriceID := strings.TrimSpace(os.Getenv("KOI_STRIPE_PRICE_ID"))
 	publicURL := strings.TrimSpace(os.Getenv("KOI_PUBLIC_URL"))
-	if mode == "cloud" && (cloroAPIKey == "" || stripeSecretKey == "" || stripeWebhookSecret == "" ||
+	if mode == "cloud" && ((liveCollection && cloroAPIKey == "") || stripeSecretKey == "" || stripeWebhookSecret == "" ||
 		stripePriceID == "" || publicURL == "" || resendAPIKey == "") {
-		return Config{}, fmt.Errorf("cloud mode requires KOI_CLORO_API_KEY, KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID, KOI_PUBLIC_URL, KOI_RESEND_API_KEY and KOI_EMAIL_FROM")
+		return Config{}, fmt.Errorf("cloud mode requires KOI_CLORO_API_KEY (unless KOI_LIVE_COLLECTION=false), KOI_STRIPE_SECRET_KEY, KOI_STRIPE_WEBHOOK_SECRET, KOI_STRIPE_PRICE_ID, KOI_PUBLIC_URL, KOI_RESEND_API_KEY and KOI_EMAIL_FROM")
 	}
 	if publicURL != "" {
 		publicURL = strings.TrimRight(publicURL, "/")
@@ -177,6 +193,7 @@ func LoadConfig() (Config, error) {
 		SessionLifetime:     sessionLifetime,
 		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
 		CloroAPIKey:         cloroAPIKey,
+		LiveCollection:      liveCollection,
 		ResendAPIKey:        resendAPIKey,
 		EmailFrom:           emailFrom,
 		WorkerConcurrency:   workerConcurrency,

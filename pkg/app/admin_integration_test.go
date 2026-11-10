@@ -267,3 +267,52 @@ func TestAdminDeleteAccountRefuses(t *testing.T) {
 		require.ErrorIs(t, err, domain.ErrAccountWorkActive)
 	})
 }
+
+func TestAdminSeedDemoRefusesLiveCloudBeforeOpeningDatabase(t *testing.T) {
+	t.Setenv("KOI_DATABASE_URL", "invalid")
+	t.Setenv("KOI_DEPLOYMENT_MODE", "cloud")
+
+	for _, live := range []string{"", "true"} {
+		t.Setenv("KOI_LIVE_COLLECTION", live)
+
+		err := RunAdmin(t.Context(), []string{"seed-demo"}, strings.NewReader(""), &bytes.Buffer{})
+		require.ErrorContains(t, err, "KOI_LIVE_COLLECTION=false")
+	}
+}
+
+func TestAdminSeedDemoInCloudStagingGrantsAPlan(t *testing.T) {
+	f := newAdminFixture(t)
+	t.Setenv("KOI_DEPLOYMENT_MODE", "cloud")
+	t.Setenv("KOI_LIVE_COLLECTION", "false")
+
+	for range 2 {
+		var out bytes.Buffer
+		require.NoError(t, RunAdmin(t.Context(), []string{"seed-demo"}, strings.NewReader(""), &out))
+		require.Contains(t, out.String(), "demo@koi.local")
+	}
+
+	var subscriptions []domain.BillingSubscription
+	require.NoError(t, f.db.Find(&subscriptions).Error)
+	require.Len(t, subscriptions, 1)
+	require.Equal(t, "active", subscriptions[0].Status)
+	require.Greater(t, subscriptions[0].Quantity, 0)
+	require.True(t, subscriptions[0].CurrentPeriodEnd.After(time.Now().AddDate(0, 0, 29)))
+
+	var brands int64
+	require.NoError(t, f.db.Model(&domain.Brand{}).Count(&brands).Error)
+	require.Equal(t, int64(3), brands)
+}
+
+func TestAdminSeedDemoSelfHostedHasNoSubscription(t *testing.T) {
+	f := newAdminFixture(t)
+	t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
+
+	require.NoError(t, RunAdmin(t.Context(), []string{"seed-demo", "--reset"}, strings.NewReader(""), &bytes.Buffer{}))
+
+	var subscriptions int64
+	require.NoError(t, f.db.Model(&domain.BillingSubscription{}).Count(&subscriptions).Error)
+	require.Zero(t, subscriptions)
+
+	err := RunAdmin(t.Context(), []string{"seed-demo", "--wipe"}, strings.NewReader(""), &bytes.Buffer{})
+	require.ErrorContains(t, err, "usage")
+}

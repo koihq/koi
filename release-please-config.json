@@ -4,6 +4,6 @@
   "include-v-in-tag": true,
   "packages": {
     ".": {}
-  }
+  },
+  "bootstrap-sha": "8f347c37d2839290e7c08b00a71babdc8eb4951e"
 }
-

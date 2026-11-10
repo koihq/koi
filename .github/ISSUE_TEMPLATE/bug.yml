@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in Koi does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Report security problems privately through a security advisory, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Koi Cloud (app.getkoi.co)
+        - Self-hosted Docker image
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `koi --version` or the image tag. Koi Cloud users can leave it empty.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log lines. Remove API keys, emails and other private data.
+      render: text
