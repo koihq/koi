@@ -1,4 +1,4 @@
-FROM node:24.22.1-alpine3.24 AS ui
+FROM node:24.22.2-alpine3.24 AS ui
 WORKDIR /src/ui
 COPY ui/package.json ui/pnpm-lock.yaml ./
 RUN npm install --global pnpm@10.32.1 \

@@ -2,7 +2,7 @@
 # with it every self-hosted instance, never ships it.
 
 # The output is plain HTML, CSS and JS, the same on every architecture, so it is built once natively.
-FROM --platform=$BUILDPLATFORM node:24.22.1-alpine3.24 AS site
+FROM --platform=$BUILDPLATFORM node:24.22.2-alpine3.24 AS site
 WORKDIR /src/ui
 COPY ui/package.json ui/pnpm-lock.yaml ./
 RUN npm install --global pnpm@10.32.1 \
