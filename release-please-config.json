@@ -2,6 +2,8 @@
   "release-type": "simple",
   "version-file": "VERSION",
   "include-v-in-tag": true,
+  "initial-version": "0.1.0",
+  "bump-minor-pre-major": true,
   "packages": {
     ".": {}
   },
