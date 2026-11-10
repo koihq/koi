@@ -9,6 +9,6 @@ Harassment, personal attacks, and sexualized or discriminatory language are not 
 
 ## Reporting
 
-Report unacceptable behavior privately to conduct@getkoi.co. The maintainers will review every
+Report unacceptable behavior privately to ferrantigiammarco@gmail.com. The maintainers will review every
 report, keep the reporter's identity confidential, and respond with the actions described in the
 Covenant's enforcement guidelines, from a warning to a permanent ban.
