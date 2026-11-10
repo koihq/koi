@@ -7,12 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/alexedwards/scs/postgresstore"
 	"github.com/alexedwards/scs/v2"
 	"github.com/joho/godotenv"
+	"gorm.io/gorm"
 
+	"github.com/koihq/koi/internal/demoseed"
 	"github.com/koihq/koi/pkg/api"
 	"github.com/koihq/koi/pkg/database"
 	"github.com/koihq/koi/pkg/domain"
@@ -21,15 +26,25 @@ import (
 const adminUsage = `usage:
   koi admin reset-password <email>        reads the new password from stdin
   koi admin export-account <email>        writes the account's data as JSON to stdout
-  koi admin delete-account <email> --yes  deletes the account and its organization`
+  koi admin delete-account <email> --yes  deletes the account and its organization
+  koi admin seed-demo [--reset]           creates the demo account and its sample brands`
 
 // RunAdmin runs an administrator's command against the instance's database. It reads only
 // KOI_DATABASE_URL, so it also works when the rest of the server's configuration does not.
 func RunAdmin(ctx context.Context, args []string, stdin io.Reader, stdout io.Writer) error {
 	_ = godotenv.Load()
 
-	if len(args) < 2 {
+	seedDemo := len(args) > 0 && args[0] == "seed-demo"
+	if len(args) < 2 && !seedDemo {
 		return errors.New(adminUsage)
+	}
+
+	var cloud bool
+	if seedDemo {
+		var err error
+		if cloud, err = seedDemoCloud(); err != nil {
+			return err
+		}
 	}
 
 	databaseURL, err := requireEnv("KOI_DATABASE_URL")
@@ -47,6 +62,10 @@ func RunAdmin(ctx context.Context, args []string, stdin io.Reader, stdout io.Wri
 		return fmt.Errorf("sql db: %w", err)
 	}
 	defer sqlDB.Close()
+
+	if seedDemo {
+		return adminSeedDemo(ctx, db, args[1:], cloud, stdout)
+	}
 
 	store := database.NewStore(db)
 
@@ -125,6 +144,55 @@ func adminDeleteAccount(ctx context.Context, store domain.Store, sess *scs.Sessi
 	}
 
 	_, err = fmt.Fprintf(stdout, "Delete Stripe customer %s in the Stripe dashboard to finish.\n", customerID)
+
+	return err
+}
+
+// seedDemoCloud allows the demo account, whose password is public, only where it spends nothing:
+// self-hosted mode, or a cloud-mode staging instance with live collection turned off.
+func seedDemoCloud() (bool, error) {
+	switch strings.TrimSpace(os.Getenv("KOI_DEPLOYMENT_MODE")) {
+	case "", "selfhosted":
+		return false, nil
+	case "cloud":
+		live, err := strconv.ParseBool(strings.TrimSpace(os.Getenv("KOI_LIVE_COLLECTION")))
+		if err != nil || live {
+			return false, errors.New("seed-demo in cloud mode requires KOI_LIVE_COLLECTION=false")
+		}
+
+		return true, nil
+	default:
+		return false, errors.New("KOI_DEPLOYMENT_MODE must be selfhosted or cloud")
+	}
+}
+
+func adminSeedDemo(ctx context.Context, db *gorm.DB, args []string, cloud bool, stdout io.Writer) error {
+	reset := false
+	switch {
+	case len(args) == 1 && args[0] == "--reset":
+		reset = true
+	case len(args) != 0:
+		return errors.New(adminUsage)
+	}
+
+	if err := database.Migrate(db.WithContext(ctx)); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+
+	now := time.Now()
+	if err := demoseed.Run(ctx, db, now, reset); err != nil {
+		return err
+	}
+
+	if cloud {
+		if err := demoseed.EnsureCloudSubscription(ctx, db, now); err != nil {
+			return fmt.Errorf("demo subscription: %w", err)
+		}
+	}
+
+	_, err := fmt.Fprintf(stdout, "Demo ready. Email: %s Password: %s\n"+
+		"Brands (US): Koi · History, Koi · Empty, Koi · First check. Answers are simulated.\n",
+		demoseed.Email, demoseed.Password)
 
 	return err
 }

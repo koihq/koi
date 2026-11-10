@@ -45,8 +45,11 @@ instance. New integrations beyond Cloro must remain optional for the core experi
 Self-hosted sign-up admits only the first user unless `KOI_ALLOW_SIGNUP=true`, because every user
 spends the owner's Cloro credits. `koi admin reset-password` recovers an account without email.
 
-The project is not deployed yet. Initialize the current schema on a fresh database; do not add
-compatibility migrations for earlier development schemas or historical job kinds.
+Koi applies goose migrations from `pkg/database/migrations` at startup, under an advisory lock.
+`00001_init.sql` is the schema of the first release. Every schema change after it is a new
+migration (`make migration name=...`) that runs on existing data; never edit a released one.
+`TestMigrationsMatchModels` fails when the GORM structs and the migrations disagree. Do not add
+compatibility code for historical job kinds.
 
 ## Agent rules
 

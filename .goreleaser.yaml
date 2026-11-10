@@ -1,0 +1,59 @@
+# Release artifacts for a tag created by Release Please: binaries, checksums and the multi-arch
+# image ghcr.io/koihq/koi:vX.Y.Z. CD runs it on the release commit; see .github/workflows/cd.yml.
+version: 2
+
+project_name: koi
+
+before:
+  hooks:
+    # The binary embeds the UI from pkg/web/dist.
+    - pnpm --dir ui install --frozen-lockfile
+    - pnpm --dir ui build
+
+builds:
+  - id: koi
+    main: ./cmd/koi
+    binary: koi
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Tag }} -X main.revision={{ .FullCommit }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+# Release Please writes the notes and creates the GitHub release; GoReleaser only adds assets.
+changelog:
+  disable: true
+
+release:
+  mode: keep-existing
+
+dockers_v2:
+  - images:
+      - ghcr.io/koihq/koi
+    tags:
+      - "{{ .Tag }}"
+    dockerfile: Dockerfile.release
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    build_args:
+      VERSION: "{{ .Tag }}"
+      REVISION: "{{ .FullCommit }}"

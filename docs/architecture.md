@@ -99,7 +99,9 @@ capabilities, and `Billing` is set only on Koi Cloud.
 
 ## Database and background work
 
-GORM initializes the current schema with `AutoMigrate`. Memberships have foreign
+Goose migrations in `pkg/database/migrations` define the schema; `database.Migrate` applies
+them at startup under a Postgres advisory lock, and River applies its own. The GORM structs must
+match the migrations, which `TestMigrationsMatchModels` checks against `AutoMigrate`. Memberships have foreign
 keys to users and organizations with cascading deletion. Brands and billing rows
 reference organizations with restricted deletion. Brand-owned product rows and
 run results keep their existing cascading foreign keys.

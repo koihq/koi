@@ -99,7 +99,7 @@ Sentinels (`ErrValidation`, `ErrEmailTaken`, …) stay for `errors.Is`. HTTP map
 
 ## Domain (`pkg/domain/`)
 
-Entities embed `domain.BaseEntity`. Postgres assigns `id` (`gen_random_uuid()`). GORM fills `CreatedAt` / `UpdatedAt` (`autoCreateTime` / `autoUpdateTime`). Timestamps are `json:"-"`; commanders do not set ID or timestamps. GORM migrates these same structs (no parallel row type).
+Entities embed `domain.BaseEntity`. Postgres assigns `id` (`gen_random_uuid()`). GORM fills `CreatedAt` / `UpdatedAt` (`autoCreateTime` / `autoUpdateTime`). Timestamps are `json:"-"`; commanders do not set ID or timestamps. Goose migrations create the tables for these same structs (no parallel row type); a struct change needs a new migration.
 
 ```go
 type BaseEntity struct {
