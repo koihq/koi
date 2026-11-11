@@ -1,6 +1,6 @@
 # Release image: GoReleaser has already built the binary, with the UI embedded, for each platform.
 # The runtime matches the final stage of Dockerfile, which CI and dev images still use.
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 RUN apk add --no-cache ca-certificates
 ARG TARGETPLATFORM
 ARG VERSION=dev

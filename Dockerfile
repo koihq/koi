@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" \
     -o /koi ./cmd/koi
 
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 RUN apk add --no-cache ca-certificates
 ARG VERSION=dev
 ARG REVISION=unknown
