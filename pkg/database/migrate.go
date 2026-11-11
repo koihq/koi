@@ -70,7 +70,9 @@ func Migrate(db *gorm.DB) error {
 		return err
 	}
 
-	locker, err := lock.NewPostgresSessionLocker()
+	// goose polls a held lock every 5 seconds by default; once a second keeps a waiting instance,
+	// or a parallel test package, from idling long after the holder finished. Five minutes total.
+	locker, err := lock.NewPostgresSessionLocker(lock.WithLockTimeout(1, 300))
 	if err != nil {
 		return err
 	}
