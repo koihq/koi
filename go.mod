@@ -1,6 +1,6 @@
 module github.com/koihq/koi
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/OpenRouterTeam/go-sdk v0.9.9
