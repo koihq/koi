@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/koihq/koi/compare/v0.1.0...v0.1.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* make production deploys retryable, including the landing ([#59](https://github.com/koihq/koi/issues/59)) ([108cc72](https://github.com/koihq/koi/commit/108cc7253d2dcc167b98f7c577ef8c63836c7018))
+
 ## 0.1.0 (2026-11-10)
 
 
