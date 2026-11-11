@@ -175,8 +175,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # A rerun after a failed deploy finds the assets already uploaded and skips GoReleaser.
+      - name: Check release assets
+        id: assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: echo "count=$(gh release view "$TAG" --json assets --jq '.assets | length')" >> "$GITHUB_OUTPUT"
+
       # Binaries and checksums go to the Release Please release; the image goes to GHCR.
       - name: Publish release
+        if: steps.assets.outputs.count == '0'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           distribution: goreleaser
@@ -260,6 +269,43 @@ jobs:
           COOLIFY_URL: ${{ vars.COOLIFY_URL }}
           COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
           KOI_SMOKE_URL: ${{ vars.KOI_SMOKE_URL }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          KOI_IMAGE_TAG: ${{ inputs.image_tag }}
+        run: bash scripts/deploy-coolify.sh
+
+      # A production retry also rebuilds the landing from the release, which carries its prices.
+      - name: Check out release for landing
+        if: inputs.target == 'production' && vars.COOLIFY_SITE_APP_UUID != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.image_tag }}
+          path: release
+
+      - if: inputs.target == 'production' && vars.COOLIFY_SITE_APP_UUID != ''
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Publish landing
+        if: inputs.target == 'production' && vars.COOLIFY_SITE_APP_UUID != ''
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: release
+          file: release/Dockerfile.site
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-site:${{ inputs.image_tag }}
+          build-args: |
+            APP_URL=${{ vars.KOI_SMOKE_URL }}
+            POSTHOG_KEY=${{ vars.POSTHOG_KEY }}
+
+      - name: Deploy production landing
+        if: inputs.target == 'production' && vars.COOLIFY_SITE_APP_UUID != ''
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_SITE_APP_UUID }}
+          KOI_SMOKE_URL: ${{ vars.KOI_SITE_URL }}
+          KOI_SMOKE_KIND: site
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
