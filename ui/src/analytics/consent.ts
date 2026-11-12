@@ -24,6 +24,13 @@ export function writeConsent(choice: ConsentChoice, hostname = window.location.h
   document.cookie = `${cookieName}=${choice}; Max-Age=${maxAgeSeconds}; Path=/; SameSite=Lax${domain}${secure}`;
 }
 
+/** Shows the banner again so a visitor can change an earlier choice, as the law requires. */
+export const consentReopenEvent = "koi:consent-reopen";
+
+export function reopenConsent() {
+  window.dispatchEvent(new Event(consentReopenEvent));
+}
+
 /** `app.getkoi.co` and `getkoi.co` share `.getkoi.co`; localhost keeps a host-only cookie. */
 export function consentDomain(hostname: string) {
   const labels = hostname.split(".");

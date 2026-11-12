@@ -54,9 +54,11 @@ stores the choice in `koi_consent` on `.getkoi.co` for 180 days.
 - **Decline:** `cookieless_mode: "on_reject"` counts anonymous, aggregate page views only.
 - Recordings run on the setup route only, with consent, inputs masked and `data-ph-mask` text
   hidden.
+- **Changing the choice:** "Cookie settings" in the landing footer and the
+  [privacy policy](https://getkoi.co/privacy) calls `reopenConsent()`, which shows the banner again.
 
 Server events store nothing on the device; the privacy policy lists them under legitimate
-interest.
+interest. A new event, property or cookie must also be reflected in `ui/site/legal/privacy.tsx`.
 
 ## The team's own accounts
 

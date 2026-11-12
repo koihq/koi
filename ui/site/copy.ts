@@ -1,3 +1,5 @@
+import { business } from "./legal/business";
+
 /** Every visible string on the page, kept together so the copy can be read and edited in one place. */
 
 export const links = {
@@ -9,6 +11,8 @@ export const links = {
   skill: "/SKILL.md",
   license: "https://github.com/koihq/koi/blob/main/LICENSE",
   issues: "https://github.com/koihq/koi/issues",
+  privacy: "/privacy",
+  terms: "/terms",
 };
 
 export const agentPrompt =
@@ -189,9 +193,16 @@ export const copy = {
   closing: {
     title: "Find out what AI says about you.",
   },
+  legal: {
+    updated: "Last updated",
+    cookieSettings: "Cookie settings",
+  },
   footer: {
     source: "Source code",
     skill: "Agent instructions",
+    privacy: "Privacy",
+    terms: "Terms",
     rights: "Koi",
+    owner: `© 2026 ${business.name} · VAT ${business.vat}`,
   },
 };

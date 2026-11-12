@@ -2,17 +2,18 @@ import { createRoot, hydrateRoot } from "react-dom/client";
 
 import { createAnalytics } from "@/analytics/analyticsProvider";
 import { ConsentBanner } from "@/components/blocks/consent-banner";
-import { App } from "./app";
 import { copy } from "./copy";
+import { pageFor } from "./pages";
 import "./site.css";
 
 const root = document.getElementById("root");
+const page = pageFor(window.location.pathname);
 
 if (root?.firstElementChild) {
-  hydrateRoot(root, <App />);
+  hydrateRoot(root, page.render());
 } else if (root) {
   // The dev server serves the template without the prerendered page.
-  createRoot(root).render(<App />);
+  createRoot(root).render(page.render());
 }
 
 startAnalytics(import.meta.env.VITE_POSTHOG_KEY);

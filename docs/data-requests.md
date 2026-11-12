@@ -1,8 +1,9 @@
 # Requests about personal data
 
 Koi has no self-service page for these requests. An administrator answers them with the commands
-below, which read `KOI_DATABASE_URL` from the environment. Have your lawyer review this procedure
-together with the Privacy Policy and Terms.
+below, which read `KOI_DATABASE_URL` from the environment. On Koi Cloud they answer the rights in
+the [Privacy Policy](https://getkoi.co/privacy) (source: `ui/site/legal/privacy.tsx`). Have your
+lawyer review this procedure together with the Privacy Policy and Terms.
 
 ## Before you act
 
@@ -48,5 +49,5 @@ including their recordings and conversations. See [analytics](analytics.md).
   account again if a backup is ever restored.
 - **Subprocessors** are not reached by these commands. Prompts and engine answers have passed
   through Cloro and OpenRouter, and email addresses through Resend. Follow each one's process if
-  the request covers them. List them in the Privacy Policy, along with the fact that the brand
-  lookup reads the site the person entered.
+  the request covers them. The Privacy Policy lists every one of them, along with the fact that
+  the brand lookup reads the site the person entered. Adding a provider means adding it there.

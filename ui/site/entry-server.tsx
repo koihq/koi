@@ -1,7 +1,9 @@
 import { renderToString } from "react-dom/server";
 
-import { App } from "./app";
+import { pageFor, pages } from "./pages";
 
-export function render() {
-  return renderToString(<App />);
+export { pages };
+
+export function render(path: string) {
+  return renderToString(pageFor(path).render());
 }

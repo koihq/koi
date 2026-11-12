@@ -26,6 +26,7 @@
     "brandActivationError": "Unable to switch brand. Open the selector to try again.",
     "brands": "Brands",
     "connections": "MCP",
+    "legal": "Privacy & terms",
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
     "signOutError": "Unable to sign out. Try again.",

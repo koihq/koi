@@ -56,6 +56,7 @@
   "trialThen": "Then {price} a month after 7 days.",
   "trialIncludes": "Your trial includes up to 10 prompts. Your {quantity} prompts start when it ends.",
   "trialTerms": "Add a card to start. Cancel anytime. Taxes are included.",
+  "legalNotice": "By continuing, you agree to the <terms>Terms of Service</terms> and confirm you use Koi for your business. See the <privacy>Privacy Policy</privacy>.",
   "startTrial": "Start 7-day free trial",
   "perMonthSuffix": "/ month",
   "perMonthAfterTrial": "/ month after trial",

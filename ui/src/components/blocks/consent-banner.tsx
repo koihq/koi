@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ConsentChoice } from "@/analytics/analytics";
-import { readConsent } from "@/analytics/consent";
+import { consentReopenEvent, readConsent } from "@/analytics/consent";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -20,6 +20,13 @@ export function ConsentBanner({
   onChoose: (choice: ConsentChoice) => void;
 }) {
   const [open, setOpen] = useState(() => readConsent() === null);
+
+  useEffect(() => {
+    const reopen = () => setOpen(true);
+    window.addEventListener(consentReopenEvent, reopen);
+
+    return () => window.removeEventListener(consentReopenEvent, reopen);
+  }, []);
 
   if (!open) return null;
 
