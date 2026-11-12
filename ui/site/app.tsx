@@ -7,7 +7,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow from "@number-flow/react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { TickPicker } from "@/components/blocks/tick-picker";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { agentPrompt, copy, engineNames, engineShortNames, links } from "./copy"
 import { FixDemo } from "./demos/fix-demo";
 import { OutcomeDot } from "./demos/parts";
 import { SetupDemo } from "./demos/setup-demo";
+import { CookieSettingsButton } from "./legal/cookie-settings";
 import { AgentStack, EngineChip, EngineLogo, engineList, GithubLogo } from "./logos";
 import { Pond } from "./pond/ponds";
 import recorded from "./summary/summary-data.json";
@@ -179,7 +180,7 @@ function Header() {
 
       <nav className="flex items-center gap-1">
         <a
-          href="#pricing"
+          href="/#pricing"
           className="hidden rounded-control px-3 py-2 text-body text-muted-foreground transition-colors hover:text-foreground sm:block"
         >
           {copy.nav.pricing}
@@ -686,25 +687,36 @@ function Closing() {
 }
 
 function Footer() {
+  const linkClass = "transition-colors hover:text-foreground";
+
   return (
     <footer className="mx-auto flex max-w-340 flex-wrap items-center justify-between gap-4 px-4 pb-10 text-xs text-muted-foreground sm:px-7">
-      <span className="flex items-center gap-2">
+      <span className="flex flex-wrap items-center gap-2">
         <SiteMark size={20} />
         {copy.footer.rights}
+        <span>{copy.footer.owner}</span>
       </span>
       <span className="flex flex-wrap gap-4">
-        <a href={links.github} className="transition-colors hover:text-foreground">
+        <a href={links.github} className={linkClass}>
           {copy.footer.source}
         </a>
-        <a href={links.skill} className="transition-colors hover:text-foreground">
+        <a href={links.skill} className={linkClass}>
           {copy.footer.skill}
         </a>
+        <a href={links.privacy} className={linkClass}>
+          {copy.footer.privacy}
+        </a>
+        <a href={links.terms} className={linkClass}>
+          {copy.footer.terms}
+        </a>
+        <CookieSettingsButton className={linkClass} />
       </span>
     </footer>
   );
 }
 
-export function App() {
+/** The skip link, header and footer every page of the site shares. */
+export function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <a
@@ -714,15 +726,21 @@ export function App() {
         {copy.skipLink}
       </a>
       <Header />
-      <main id="main">
-        <Hero />
-        <Bento />
-        <Pricing />
-        <OpenSource />
-        <Faq />
-        <Closing />
-      </main>
+      <main id="main">{children}</main>
       <Footer />
     </>
+  );
+}
+
+export function App() {
+  return (
+    <SiteLayout>
+      <Hero />
+      <Bento />
+      <Pricing />
+      <OpenSource />
+      <Faq />
+      <Closing />
+    </SiteLayout>
   );
 }

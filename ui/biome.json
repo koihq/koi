@@ -104,6 +104,16 @@
       }
     },
     {
+      "includes": ["site/legal/privacy.tsx", "site/legal/terms.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noJsxLiterals": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["src/components/ui/**"],
       "linter": {
         "enabled": false

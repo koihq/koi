@@ -74,6 +74,16 @@ export function AppHeader({ brand, focused = false }: { brand: Brand; focused?: 
                 {t("billing")}
               </DropdownMenuItem>
             )}
+            {capabilities.data?.cloudBilling && (
+              <DropdownMenuItem
+                render={
+                  // biome-ignore lint/a11y/useAnchorContent: the menu item renders its label inside.
+                  <a href="https://getkoi.co/privacy" target="_blank" rel="noreferrer" />
+                }
+              >
+                {t("header.legal")}
+              </DropdownMenuItem>
+            )}
             {analytics.enabled && (
               <DropdownMenuItem onClick={analytics.openSupport}>
                 {t("header.support")}

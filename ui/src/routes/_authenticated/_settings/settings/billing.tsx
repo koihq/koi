@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { type ReactNode, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { messageFromUnknown } from "@/api/errors";
 import type { BillingSubscription } from "@/api/generated";
@@ -180,6 +180,16 @@ function ChoosePlan({
           <div className="grid gap-1 text-sm text-muted-foreground">
             {trial && <p>{t("trialIncludes", { quantity })}</p>}
             <p>{t(trial ? "trialTerms" : "rangeDescription")}</p>
+            <p>
+              <Trans
+                t={t}
+                i18nKey="legalNotice"
+                components={{
+                  terms: <LegalLink href="https://getkoi.co/terms" />,
+                  privacy: <LegalLink href="https://getkoi.co/privacy" />,
+                }}
+              />
+            </p>
           </div>
         )}
         {error != null && (
@@ -189,6 +199,20 @@ function ChoosePlan({
         )}
       </div>
     </section>
+  );
+}
+
+/** Billing exists only on Koi Cloud, so its terms are the ones published on getkoi.co. */
+function LegalLink({ href, children }: { href: string; children?: ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="text-foreground underline-offset-4 hover:underline"
+    >
+      {children}
+    </a>
   );
 }
 
