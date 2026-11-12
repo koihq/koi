@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/koihq/koi/compare/v0.1.1...v0.2.0) (2026-11-12)
+
+
+### Features
+
+* add privacy policy and terms of service ([#63](https://github.com/koihq/koi/issues/63)) ([521a7cd](https://github.com/koihq/koi/commit/521a7cd6122a56cec35491183e86d20e83d298f5))
+
+
+### Bug Fixes
+
+* added favicon ([#62](https://github.com/koihq/koi/issues/62)) ([43fd1fd](https://github.com/koihq/koi/commit/43fd1fd23cbaa9eeb5e34a2cab345a4edac6b46e))
+* flaky test ([48d9944](https://github.com/koihq/koi/commit/48d99449654537de0794a120b30b198e377ff77f))
+
 ## [0.1.1](https://github.com/koihq/koi/compare/v0.1.0...v0.1.1) (2026-11-11)
 
 
