@@ -30,6 +30,7 @@ const (
 	FieldMinLength = "min_length"
 	FieldMaxLength = "max_length"
 	FieldTaken     = "taken"
+	FieldEmpty     = "empty"
 )
 
 var (

@@ -25,11 +25,13 @@ make run                 # Go API + embedded UI on :8080
 make site-dev            # Landing with HMR on :5174
 make site-build          # Prerendered landing → ui/site/dist
 make test                # go test ./...
+pnpm --dir ui test       # Vitest: unit (node) + browser (Chromium, MSW) projects
+pnpm --dir ui test:e2e   # Playwright full-stack journeys: real binary, UI and Postgres on :8090
 make format              # Biome safe fixes + gofmt
 make go-format-check     # fail if Go files need formatting
 ```
 
-`pnpm --dir ui install` registers Git hooks. `ui/.husky/pre-commit` runs `go-format-check`, then UI `check` (formatting, lint, imports), `check-types`, and unit tests (`vitest run`). Checks fail without rewriting files. Type checking uses `tsc -p tsconfig.json --noEmit`; build-info caches are local artifacts and must not be committed.
+`pnpm --dir ui install` registers Git hooks. `ui/.husky/pre-commit` runs `go-format-check`, then UI `check` (formatting, lint, imports), `check-types`, and unit tests (`vitest run --project unit`); browser and e2e tests run in CI. Checks fail without rewriting files. Type checking uses `tsc -p tsconfig.json --noEmit`; build-info caches are local artifacts and must not be committed.
 
 Browse `http://localhost:5173` during `make dev`. Vite proxies `/health` and `/api` to the Go API. `:8080` in dev serves the last embedded build — do not use it for UI work.
 
@@ -81,6 +83,31 @@ compatibility code for historical job kinds.
 - Nontrivial plans include concrete type or call examples, data flow, compatibility choices, failure cases, and acceptance tests.
 - Break up nested Go literals for readability even when `gofmt` accepts a one-line form.
 - Postgres integration tests run during `go test ./...`. `internal/testdb.URL(t)` reads `KOI_DATABASE_URL` from the environment or repo `.env`, isolates a schema in that database, and fails if Postgres is unavailable. Tests explicitly run their own migrations.
+
+## Tests
+
+- Before adding or changing a test, find the existing tests for that behavior (same package or
+  route, same handler, entity, hook, or e2e journey) and read them.
+- Prefer strengthening an existing test: add the missing assertion, case, or table row to the
+  test that already sets up that behavior. Add a new test only when no existing test covers the
+  scenario, and say which tests you checked.
+- Test each behavior at the lowest layer that catches the bug with real collaborators: unit for
+  pure logic, Postgres/HTTP integration for Go, Vitest Browser Mode with MSW for UI routes, and
+  Playwright only for full-stack journeys. Do not duplicate the same assertion across layers.
+- Refactor existing tests when it makes them clearer: merge near-duplicates into table-driven
+  tests, move repeated setup into shared helpers and fixture factories, and delete tests made
+  redundant by a stronger one. Keep behavior coverage equal or better, and name the test that now
+  covers each deleted case.
+- Reuse the shared helpers. Go: `internal/testdb`, `newIntegrationServer` and `signup` in
+  `pkg/api/integration_helpers_test.go`, and `newCookieClient`, whose transport fails a test when
+  a documented response violates `docs/openapi.yaml` (`pkg/api/contract_test.go`). UI:
+  `renderRoute` mounts the real router, `serveWorkspace` in `ui/src/test/worker.ts` is the fake
+  API with mutable state and named failures, and `ui/src/test/fixtures.ts` builds typed responses
+  from the generated client. A browser test fails on any `/api` request without an MSW handler.
+- UI tests are `*.test.ts` (logic, node) or `*.test.tsx` (components and routes, Chromium). Route
+  tests live beside the route with a `-` prefix so the router ignores them. Playwright in
+  `ui/e2e/` covers only journeys that need the real server; `internal/e2e/server` runs it on an
+  isolated schema with optional services off.
 
 ## Readability
 

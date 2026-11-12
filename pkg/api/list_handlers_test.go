@@ -163,11 +163,13 @@ func TestCompetitorHandlerManualRequestCannotChangeProvenance(t *testing.T) {
 		Name:   "Acme",
 		Domain: "acme.com",
 	}).Return(&domain.Competitor{
-		BrandID:   brandID,
-		Name:      "Acme",
-		Domain:    "acme.com",
-		Source:    domain.CompetitorSourceManual,
-		Confirmed: true,
+		BrandID:        brandID,
+		Name:           "Acme",
+		Domain:         "acme.com",
+		Aliases:        []string{},
+		AdditionalURLs: []string{},
+		Source:         domain.CompetitorSourceManual,
+		Confirmed:      true,
 	}, nil)
 	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), NewMockCompetitorQuerier(t), commander)
 	client := newCookieClient(t)
@@ -292,6 +294,7 @@ func TestPromptHandlerGetsOne(t *testing.T) {
 			ID: promptID,
 		},
 		BrandID: brandID,
+		Source:  domain.PromptSourceManual,
 	}
 	querier.EXPECT().Get(mock.Anything, promptID).Return(prompt, nil)
 	ts := newListsTestServer(t, querier, commander, NewMockCompetitorQuerier(t), NewMockCompetitorCommander(t))
@@ -327,4 +330,28 @@ func TestCompetitorHandlerPaginates(t *testing.T) {
 	readJSON(t, resp, &page)
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.NotNil(t, page.Items)
+}
+
+func TestCompetitorSearchReturnsProviderMatchesOrSaysItIsOff(t *testing.T) {
+	userID, brandID := uuid.New(), uuid.New()
+	querier := NewMockCompetitorQuerier(t)
+	ts := newListsTestServer(t, NewMockPromptQuerier(t), NewMockPromptCommander(t), querier, NewMockCompetitorCommander(t))
+	client := newCookieClient(t)
+	brandSession(t, client, ts.URL, userID)
+	search := ts.URL + "/api/v1/competitors/search?q="
+
+	querier.EXPECT().Search(identityIs(userID), brandID, "stri").Return([]domain.CompanySearchResult{
+		{Name: "Stripe", Domain: "stripe.com"},
+	}, nil).Once()
+	resp := doJSON(t, client, http.MethodGet, search+"stri", "", brandID)
+	var results []domain.CompanySearchResult
+	readJSON(t, resp, &results)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, []domain.CompanySearchResult{{Name: "Stripe", Domain: "stripe.com"}}, results)
+
+	// Without the optional Logo.dev key, manual competitors still work and search says it is off.
+	querier.EXPECT().Search(identityIs(userID), brandID, "acme").Return(nil, domain.ErrFeatureUnavailable).Once()
+	resp = doJSON(t, client, http.MethodGet, search+"acme", "", brandID)
+	require.Contains(t, readBody(t, resp), `"code":"feature_unavailable"`)
+	require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 }

@@ -73,13 +73,16 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 			Items: []domain.PromptHistoryRun{{
 				Run: run,
 				Results: []domain.VisibilityResult{{
-					RunID:       runID,
-					PromptID:    promptID,
-					PromptText:  "Saved question?",
-					Engine:      domain.EngineChatGPT,
-					Collector:   domain.CollectorCloro,
-					Sources:     []string{"https://example.com"},
-					Appearances: []domain.CompetitorAppearance{},
+					RunID:      runID,
+					PromptID:   promptID,
+					PromptText: "Saved question?",
+					Engine:     domain.EngineChatGPT,
+					Collector:  domain.CollectorCloro,
+					Sources:    []string{"https://example.com"},
+					Appearances: []domain.CompetitorAppearance{{
+						Name:     "Acme",
+						Evidence: []domain.AppearanceEvidence{{Kind: "citation", Value: "https://acme.example"}},
+					}},
 				}},
 			}},
 			TotalItems:  1,
@@ -97,6 +100,10 @@ func TestVisibilityHandlerPromptHistory(t *testing.T) {
 	require.NotContains(t, publicRun, "brand_snapshot")
 	require.NotContains(t, publicRun, "river_job_id")
 	require.Len(t, item["results"], 1)
+	appearance := item["results"].([]any)[0].(map[string]any)["appearances"].([]any)[0].(map[string]any)
+	require.Equal(t, "Acme", appearance["name"])
+	require.Nil(t, appearance["competitorId"], "an observed name without a competitor stays unlinked")
+	require.Equal(t, []any{map[string]any{"kind": "citation", "value": "https://acme.example"}}, appearance["evidence"])
 }
 
 func TestVisibilityHandlerAuthReadinessAndPublicStatus(t *testing.T) {
@@ -236,7 +243,7 @@ func TestVisibilityHandlerStartTracking(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 	resp.Body.Close()
 
-	tracker.EXPECT().Start(identityIs(userID), brandID).Return(domain.Validation(domain.FieldError{Field: "prompts", Code: "empty"})).Once()
+	tracker.EXPECT().Start(identityIs(userID), brandID).Return(domain.Validation(domain.FieldError{Field: "prompts", Code: domain.FieldEmpty})).Once()
 	resp = doJSON(t, client, http.MethodPost, base, body)
 	var invalid response.Envelope
 	readJSON(t, resp, &invalid)

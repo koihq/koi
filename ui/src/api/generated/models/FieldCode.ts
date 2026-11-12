@@ -22,7 +22,8 @@ export const FieldCode = {
     INVALID: 'invalid',
     MIN_LENGTH: 'min_length',
     MAX_LENGTH: 'max_length',
-    TAKEN: 'taken'
+    TAKEN: 'taken',
+    EMPTY: 'empty'
 } as const;
 export type FieldCode = typeof FieldCode[keyof typeof FieldCode];
 

@@ -37,7 +37,12 @@ export const ErrorCode = {
     RATE_LIMITED: 'rate_limited',
     SIGNUP_CLOSED: 'signup_closed',
     FIRST_LOOK_UNAVAILABLE: 'first_look_unavailable',
-    CROSS_ORIGIN_REQUEST: 'cross_origin_request'
+    CROSS_ORIGIN_REQUEST: 'cross_origin_request',
+    RUN_NOT_READY: 'run_not_ready',
+    BILLING_CONFLICT: 'billing_conflict',
+    BILLING_CHECKOUT_PENDING: 'billing_checkout_pending',
+    BILLING_SUBSCRIPTION_EXISTS: 'billing_subscription_exists',
+    BILLING_PRICE_MISMATCH: 'billing_price_mismatch'
 } as const;
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
 

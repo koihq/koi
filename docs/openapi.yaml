@@ -403,6 +403,8 @@ paths:
                 $ref: "#/components/schemas/BillingCatalog"
         "500":
           $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/billing/quote:
     get:
       tags: [billing]
@@ -425,6 +427,8 @@ paths:
                 $ref: "#/components/schemas/BillingQuote"
         "400":
           $ref: "#/components/responses/Error"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/billing/subscription:
     get:
       tags: [billing]
@@ -438,6 +442,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillingStatus"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/billing/checkout:
     post:
       tags: [billing]
@@ -457,6 +463,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillingRedirect"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/billing/confirm-checkout:
     post:
       tags: [billing]
@@ -559,6 +567,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BillingRedirect"
+        default:
+          $ref: "#/components/responses/Error"
   /api/v1/webhooks/stripe:
     post:
       tags: [billing]
@@ -1192,6 +1202,7 @@ paths:
                 promptCount: 0
                 competitorCount: 0
                 createdAt: "2026-09-28T10:00:00Z"
+                startTracking: false
         "401":
           $ref: "#/components/responses/Error"
         "402":
@@ -2283,6 +2294,11 @@ components:
         - signup_closed
         - first_look_unavailable
         - cross_origin_request
+        - run_not_ready
+        - billing_conflict
+        - billing_checkout_pending
+        - billing_subscription_exists
+        - billing_price_mismatch
     FieldCode:
       type: string
       enum:
@@ -2290,3 +2306,4 @@ components:
         - min_length
         - max_length
         - taken
+        - empty
