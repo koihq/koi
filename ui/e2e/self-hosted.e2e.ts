@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { newEmail, signUp } from "./support";
 
-test("a new self-hosted owner sets up a brand and tracks prompts without optional services", async ({
+test("a new self-hosted owner sets up a brand, starts tracking and reads the collected answers", async ({
   page,
 }) => {
   await signUp(page, newEmail("owner"));
@@ -38,15 +38,24 @@ test("a new self-hosted owner sets up a brand and tracks prompts without optiona
   await competitorDialog.getByRole("button", { name: "Save competitor" }).click();
   await expect(page.getByText("Rival", { exact: true }).first()).toBeVisible();
 
-  // Everything was saved, and without the owner's Cloro key the instance says why nothing is
-  // collected yet.
+  // Everything was saved. Collection runs through the e2e server's fake Cloro, never the real one.
   await page.goto("/");
   await expect(
     page.getByRole("link", { name: "Which payment tools suit a startup?" }),
   ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Live collection is unavailable. Ask your instance administrator to configure Cloro.",
-    ),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Start tracking" }).click();
+
+  // Each engine's answer cites acme.example, so every collected result is a citation.
+  await page.getByRole("link", { name: "Which payment tools suit a startup?" }).click();
+  await expect(page.getByRole("img", { name: "ChatGPT: Cited" }).first()).toBeVisible({
+    timeout: 60_000,
+  });
+
+  await page
+    .getByRole("button", { name: /^Open the .+ run$/ })
+    .first()
+    .click();
+  const answer = page.getByRole("dialog");
+  await expect(answer.getByText("Acme is a strong choice", { exact: false })).toBeVisible();
+  await expect(answer.getByRole("link", { name: /acme\.example/ }).first()).toBeVisible();
 });

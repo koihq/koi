@@ -29,7 +29,6 @@ export default defineConfig({
     command:
       "cd .. && make ui-build && go build -o ui/.e2e/koi ./cmd/koi && go build -o ui/.e2e/server ./internal/e2e/server && exec ui/.e2e/server",
     url: "http://127.0.0.1:8090/health",
-    wait: { stdout: /koi e2e ready/ },
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },

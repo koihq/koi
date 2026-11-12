@@ -38,7 +38,8 @@ export function koiAdmin(args: string[], stdin = "") {
   return execFileSync(koi, ["admin", ...args], {
     cwd: repo,
     input: stdin,
-    env: { ...process.env, KOI_DATABASE_URL: databaseURL },
+    // Same mode as the e2e server, whatever the developer's .env says.
+    env: { ...process.env, KOI_DATABASE_URL: databaseURL, KOI_DEPLOYMENT_MODE: "selfhosted" },
     encoding: "utf8",
   });
 }

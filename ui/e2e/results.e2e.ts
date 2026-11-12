@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { DEMO, signIn } from "./support";
+import { DEMO, koiAdmin, signIn } from "./support";
+
+// The journey prepares its own data, as an owner would, instead of relying on server startup.
+test.beforeAll(() => {
+  koiAdmin(["seed-demo"]);
+});
 
 test("saved results lead from the dashboard to a brief for the founder's agent", async ({
   page,
