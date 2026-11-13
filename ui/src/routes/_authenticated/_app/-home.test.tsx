@@ -1,7 +1,7 @@
 import { http } from "msw";
 import { describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { box, css, gate, opacity } from "@/test/dom";
+import { box, css, gate, layoutSettled, opacity } from "@/test/dom";
 import {
   brand,
   competitorVisibility,
@@ -171,6 +171,7 @@ describe("home", () => {
     await expect.element(prompts.getByText(PROMPT).first()).toBeInTheDocument();
     await expect.poll(() => document.querySelector(".recharts-surface")).toBeTruthy();
 
+    await layoutSettled(panel, prompts);
     const height = box(panel).height;
     const rangeTop = box(range).y;
     const promptHeight = box(prompts).height;

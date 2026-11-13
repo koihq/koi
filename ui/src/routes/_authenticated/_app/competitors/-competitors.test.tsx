@@ -1,7 +1,7 @@
 import { http } from "msw";
 import { describe, expect, test } from "vitest";
 import { page } from "vitest/browser";
-import { box, gate, opacity } from "@/test/dom";
+import { box, gate, layoutSettled, opacity } from "@/test/dom";
 import { competitor, tracking } from "@/test/fixtures";
 import { renderRoute } from "@/test/render-route";
 import { serveWorkspace, type Workspace, worker, workspace } from "@/test/worker";
@@ -63,6 +63,7 @@ describe("competitors", () => {
     await expect.element(table).toBeVisible();
     await expect.element(panel()).toHaveAttribute("aria-busy", "false");
 
+    await layoutSettled(panel());
     const height = box(panel()).height;
     const hold = gate();
 

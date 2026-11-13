@@ -8,6 +8,38 @@ export async function css(selector: string): Promise<Locator> {
   return page.elementLocator(document.querySelector(selector) as Element);
 }
 
+const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+/**
+ * Waits until web fonts have loaded and the given elements keep the same size for several frames.
+ * Measure geometry only after this: a late font or late content rewraps text and changes heights
+ * on its own, which a test would otherwise blame on the change it is checking.
+ */
+export async function layoutSettled(...locators: Locator[]) {
+  await document.fonts.ready;
+
+  const sizes = () =>
+    locators
+      .map((locator) => {
+        const { width, height } = locator.element().getBoundingClientRect();
+        return `${width}x${height}`;
+      })
+      .join();
+
+  let previous = "";
+  let stableFrames = 0;
+  const deadline = performance.now() + 5_000;
+
+  while (stableFrames < 5) {
+    if (performance.now() > deadline) throw new Error(`Layout did not settle: ${sizes()}`);
+
+    await frame();
+    const current = sizes();
+    stableFrames = current === previous ? stableFrames + 1 : 0;
+    previous = current;
+  }
+}
+
 export function box(locator: Locator) {
   return locator.element().getBoundingClientRect();
 }

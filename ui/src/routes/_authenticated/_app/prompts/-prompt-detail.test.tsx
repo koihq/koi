@@ -1,7 +1,7 @@
 import { http } from "msw";
 import { describe, expect, test } from "vitest";
 import { commands, page, userEvent } from "vitest/browser";
-import { box, gate, opacity } from "@/test/dom";
+import { box, gate, layoutSettled, opacity } from "@/test/dom";
 import {
   competitorVisibility,
   metric,
@@ -212,6 +212,7 @@ describe("prompt detail", () => {
       await expect.element(section).toHaveAttribute("aria-busy", "false");
       await expect.poll(() => section.element().querySelector(".recharts-surface")).toBeTruthy();
 
+      await layoutSettled(section);
       const height = box(section).height;
       const rangeTop = box(range).y;
       const hold = gate();
