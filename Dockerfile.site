@@ -21,7 +21,7 @@ RUN host="${APP_URL#https://}" && host="${host%/}" \
          grep -rl 'app\.getkoi\.co' site/dist | xargs sed -i "s#app\.getkoi\.co#${host}#g"; \
        fi
 
-FROM nginx:1.30.6-alpine
+FROM nginx:1.31.8-alpine
 LABEL org.opencontainers.image.source="https://github.com/koihq/koi"
 # SKILL.md is read by agents: serve it as text, not as a download.
 RUN sed -i '/^types {/a\    text/markdown md;' /etc/nginx/mime.types
