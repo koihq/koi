@@ -29,3 +29,6 @@ pkg/web/dist/
 .idea/
 .vscode/
 *.swp
+
+# Local UI plans written by the ui-plan skill
+plans/

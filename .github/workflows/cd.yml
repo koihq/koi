@@ -92,7 +92,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           KOI_IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
-        run: bash scripts/deploy-coolify.sh
+        run: bash .github/scripts/deploy-coolify.sh
 
       - name: Publish landing
         if: steps.current.outputs.current == 'true' && vars.COOLIFY_SITE_APP_UUID != ''
@@ -117,7 +117,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           KOI_IMAGE_TAG: sha-${{ github.event.workflow_run.head_sha }}
-        run: bash scripts/deploy-coolify.sh
+        run: bash .github/scripts/deploy-coolify.sh
 
   release:
     needs: dev
@@ -203,7 +203,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           KOI_IMAGE_TAG: ${{ needs.release.outputs.tag }}
-        run: bash scripts/deploy-coolify.sh
+        run: bash .github/scripts/deploy-coolify.sh
 
       # The landing reads prices from the catalog, so it goes live with the release that bills them.
       - name: Publish landing
@@ -231,7 +231,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           KOI_IMAGE_TAG: ${{ needs.release.outputs.tag }}
-        run: bash scripts/deploy-coolify.sh
+        run: bash .github/scripts/deploy-coolify.sh
 
   retry:
     if: github.event_name == 'workflow_dispatch' && vars.DEPLOY_ENABLED == 'true'
@@ -273,7 +273,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           KOI_IMAGE_TAG: ${{ inputs.image_tag }}
-        run: bash scripts/deploy-coolify.sh
+        run: bash .github/scripts/deploy-coolify.sh
 
       # A production retry also rebuilds the landing from the release, which carries its prices.
       - name: Check out release for landing
@@ -310,4 +310,4 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
           KOI_IMAGE_TAG: ${{ inputs.image_tag }}
-        run: bash scripts/deploy-coolify.sh
+        run: bash .github/scripts/deploy-coolify.sh

@@ -1,10 +1,6 @@
 # Koi MCP
 
-Koi serves one Streamable HTTP endpoint from the Go binary: `http://localhost:8080/mcp` for local clients and `https://<your-host>/mcp` for remote clients. Set `KOI_PUBLIC_URL=http://localhost:5173` and `KOI_MCP_PUBLIC_URL=http://localhost:8080` in Vite development. The consent page opens on `:5173`; cookies share the `localhost` hostname across ports. In production, `KOI_MCP_PUBLIC_URL` defaults to `KOI_PUBLIC_URL` when the UI and MCP share an origin. When they use different hostnames, consent stays on the MCP hostname so its session cookie remains available. Route `/oauth/consent`, `/assets/*`, `/api/v1/auth/*`, and `/api/v1/oauth/consent` to the Go binary on that hostname. Browser-based clients need a reachable public HTTPS URL; without a configured public origin Koi only advertises its local endpoint to local requests. Keep the MCP origin stable during OAuth authorization.
-
-All MCP calls require an OAuth bearer access token. Koi hosts signup, login and consent for local and remote clients using the authorization-code flow with PKCE. Access tokens expire after one hour; refresh tokens rotate and expire after 30 days. The MCP page lists OAuth connections and lets the user revoke them.
-
-Koi publishes OAuth protected-resource metadata at `/.well-known/oauth-protected-resource/mcp` and authorization-server metadata at `/.well-known/oauth-authorization-server`. It accepts Client ID Metadata Documents (CIMD) and dynamic client registration (DCR). Tool metadata identifies read/write access and the required `koi:read` or `koi:write` scope. The MCP resource server uses the [official Go SDK](https://github.com/modelcontextprotocol/go-sdk) for Streamable HTTP, bearer verification and protected-resource metadata.
+Koi serves an MCP endpoint at `https://<your-host>/mcp`, from the same binary as the app. Connect your coding agent to it and the agent can do what the UI does: set up a brand, edit prompts and competitors, start tracking, and read the results.
 
 ## Connect
 
@@ -14,7 +10,7 @@ Koi publishes OAuth protected-resource metadata at `/.well-known/oauth-protected
 - **ChatGPT web:** add a custom MCP server under Plugins using the public HTTPS URL and OAuth. A local server needs a tunnel. [OpenAI documentation](https://developers.openai.com/api/docs/guides/custom-mcp-server)
 - **Claude web:** add a custom remote connector with the same URL and choose OAuth sign-in. Claude connects from Anthropic's infrastructure. [Anthropic documentation](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
 
-Plugin or marketplace packages should point at this same endpoint. No host-specific product implementation is needed. Dots requires verification through a published plugin; Grok Bot needs a separate compatibility check before support is advertised.
+Plugin or marketplace packages point at this same endpoint.
 
 ## Agent skills
 
@@ -45,10 +41,12 @@ The skills CLI prompts for the target agent and project or user-wide scope. Then
 
 An agent cannot change what the user pays. There is no tool to change the prompt allowance or open the billing portal, because answers collected from the web reach the agent and could steer it. `billing_checkout` only returns a link that the user completes. Changes happen in Settings > Billing.
 
-## OAuth implementation choice
+## Authentication
 
-The MCP Go SDK implements the resource server and client primitives, not an authorization server. Koi therefore implements the issuer-specific endpoints in `api`, while credential state and token lifecycle live in `domain` and GORM persistence lives in `database`. We evaluated [Fosite](https://github.com/ory/fosite), [go-oauth2](https://github.com/go-oauth2/oauth2), and [Hydra](https://www.ory.com/hydra). Fosite would replace the token protocol but require its request/session storage adapters; Hydra would add a separate service to every self-hosted deployment; go-oauth2 does not clearly document the MCP PKCE/CIMD requirements. The current narrow issuer avoids those additional adapters and services. Revisit this decision before broad public deployment, after interoperability and security tests against real clients.
+All MCP calls require an OAuth bearer access token. Koi hosts signup, login and consent for local and remote clients using the authorization-code flow with PKCE. Access tokens expire after one hour; refresh tokens rotate and expire after 30 days. The MCP page lists OAuth connections and lets the user revoke them.
 
-## Verification
+Koi publishes OAuth protected-resource metadata at `/.well-known/oauth-protected-resource/mcp` and authorization-server metadata at `/.well-known/oauth-authorization-server`. It accepts Client ID Metadata Documents (CIMD) and dynamic client registration (DCR). Tool metadata identifies read/write access and the required `koi:read` or `koi:write` scope. The MCP resource server uses the [official Go SDK](https://github.com/modelcontextprotocol/go-sdk) for Streamable HTTP, bearer verification and protected-resource metadata.
 
-Automated tests cover the generic MCP handshake and tool discovery, OAuth code exchange with PKCE, replay rejection and token revocation. The deployment smoke test should run signup → consent → read/write tools → hosted Checkout → active subscription, then test another organization, credential revocation, retry, canceled checkout and delayed Stripe webhook. Confirm the same flow on Codex, Claude Code, Cursor, ChatGPT web and Claude web before listing each as verified. Host-specific tests and Dots/Grok checks require live accounts and a reachable deployment.
+## Hosting the endpoint
+
+Koi serves one Streamable HTTP endpoint from the Go binary: `http://localhost:8080/mcp` for local clients and `https://<your-host>/mcp` for remote clients. Set `KOI_PUBLIC_URL=http://localhost:5173` and `KOI_MCP_PUBLIC_URL=http://localhost:8080` in Vite development. The consent page opens on `:5173`; cookies share the `localhost` hostname across ports. In production, `KOI_MCP_PUBLIC_URL` defaults to `KOI_PUBLIC_URL` when the UI and MCP share an origin. When they use different hostnames, consent stays on the MCP hostname so its session cookie remains available. Route `/oauth/consent`, `/assets/*`, `/api/v1/auth/*`, and `/api/v1/oauth/consent` to the Go binary on that hostname. Browser-based clients need a reachable public HTTPS URL; without a configured public origin Koi only advertises its local endpoint to local requests. Keep the MCP origin stable during OAuth authorization.

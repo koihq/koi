@@ -7,7 +7,7 @@ description: Koi visual judgment — founder/AEO reader job, composition, PNG ma
 
 Koi is an agent-first AEO tool. A founder opens it to answer: do answer engines mention us, who do they recommend instead, and what should my agent do next.
 
-Read [primitives.md](primitives.md) and `docs/design-system.md` for the current tokens, composition, and shadcn inventory. Mechanics live in `ui/src/styles.css` and `ui/src/components/ui`. Do not invent a parallel type scale, palette, or component set.
+Read [primitives.md](primitives.md) and [design-system.md](design-system.md) for the current tokens, composition, and shadcn inventory. Mechanics live in `ui/src/styles.css` and `ui/src/components/ui`. Do not invent a parallel type scale, palette, or component set.
 
 This file owns Koi judgment. Accessibility, layout, writing, type, color, and polish rules live in the installed `better-*` skills — point at them, do not copy them here.
 
@@ -62,7 +62,7 @@ Use the home-context geometry: compact brand header, one full-width visibility s
 
 Auth is a quiet centered column. Home uses a useful empty state until there are confirmed prompts; the analytical series can be deterministic mock values during the migration.
 
-Light and dark are the same layout. Invert the canvas, keep the hierarchy. No separate “marketing light” and “tool dark.” The public landing in `ui/site` is the one scoped exception: true black, dark only (`docs/design-system.md`, Public landing).
+Light and dark are the same layout. Invert the canvas, keep the hierarchy. No separate “marketing light” and “tool dark.” The public landing in `ui/site` is the one scoped exception: true black, dark only ([design-system.md](design-system.md), Public landing).
 
 ## Copy
 
