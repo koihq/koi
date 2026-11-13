@@ -26,7 +26,7 @@ require (
 	github.com/stripe/stripe-go/v87 v87.0.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/text v0.43.0
-	gorm.io/driver/postgres v1.6.2
+	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
 )
 
