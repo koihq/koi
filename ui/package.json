@@ -18,6 +18,8 @@
     "check:fix-unsafe": "biome check --write --unsafe .",
     "check-types": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
     "test:e2e": "playwright test",
     "prepare": "cd .. && husky ui/.husky"
   },
@@ -55,11 +57,14 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/browser-playwright": "5.0.0",
     "husky": "^9.1.7",
+    "msw": "3.0.3",
     "shadcn": "4.23.0",
     "typescript": "^6.0.2",
     "vite": "8.3.6",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "vitest-browser-react": "2.3.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

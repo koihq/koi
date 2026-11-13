@@ -2,35 +2,22 @@ package api
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"sync/atomic"
 	"testing"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
-	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/database"
 	"github.com/koihq/koi/pkg/domain"
 )
 
 func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
-	db, err := database.Open(testdb.URL(t))
-	require.NoError(t, err)
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
-	require.NoError(t, database.Migrate(db))
-	server := httptest.NewServer(NewServer(database.NewStore(db), scs.New(), ServerOptions{OpenSignup: true}))
-	t.Cleanup(server.Close)
-	first, second := newCookieClient(t), newCookieClient(t)
-	for _, client := range []*http.Client{first, second} {
-		resp := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"`+uuid.NewString()+`@example.com","password":"password-1234"}`)
-		require.Equal(t, http.StatusCreated, resp.StatusCode)
-		require.NoError(t, resp.Body.Close())
-	}
+	server := newIntegrationServer(t)
+	db := server.DB
+	first, _ := server.signup(t)
+	second, _ := server.signup(t)
+
 	var brandA, brandB BrandRes
 	for _, target := range []*BrandRes{&brandA, &brandB} {
 		resp := doJSON(t, first, http.MethodPost, server.URL+"/api/v1/brands", `{"name":"Koi","domain":"koi.dev","country":"IT"}`)
@@ -68,6 +55,20 @@ func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	require.NoError(t, resp.Body.Close())
 
+	// A prompt's report validates its filters, and a prompt that has not run yet reports nothing.
+	promptVisibility := server.URL + "/api/v1/prompt-history/" + prompt.ID.String() + "/visibility?brandId=" + brandA.ID.String()
+	for _, query := range []string{"&days=14", "&engines=altavista"} {
+		resp = doJSON(t, first, http.MethodGet, promptVisibility+query, "")
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode, query)
+		require.NoError(t, resp.Body.Close())
+	}
+	resp = doJSON(t, first, http.MethodGet, promptVisibility+"&days=7&engines=chatgpt", "")
+	var empty domain.VisibilityReport
+	readJSON(t, resp, &empty)
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Zero(t, empty.Metric.Completed)
+	require.Nil(t, empty.Metric.Rate)
+
 	for _, request := range []struct{ method, path, body string }{
 		{http.MethodGet, "/prompts?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/prompts/" + prompt.ID.String(), ""},
@@ -80,6 +81,7 @@ func TestFlatAPIIsolationAndExplicitBrandScope(t *testing.T) {
 		{http.MethodGet, "/runs?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/generations?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/prompt-history/" + uuid.NewString() + "/runs?brandId=" + brandA.ID.String(), ""},
+		{http.MethodGet, "/prompt-history/" + prompt.ID.String() + "/visibility?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/visibility/summary?brandId=" + brandA.ID.String(), ""},
 		{http.MethodGet, "/tracking?brandId=" + brandA.ID.String(), ""},
 	} {

@@ -294,7 +294,7 @@ function CompetitorPage() {
                   key={item.id}
                   className="group flex min-w-0 items-center gap-3 rounded-control px-2 py-3 hover:bg-signal-pill"
                 >
-                  <div className="grid min-w-0 flex-1 gap-1">
+                  <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-1">
                     <span className="flex flex-wrap items-center gap-2">
                       <BrandLabel name={item.name} domain={item.domain} />
                       {renderStatus(item)}

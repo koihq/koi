@@ -12,4 +12,4 @@ echo "UI typecheck"
 pnpm check-types
 
 echo "UI unit tests"
-pnpm test
+pnpm test:unit

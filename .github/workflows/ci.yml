@@ -82,8 +82,65 @@ jobs:
       - name: Typecheck
         run: pnpm --dir ui check-types
 
+      - name: Install Chromium for browser tests
+        run: pnpm --dir ui exec playwright install --with-deps chromium
+
       - name: Test
         run: pnpm --dir ui test
+
+  e2e:
+    runs-on: ubuntu-24.04
+    env:
+      HUSKY: 0
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: koi
+          POSTGRES_PASSWORD: koi
+          POSTGRES_DB: koi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U koi -d koi"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: ui/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm --dir ui install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --dir ui exec playwright install --with-deps chromium
+
+      - name: Full-stack journeys
+        env:
+          KOI_DATABASE_URL: postgres://koi:koi@localhost:5432/koi?sslmode=disable
+        run: pnpm --dir ui test:e2e
+
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-traces
+          path: ui/test-results/
+          retention-days: 7
 
   image:
     runs-on: ubuntu-24.04

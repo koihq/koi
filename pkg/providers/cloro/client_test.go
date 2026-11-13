@@ -74,8 +74,7 @@ func TestAsyncContracts(t *testing.T) {
 				fmt.Fprintf(w, `{"task":{"id":%q,"status":"COMPLETED"},"response":%s}`, taskID, response)
 			}))
 			defer server.Close()
-			client := New("test-key")
-			client.http.SetBaseURL(server.URL)
+			client := New("test-key", server.URL)
 
 			for range 2 {
 				id, err := client.Submit(t.Context(), cell, "US")
@@ -120,8 +119,7 @@ func TestSyncContracts(t *testing.T) {
 				fmt.Fprint(w, `{"success":true,"result":{"text":"Koi","sources":[]}}`)
 			}))
 			defer server.Close()
-			client := New("test-key")
-			client.syncHTTP.SetBaseURL(server.URL)
+			client := New("test-key", server.URL)
 			answer, err := client.Fetch(t.Context(), domain.VisibilityResult{Engine: engine, PromptText: "Best tools?"}, "US")
 			require.NoError(t, err)
 			require.Equal(t, "Koi", answer.Text)
@@ -163,8 +161,7 @@ func TestTaskResponsesAndErrors(t *testing.T) {
 				fmt.Fprint(w, test.body)
 			}))
 			defer server.Close()
-			client := New("key")
-			client.http.SetBaseURL(server.URL)
+			client := New("key", server.URL)
 			engine := test.engine
 			if engine == "" {
 				engine = domain.EngineChatGPT
@@ -208,8 +205,7 @@ func TestEngineOutageIsNotAnInvalidRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := New("key")
-	client.syncHTTP.SetBaseURL(server.URL)
+	client := New("key", server.URL)
 
 	_, err := client.Fetch(t.Context(), domain.VisibilityResult{
 		PromptText: "Best tools?",

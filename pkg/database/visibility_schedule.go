@@ -44,7 +44,7 @@ func (r *GormVisibilityRepository) StartTracking(ctx context.Context, brandID uu
 		}
 
 		if active == 0 {
-			return domain.Validation(domain.FieldError{Field: "prompts", Code: "empty"})
+			return domain.Validation(domain.FieldError{Field: "prompts", Code: domain.FieldEmpty})
 		}
 
 		if err := tx.Model(&domain.Prompt{}).Where("brand_id = ?", brandID).Update("confirmed", true).Error; err != nil {

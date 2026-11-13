@@ -144,6 +144,27 @@ func TestVisibilityAnalyticsUsesCurrentCompetitorIdentity(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, summary.HasConfirmedPrompts)
 	require.Equal(t, 2, summary.Metric.Completed)
+
+	// A deleted prompt still reports on its history; a prompt that never ran is not found.
+	analytics := domain.NewVisibilityAnalyticsQuerier(store)
+	promptScope := func(id uuid.UUID) domain.PromptVisibilityScope {
+		return domain.PromptVisibilityScope{
+			VisibilityScope: domain.VisibilityScope{
+				BrandFilter: domain.BrandFilter{BrandID: brand.ID},
+				Days:        7,
+			},
+			PromptID: id,
+		}
+	}
+	history, err := analytics.PromptVisibility(ctx, promptScope(promptID))
+	require.NoError(t, err)
+	require.Equal(t, 2, history.Metric.Completed)
+	require.Equal(t, 1, history.Previous.Completed)
+	_, err = analytics.PromptVisibility(ctx, promptScope(uuid.New()))
+	require.ErrorIs(t, err, domain.ErrNotFound)
+	_, err = analytics.PromptVisibility(context.Background(), promptScope(promptID))
+	require.Error(t, err)
+
 	require.NoError(t, commander.Delete(ctx, acme.ID))
 	require.NoError(t, commander.Delete(ctx, shared.ID))
 	require.Empty(t, read(nil).Competitors)

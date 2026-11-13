@@ -3,16 +3,12 @@ package api
 import (
 	"context"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/require"
 
-	"github.com/koihq/koi/internal/testdb"
-	"github.com/koihq/koi/pkg/database"
 	"github.com/koihq/koi/pkg/domain"
 )
 
@@ -32,37 +28,30 @@ func mcpSession(t *testing.T, endpoint, token string) *mcp.ClientSession {
 	return session
 }
 func TestMCPOAuthTokenScopeIsolationAndRevocation(t *testing.T) {
-	db, err := database.Open(testdb.URL(t))
-	require.NoError(t, err)
-	sqlDB, err := db.DB()
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
-	require.NoError(t, database.Migrate(db))
-	store := database.NewStore(db)
+	server := newIntegrationServer(t)
+	store := server.Store
 	service := domain.NewCredentialService(store)
-	server := httptest.NewServer(NewServer(store, scs.New(), ServerOptions{OpenSignup: true}))
-	t.Cleanup(server.Close)
-	first, second := newCookieClient(t), newCookieClient(t)
+
+	first, firstAccount := server.signup(t)
+	second, secondAccount := server.signup(t)
 	tokens := make([]string, 2)
 	ids := make([]uuid.UUID, 2)
-	var firstUserID uuid.UUID
+	firstUserID := uuid.MustParse(firstAccount.ID)
+
+	accounts := []AuthRes{firstAccount, secondAccount}
+
 	for i, client := range []*http.Client{first, second} {
-		response := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/auth/signup", `{"email":"`+uuid.NewString()+`@example.com","password":"password-1234"}`)
-		require.Equal(t, 201, response.StatusCode)
-		var account AuthRes
-		readJSON(t, response, &account)
 		if i == 0 {
-			firstUserID = uuid.MustParse(account.ID)
-			response = doJSON(t, client, http.MethodPost, server.URL+"/api/v1/credentials", `{"name":"Old path"}`)
+			response := doJSON(t, client, http.MethodPost, server.URL+"/api/v1/credentials", `{"name":"Old path"}`)
 			require.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
 			require.NoError(t, response.Body.Close())
 		}
 
-		issued, err := service.IssueTokens(t.Context(), uuid.MustParse(account.ID), "test-client", "Test agent", "koi:read koi:write", oauthOrigin()+"/mcp", uuid.Nil)
+		issued, err := service.IssueTokens(t.Context(), uuid.MustParse(accounts[i].ID), "test-client", "Test agent", "koi:read koi:write", oauthOrigin()+"/mcp", uuid.Nil)
 		require.NoError(t, err)
 		tokens[i] = issued.AccessToken
 
-		response = doJSON(t, client, http.MethodGet, server.URL+"/api/v1/credentials", "")
+		response := doJSON(t, client, http.MethodGet, server.URL+"/api/v1/credentials", "")
 		require.Equal(t, 200, response.StatusCode)
 		var listed struct {
 			Items []struct {

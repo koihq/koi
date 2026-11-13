@@ -269,3 +269,115 @@ func TestOAuthAuthorizationCodePKCEAndRevocation(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, stored)
 }
+
+// TestOAuthDynamicClientFlowPersistsInPostgres runs the flow an MCP client takes, through the real
+// routes and store: discovery, dynamic registration, consent, code exchange and code replay.
+func TestOAuthDynamicClientFlowPersistsInPostgres(t *testing.T) {
+	server := newIntegrationServer(t)
+	browser, _ := server.signup(t)
+	noRedirect := &http.Client{
+		Jar:       browser.Jar,
+		Transport: browser.Transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	metadata, err := browser.Get(server.URL + "/.well-known/oauth-authorization-server")
+	require.NoError(t, err)
+	var discovered struct {
+		RegistrationEndpoint string   `json:"registration_endpoint"`
+		Methods              []string `json:"code_challenge_methods_supported"`
+	}
+	require.NoError(t, json.NewDecoder(metadata.Body).Decode(&discovered))
+	require.NoError(t, metadata.Body.Close())
+	require.Equal(t, http.StatusOK, metadata.StatusCode)
+	require.True(t, strings.HasSuffix(discovered.RegistrationEndpoint, "/oauth/register"))
+	require.Equal(t, []string{"S256"}, discovered.Methods)
+
+	for name, body := range map[string]string{
+		"no redirect":      `{"client_name":"Agent","redirect_uris":[]}`,
+		"plain http":       `{"client_name":"Agent","redirect_uris":["http://agent.example/cb"]}`,
+		"client secret":    `{"client_name":"Agent","redirect_uris":["https://agent.example/cb"],"token_endpoint_auth_method":"client_secret_basic"}`,
+		"malformed object": `{"client_name":`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			rejected, err := http.Post(server.URL+"/oauth/register", "application/json", strings.NewReader(body))
+			require.NoError(t, err)
+			require.NoError(t, rejected.Body.Close())
+			require.Equal(t, http.StatusBadRequest, rejected.StatusCode)
+		})
+	}
+
+	registered, err := http.Post(server.URL+"/oauth/register", "application/json",
+		strings.NewReader(`{"client_name":"Agent","redirect_uris":["http://127.0.0.1/callback"]}`))
+	require.NoError(t, err)
+	var client struct {
+		ID string `json:"client_id"`
+	}
+	require.NoError(t, json.NewDecoder(registered.Body).Decode(&client))
+	require.NoError(t, registered.Body.Close())
+	require.Equal(t, http.StatusCreated, registered.StatusCode)
+
+	verifier := strings.Repeat("v", 43)
+	sum := sha256.Sum256([]byte(verifier))
+	authorize := url.Values{
+		"client_id":             {client.ID},
+		"redirect_uri":          {"http://127.0.0.1:53102/callback"},
+		"response_type":         {"code"},
+		"code_challenge_method": {"S256"},
+		"code_challenge":        {base64.RawURLEncoding.EncodeToString(sum[:])},
+		"state":                 {"opaque"},
+		"scope":                 {"koi:read"},
+	}
+	redirect, err := noRedirect.Get(server.URL + "/oauth/authorize?" + authorize.Encode())
+	require.NoError(t, err)
+	require.NoError(t, redirect.Body.Close())
+	require.Equal(t, http.StatusSeeOther, redirect.StatusCode)
+
+	consent, err := browser.Get(server.URL + "/api/v1/oauth/consent")
+	require.NoError(t, err)
+	var pending struct {
+		CSRF       string `json:"csrf"`
+		ClientName string `json:"clientName"`
+	}
+	require.NoError(t, json.NewDecoder(consent.Body).Decode(&pending))
+	require.NoError(t, consent.Body.Close())
+	require.Equal(t, "Agent", pending.ClientName)
+
+	approved := doJSON(t, browser, http.MethodPost, server.URL+"/api/v1/oauth/consent",
+		`{"csrf":"`+pending.CSRF+`","action":"approve"}`)
+	var decision struct {
+		RedirectURL string `json:"redirectUrl"`
+	}
+	readJSON(t, approved, &decision)
+	callback, err := url.Parse(decision.RedirectURL)
+	require.NoError(t, err)
+	require.Equal(t, "127.0.0.1:53102", callback.Host)
+	require.Equal(t, "opaque", callback.Query().Get("state"))
+
+	exchange := url.Values{
+		"grant_type":    {"authorization_code"},
+		"client_id":     {client.ID},
+		"redirect_uri":  {"http://127.0.0.1:53102/callback"},
+		"code":          {callback.Query().Get("code")},
+		"code_verifier": {verifier},
+	}
+	tokens, err := http.PostForm(server.URL+"/oauth/token", exchange)
+	require.NoError(t, err)
+	var issued struct {
+		AccessToken string `json:"access_token"`
+		Scope       string `json:"scope"`
+	}
+	require.NoError(t, json.NewDecoder(tokens.Body).Decode(&issued))
+	require.NoError(t, tokens.Body.Close())
+	require.Equal(t, http.StatusOK, tokens.StatusCode)
+	require.NotEmpty(t, issued.AccessToken)
+	require.Equal(t, "koi:read", issued.Scope)
+
+	// A code works once, even when it is stored in Postgres.
+	replay, err := http.PostForm(server.URL+"/oauth/token", exchange)
+	require.NoError(t, err)
+	require.NoError(t, replay.Body.Close())
+	require.Equal(t, http.StatusBadRequest, replay.StatusCode)
+}

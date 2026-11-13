@@ -12,68 +12,113 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSendWelcome(t *testing.T) {
-	userID := uuid.New()
+type sentEmail struct {
+	key     string
+	from    string
+	to      []string
+	subject string
+	text    string
+	html    string
+}
+
+// fakeResend returns a client whose requests land in the returned email.
+func fakeResend(t *testing.T, publicURL string) (*Client, *sentEmail) {
+	t.Helper()
+
+	sent := &sentEmail{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/emails", r.URL.Path)
-		require.Equal(t, "welcome-user/"+userID.String(), r.Header.Get("Idempotency-Key"))
 		require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
 
 		var body struct {
-			From string   `json:"from"`
-			To   []string `json:"to"`
-			Text string   `json:"text"`
-			Html string   `json:"html"`
-		}
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		require.Equal(t, "Koi <hello@mail.getkoi.co>", body.From)
-		require.Equal(t, []string{"you@example.com"}, body.To)
-		require.NotEmpty(t, body.Text)
-		require.Contains(t, body.Text, "Set up your brand: https://app.getkoi.co/setup")
-		require.Contains(t, body.Html, `href="https://app.getkoi.co/setup"`)
-		require.Contains(t, body.Html, "See how AI talks about your brand.")
-		_, _ = w.Write([]byte(`{"id":"email-id"}`))
-	}))
-	defer server.Close()
-
-	client := resend.NewClient("test-key")
-	baseURL, err := url.Parse(server.URL + "/")
-	require.NoError(t, err)
-	client.BaseURL = baseURL
-
-	sender := &Client{client: client, from: "Koi <hello@mail.getkoi.co>", publicURL: "https://app.getkoi.co"}
-	require.NoError(t, sender.SendWelcome(t.Context(), userID, "you@example.com"))
-}
-
-func TestSendPasswordReset(t *testing.T) {
-	const link = "https://app.getkoi.co/reset-password#secret-token"
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/emails", r.URL.Path)
-		require.Empty(t, r.Header.Get("Idempotency-Key"))
-
-		var body struct {
+			From    string   `json:"from"`
 			To      []string `json:"to"`
 			Subject string   `json:"subject"`
 			Text    string   `json:"text"`
 			Html    string   `json:"html"`
 		}
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		require.Equal(t, []string{"you@example.com"}, body.To)
-		require.Equal(t, "Reset your Koi password", body.Subject)
-		require.Contains(t, body.Text, link)
-		require.Contains(t, body.Html, `href="`+link+`"`)
+
+		*sent = sentEmail{
+			key:     r.Header.Get("Idempotency-Key"),
+			from:    body.From,
+			to:      body.To,
+			subject: body.Subject,
+			text:    body.Text,
+			html:    body.Html,
+		}
 		_, _ = w.Write([]byte(`{"id":"email-id"}`))
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	client := resend.NewClient("test-key")
 	baseURL, err := url.Parse(server.URL + "/")
 	require.NoError(t, err)
 	client.BaseURL = baseURL
 
-	sender := &Client{client: client, from: "Koi <hello@mail.getkoi.co>", publicURL: "https://app.getkoi.co/"}
-	require.NoError(t, sender.SendPasswordReset(t.Context(), "you@example.com", "secret-token"))
+	return &Client{client: client, from: "Koi <hello@mail.getkoi.co>", publicURL: publicURL}, sent
+}
+
+func TestEmails(t *testing.T) {
+	userID := uuid.New()
+	runID := uuid.New()
+
+	for name, tc := range map[string]struct {
+		send    func(*Client) error
+		key     string
+		subject string
+		text    []string
+		html    []string
+	}{
+		"welcome": {
+			send:    func(c *Client) error { return c.SendWelcome(t.Context(), userID, "you@example.com") },
+			key:     "welcome-user/" + userID.String(),
+			subject: "Welcome to Koi",
+			text:    []string{"Set up your brand: https://app.getkoi.co/setup"},
+			html:    []string{`href="https://app.getkoi.co/setup"`, "See how AI talks about your brand."},
+		},
+		"first check ready": {
+			send: func(c *Client) error {
+				return c.SendFirstCheckReady(t.Context(), runID, "you@example.com", "Acme & <Co>")
+			},
+			key:     "first-check-run/" + runID.String(),
+			subject: "We asked AI about Acme & <Co>",
+			text:    []string{"Your first check for Acme & <Co> is ready.", "See what they said: https://app.getkoi.co/"},
+			// The brand is the founder's own text, so the markup escapes it.
+			html: []string{"Acme &amp; &lt;Co&gt;", `href="https://app.getkoi.co/"`},
+		},
+		// A reset carries a new token on every retry, so a replayed request must not be deduplicated.
+		"password reset": {
+			send:    func(c *Client) error { return c.SendPasswordReset(t.Context(), "you@example.com", "secret-token") },
+			subject: "Reset your Koi password",
+			text:    []string{"https://app.getkoi.co/reset-password#secret-token"},
+			html:    []string{`href="https://app.getkoi.co/reset-password#secret-token"`},
+		},
+		// A second reset must produce a second notice, so there is no idempotency key either.
+		"password changed": {
+			send:    func(c *Client) error { return c.SendPasswordChanged(t.Context(), userID, "you@example.com") },
+			subject: "Your Koi password was reset",
+			text:    []string{"We signed you out everywhere", "If this was not you"},
+			html:    []string{"Your password was reset", "reset your password again"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client, sent := fakeResend(t, "https://app.getkoi.co/")
+
+			require.NoError(t, tc.send(client))
+
+			require.Equal(t, tc.key, sent.key)
+			require.Equal(t, "Koi <hello@mail.getkoi.co>", sent.from)
+			require.Equal(t, []string{"you@example.com"}, sent.to)
+			require.Equal(t, tc.subject, sent.subject)
+			for _, want := range tc.text {
+				require.Contains(t, sent.text, want)
+			}
+			for _, want := range tc.html {
+				require.Contains(t, sent.html, want)
+			}
+		})
+	}
 }
 
 func TestWelcomeContentWithoutPublicURL(t *testing.T) {

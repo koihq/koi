@@ -13,3 +13,5 @@ __unconfig*
 todos.json
 playwright-report/
 test-results/
+.vitest/
+.e2e/

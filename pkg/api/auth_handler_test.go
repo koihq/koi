@@ -62,7 +62,10 @@ func newCookieClient(t *testing.T) *http.Client {
 	jar, err := cookiejar.New(nil)
 	require.NoError(t, err)
 
-	return &http.Client{Jar: jar}
+	return &http.Client{
+		Jar:       jar,
+		Transport: newContractTransport(t),
+	}
 }
 
 func doJSON(t *testing.T, client *http.Client, method, address, body string, brands ...uuid.UUID) *http.Response {
