@@ -18,7 +18,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Setenv("KOI_LOG_LEVEL", "info")
 	t.Setenv("KOI_LOG_FORMAT", "text")
 
-	for _, key := range []string{"KOI_SESSION_LIFETIME", "KOI_OPENROUTER_API_KEY", "KOI_WORKER_CONCURRENCY", "KOI_PROVIDER_TIMEOUT", "KOI_DB_MAX_OPEN_CONNS"} {
+	for _, key := range []string{"KOI_SESSION_LIFETIME", "KOI_OPENROUTER_API_KEY", "KOI_WORKER_CONCURRENCY", "KOI_PROVIDER_TIMEOUT", "KOI_DB_MAX_OPEN_CONNS", "KOI_CLORO_BASE_URL"} {
 		t.Setenv(key, "")
 		require.NoError(t, os.Unsetenv(key))
 	}
@@ -31,8 +31,10 @@ func TestLoadConfig(t *testing.T) {
 	require.Equal(t, 12, cfg.DBMaxOpenConns)
 	require.Empty(t, cfg.OpenRouterAPIKey)
 	require.Empty(t, cfg.CloroAPIKey)
+	require.Equal(t, "https://api.cloro.dev", cfg.CloroBaseURL)
 
 	t.Setenv("KOI_OPENROUTER_API_KEY", " test-key ")
+	t.Setenv("KOI_CLORO_BASE_URL", " http://127.0.0.1:9090/ ")
 	t.Setenv("KOI_SESSION_LIFETIME", "12h")
 	t.Setenv("KOI_WORKER_CONCURRENCY", "2")
 	t.Setenv("KOI_PROVIDER_TIMEOUT", "1m15s")
@@ -44,6 +46,7 @@ func TestLoadConfig(t *testing.T) {
 	require.Equal(t, 2, cfg.WorkerConcurrency)
 	require.Equal(t, 75*time.Second, cfg.ProviderTimeout)
 	require.Equal(t, 3, cfg.DBMaxOpenConns)
+	require.Equal(t, "http://127.0.0.1:9090", cfg.CloroBaseURL)
 }
 
 func TestLoadConfigWelcomeEmailPair(t *testing.T) {
@@ -161,6 +164,8 @@ func TestLoadConfigRejectsInvalidValues(t *testing.T) {
 		{"KOI_LOG_LEVEL", "verbose"},
 		{"KOI_LOG_FORMAT", "yaml"},
 		{"KOI_LIVE_COLLECTION", "maybe"},
+		{"KOI_CLORO_BASE_URL", "api.cloro.dev"},
+		{"KOI_CLORO_BASE_URL", "ftp://api.cloro.dev"},
 	} {
 		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
 			t.Setenv("KOI_PORT", ":8080")

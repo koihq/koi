@@ -44,6 +44,7 @@ type Config struct {
 	SessionLifetime     time.Duration
 	OpenRouterAPIKey    string
 	CloroAPIKey         string
+	CloroBaseURL        string
 	LiveCollection      bool
 	ResendAPIKey        string
 	EmailFrom           string
@@ -100,6 +101,14 @@ func LoadConfig() (Config, error) {
 			return Config{}, fmt.Errorf("KOI_LIVE_COLLECTION must be true or false")
 		}
 	}
+	cloroBaseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("KOI_CLORO_BASE_URL")), "/")
+	if cloroBaseURL == "" {
+		cloroBaseURL = cloro.DefaultBaseURL
+	}
+	if parsed, err := url.Parse(cloroBaseURL); err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" {
+		return Config{}, fmt.Errorf("KOI_CLORO_BASE_URL must be an http or https URL")
+	}
+
 	if !liveCollection && cloroAPIKey != "" {
 		slog.Warn("KOI_LIVE_COLLECTION=false: ignoring KOI_CLORO_API_KEY")
 		cloroAPIKey = ""
@@ -193,6 +202,7 @@ func LoadConfig() (Config, error) {
 		SessionLifetime:     sessionLifetime,
 		OpenRouterAPIKey:    strings.TrimSpace(os.Getenv("KOI_OPENROUTER_API_KEY")),
 		CloroAPIKey:         cloroAPIKey,
+		CloroBaseURL:        cloroBaseURL,
 		LiveCollection:      liveCollection,
 		ResendAPIKey:        resendAPIKey,
 		EmailFrom:           emailFrom,
@@ -363,7 +373,7 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 			}
 			if a.cfg.CloroAPIKey != "" {
 				if a.cloroProvider == nil {
-					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey)
+					a.cloroProvider = cloro.New(a.cfg.CloroAPIKey, a.cfg.CloroBaseURL)
 				}
 				visibilityStore := database.NewStore(db).WithCloudMode(a.cfg.DeploymentMode == "cloud").
 					WithWelcomeEmail(a.cfg.ResendAPIKey != "")

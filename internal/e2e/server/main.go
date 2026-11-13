@@ -1,13 +1,12 @@
 // Command server runs Koi for the Playwright end-to-end suite: the real binary's app, embedded UI
-// and Postgres, in a schema of its own, with every optional service turned off. It seeds the demo
-// account, writes the database URL for tests that run `koi admin`, and drops the schema on exit.
+// and Postgres, in a schema of its own. Live collection goes to a local fake Cloro, so it never
+// spends credits, and every optional service is off. It seeds the demo account, writes the
+// database URL for tests that run `koi admin`, and drops the schema on exit.
 package main
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -27,7 +26,6 @@ const port = "8090"
 
 // Optional integrations stay off so the suite proves the self-hosted core works without them.
 var optional = []string{
-	"KOI_CLORO_API_KEY",
 	"KOI_LIVE_COLLECTION",
 	"KOI_OPENROUTER_API_KEY",
 	"KOI_RESEND_API_KEY",
@@ -79,7 +77,10 @@ func run() error {
 		return err
 	}
 
-	if err := configure(scoped); err != nil {
+	cloro := startFakeCloro()
+	defer cloro.Close()
+
+	if err := configure(scoped, cloro.URL); err != nil {
 		return err
 	}
 
@@ -95,11 +96,6 @@ func run() error {
 		return err
 	}
 
-	if err := app.RunAdmin(context.Background(), []string{"seed-demo"}, strings.NewReader(""), io.Discard); err != nil {
-		return fmt.Errorf("seed demo: %w", err)
-	}
-
-	// Playwright waits for this line, so tests start only after the demo account exists.
 	fmt.Println("koi e2e ready on http://127.0.0.1:" + port)
 
 	return <-done
@@ -119,9 +115,11 @@ func withSearchPath(raw, schema string) (string, error) {
 }
 
 // configure sets the environment before the app loads `.env`, which never overrides a set value.
-func configure(databaseURL string) error {
+func configure(databaseURL, cloroURL string) error {
 	values := map[string]string{
 		"KOI_DATABASE_URL":    databaseURL,
+		"KOI_CLORO_API_KEY":   "e2e-fake-key",
+		"KOI_CLORO_BASE_URL":  cloroURL,
 		"KOI_PORT":            ":" + port,
 		"KOI_PUBLIC_URL":      "http://127.0.0.1:" + port,
 		"KOI_DEPLOYMENT_MODE": "selfhosted",

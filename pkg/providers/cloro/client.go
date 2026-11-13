@@ -19,8 +19,12 @@ type Client struct {
 	syncHTTP *resty.Client
 }
 
-func New(key string) *Client {
-	http := resty.New().SetBaseURL("https://api.cloro.dev").
+// DefaultBaseURL is Cloro's production API. KOI_CLORO_BASE_URL replaces it, for example with a
+// local fake in end-to-end tests, so collection runs without spending Cloro credits.
+const DefaultBaseURL = "https://api.cloro.dev"
+
+func New(key, baseURL string) *Client {
+	http := resty.New().SetBaseURL(baseURL).
 		SetAuthToken(strings.TrimSpace(key)).SetTimeout(10 * time.Second)
 	return &Client{http: http, syncHTTP: http.Clone().SetTimeout(3 * time.Minute)}
 }
