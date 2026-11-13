@@ -195,6 +195,10 @@ describe("home", () => {
       expect(box(range).y).toBe(rangeTop);
 
       await expect.element(prompts).toHaveAttribute("aria-busy", "true");
+      // Status counts keep their value while loading; an emptied count reflows the header.
+      await expect
+        .element(prompts.getByRole("button", { name: /^Tracking/ }))
+        .toHaveTextContent("Tracking1");
       expect(box(prompts).height).toBe(promptHeight);
       await expect
         .poll(() => opacity(document.querySelector("#prompts li, #prompts tbody tr")))
