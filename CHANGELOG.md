@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/koihq/koi/compare/v0.2.0...v0.2.1) (2026-11-13)
+
+
+### Performance Improvements
+
+* Test/enhance testing layers ([#64](https://github.com/koihq/koi/issues/64)) ([774488c](https://github.com/koihq/koi/commit/774488c5e60a6968188e70855529da752b0b4878))
+
 ## [0.2.0](https://github.com/koihq/koi/compare/v0.1.1...v0.2.0) (2026-11-12)
 
 
