@@ -41,7 +41,7 @@ keep what tax law requires you to keep, such as invoices.
 
 On Koi Cloud, analytics and support conversations live in PostHog under the user's id. For a copy
 or a deletion, find the person in PostHog by that id or email, export or delete them there too,
-including their recordings and conversations. See [analytics](analytics.md).
+including their recordings and conversations.
 
 ## What remains
 

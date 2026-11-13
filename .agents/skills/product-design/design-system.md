@@ -7,6 +7,9 @@ size or type scale.
 
 ## Current direction and provenance
 
+Paths under `plans/ui/` name plans removed from the repository; read one with
+`git show 774488c:plans/ui/<file>`.
+
 The historical `home-context` exploration is available in Git at `50a45b7` under
 `ui/src/routes/dev/explorations`. It is a historical reference, not a running route.
 `plans/ui/home-context-fidelity.md` records its production migration;

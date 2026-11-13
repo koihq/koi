@@ -39,10 +39,11 @@ Establish:
 - The project's chosen visual references and which qualities each governs: composition,
   density, typography, surfaces, interaction, or another named quality.
 
-For Koi, read `docs/design-system.md` and the References section of
+For Koi, read `.agents/skills/product-design/design-system.md` and the References section of
 [product-design](../product-design/SKILL.md) (Fey, Family, Trade Republic). The historical
 `home-context` exploration lives in Git at `50a45b7` under `ui/src/routes/dev/explorations`;
-it is provenance, not a running route. Plans under `plans/ui/` record later scoped decisions.
+it is provenance, not a running route. Plans under `plans/ui/` record later scoped decisions; the folder is local and
+git-ignored, and older plans are in Git at `774488c`.
 Distinguish chosen direction from abandoned variants, proposed behavior, and production
 conventions.
 An exception authorized for an exploration applies to that scope; it is not a global

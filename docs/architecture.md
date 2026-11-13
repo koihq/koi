@@ -147,6 +147,36 @@ Workers consume the application `CollectedAnswer` and `ProviderError` contracts.
 Provider adapters retain their protocol details and stable failure codes. Cloro is
 required for live collection; OpenRouter drafting and Logo.dev remain optional.
 
+### Workers and scheduling
+
+River runs jobs from Postgres; queue discovery polls approximately every second with jitter.
+`KOI_WORKER_CONCURRENCY` defaults to four workers per enabled generation/visibility queue.
+A separate maintenance queue uses one worker and runs on startup, then every minute to
+reconcile interrupted runs and dispatch visibility work.
+
+Each brand gets one AI draft: at most 5 prompts and every competitor it can verify. After
+that, add entries by hand or through your agent over MCP. "Start tracking" confirms the lists
+once and starts collection; later changes never pause it and apply from the next check. Each
+brand runs every 24 hours
+from its persisted UTC anchor; missed slots are skipped rather than collected in a burst.
+A visibility job processes cells for approximately 40 seconds, persists Cloro task IDs and
+answers, then snoozes for ten seconds if work remains. Actual resumption also depends on
+River's scheduler and available workers. This is a bounded loop inside a queued job.
+
+Visibility cells show matched competitor names and supporting evidence. Matching uses current
+names, aliases, official domains, and GitHub repositories, so edits also update historical links
+without changing saved answers or brand outcomes. Live Cloro entities and leading Markdown
+links to product homepages or repositories provide conservative discovery: two distinct cells
+create an unconfirmed observed suggestion; retries do not count twice. Names found only in
+ordinary prose may be missed. Name-only suggestions need a primary domain or repository before
+individual confirmation. Starting tracking excludes observed suggestions, and deleting one suppresses
+its rediscovery for that brand without interrupting tracking.
+
+Generation runs when a job is queued. `KOI_PROVIDER_TIMEOUT` defaults to three minutes per
+provider call. Generation makes two sequential calls, so its job timeout is twice that value
+plus 30 seconds (6m30s by default). Retry delays after failures are five and twenty seconds;
+there are at most three attempts. Graceful shutdown allows jobs 60 seconds before cancellation.
+
 ## UI state and generated clients
 
 `main.tsx` creates one API instance and QueryClient, shared with router loaders and
@@ -176,3 +206,7 @@ they do not load competitor collections to complete those reports.
 Feature-specific mutations share invalidation sets. Prompt list queries and batch
 actions are local hooks; failed batch IDs remain selected for retry. Changing brand
 remounts the route outlet so forms, selection and dialogs start in the new context.
+
+## MCP and OAuth
+
+The MCP Go SDK implements the resource server and client primitives, not an authorization server. Koi therefore implements the issuer-specific endpoints in `api`, while credential state and token lifecycle live in `domain` and GORM persistence lives in `database`. We evaluated [Fosite](https://github.com/ory/fosite), [go-oauth2](https://github.com/go-oauth2/oauth2), and [Hydra](https://www.ory.com/hydra). Fosite would replace the token protocol but require its request/session storage adapters; Hydra would add a separate service to every self-hosted deployment; go-oauth2 does not clearly document the MCP PKCE/CIMD requirements. The current narrow issuer avoids those additional adapters and services. Revisit this decision before broad public deployment, after interoperability and security tests against real clients.

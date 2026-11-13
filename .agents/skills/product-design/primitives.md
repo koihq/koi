@@ -99,7 +99,7 @@ Do not animate theme flips, keyboard actions, or page navigation. Do not add pop
 
 ## Current production decisions
 
-See `docs/design-system.md` for the current contract and historical exploration provenance.
+See [design-system.md](design-system.md) for the current contract and historical exploration provenance.
 Competitors show name, domain, visibility and gap vs the brand. Checkbox uses shadcn with a 28px hit target.
 Input and Textarea use 16px below `sm`; preserve their desktop density. Button `circle`
 and `pill` sizes provide 40px targets without route-level size overrides. Tables with
