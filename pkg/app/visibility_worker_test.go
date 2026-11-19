@@ -434,6 +434,7 @@ func TestVisibilityWorkerJudgesNamedBrandOnly(t *testing.T) {
 			{
 				name:        "other company becomes a miss",
 				answer:      "Koi Security protects endpoints.",
+				sources:     []string{"https://koisecurity.example"},
 				verdict:     domain.MentionVerdictOtherCompany,
 				wantCalls:   4,
 				wantOutcome: domain.OutcomeMiss,
@@ -481,6 +482,7 @@ func TestVisibilityWorkerJudgesNamedBrandOnly(t *testing.T) {
 						require.Equal(t, "Koi", input.Brand.Name)
 						require.Equal(t, "Best tools?", input.Prompt)
 						require.Equal(t, test.answer, input.Answer)
+						require.ElementsMatch(t, test.sources, input.Sources)
 
 						if test.judgeErr != nil {
 							return domain.MentionJudgment{}, test.judgeErr

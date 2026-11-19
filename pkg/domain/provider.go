@@ -16,6 +16,8 @@ type MentionInput struct {
 	Brand  BrandSnapshot
 	Prompt string
 	Answer string
+	// Sources are the pages the engine cited, often the clearest sign of which product it means.
+	Sources []string
 }
 
 type MentionJudgment struct {

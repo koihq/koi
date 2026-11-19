@@ -3,8 +3,10 @@ package domain
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
@@ -168,4 +170,56 @@ func TestGenerationCreateRequiresOwnedBrand(t *testing.T) {
 	brands.EXPECT().LockForUpdate(mock.Anything, brandID).Return(nil, ErrNotFound)
 	_, _, err := NewGenerationCommander(store, true).Create(t.Context(), brandID, nil, false)
 	require.ErrorIs(t, err, ErrNotFound)
+}
+
+func TestGenerationSummaryBrandDescription(t *testing.T) {
+	long := strings.Repeat("é", maxBrandDescriptionLen)
+
+	for _, tc := range []struct {
+		name    string
+		summary GenerationSummary
+		want    string
+	}{
+		{
+			name: "full summary",
+			summary: GenerationSummary{
+				Product:   " Deja ",
+				Category:  "zsh plugin",
+				Audience:  "developers who live in the terminal",
+				Functions: []string{"Predicts the next command", " ", "Shows inline ghost text"},
+			},
+			want: "Deja: zsh plugin. For developers who live in the terminal. " +
+				"Predicts the next command; Shows inline ghost text.",
+		},
+		{
+			name: "category only",
+			summary: GenerationSummary{
+				Category: "zsh plugin",
+			},
+			want: "zsh plugin.",
+		},
+		{
+			name: "nothing to identify the product",
+			summary: GenerationSummary{
+				Audience:  "Developers",
+				Functions: []string{"Predicts commands"},
+			},
+			want: "",
+		},
+		{
+			name: "cut to the description limit on a character boundary",
+			summary: GenerationSummary{
+				Product:  "Deja",
+				Category: long,
+			},
+			want: "Deja: " + long[:len("é")*(maxBrandDescriptionLen-len("Deja: "))],
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.summary.BrandDescription()
+
+			require.Equal(t, tc.want, got)
+			require.LessOrEqual(t, utf8.RuneCountInString(got), maxBrandDescriptionLen)
+		})
+	}
 }

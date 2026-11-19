@@ -31,8 +31,9 @@ func mentionInput() domain.MentionInput {
 			Country:     "US",
 			Description: "An AEO tool.",
 		},
-		Prompt: "What is Koi?",
-		Answer: "I couldn't reliably identify Koi.",
+		Prompt:  "What is Koi?",
+		Answer:  "I couldn't reliably identify Koi.",
+		Sources: []string{"https://koi.dev/docs", "https://github.com/koihq/koi"},
 	}
 }
 
@@ -66,6 +67,7 @@ func TestJudgeMentionRequestAndVerdict(t *testing.T) {
 	require.Contains(t, input, `"description":"An AEO tool."`)
 	require.NotContains(t, input, "country")
 	require.Contains(t, input, "PROMPT:\nWhat is Koi?")
+	require.Contains(t, input, "SOURCES:\nhttps://koi.dev/docs\nhttps://github.com/koihq/koi\n\nANSWER:")
 	require.Contains(t, input, "ANSWER:\nI couldn't reliably identify Koi.")
 
 	schema := body["text"].(map[string]any)["format"].(map[string]any)["schema"].(map[string]any)
@@ -88,16 +90,27 @@ func TestJudgeMentionWithoutReportedCost(t *testing.T) {
 }
 
 func TestJudgeMentionRejectsInvalidOutput(t *testing.T) {
-	for _, output := range []string{
-		`{"verdict":"maybe"}`,
-		`{"verdict":""}`,
-		`{"verdict":"mention","reason":"extra"}`,
-		`not json`,
+	// The model reasoned until the output limit and never wrote the verdict.
+	truncated := `{"id":"test","object":"response","created_at":1,"model":"test","status":"incomplete",` +
+		`"incomplete_details":{"reason":"max_output_tokens"},"output":[],"tool_choice":"auto","tools":[],` +
+		`"parallel_tool_calls":false` + mentionUsage + `}`
+
+	for _, test := range []struct {
+		name string
+		body string
+		code string
+	}{
+		{name: "unknown verdict", body: mentionResponse(`{"verdict":"maybe"}`, mentionUsage), code: "invalid_output"},
+		{name: "empty verdict", body: mentionResponse(`{"verdict":""}`, mentionUsage), code: "invalid_output"},
+		{name: "extra field", body: mentionResponse(`{"verdict":"mention","reason":"extra"}`, mentionUsage), code: "invalid_output"},
+		{name: "not json", body: mentionResponse(`not json`, mentionUsage), code: "invalid_output"},
+		{name: "no text", body: mentionResponse(``, mentionUsage), code: "invalid_output"},
+		{name: "stopped at the output limit", body: truncated, code: "output_limit"},
 	} {
-		t.Run(output, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = fmt.Fprint(w, mentionResponse(output, mentionUsage))
+				_, _ = fmt.Fprint(w, test.body)
 			}))
 			defer server.Close()
 
@@ -105,7 +118,8 @@ func TestJudgeMentionRejectsInvalidOutput(t *testing.T) {
 
 			var providerErr *Error
 			require.ErrorAs(t, err, &providerErr)
-			require.Equal(t, "invalid_output", providerErr.Code)
+			require.Equal(t, test.code, providerErr.Code)
+			require.True(t, providerErr.Retryable)
 		})
 	}
 }
@@ -123,6 +137,16 @@ func TestJudgeMentionClassifiesProviderFailure(t *testing.T) {
 	var providerErr *Error
 	require.ErrorAs(t, err, &providerErr)
 	require.Equal(t, "provider_rate_limited", providerErr.Code)
+}
+
+func TestMentionSources(t *testing.T) {
+	many := make([]string, maxMentionSources+5)
+	for i := range many {
+		many[i] = fmt.Sprintf("https://example.com/%d", i)
+	}
+
+	require.Equal(t, "(none)", mentionSources(nil))
+	require.Equal(t, strings.Join(many[:maxMentionSources], "\n"), mentionSources(many))
 }
 
 func TestBoundAnswerCutsOnCharacterBoundary(t *testing.T) {
