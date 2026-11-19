@@ -5,6 +5,7 @@ import type { PromptListParams } from "@/api/prompts.api";
 import { isCollecting } from "@/lib/answer-state";
 import {
   accountKey,
+  authProvidersKey,
   billingSubscriptionKey,
   brandsKey,
   capabilitiesKey,
@@ -26,6 +27,14 @@ export const capabilitiesOptions = (api: Api) =>
   queryOptions({
     queryKey: capabilitiesKey,
     queryFn: ({ signal }) => api.capabilities.get({ signal }),
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+  });
+/** Sign-in methods besides email and password. Fixed for the life of the instance. */
+export const authProvidersOptions = (api: Api) =>
+  queryOptions({
+    queryKey: authProvidersKey,
+    queryFn: ({ signal }) => api.auth.providers({ signal }),
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,
   });

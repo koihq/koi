@@ -12,6 +12,7 @@ apis/VisibilityApi.ts
 apis/index.ts
 index.ts
 models/AppearanceEvidence.ts
+models/AuthProvidersRes.ts
 models/AuthRes.ts
 models/BillingAllowanceRequest.ts
 models/BillingCatalog.ts

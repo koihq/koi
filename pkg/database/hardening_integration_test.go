@@ -194,10 +194,11 @@ func TestClosedSignupAdmitsOnlyTheFirstUser(t *testing.T) {
 
 	var wg sync.WaitGroup
 	results := make([]error, 4)
+	accounts := make([]*domain.Me, 4)
 
 	for i := range results {
 		wg.Go(func() {
-			_, results[i] = commander.Signup(t.Context(), domain.SignupParams{
+			accounts[i], results[i] = commander.Signup(t.Context(), domain.SignupParams{
 				Email:    uuid.NewString() + "@example.com",
 				Password: "long-enough-password",
 			})
@@ -205,17 +206,27 @@ func TestClosedSignupAdmitsOnlyTheFirstUser(t *testing.T) {
 	}
 	wg.Wait()
 
-	admitted := 0
+	var owner *domain.Me
 
-	for _, err := range results {
+	for i, err := range results {
 		if err == nil {
-			admitted++
+			require.Nil(t, owner, "a second account was admitted")
+			owner = accounts[i]
 		} else {
 			require.ErrorIs(t, err, domain.ErrSignupClosed)
 		}
 	}
 
-	require.Equal(t, 1, admitted)
+	require.NotNil(t, owner)
+
+	// Google follows the same rule: the owner signs in, a new address is turned away.
+	me, err := commander.SignInWithGoogle(t.Context(), strings.ToUpper(owner.User.Email))
+	require.NoError(t, err)
+	require.Equal(t, owner.User.ID, me.User.ID)
+	require.Equal(t, owner.Organization.ID, me.Organization.ID)
+
+	_, err = commander.SignInWithGoogle(t.Context(), uuid.NewString()+"@example.com")
+	require.ErrorIs(t, err, domain.ErrSignupClosed)
 
 	var users int64
 	require.NoError(t, store.db.Model(&domain.User{}).Count(&users).Error)

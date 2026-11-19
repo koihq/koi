@@ -61,6 +61,8 @@ type Config struct {
 	PostHogKey          string
 	PostHogHost         string
 	AnalyticsExcluded   []string
+	GoogleClientID      string
+	GoogleClientSecret  string
 }
 
 func LoadConfig() (Config, error) {
@@ -188,6 +190,15 @@ func LoadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("KOI_POSTHOG_HOST must be an HTTPS origin")
 	}
 
+	googleClientID := strings.TrimSpace(os.Getenv("KOI_GOOGLE_CLIENT_ID"))
+	googleClientSecret := strings.TrimSpace(os.Getenv("KOI_GOOGLE_CLIENT_SECRET"))
+	if (googleClientID == "") != (googleClientSecret == "") {
+		return Config{}, fmt.Errorf("KOI_GOOGLE_CLIENT_ID and KOI_GOOGLE_CLIENT_SECRET must be set together")
+	}
+	if googleClientID != "" && publicURL == "" {
+		return Config{}, fmt.Errorf("Google sign-in requires KOI_PUBLIC_URL for its redirect URL")
+	}
+
 	var analyticsExcluded []string
 	for _, email := range strings.Split(os.Getenv("KOI_ANALYTICS_EXCLUDED_EMAILS"), ",") {
 		if email = strings.ToLower(strings.TrimSpace(email)); email != "" {
@@ -219,6 +230,8 @@ func LoadConfig() (Config, error) {
 		PostHogKey:          postHogKey,
 		PostHogHost:         postHogHost,
 		AnalyticsExcluded:   analyticsExcluded,
+		GoogleClientID:      googleClientID,
+		GoogleClientSecret:  googleClientSecret,
 	}, nil
 }
 
@@ -470,6 +483,13 @@ func (a *App) run(ctx context.Context, listener net.Listener) error {
 		ClientIPHeader: a.cfg.ClientIPHeader,
 		Analytics:      analytics,
 		Browser:        a.browserAnalytics(),
+	}
+	if a.cfg.GoogleClientID != "" {
+		options.Google = &api.GoogleAuth{
+			ClientID:     a.cfg.GoogleClientID,
+			ClientSecret: a.cfg.GoogleClientSecret,
+			PublicURL:    a.cfg.PublicURL,
+		}
 	}
 	if a.cfg.DeploymentMode == "cloud" {
 		stripeClient := stripe.New(a.cfg.StripeSecretKey)

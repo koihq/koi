@@ -390,6 +390,66 @@ paths:
                 $ref: "#/components/schemas/MeRes"
         "401":
           $ref: "#/components/responses/Error"
+  /api/v1/auth/providers:
+    get:
+      tags: [auth]
+      operationId: authProviders
+      description: Sign-in methods this instance offers besides email and password.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthProvidersRes"
+  /api/v1/auth/google/start:
+    get:
+      tags: [auth]
+      operationId: googleStart
+      description: >-
+        Browser navigation to Google's consent screen. Exists only when the instance has a Google
+        client (KOI_GOOGLE_CLIENT_ID).
+      parameters:
+        - name: returnTo
+          in: query
+          description: Same-origin path to open after sign-in. Anything else becomes "/".
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to Google
+        "404":
+          description: Google sign-in is not configured on this instance
+        "429":
+          $ref: "#/components/responses/Error"
+  /api/v1/auth/google/callback:
+    get:
+      tags: [auth]
+      operationId: googleCallback
+      description: >-
+        Google's redirect back. Signs in or creates the account for the verified email, then
+        redirects to returnTo. Failures redirect to /sign-in?error= with google_cancelled,
+        google_unverified, google_failed or signup_closed.
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the app or back to sign-in
+        "404":
+          description: Google sign-in is not configured on this instance
+        "429":
+          $ref: "#/components/responses/Error"
   /api/v1/billing/catalog:
     get:
       tags: [billing]
@@ -1949,6 +2009,12 @@ components:
           type: string
         organization:
           $ref: "#/components/schemas/OrgRes"
+    AuthProvidersRes:
+      type: object
+      required: [google]
+      properties:
+        google:
+          type: boolean
     MeRes:
       allOf:
         - $ref: "#/components/schemas/AuthRes"

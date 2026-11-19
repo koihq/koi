@@ -49,20 +49,64 @@ func TestLoadConfig(t *testing.T) {
 	require.Equal(t, "http://127.0.0.1:9090", cfg.CloroBaseURL)
 }
 
-func TestLoadConfigWelcomeEmailPair(t *testing.T) {
+// Optional services take two values; one without the other fails at startup.
+func TestLoadConfigPairs(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		first   [2]string
+		second  [2]string
+		missing string
+		check   func(t *testing.T, cfg Config)
+	}{
+		{
+			name:    "welcome email",
+			first:   [2]string{"KOI_RESEND_API_KEY", "test-key"},
+			second:  [2]string{"KOI_EMAIL_FROM", "Koi <hello@mail.example.com>"},
+			missing: "KOI_EMAIL_FROM",
+			check: func(t *testing.T, cfg Config) {
+				require.Equal(t, "test-key", cfg.ResendAPIKey)
+			},
+		},
+		{
+			name:    "google sign-in",
+			first:   [2]string{"KOI_GOOGLE_CLIENT_ID", "id.apps.googleusercontent.com"},
+			second:  [2]string{"KOI_GOOGLE_CLIENT_SECRET", "secret"},
+			missing: "KOI_GOOGLE_CLIENT_SECRET",
+			check: func(t *testing.T, cfg Config) {
+				require.Equal(t, "id.apps.googleusercontent.com", cfg.GoogleClientID)
+				require.Equal(t, "secret", cfg.GoogleClientSecret)
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("KOI_PORT", ":8080")
+			t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
+			t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
+			t.Setenv("KOI_PUBLIC_URL", "http://localhost:5173")
+			t.Setenv(tc.first[0], tc.first[1])
+			t.Setenv(tc.second[0], "")
+
+			_, err := LoadConfig()
+			require.ErrorContains(t, err, tc.missing)
+
+			t.Setenv(tc.second[0], tc.second[1])
+			cfg, err := LoadConfig()
+			require.NoError(t, err)
+			tc.check(t, cfg)
+		})
+	}
+}
+
+func TestLoadConfigGoogleNeedsPublicURL(t *testing.T) {
 	t.Setenv("KOI_PORT", ":8080")
 	t.Setenv("KOI_DATABASE_URL", "postgres://example/test")
 	t.Setenv("KOI_DEPLOYMENT_MODE", "selfhosted")
-	t.Setenv("KOI_RESEND_API_KEY", "test-key")
-	t.Setenv("KOI_EMAIL_FROM", "")
+	t.Setenv("KOI_PUBLIC_URL", "")
+	t.Setenv("KOI_GOOGLE_CLIENT_ID", "id.apps.googleusercontent.com")
+	t.Setenv("KOI_GOOGLE_CLIENT_SECRET", "secret")
 
 	_, err := LoadConfig()
-	require.ErrorContains(t, err, "KOI_EMAIL_FROM")
-
-	t.Setenv("KOI_EMAIL_FROM", "Koi <hello@mail.example.com>")
-	cfg, err := LoadConfig()
-	require.NoError(t, err)
-	require.Equal(t, "test-key", cfg.ResendAPIKey)
+	require.ErrorContains(t, err, "KOI_PUBLIC_URL")
 }
 
 func TestLoadConfigRequiredValues(t *testing.T) {

@@ -7,20 +7,28 @@ import type { CredentialsReq } from "@/api/generated";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { GoogleSignIn } from "@/routes/-google-sign-in";
 
 export function CredentialsForm({
   intent,
   passwordComplete,
   onSubmit,
   onSwitchIntent,
+  returnTo = "/",
+  notice,
 }: {
   intent: "sign-in" | "sign-up";
   passwordComplete: "current-password" | "new-password";
   onSubmit: (body: CredentialsReq) => Promise<void>;
   onSwitchIntent?: () => void;
+  /** Where Google sign-in lands afterwards. */
+  returnTo?: string;
+  /** A message from an earlier attempt, such as a Google sign-in that failed. */
+  notice?: string;
 }) {
   const { t } = useTranslation("auth");
   const [error, setError] = useState<string | null>(null);
+  const [noticeShown, setNoticeShown] = useState(true);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -29,6 +37,7 @@ export function CredentialsForm({
     const email = String(data.get("email") ?? "");
     const password = String(data.get("password") ?? "");
     setError(null);
+    setNoticeShown(false);
     setPending(true);
 
     try {
@@ -45,50 +54,53 @@ export function CredentialsForm({
       <h1 className="text-2xl font-semibold tracking-tight">
         {intent === "sign-in" ? t("signIn.title") : t("signUp.title")}
       </h1>
-      <form className="mt-8" onSubmit={handleSubmit}>
-        <FieldGroup>
-          <Field data-invalid={error ? true : undefined}>
-            <FieldLabel htmlFor="email">{t("fields.email")}</FieldLabel>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              aria-invalid={error ? true : undefined}
-            />
-          </Field>
-          <Field data-invalid={error ? true : undefined}>
-            <FieldLabel htmlFor="password">{t("fields.password")}</FieldLabel>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete={passwordComplete}
-              required
-              minLength={intent === "sign-up" ? 12 : undefined}
-              maxLength={intent === "sign-up" ? 256 : undefined}
-              aria-invalid={error ? true : undefined}
-            />
-            {intent === "sign-in" && !onSwitchIntent && (
-              <Link
-                to="/forgot-password"
-                className="justify-self-start text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                {t("signIn.forgot")}
-              </Link>
-            )}
-          </Field>
-          <FieldError>{error}</FieldError>
-          <Button type="submit" size="lg" className="w-full" disabled={pending}>
-            {pending
-              ? t("working", { ns: "common" })
-              : intent === "sign-in"
-                ? t("signIn.submit")
-                : t("signUp.submit")}
-          </Button>
-        </FieldGroup>
-      </form>
+      <div className="mt-8 flex flex-col gap-5">
+        <GoogleSignIn returnTo={returnTo} />
+        <form onSubmit={handleSubmit}>
+          <FieldGroup>
+            <Field data-invalid={error ? true : undefined}>
+              <FieldLabel htmlFor="email">{t("fields.email")}</FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                aria-invalid={error ? true : undefined}
+              />
+            </Field>
+            <Field data-invalid={error ? true : undefined}>
+              <FieldLabel htmlFor="password">{t("fields.password")}</FieldLabel>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete={passwordComplete}
+                required
+                minLength={intent === "sign-up" ? 12 : undefined}
+                maxLength={intent === "sign-up" ? 256 : undefined}
+                aria-invalid={error ? true : undefined}
+              />
+              {intent === "sign-in" && !onSwitchIntent && (
+                <Link
+                  to="/forgot-password"
+                  className="justify-self-start text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  {t("signIn.forgot")}
+                </Link>
+              )}
+            </Field>
+            <FieldError>{error ?? (noticeShown ? notice : null)}</FieldError>
+            <Button type="submit" size="lg" className="w-full" disabled={pending}>
+              {pending
+                ? t("working", { ns: "common" })
+                : intent === "sign-in"
+                  ? t("signIn.submit")
+                  : t("signUp.submit")}
+            </Button>
+          </FieldGroup>
+        </form>
+      </div>
       <p className="mt-6 text-sm text-muted-foreground">
         {onSwitchIntent ? (
           <button

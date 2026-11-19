@@ -9,6 +9,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"golang.org/x/oauth2"
 
 	"github.com/koihq/koi/pkg/api/middlewares"
 	"github.com/koihq/koi/pkg/api/response"
@@ -64,6 +65,8 @@ type AuthHandler struct {
 	sess      *scs.SessionManager
 	auth      func(http.Handler) http.Handler
 	limiter   *middlewares.RateLimiter
+	// google is nil when the instance has no Google client.
+	google *oauth2.Config
 }
 
 func NewAuthHandler(q domain.AuthQuerier, c domain.AuthCommander, sess *scs.SessionManager, auth func(http.Handler) http.Handler) *AuthHandler {
@@ -95,6 +98,11 @@ func (h *AuthHandler) Routes() func(r chi.Router) {
 		).Post("/password/reset", h.ResetPassword)
 		r.Post("/logout", h.Logout)
 		r.With(h.auth).Get("/me", h.Me)
+		r.Get("/providers", h.Providers)
+		if h.google != nil {
+			r.With(h.limiter.PerIP(20, time.Minute)).Get("/google/start", h.GoogleStart)
+			r.With(h.limiter.PerIP(20, time.Minute)).Get("/google/callback", h.GoogleCallback)
+		}
 	}
 }
 

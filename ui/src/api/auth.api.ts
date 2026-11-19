@@ -1,4 +1,11 @@
-import type { AuthApi, AuthRes, CredentialsReq, MeRes, ResetPasswordReq } from "@/api/generated";
+import type {
+  AuthApi,
+  AuthProvidersRes,
+  AuthRes,
+  CredentialsReq,
+  MeRes,
+  ResetPasswordReq,
+} from "@/api/generated";
 
 export type Credentials = CredentialsReq;
 
@@ -13,6 +20,7 @@ export function createAuthApi(api: AuthApi) {
     resetPassword: (request: ResetPasswordReq): Promise<void> =>
       api.resetPassword({ resetPasswordReq: request }),
     me: (init?: RequestInit): Promise<Account> => api.me(init),
+    providers: (init?: RequestInit): Promise<AuthProvidersRes> => api.authProviders(init),
     signup: (request: Credentials): Promise<AuthRes> => api.signup({ credentialsReq: request }),
   };
 }

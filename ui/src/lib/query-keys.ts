@@ -14,6 +14,7 @@ export const billingCatalogKey = [...billingKey, "catalog"] as const;
 
 export const accountKey = ["account"] as const;
 export const capabilitiesKey = ["capabilities"] as const;
+export const authProvidersKey = ["auth", "providers"] as const;
 export const brandsKey = (organizationId: string) =>
   ["organizations", organizationId, "brands"] as const;
 

@@ -2,6 +2,8 @@ package domain
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"log/slog"
 	"strings"
@@ -53,6 +55,9 @@ type Me struct {
 type AuthCommander interface {
 	Signup(ctx context.Context, p SignupParams) (*Me, error)
 	Login(ctx context.Context, email, password string) (*Me, error)
+	// SignInWithGoogle admits an email Google has verified: an existing account signs in, and a
+	// new one goes through the same rules as Signup.
+	SignInWithGoogle(ctx context.Context, email string) (*Me, error)
 	RequestPasswordReset(ctx context.Context, email string) error
 	IssuePasswordReset(ctx context.Context, email string) (*User, string, error)
 	ResetPassword(ctx context.Context, token, password string) (uuid.UUID, error)
@@ -98,9 +103,14 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 		return nil, err
 	}
 
+	return c.createAccount(ctx, p.Email, hash)
+}
+
+// createAccount creates the user, its organization and the owner membership, then sends the welcome.
+func (c *authCommander) createAccount(ctx context.Context, email, hash string) (*Me, error) {
 	var me *Me
 
-	err = c.store.Atomic(ctx, func(s Store) error {
+	err := c.store.Atomic(ctx, func(s Store) error {
 		if !c.options.OpenSignup {
 			existing, err := s.UserRepo().LockAndCount(ctx)
 			if err != nil {
@@ -112,8 +122,8 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 			}
 		}
 
-		local, _, _ := strings.Cut(p.Email, "@")
-		user := &User{Email: p.Email, PasswordHash: hash}
+		local, _, _ := strings.Cut(email, "@")
+		user := &User{Email: email, PasswordHash: hash}
 		if err := user.Validate(); err != nil {
 			return err
 		}
@@ -155,6 +165,37 @@ func (c *authCommander) Signup(ctx context.Context, p SignupParams) (*Me, error)
 	orNop(c.options.Analytics).Track(me.User.ID, me.Organization.ID, "user_signed_up", nil)
 
 	return me, nil
+}
+
+func (c *authCommander) SignInWithGoogle(ctx context.Context, email string) (*Me, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if !validEmail(email) {
+		return nil, Validation(FieldError{Field: "email", Code: FieldInvalid})
+	}
+
+	user, err := c.store.UserRepo().GetByEmail(ctx, email)
+	if err == nil {
+		return loadMe(ctx, c.store, user)
+	}
+
+	if !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
+
+	// The account has no password anyone knows; the owner can set one with a password reset.
+	hash, err := HashPassword(randomPassword())
+	if err != nil {
+		return nil, err
+	}
+
+	return c.createAccount(ctx, email, hash)
+}
+
+func randomPassword() string {
+	raw := make([]byte, 32)
+	_, _ = rand.Read(raw)
+
+	return base64.RawURLEncoding.EncodeToString(raw)
 }
 
 func (c *authCommander) Login(ctx context.Context, email, password string) (*Me, error) {

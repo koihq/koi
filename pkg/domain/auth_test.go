@@ -200,6 +200,36 @@ func TestLogin_Me(t *testing.T) {
 	require.Equal(t, "you", me.Organization.Name)
 }
 
+func TestSignInWithGoogleCreatesAnAccountWithoutAKnownPassword(t *testing.T) {
+	d := newAuthDeps(t)
+	d.mockAtomic()
+	d.users.EXPECT().GetByEmail(mock.Anything, "new@example.com").Return(nil, ErrNotFound)
+
+	var created *User
+
+	d.users.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, u *User) error {
+		created = u
+
+		return assignUserID(ctx, u)
+	})
+	d.orgs.EXPECT().Create(mock.Anything, mock.Anything).RunAndReturn(assignOrgID)
+	d.members.EXPECT().Create(mock.Anything, mock.Anything).Return(nil)
+	d.store.EXPECT().EnqueueWelcomeEmail(mock.Anything, mock.Anything).Return(nil)
+
+	analytics := &trackedEvents{}
+
+	me, err := NewAuthCommander(d.store, AuthOptions{OpenSignup: true, Analytics: analytics}).
+		SignInWithGoogle(t.Context(), " New@Example.com ")
+
+	require.NoError(t, err)
+	require.Equal(t, "new@example.com", me.User.Email)
+	require.Equal(t, "new", me.Organization.Name)
+	require.Equal(t, RoleOwner, me.Role)
+	require.NotEmpty(t, created.PasswordHash)
+	require.False(t, CheckPassword(created.PasswordHash, ""), "an empty password must not unlock the account")
+	require.Equal(t, []trackedEvent{{me.User.ID, me.Organization.ID, "user_signed_up", nil}}, analytics.events)
+}
+
 func TestAuthQuerier_MeNotFound(t *testing.T) {
 	d := newAuthDeps(t)
 	id := uuid.New()
