@@ -142,10 +142,27 @@ func (s *Store) FinishGenerationAttempt(ctx context.Context, runID uuid.UUID, at
 	return promptCount, competitorCount, err
 }
 
-// SaveGenerationSummary stores what the research understood while the draft continues.
+// SaveGenerationSummary stores what the research understood while the draft continues. A brand
+// without a description gets one from it, so the mention judge can tell the brand from namesakes.
+// A description the customer wrote is never replaced.
 func (s *Store) SaveGenerationSummary(ctx context.Context, runID uuid.UUID, summary domain.GenerationSummary) error {
-	return s.db.WithContext(ctx).Model(&domain.GenerationRun{}).Where("id = ?", runID).
-		Select("summary").Updates(&domain.GenerationRun{Summary: &summary}).Error
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		err := tx.Model(&domain.GenerationRun{}).Where("id = ?", runID).
+			Select("summary").Updates(&domain.GenerationRun{Summary: &summary}).Error
+		if err != nil {
+			return err
+		}
+
+		description := summary.BrandDescription()
+		if description == "" {
+			return nil
+		}
+
+		brandID := tx.Model(&domain.GenerationRun{}).Select("brand_id").Where("id = ?", runID)
+
+		return tx.Model(&domain.Brand{}).Where("COALESCE(TRIM(description), '') = '' AND id = (?)", brandID).
+			Update("description", description).Error
+	})
 }
 
 func cloudGenerationBudget(ctx context.Context, db *gorm.DB, brandID uuid.UUID) (int, error) {

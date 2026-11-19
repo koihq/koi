@@ -32,7 +32,8 @@ type visibilityProvider interface {
 }
 
 // mentionJudgeTimeout bounds one judgment; the answer is saved by name match when it runs out.
-const mentionJudgeTimeout = 20 * time.Second
+// Most judgments take a few seconds, but an ambiguous namesake measured 27s of reasoning.
+const mentionJudgeTimeout = 40 * time.Second
 
 // visibilityRunOwners finds who to attribute a finished run to in analytics.
 type visibilityRunOwners interface {
@@ -319,9 +320,10 @@ func (w *visibilityWorker) score(ctx context.Context, run *domain.VisibilityRun,
 	defer cancel()
 
 	judgment, err := w.judge.JudgeMention(judgeCtx, domain.MentionInput{
-		Brand:  run.BrandSnapshot,
-		Prompt: cell.PromptText,
-		Answer: answer.Text,
+		Brand:   run.BrandSnapshot,
+		Prompt:  cell.PromptText,
+		Answer:  answer.Text,
+		Sources: answer.Sources,
 	})
 	if ctx.Err() != nil {
 		return "", ctx.Err()

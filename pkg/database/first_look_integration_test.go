@@ -204,6 +204,21 @@ func TestGenerationKeepsWhatResearchUnderstood(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, &summary, saved.Summary)
 	require.Equal(t, brand.Name, saved.BrandSnapshot.Name)
+
+	// The brand had no description, so the mention judge now learns what Koi is.
+	described, err := store.BrandRepo().Get(ctx, brand.ID)
+	require.NoError(t, err)
+	require.Equal(t, summary.BrandDescription(), described.Description)
+
+	// A later research never replaces a description that is already there.
+	require.NoError(t, store.SaveGenerationSummary(ctx, run.ID, domain.GenerationSummary{
+		Product:  "Koi",
+		Category: "Pond fish",
+	}))
+
+	kept, err := store.BrandRepo().Get(ctx, brand.ID)
+	require.NoError(t, err)
+	require.Equal(t, summary.BrandDescription(), kept.Description)
 }
 
 func TestFirstCheckEmailCountsOnlyRealAnswers(t *testing.T) {

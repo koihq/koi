@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -55,6 +56,45 @@ type GenerationSummary struct {
 	Category  string   `json:"category"`
 	Audience  string   `json:"audience"`
 	Functions []string `json:"functions"`
+}
+
+// BrandDescription condenses what the research understood into a brand description, so a brand
+// added with only a site or repository can still be told apart from others with the same name.
+func (s GenerationSummary) BrandDescription() string {
+	product := strings.TrimSpace(s.Product)
+	category := strings.TrimSpace(s.Category)
+	if product == "" && category == "" {
+		return ""
+	}
+
+	var sentences []string
+	switch {
+	case product != "" && category != "":
+		sentences = append(sentences, product+": "+category+".")
+	default:
+		sentences = append(sentences, product+category+".")
+	}
+
+	if audience := strings.TrimSpace(s.Audience); audience != "" {
+		sentences = append(sentences, "For "+audience+".")
+	}
+
+	var functions []string
+	for _, function := range s.Functions {
+		if function = strings.TrimSpace(function); function != "" {
+			functions = append(functions, function)
+		}
+	}
+	if len(functions) > 0 {
+		sentences = append(sentences, strings.Join(functions, "; ")+".")
+	}
+
+	description := strings.Join(sentences, " ")
+	if runes := []rune(description); len(runes) > maxBrandDescriptionLen {
+		description = strings.TrimSpace(string(runes[:maxBrandDescriptionLen]))
+	}
+
+	return description
 }
 
 type GenerationRun struct {

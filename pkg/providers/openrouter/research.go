@@ -323,5 +323,20 @@ func outputText(result *components.OpenResponsesResult) (string, error) {
 		}
 	}
 
+	// A model that reasons until the output limit stops before writing anything, so name the
+	// cause instead of reporting an empty answer.
+	if result.Status == components.OpenAIResponsesResponseStatusIncomplete {
+		reason := "unknown"
+		if result.IncompleteDetails != nil && result.IncompleteDetails.Reason != nil {
+			reason = string(*result.IncompleteDetails.Reason)
+		}
+
+		return "", &Error{
+			Code:      "output_limit",
+			Retryable: true,
+			Err:       fmt.Errorf("response stopped before its text: %s", reason),
+		}
+	}
+
 	return "", &Error{Code: "invalid_output", Retryable: true, Err: errors.New("missing response text")}
 }
