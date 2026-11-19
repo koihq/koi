@@ -15,6 +15,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type AuthProvidersRes,
+    AuthProvidersResFromJSON,
+    AuthProvidersResToJSON,
+} from '../models/AuthProvidersRes';
+import {
     type AuthRes,
     AuthResFromJSON,
     AuthResToJSON,
@@ -49,6 +54,16 @@ export interface ForgotPasswordRequest {
     forgotPasswordReq: ForgotPasswordReq;
 }
 
+export interface GoogleCallbackRequest {
+    code?: string;
+    state?: string;
+    error?: string;
+}
+
+export interface GoogleStartRequest {
+    returnTo?: string;
+}
+
 export interface LoginRequest {
     credentialsReq: CredentialsReq;
 }
@@ -68,6 +83,26 @@ export interface SignupRequest {
  * @interface AuthApiInterface
  */
 export interface AuthApiInterface {
+    /**
+     * Creates request options for authProviders without sending the request
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    authProvidersRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Sign-in methods this instance offers besides email and password.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    authProvidersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthProvidersRes>>;
+
+    /**
+     * Sign-in methods this instance offers besides email and password.
+     */
+    authProviders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthProvidersRes>;
+
     /**
      * Creates request options for forgotPassword without sending the request
      * @param {ForgotPasswordReq} forgotPasswordReq 
@@ -89,6 +124,54 @@ export interface AuthApiInterface {
      * Answers the same for every well-formed address, registered or not.
      */
     forgotPassword(requestParameters: ForgotPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for googleCallback without sending the request
+     * @param {string} [code] 
+     * @param {string} [state] 
+     * @param {string} [error] 
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    googleCallbackRequestOpts(requestParameters: GoogleCallbackRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Google\'s redirect back. Signs in or creates the account for the verified email, then redirects to returnTo. Failures redirect to /sign-in?error= with google_cancelled, google_unverified, google_failed or signup_closed.
+     * @param {string} [code] 
+     * @param {string} [state] 
+     * @param {string} [error] 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    googleCallbackRaw(requestParameters: GoogleCallbackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Google\'s redirect back. Signs in or creates the account for the verified email, then redirects to returnTo. Failures redirect to /sign-in?error= with google_cancelled, google_unverified, google_failed or signup_closed.
+     */
+    googleCallback(requestParameters: GoogleCallbackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for googleStart without sending the request
+     * @param {string} [returnTo] Same-origin path to open after sign-in. Anything else becomes \&quot;/\&quot;.
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    googleStartRequestOpts(requestParameters: GoogleStartRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Browser navigation to Google\'s consent screen. Exists only when the instance has a Google client (KOI_GOOGLE_CLIENT_ID).
+     * @param {string} [returnTo] Same-origin path to open after sign-in. Anything else becomes \&quot;/\&quot;.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof AuthApiInterface
+     */
+    googleStartRaw(requestParameters: GoogleStartRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>>;
+
+    /**
+     * Browser navigation to Google\'s consent screen. Exists only when the instance has a Google client (KOI_GOOGLE_CLIENT_ID).
+     */
+    googleStart(requestParameters: GoogleStartRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
      * Creates request options for login without sending the request
@@ -200,6 +283,43 @@ export interface AuthApiInterface {
 export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
 
     /**
+     * Creates request options for authProviders without sending the request
+     */
+    async authProvidersRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/auth/providers`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Sign-in methods this instance offers besides email and password.
+     */
+    async authProvidersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AuthProvidersRes>> {
+        const requestOptions = await this.authProvidersRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AuthProvidersResFromJSON(jsonValue));
+    }
+
+    /**
+     * Sign-in methods this instance offers besides email and password.
+     */
+    async authProviders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AuthProvidersRes> {
+        const response = await this.authProvidersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for forgotPassword without sending the request
      */
     async forgotPasswordRequestOpts(requestParameters: ForgotPasswordRequest): Promise<runtime.RequestOpts> {
@@ -243,6 +363,94 @@ export class AuthApi extends runtime.BaseAPI implements AuthApiInterface {
      */
     async forgotPassword(requestParameters: ForgotPasswordRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.forgotPasswordRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for googleCallback without sending the request
+     */
+    async googleCallbackRequestOpts(requestParameters: GoogleCallbackRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['code'] != null) {
+            queryParameters['code'] = requestParameters['code'];
+        }
+
+        if (requestParameters['state'] != null) {
+            queryParameters['state'] = requestParameters['state'];
+        }
+
+        if (requestParameters['error'] != null) {
+            queryParameters['error'] = requestParameters['error'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/auth/google/callback`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Google\'s redirect back. Signs in or creates the account for the verified email, then redirects to returnTo. Failures redirect to /sign-in?error= with google_cancelled, google_unverified, google_failed or signup_closed.
+     */
+    async googleCallbackRaw(requestParameters: GoogleCallbackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.googleCallbackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Google\'s redirect back. Signs in or creates the account for the verified email, then redirects to returnTo. Failures redirect to /sign-in?error= with google_cancelled, google_unverified, google_failed or signup_closed.
+     */
+    async googleCallback(requestParameters: GoogleCallbackRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.googleCallbackRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for googleStart without sending the request
+     */
+    async googleStartRequestOpts(requestParameters: GoogleStartRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['returnTo'] != null) {
+            queryParameters['returnTo'] = requestParameters['returnTo'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/auth/google/start`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Browser navigation to Google\'s consent screen. Exists only when the instance has a Google client (KOI_GOOGLE_CLIENT_ID).
+     */
+    async googleStartRaw(requestParameters: GoogleStartRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.googleStartRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Browser navigation to Google\'s consent screen. Exists only when the instance has a Google client (KOI_GOOGLE_CLIENT_ID).
+     */
+    async googleStart(requestParameters: GoogleStartRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.googleStartRaw(requestParameters, initOverrides);
     }
 
     /**

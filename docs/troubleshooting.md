@@ -45,6 +45,12 @@ skipped, not collected in a burst.
 Only the first user can sign up. Set `KOI_ALLOW_SIGNUP=true` to let someone else in, then remove
 it. See [Users](self-hosting.md#users).
 
+## Google says "redirect_uri_mismatch"
+
+The client's authorized redirect URI must be exactly `KOI_PUBLIC_URL/api/v1/auth/google/callback`,
+with the same scheme, host and port, and no trailing slash. See
+[Sign in with Google](configuration.md#sign-in-with-google).
+
 ## "KOI_PUBLIC_URL is not set" in the logs
 
 Without `KOI_PUBLIC_URL`, the session cookie is not marked `Secure`. That is fine on `localhost`.

@@ -42,6 +42,8 @@ type ServerOptions struct {
 	Analytics domain.Analytics
 	// Browser turns on product analytics in the app and the /ingest proxy. Nil leaves both off.
 	Browser *BrowserAnalytics
+	// Google turns on "Continue with Google". Nil leaves email and password only.
+	Google *GoogleAuth
 }
 
 // BrowserAnalytics is what the app needs to send its own events through the /ingest proxy.
@@ -194,6 +196,7 @@ func NewServer(store domain.Store, sess *scs.SessionManager, options ServerOptio
 		})
 		authHandler := NewAuthHandler(domain.NewAuthQuerier(store), authCommander, sess, authenticate)
 		authHandler.limiter = limiter
+		authHandler.google = options.Google.oauthConfig()
 		r.Route("/auth", authHandler.Routes())
 		if billing != nil {
 			r.Post("/webhooks/stripe", billing.Webhook)

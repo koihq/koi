@@ -393,6 +393,74 @@ func (_c *MockAuthCommander_SetPassword_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// SignInWithGoogle provides a mock function for the type MockAuthCommander
+func (_mock *MockAuthCommander) SignInWithGoogle(ctx context.Context, email string) (*domain.Me, error) {
+	ret := _mock.Called(ctx, email)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SignInWithGoogle")
+	}
+
+	var r0 *domain.Me
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*domain.Me, error)); ok {
+		return returnFunc(ctx, email)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *domain.Me); ok {
+		r0 = returnFunc(ctx, email)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*domain.Me)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, email)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockAuthCommander_SignInWithGoogle_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SignInWithGoogle'
+type MockAuthCommander_SignInWithGoogle_Call struct {
+	*mock.Call
+}
+
+// SignInWithGoogle is a helper method to define mock.On call
+//   - ctx context.Context
+//   - email string
+func (_e *MockAuthCommander_Expecter) SignInWithGoogle(ctx interface{}, email interface{}) *MockAuthCommander_SignInWithGoogle_Call {
+	return &MockAuthCommander_SignInWithGoogle_Call{Call: _e.mock.On("SignInWithGoogle", ctx, email)}
+}
+
+func (_c *MockAuthCommander_SignInWithGoogle_Call) Run(run func(ctx context.Context, email string)) *MockAuthCommander_SignInWithGoogle_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockAuthCommander_SignInWithGoogle_Call) Return(me *domain.Me, err error) *MockAuthCommander_SignInWithGoogle_Call {
+	_c.Call.Return(me, err)
+	return _c
+}
+
+func (_c *MockAuthCommander_SignInWithGoogle_Call) RunAndReturn(run func(ctx context.Context, email string) (*domain.Me, error)) *MockAuthCommander_SignInWithGoogle_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Signup provides a mock function for the type MockAuthCommander
 func (_mock *MockAuthCommander) Signup(ctx context.Context, p domain.SignupParams) (*domain.Me, error) {
 	ret := _mock.Called(ctx, p)

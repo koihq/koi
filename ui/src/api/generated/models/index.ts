@@ -2,6 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AppearanceEvidence';
+export * from './AuthProvidersRes';
 export * from './AuthRes';
 export * from './BillingAllowanceRequest';
 export * from './BillingCatalog';

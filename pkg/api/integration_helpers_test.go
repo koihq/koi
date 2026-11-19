@@ -23,7 +23,7 @@ type integrationServer struct {
 	Store *database.Store
 }
 
-func newIntegrationServer(t *testing.T) integrationServer {
+func newIntegrationServer(t *testing.T, configure ...func(*ServerOptions)) integrationServer {
 	t.Helper()
 
 	db, err := database.Open(testdb.URL(t))
@@ -35,8 +35,13 @@ func newIntegrationServer(t *testing.T) integrationServer {
 
 	require.NoError(t, database.Migrate(db))
 
+	options := ServerOptions{OpenSignup: true}
+	for _, apply := range configure {
+		apply(&options)
+	}
+
 	store := database.NewStore(db)
-	server := httptest.NewServer(NewServer(store, scs.New(), ServerOptions{OpenSignup: true}))
+	server := httptest.NewServer(NewServer(store, scs.New(), options))
 	t.Cleanup(server.Close)
 
 	return integrationServer{

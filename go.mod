@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/stripe/stripe-go/v87 v87.0.0
 	golang.org/x/crypto v0.58.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/text v0.43.0
 	gorm.io/driver/postgres v1.6.2
 	gorm.io/gorm v1.31.2
@@ -113,7 +114,6 @@ require (
 	golang.org/x/exp v0.0.0-20261011100332-faecfb24eb49 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/term v0.47.0 // indirect

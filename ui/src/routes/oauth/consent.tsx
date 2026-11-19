@@ -69,6 +69,7 @@ function Consent() {
             intent={intent}
             passwordComplete={intent === "sign-in" ? "current-password" : "new-password"}
             onSwitchIntent={() => setIntent(intent === "sign-in" ? "sign-up" : "sign-in")}
+            returnTo="/oauth/consent"
             onSubmit={async (body) => {
               if (intent === "sign-in") await api.auth.login(body);
               else await api.auth.signup(body);

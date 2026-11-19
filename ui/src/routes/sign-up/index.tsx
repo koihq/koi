@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useApi } from "@/api/apiProvider";
-import { clearAccountCache } from "@/lib/queries";
+import { authProvidersOptions, clearAccountCache } from "@/lib/queries";
 import { AuthShell } from "@/routes/-auth-shell";
 import { CredentialsForm } from "@/routes/-credentials-form";
 
 export const Route = createFileRoute("/sign-up/")({
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(authProvidersOptions(context.api)).catch(() => undefined),
   component: SignUp,
 });
 

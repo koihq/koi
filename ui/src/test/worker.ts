@@ -2,6 +2,7 @@ import { HttpResponse, http } from "msw";
 import { setupWorker } from "msw/browser";
 
 import type {
+  AuthProvidersRes,
   BillingStatus,
   BrandLookup,
   BrandRes,
@@ -47,6 +48,8 @@ export type Workspace = {
   me: Wire<MeRes>;
   brands: Wire<BrandRes>[];
   capabilities: Wire<CapabilitiesResponse>;
+  /** Sign-in methods besides email; Google is off unless a test turns it on. */
+  providers: Wire<AuthProvidersRes>;
   billing: Wire<BillingStatus>;
   tracking: Wire<TrackingStatus>;
   summary: Wire<VisibilityReport>;
@@ -74,6 +77,7 @@ export function workspace(overrides: Partial<Workspace> = {}): Workspace {
     me: account,
     brands: account.activeBrand ? [account.activeBrand] : [],
     capabilities: capabilities(),
+    providers: { google: false },
     billing: billingStatus(),
     tracking: tracking(),
     summary: report(),
@@ -118,6 +122,7 @@ export function serveWorkspace(state: Workspace) {
 
     http.get("/api/v1/auth/me", () => HttpResponse.json(state.me)),
     http.get("/api/v1/capabilities", () => HttpResponse.json(state.capabilities)),
+    http.get("/api/v1/auth/providers", () => HttpResponse.json(state.providers)),
 
     http.get("/api/v1/billing/catalog", () => HttpResponse.json(billingCatalog())),
     http.get("/api/v1/billing/subscription", () => HttpResponse.json(state.billing)),

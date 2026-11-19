@@ -44,6 +44,26 @@ With email set, Koi sends a welcome email and password reset emails. Both need `
 for their links. Without email, sign-up works and you
 [reset passwords on the server](self-hosting.md#reset-a-password).
 
+### Sign in with Google
+
+Optional. Without it, people sign in with email and password.
+
+| Variable | Purpose |
+| --- | --- |
+| `KOI_GOOGLE_CLIENT_ID` | Client ID of a Google OAuth web client. |
+| `KOI_GOOGLE_CLIENT_SECRET` | Its client secret. |
+
+1. In [Google Cloud](https://console.cloud.google.com), open **Google Auth Platform**, set the
+   branding and choose **External**. Add the scopes `openid` and `email`.
+2. Under **Clients**, create a **Web application** client. Add `KOI_PUBLIC_URL` as an
+   authorized JavaScript origin and `KOI_PUBLIC_URL/api/v1/auth/google/callback` as an
+   authorized redirect URI.
+3. Set both variables and `KOI_PUBLIC_URL`, then restart Koi.
+
+A Google account with the same email as an existing user signs in to that account. A new email
+creates an account, following `KOI_ALLOW_SIGNUP`. While the Google app is in testing, only its
+test users can sign in.
+
 ## Advanced
 
 The self-hosted Compose file does not pass these. Add them to its `environment` block, or set
