@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/koihq/koi/compare/v0.3.0...v0.3.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* issue with google signin/up button alignement ([35a316f](https://github.com/koihq/koi/commit/35a316fcb4cf46aeb49ea59152615b14b03d0465))
+
 ## [0.3.0](https://github.com/koihq/koi/compare/v0.2.0...v0.3.0) (2026-11-19)
 
 
