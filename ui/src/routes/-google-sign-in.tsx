@@ -59,7 +59,7 @@ export function GoogleSignIn({ returnTo }: { returnTo: string }) {
         render={
           <a href={href}>
             <img src={googleLogo} alt="" className="size-4" />
-            {t("google.continue")}
+            <span className="[text-box:trim-both_cap_alphabetic]">{t("google.continue")}</span>
           </a>
         }
       />
