@@ -1,0 +1,13 @@
+{
+  "name": "koi",
+  "displayName": "Koi",
+  "version": "0.1.0",
+  "description": "Open-source alternative to Profound and Peec AI. Track whether ChatGPT, Gemini and Google AI recommend your product, and who they name instead.",
+  "author": { "name": "Koi", "url": "https://getkoi.co" },
+  "homepage": "https://getkoi.co",
+  "repository": "https://github.com/koihq/koi",
+  "privacyPolicyUrl": "https://getkoi.co/privacy",
+  "license": "MIT",
+  "keywords": ["aeo", "geo", "ai-visibility", "seo"],
+  "skills": "."
+}

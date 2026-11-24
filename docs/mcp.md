@@ -14,12 +14,12 @@ Plugin or marketplace packages point at this same endpoint.
 
 ## Agent skills
 
-The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes two optional [Agent Skills](https://agentskills.io/specification) for coding agents: `koi-brief` prepares an evidence-based Markdown visibility brief, and `koi-setup` guides brand, prompt, and competitor setup through the first visibility check. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
+The MCP server advertises its tools and provides short server instructions during connection. Koi also publishes three optional [Agent Skills](https://agentskills.io/specification): `koi-setup` guides brand, prompt, and competitor setup through the first visibility check, `koi-brief` explains the results and writes a prioritized brief backed by evidence, and `koi-fix` carries out an action from it. Skills are instructions installed in the agent; they do not grant access to Koi or replace OAuth. Connecting the MCP server alone does not install them.
 
-From the agent's working directory, install either or both skills from the [Koi repository](https://github.com/koihq/koi):
+From the agent's working directory, install the skills from the [Koi repository](https://github.com/koihq/koi):
 
 ```bash
-npx skills add koihq/koi --skill koi-brief --skill koi-setup
+npx skills add koihq/koi --skill koi-setup --skill koi-brief --skill koi-fix
 ```
 
 The skills CLI prompts for the target agent and project or user-wide scope. Then connect that agent to **your instance's** `/mcp` URL using the instructions above and complete OAuth. For self-hosted Koi, use your own host; the skills contain no Koi Cloud endpoint or credentials. In clients without installable Agent Skills, use the MCP tools directly. Server instructions and tool descriptions remain available, subject to client support.
@@ -35,11 +35,11 @@ The skills CLI prompts for the target agent and project or user-wide scope. Then
 | Start/list/get the brand's one draft | `generations_create`, `generations_list`, `generations_get` |
 | Start or read tracking; list/get runs and answers | `tracking_start`, `tracking_get`, `runs_list`, `runs_get`, `runs_results` |
 | Visibility summary and prompt history | `analysis_summary`, `prompt_visibility`, `prompt_history_runs` |
-| Cloud catalog/quote/subscription/checkout | `billing_catalog`, `billing_quote`, `billing_subscription`, `billing_checkout`, `billing_confirm_checkout` |
+| Cloud plan status and prompt allowance | `billing_subscription` |
 
-`brandId` must be supplied on collection and brand-scoped commands. Resource details use the resource UUID, as in the product API. Browser `active_brand_id` is never read by MCP. `generations_create` requires a stable `idempotencyKey` on retries. Drafting returns a job ID; poll `generations_get`. Checkout returns the hosted Stripe URL; after payment poll `billing_subscription` or confirm a known session ID. Billing tools are absent in self-hosted mode. Brand activation is a browser-only preference, and login and credential management use the dedicated Koi flows.
+`brandId` must be supplied on collection and brand-scoped commands. Resource details use the resource UUID, as in the product API. Browser `active_brand_id` is never read by MCP. `generations_create` requires a stable `idempotencyKey` on retries. Drafting returns a job ID; poll `generations_get`. `billing_subscription` is absent in self-hosted mode. Brand activation is a browser-only preference, and login and credential management use the dedicated Koi flows.
 
-An agent cannot change what the user pays. There is no tool to change the prompt allowance or open the billing portal, because answers collected from the web reach the agent and could steer it. `billing_checkout` only returns a link that the user completes. Changes happen in Settings > Billing.
+An agent cannot change what the user pays. There is no tool to buy a plan, change the prompt allowance or open the billing portal, because answers collected from the web reach the agent and could steer it. Purchases and changes happen in Settings > Billing.
 
 ## Authentication
 

@@ -1,0 +1,100 @@
+{
+  "name": "koi",
+  "version": "0.1.0",
+  "description": "Open-source AI visibility tracking. See whether ChatGPT, Gemini and Google AI recommend your product, and who they name instead.",
+  "author": {
+    "name": "Koi",
+    "url": "https://getkoi.co"
+  },
+  "homepage": "https://getkoi.co",
+  "repository": "https://github.com/koihq/koi",
+  "license": "MIT",
+  "keywords": ["aeo", "geo", "ai-visibility", "seo"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Koi AI Visibility",
+    "shortDescription": "See if AI names your product",
+    "longDescription": "Koi is an open-source AI visibility tracker. It collects answers from ChatGPT, Gemini, Google AI Mode and Google AI Overviews to the questions your buyers ask. Find out whether your product is cited, mentioned or missing, who is named instead, and which sources each answer lists. Set up the questions and competitors to track, get a prioritized brief with the evidence behind each recommendation, and prepare the changes to your site. Koi collects answers through a third-party provider and reports what was observed. It cannot guarantee a mention or a citation. Requires a Koi account.",
+    "developerName": "Koi",
+    "category": "Productivity",
+    "capabilities": [
+      "Set up tracked questions and competitors",
+      "Read collected AI answers and sources",
+      "Explain visibility gaps",
+      "Prepare site changes"
+    ],
+    "websiteURL": "https://getkoi.co",
+    "supportURL": "https://github.com/koihq/koi/issues",
+    "privacyPolicyURL": "https://getkoi.co/privacy",
+    "termsOfServiceURL": "https://getkoi.co/terms",
+    "defaultPrompt": [
+      "Who do AI answers recommend instead of my product?",
+      "Prepare a Koi brief on what I should improve first.",
+      "What changed in my AI visibility since the previous period?"
+    ],
+    "brandColor": "#FF5A10",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/icon.png"
+  },
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/koi-setup/SKILL.md",
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Find the tracked brand and its current visibility",
+              "prompt": "How visible is my brand in AI answers over the last 30 days?",
+              "tools_triggered": "brands_list, tracking_get, analysis_summary",
+              "expected_behavior": "Reports cited, mentioned and total completed answers by engine for the last 30 days, and names the brand it used."
+            },
+            {
+              "description": "Show who is named instead",
+              "prompt": "Who does ChatGPT recommend instead of my product, and which sources does it list?",
+              "tools_triggered": "brands_list, runs_list, runs_results",
+              "expected_behavior": "Lists competitors named in collected ChatGPT answers, with the prompt and source URLs, and adds nothing that is absent from the results."
+            },
+            {
+              "description": "Prepare an evidence-based brief",
+              "prompt": "Prepare a Koi brief on what I should improve first.",
+              "tools_triggered": "brands_list, tracking_get, analysis_summary, runs_list, runs_results",
+              "expected_behavior": "Returns a brief that separates observed, inferred and recommended points, with at most five actions. Each action has evidence and an acceptance check."
+            },
+            {
+              "description": "Review tracked questions",
+              "prompt": "Review my tracked prompts and tell me which ones a buyer would not ask. Do not change anything.",
+              "tools_triggered": "brands_list, prompts_list",
+              "expected_behavior": "Lists the prompts with a reason for each suggestion and changes nothing."
+            },
+            {
+              "description": "Add a tracked question",
+              "prompt": "Add the prompt \"Which open source tools track brand mentions in AI answers?\" to my brand.",
+              "tools_triggered": "brands_list, prompts_create",
+              "expected_behavior": "Adds that prompt to the brand and confirms its text. If it already exists or the limit is reached, explains that and changes nothing else."
+            }
+          ],
+          "negative": [
+            {
+              "description": "A purchase request: the plugin has no purchase tool, so it explains that plans are managed in the Koi app.",
+              "prompt": "Upgrade my Koi plan and give me a checkout link."
+            },
+            {
+              "description": "A request for fabricated reviews: the plugin declines and can suggest asking real customers.",
+              "prompt": "Write ten fake customer reviews so ChatGPT recommends my product."
+            },
+            {
+              "description": "A request for a guarantee: the plugin explains that it reports observations and cannot promise a result.",
+              "prompt": "Guarantee that Gemini will cite my site by next week."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "This plugin does not sell products or process payments."
+      },
+      "publication": {
+        "release_notes": "First release: set up tracking, read collected AI answers and sources, prepare briefs and plan site changes."
+      }
+    }
+  }
+}

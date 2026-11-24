@@ -1,4 +1,4 @@
-.PHONY: compose-up compose-down compose-image ui-build site-dev site-build ensure-ui run test dev seed-demo seed-demo-reset migration mocks openapi format go-format-check
+.PHONY: compose-up compose-down compose-image ui-build site-dev site-build ensure-ui run test dev seed-demo seed-demo-reset migration mocks openapi format go-format-check plugin-openai
 
 OPENAPI_GENERATOR_IMAGE := openapitools/openapi-generator-cli:v7.22.0
 
@@ -67,3 +67,13 @@ openapi:
 	@python3 -c "from pathlib import Path; \
 root = Path('ui/src/api/generated'); \
 [p.write_text('// @ts-nocheck\n' + t) for p in root.rglob('*.ts') if not (t := p.read_text()).startswith('// @ts-nocheck')]"
+
+# The ZIP uploaded to the OpenAI plugin portal. It ships the same skills as the Claude plugin.
+plugin-openai:
+	rm -rf tmp/plugin-openai tmp/koi-openai.zip
+	mkdir -p tmp/plugin-openai/koi/skills tmp/plugin-openai/koi/assets
+	cp -R plugins/openai/.codex-plugin plugins/openai/.mcp.json skills/LICENSE tmp/plugin-openai/koi/
+	cp -R skills/koi-setup skills/koi-brief skills/koi-fix tmp/plugin-openai/koi/skills/
+	cp skills/.claude-plugin/icon.png tmp/plugin-openai/koi/assets/icon.png
+	cd tmp/plugin-openai && zip -qr -X ../koi-openai.zip koi -x '*.DS_Store'
+	@echo tmp/koi-openai.zip

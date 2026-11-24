@@ -11,7 +11,8 @@ import { accountOptions } from "@/lib/queries";
 import { accountKey, credentialsKey } from "@/lib/query-keys";
 
 const POLL_MS = 5_000;
-const SKILLS_COMMAND = "npx skills add koihq/koi --skill koi-setup --skill koi-brief";
+const SKILLS_COMMAND =
+  "npx skills add koihq/koi --skill koi-setup --skill koi-brief --skill koi-fix";
 
 function agentClient(name: string | undefined) {
   return (
