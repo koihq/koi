@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/koihq/koi/compare/v0.3.1...v0.3.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* limit MCP billing to read-only and prepare the Claude and ChatGP… ([#78](https://github.com/koihq/koi/issues/78)) ([a06c987](https://github.com/koihq/koi/commit/a06c987778c784cde61f0a2537e6399fd62145de))
+
 ## [0.3.1](https://github.com/koihq/koi/compare/v0.3.0...v0.3.1) (2026-11-20)
 
 
