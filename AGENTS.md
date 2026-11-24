@@ -14,7 +14,8 @@ ui/                 React SPA (pnpm, Vite)
 ui/site/            Public landing at getkoi.co: separate static build, not embedded in the binary
 docs/               User docs (self-hosting, configuration, MCP, troubleshooting) + architecture, OpenAPI
 install.sh          Self-host installer: downloads the release's Compose file and .env, starts Koi
-skills/             Public agent skills (koi-setup, koi-brief), installed with `npx skills add koihq/koi`
+skills/             Public agent skills (koi-setup, koi-brief, koi-fix), installed with `npx skills add koihq/koi`
+plugins/openai/     Manifest for the ChatGPT and Codex plugin; `make plugin-openai` packs it with skills/
 ```
 
 README and docs are for users: keep them short and concrete. Internal plans and runbooks stay out

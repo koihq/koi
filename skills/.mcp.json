@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "koi": { "type": "http", "url": "https://app.getkoi.co/mcp" }
+  }
+}

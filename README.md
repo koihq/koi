@@ -29,7 +29,7 @@ the engine used. Then it writes a Markdown brief that your coding agent can act 
 - Per-prompt results: cited, mentioned or missed, with the full answer and its sources.
 - Competitors: who each engine names instead of you, and the URLs it cites for them.
 - Daily tracking: one check a day, with 7, 30 and 90-day trends.
-- Agent first: an MCP server and two agent skills, so Claude Code, Codex or Cursor can set up
+- Agent first: an MCP server and three agent skills, so Claude Code, Codex or Cursor can set up
   Koi and turn the results into changes.
 - AI drafting: suggests prompts and competitors from your website. You confirm them before Koi
   spends anything.
@@ -70,7 +70,7 @@ does. For Claude Code:
 
 ```sh
 claude mcp add --transport http koi https://<your-host>/mcp
-npx skills add koihq/koi --skill koi-setup --skill koi-brief
+npx skills add koihq/koi --skill koi-setup --skill koi-brief --skill koi-fix
 ```
 
 Run `/mcp` to authorize, then ask your agent to set up Koi for the current project.
