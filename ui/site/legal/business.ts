@@ -7,4 +7,4 @@ export const business = {
 };
 
 /** The date both documents last changed. Update it with every substantive edit. */
-export const legalUpdated = "November 12, 2026";
+export const legalUpdated = "November 25, 2026";

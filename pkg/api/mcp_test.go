@@ -29,6 +29,7 @@ func TestMCPStreamableHTTPListsProductTools(t *testing.T) {
 	for _, tool := range tools.Tools {
 		names[tool.Name] = true
 
+		require.GreaterOrEqual(t, len(tool.Description), 60, "%s: say what it does, when to use it, and its limits", tool.Name)
 		require.NotEmpty(t, tool.Annotations.Title, tool.Name)
 		require.NotNil(t, tool.Annotations.OpenWorldHint, tool.Name)
 		require.NotNil(t, tool.Annotations.DestructiveHint, tool.Name)

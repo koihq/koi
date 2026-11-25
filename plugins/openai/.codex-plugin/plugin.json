@@ -17,7 +17,7 @@
     "shortDescription": "See if AI names your product",
     "longDescription": "Koi is an open-source AI visibility tracker. It collects answers from ChatGPT, Gemini, Google AI Mode and Google AI Overviews to the questions your buyers ask. Find out whether your product is cited, mentioned or missing, who is named instead, and which sources each answer lists. Set up the questions and competitors to track, get a prioritized brief with the evidence behind each recommendation, and prepare the changes to your site. Koi collects answers through a third-party provider and reports what was observed. It cannot guarantee a mention or a citation. Requires a Koi account.",
     "developerName": "Koi",
-    "category": "Productivity",
+    "category": "Data & Analytics",
     "capabilities": [
       "Set up tracked questions and competitors",
       "Read collected AI answers and sources",
