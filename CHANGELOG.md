@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/koihq/koi/compare/v0.3.2...v0.3.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* verify the domain for the ChatGPT plugin and describe MCP tools ([#81](https://github.com/koihq/koi/issues/81)) ([b5aa5a9](https://github.com/koihq/koi/commit/b5aa5a967faa78848b6e0e83423ef2fca395e904))
+
 ## [0.3.2](https://github.com/koihq/koi/compare/v0.3.1...v0.3.2) (2026-11-24)
 
 
