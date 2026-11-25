@@ -1,6 +1,6 @@
 {
   "name": "koi-geo",
-  "displayName": "Koi",
+  "displayName": "Koi GEO",
   "version": "0.1.0",
   "description": "Open-source alternative to Profound and Peec AI. Track whether ChatGPT, Gemini and Google AI recommend your product, and who they name instead.",
   "author": { "name": "Giammarco Ferranti", "url": "https://getkoi.co" },
