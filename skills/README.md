@@ -13,7 +13,7 @@ This plugin connects Claude to Koi Cloud and adds three skills:
 Install the plugin. In Claude Code:
 
 ```
-/plugin install koi --marketplace koihq/koi
+/plugin install koi-geo --marketplace koihq/koi
 ```
 
 Sign in to Koi when Claude asks, then try:
