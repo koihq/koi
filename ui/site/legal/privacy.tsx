@@ -47,7 +47,7 @@ const processors = [
   {
     label: "Logo.dev",
     value:
-      "Shows company logos in the app. Your browser requests each logo directly, so Logo.dev receives the brand and competitor domains and your IP address. United States.",
+      "Shows company logos in the app and finds companies when you search for a competitor. Your browser requests each logo directly, so Logo.dev receives the brand and competitor domains and your IP address. When you search, Koi's server sends it the text you typed. United States.",
     href: "https://www.logo.dev/privacy",
   },
   {
