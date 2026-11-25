@@ -16,7 +16,8 @@ whether your product is cited, mentioned or missing, which competitors appear, a
 the engine used. Then it writes a Markdown brief that your coding agent can act on in your repo.
 
 [Self-host](#self-host) · [Connect your agent](#connect-your-agent) ·
-[Configuration](docs/configuration.md) · [Koi Cloud](https://getkoi.co)
+[Configuration](docs/configuration.md) · [Koi Cloud](https://getkoi.co) ·
+[Compare open-source AEO tools](docs/open-source-aeo-tools.md)
 
 <div align="center">
   <img src="docs/assets/koi-overview.png" alt="Koi overview: visibility per engine over 30 days, prompts, and competitors named instead" width="860" />
