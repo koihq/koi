@@ -200,6 +200,53 @@
   text-wrap: pretty;
 }
 
+/* The comparison table: three columns that fit a phone, so it stays a table at every width. Rules
+   between rows keep a long table readable; the marks carry no colour, the words beside them do. */
+.site-compare {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.site-compare th,
+.site-compare td {
+  padding: 0.875rem 1rem 0.875rem 0;
+  border-bottom: 1px solid var(--border);
+  font-weight: 400;
+  text-align: start;
+  vertical-align: top;
+}
+
+.site-compare thead th {
+  padding-block-start: 0;
+  font-weight: 500;
+}
+
+.site-compare thead th:first-child {
+  width: 34%;
+}
+
+.site-compare tbody th {
+  font-weight: 500;
+}
+
+@media (min-width: 40rem) {
+  .site-compare {
+    font-size: 0.9375rem;
+  }
+
+  .site-compare thead th:first-child {
+    width: 38%;
+  }
+
+  .site-compare th,
+  .site-compare td {
+    padding-inline-end: 1.5rem;
+  }
+}
+
 /* Google's two surfaces share one card: the mark, then both names stacked beside it. */
 .site-engine-family {
   display: flex;

@@ -1,25 +1,16 @@
-import {
-  ArrowRight01Icon,
-  ArrowUpRight01Icon,
-  Copy01Icon,
-  PlusSignIcon,
-  Tick02Icon,
-} from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import NumberFlow from "@number-flow/react";
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { BrandLabel } from "@/components/blocks/brand-label";
 import { TickPicker } from "@/components/blocks/tick-picker";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { formatRate } from "@/lib/format";
 import catalog from "../../pkg/pricing/catalog.json";
-import mark from "./assets/koi-mark-64.png";
-import { agentPrompt, copy, engineNames, engineShortNames, links } from "./copy";
+import { copy, engineNames, engineShortNames, links } from "./copy";
 import { FixDemo } from "./demos/fix-demo";
 import { OutcomeDot } from "./demos/parts";
 import { SetupDemo } from "./demos/setup-demo";
-import { CookieSettingsButton } from "./legal/cookie-settings";
-import { AgentStack, EngineChip, EngineLogo, engineList, GithubLogo } from "./logos";
+import { Actions, AgentPrompt, ExternalIcon, Faq, LinkButton, SiteLayout } from "./layout";
+import { EngineChip, EngineLogo, engineList, GithubLogo } from "./logos";
 import { Pond } from "./pond/ponds";
 import recorded from "./summary/summary-data.json";
 import { SummaryMock } from "./summary/summary-mock";
@@ -28,122 +19,8 @@ import { SummaryMock } from "./summary/summary-mock";
 const APP_WIDTH = 1320;
 const APP_HEIGHT = 1000;
 
-function SiteMark({ size }: { size: number }) {
-  return <img src={mark} alt="" width={size} height={size} className="block" />;
-}
-
-function ExternalIcon() {
-  return <HugeiconsIcon icon={ArrowUpRight01Icon} className="size-3.5" aria-hidden="true" />;
-}
-
-function LinkButton({
-  href,
-  size = "cta",
-  children,
-}: {
-  href: string;
-  size?: "cta" | "lg";
-  children: string;
-}) {
-  return (
-    <a href={href} data-slot="button" className={buttonVariants({ size })}>
-      {children}
-    </a>
-  );
-}
-
 function PrimaryLink({ children }: { children: string }) {
   return <LinkButton href={links.app}>{children}</LinkButton>;
-}
-
-/**
- * The agents the prompt works with, and the button that copies it. If copying fails, the caller shows
- * the prompt itself.
- */
-function AgentPill({ onFailure }: { onFailure?: () => void }) {
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
-  const timer = useRef<number | undefined>(undefined);
-
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  async function copyPrompt() {
-    window.clearTimeout(timer.current);
-
-    try {
-      await navigator.clipboard.writeText(agentPrompt);
-      setState("copied");
-    } catch {
-      setState("failed");
-      onFailure?.();
-    }
-
-    timer.current = window.setTimeout(() => setState("idle"), 2600);
-  }
-
-  return (
-    <div className="site-agent-pill">
-      <AgentStack />
-      <Button
-        size="cta"
-        className="h-9 rounded-full px-4"
-        onClick={copyPrompt}
-        aria-label={state === "idle" ? copy.hero.agentLabel : undefined}
-      >
-        <span className="site-swap">
-          <span data-on={state === "idle"} aria-hidden={state !== "idle"}>
-            <HugeiconsIcon icon={Copy01Icon} className="size-4" aria-hidden="true" />
-            {copy.hero.agent}
-          </span>
-          <span data-on={state === "copied"} aria-hidden={state !== "copied"}>
-            <HugeiconsIcon icon={Tick02Icon} className="size-4" aria-hidden="true" />
-            {copy.hero.copied}
-          </span>
-          <span data-on={state === "failed"} aria-hidden={state !== "failed"}>
-            {copy.hero.copyFailed}
-          </span>
-        </span>
-      </Button>
-      <output className="sr-only">{state === "copied" ? copy.hero.copiedStatus : ""}</output>
-    </div>
-  );
-}
-
-function PromptFallback() {
-  return (
-    <p className="max-w-140 basis-full rounded-control border border-border px-3 py-2 text-left text-xs/relaxed select-all">
-      {agentPrompt}
-    </p>
-  );
-}
-
-/** The pill on its own, for a row that has its own secondary link. */
-function AgentPrompt() {
-  const [failed, setFailed] = useState(false);
-
-  return (
-    <>
-      <AgentPill onFailure={() => setFailed(true)} />
-      {failed && <PromptFallback />}
-    </>
-  );
-}
-
-function Actions({ align = "center" }: { align?: "center" | "start" }) {
-  const [failed, setFailed] = useState(false);
-
-  return (
-    <div className={`flex flex-col gap-3 ${align === "center" ? "items-center" : "items-start"}`}>
-      <AgentPill onFailure={() => setFailed(true)} />
-      <a
-        href={links.app}
-        className="inline-flex items-center gap-1 rounded-control px-2 py-2 text-body text-muted-foreground transition-colors hover:text-foreground"
-      >
-        {copy.hero.browser}
-        <HugeiconsIcon icon={ArrowRight01Icon} className="size-4" aria-hidden="true" />
-      </a>
-      {failed && <PromptFallback />}
-    </div>
-  );
 }
 
 /**
@@ -168,47 +45,6 @@ function HeroLead() {
       </span>
       {` ${lead.after}`}
     </p>
-  );
-}
-
-function Header() {
-  return (
-    <header className="site-rise absolute inset-x-0 top-0 z-20 mx-auto flex h-16 w-full max-w-340 items-center justify-between gap-4 px-4 sm:px-7">
-      <a href="/" aria-label={copy.nav.home} className="flex items-center rounded-control">
-        <SiteMark size={28} />
-      </a>
-
-      <nav className="flex items-center gap-1">
-        <a
-          href="/#pricing"
-          className="hidden rounded-control px-3 py-2 text-body text-muted-foreground transition-colors hover:text-foreground sm:block"
-        >
-          {copy.nav.pricing}
-        </a>
-        <a
-          href={links.docs}
-          className="hidden rounded-control px-3 py-2 text-body text-muted-foreground transition-colors hover:text-foreground sm:block"
-        >
-          {copy.nav.docs}
-        </a>
-        <a
-          href={links.github}
-          className="hidden items-center gap-2 rounded-control px-3 py-2 text-body text-muted-foreground transition-colors hover:text-foreground sm:flex"
-        >
-          <GithubLogo />
-          {copy.nav.github}
-        </a>
-        <a
-          href={links.signIn}
-          className="rounded-control px-3 py-2 text-body text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {copy.nav.signIn}
-        </a>
-        <LinkButton href={links.app} size="lg">
-          {copy.nav.start}
-        </LinkButton>
-      </nav>
-    </header>
   );
 }
 
@@ -609,63 +445,6 @@ function OpenSource() {
   );
 }
 
-/** The questions as FAQPage structured data, so search and answer engines can read them as such. */
-const faqSchema = JSON.stringify({
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: copy.faq.items.map((item) => ({
-    "@type": "Question",
-    name: item.q,
-    acceptedAnswer: { "@type": "Answer", text: item.a },
-  })),
-}).replaceAll("<", "\\u003c");
-
-function Faq() {
-  return (
-    <section className="mx-auto grid max-w-340 gap-10 px-4 pb-32 sm:px-7 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
-      <div>
-        <h2 className="site-heading">{copy.faq.title}</h2>
-        <p className="mt-3 text-body text-muted-foreground">
-          {`${copy.faq.more} `}
-          <a
-            href={links.issues}
-            className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
-          >
-            {copy.faq.ask}
-          </a>
-        </p>
-      </div>
-      <div className="border-t border-border">
-        {copy.faq.items.map((item, index) => (
-          <details
-            key={item.q}
-            name="faq"
-            open={index === 0}
-            className="site-question border-b border-border"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-6 rounded-control py-5 text-section [&::-webkit-details-marker]:hidden">
-              {item.q}
-              <HugeiconsIcon
-                icon={PlusSignIcon}
-                className="site-question-icon size-4 shrink-0 text-muted-foreground"
-                aria-hidden="true"
-              />
-            </summary>
-            <p className="max-w-150 pe-10 pb-6 text-body font-normal text-muted-foreground">
-              {item.a}
-            </p>
-          </details>
-        ))}
-      </div>
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: static JSON from copy.ts, with "<" escaped
-        dangerouslySetInnerHTML={{ __html: faqSchema }}
-      />
-    </section>
-  );
-}
-
 /** The last ask, over a fixed shoal. Orange still means an engine named you. */
 function Closing() {
   const panel = useRef<HTMLDivElement>(null);
@@ -686,52 +465,6 @@ function Closing() {
   );
 }
 
-function Footer() {
-  const linkClass = "transition-colors hover:text-foreground";
-
-  return (
-    <footer className="mx-auto flex max-w-340 flex-wrap items-center justify-between gap-4 px-4 pb-10 text-xs text-muted-foreground sm:px-7">
-      <span className="flex flex-wrap items-center gap-2">
-        <SiteMark size={20} />
-        {copy.footer.rights}
-        <span>{copy.footer.owner}</span>
-      </span>
-      <span className="flex flex-wrap gap-4">
-        <a href={links.github} className={linkClass}>
-          {copy.footer.source}
-        </a>
-        <a href={links.skill} className={linkClass}>
-          {copy.footer.skill}
-        </a>
-        <a href={links.privacy} className={linkClass}>
-          {copy.footer.privacy}
-        </a>
-        <a href={links.terms} className={linkClass}>
-          {copy.footer.terms}
-        </a>
-        <CookieSettingsButton className={linkClass} />
-      </span>
-    </footer>
-  );
-}
-
-/** The skip link, header and footer every page of the site shares. */
-export function SiteLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-30 focus:rounded-control focus:bg-surface focus:px-3 focus:py-2 focus:text-body"
-      >
-        {copy.skipLink}
-      </a>
-      <Header />
-      <main id="main">{children}</main>
-      <Footer />
-    </>
-  );
-}
-
 export function App() {
   return (
     <SiteLayout>
@@ -739,7 +472,7 @@ export function App() {
       <Bento />
       <Pricing />
       <OpenSource />
-      <Faq />
+      <Faq items={copy.faq.items} />
       <Closing />
     </SiteLayout>
   );

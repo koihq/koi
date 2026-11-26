@@ -1,0 +1,25 @@
+name: Comparison correction
+description: A fact on a getkoi.co comparison page is wrong or out of date.
+labels: [documentation]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      placeholder: https://getkoi.co/alternatives/…
+    validations:
+      required: true
+  - type: textarea
+    id: fact
+    attributes:
+      label: What is wrong
+      description: The fact as the page states it, and what it should say.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: A public page that shows the correct fact.
+    validations:
+      required: true

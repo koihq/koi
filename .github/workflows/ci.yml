@@ -88,6 +88,9 @@ jobs:
       - name: Test
         run: pnpm --dir ui test
 
+      - name: Build the landing
+        run: pnpm --dir ui site:build
+
   e2e:
     runs-on: ubuntu-24.04
     env:

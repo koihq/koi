@@ -180,5 +180,25 @@ HTML and self-hosted binaries never ship it. It uses the app's primitives; price
   Claims about collection follow Cloro's documentation: real browser, logged out, the brand's country.
 - Everything except the pond and the hero chart is readable without JavaScript.
 
+### Comparison pages
+
+`ui/site/alternatives` holds one page per rival, an index at `/alternatives` and the open source
+list at `/open-source-aeo-tools`. The footer's Compare column links all of them; the header stays on
+the product.
+
+- One rival per page, in the order Tally uses: the heading ("Koi, an open source Profound
+  alternative"), the answer in one sentence, the agent pill, "which should you pick" for each side,
+  the table, then each topic with Koi and the rival side by side, questions, and the closing call.
+- The table has three columns (feature, Koi, the rival) and stays a table at every width. A cell is
+  a mark and two or three words: what it costs or how much you get ("✓ From €189/mo"). Marks carry
+  no colour: a yes is as bright as the words, a no and an unknown recede.
+- When the vendor's page does not say, the cell is "Not published" with a dash, never a cross we
+  inferred. At least three rows show the rival ahead; the test fails otherwise.
+- Only what is on sale today. A rival's past plans and price changes are not told.
+- Prices stay in the vendor's currency. Koi's come from `pkg/pricing/catalog.json`, and Koi's side of
+  shared rows, topics and questions is written once in `comparison.ts`.
+- Under the table: who wrote it, the date checked, a link to every page read, and how to report a
+  mistake. No ratings, reviews or testimonials.
+
 `ui/site/public/SKILL.md` is what the "Start with an agent" prompt points to. Keep its steps in
 line with `skills/koi-setup/SKILL.md`.

@@ -1,9 +1,12 @@
 import { renderToString } from "react-dom/server";
 
-import { pageFor, pages } from "./pages";
+import { headFor, sitemapFor } from "./head";
+import { notFound, type Page, pages } from "./pages";
 
-export { pages };
+export { notFound, pages };
 
-export function render(path: string) {
-  return renderToString(pageFor(path).render());
+export const sitemap = sitemapFor(pages);
+
+export async function render(page: Page) {
+  return { head: await headFor(page), body: renderToString(await page.load()) };
 }
