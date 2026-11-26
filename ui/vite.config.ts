@@ -19,6 +19,9 @@ const config = defineConfig({
           name: "site",
           environment: "node",
           include: ["site/**/*.test.{ts,tsx}"],
+          // The first test to render the home page also transforms its demos and charts. On a
+          // cold CI runner that alone takes longer than the default 5 seconds.
+          testTimeout: 30_000,
         },
       },
       {
