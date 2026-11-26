@@ -14,6 +14,14 @@ const config = defineConfig({
   test: {
     projects: [
       {
+        extends: "./vite.site.config.ts",
+        test: {
+          name: "site",
+          environment: "node",
+          include: ["site/**/*.test.{ts,tsx}"],
+        },
+      },
+      {
         extends: true,
         test: {
           name: "unit",

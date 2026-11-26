@@ -10,10 +10,11 @@
   </p>
 </div>
 
-Koi is an open-source alternative to Profound and Peec AI. It asks ChatGPT, Gemini, Google AI
-Mode and Google AI Overviews the questions your buyers ask, every day. For each answer it records
-whether your product is cited, mentioned or missing, which competitors appear, and which sources
-the engine used. Then it writes a Markdown brief that your coding agent can act on in your repo.
+Koi is an open source AEO tool and AI visibility tracker, and an alternative to Profound and Peec
+AI. Every day it asks ChatGPT, Gemini, Google AI Mode and Google AI Overviews the questions your
+buyers ask. For each answer it records whether your product is cited, mentioned or missing, which
+competitors appear, and which sources the engine used. Then it writes a Markdown brief that Claude
+Code, Codex or Cursor can act on in your repo. MIT licensed: run it yourself or use Koi Cloud.
 
 [Self-host](#self-host) · [Connect your agent](#connect-your-agent) ·
 [Configuration](docs/configuration.md) · [Koi Cloud](https://getkoi.co)
@@ -34,6 +35,20 @@ the engine used. Then it writes a Markdown brief that your coding agent can act 
 - AI drafting: suggests prompts and competitors from your website. You confirm them before Koi
   spends anything.
 - Self-hosted: one command, your own Cloro key, MIT license.
+
+## Compared with other tools
+
+| | Open source | Starts at | Engines | Brands | |
+| --- | --- | --- | --- | --- | --- |
+| Koi | MIT | €29/mo for 15 prompts | 4 | Unlimited | |
+| Profound | No | Custom, after a demo | Up to 10 | Not published | [Koi vs Profound](https://getkoi.co/alternatives/profound) |
+| Peec AI | No | $95/mo for 50 prompts | 3 of 8 | 1 to 5 | [Koi vs Peec AI](https://getkoi.co/alternatives/peec-ai) |
+| Otterly.AI | No | €29/mo for 16 prompts, before tax | 4 of 7 | Unlimited | [Koi vs Otterly.AI](https://getkoi.co/alternatives/otterly) |
+| Elmo | MIT | $29/mo for 50 prompts | 1, or 4 from $99/mo | 1 to 5 | [Koi vs Elmo](https://getkoi.co/alternatives/elmo) |
+
+Checked on each company's pricing page on November 26, 2026. Each comparison also says where the
+other tool is ahead. [Open source AEO tools](https://getkoi.co/open-source-aeo-tools) compares
+the projects you can run yourself.
 
 ## Quick start
 

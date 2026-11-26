@@ -10,4 +10,5 @@ their products and remain subject to each owner's brand guidelines.
 | `google.svg` | SVGL `static/library/google.svg` |
 | `github.svg`, `github-dark.svg` | SVGL `static/library/github_light.svg`, `github_dark.svg` |
 | `claude.svg`, `cursor.svg` | Copied from `ui/src/assets/mcp-clients` |
-| `rivals/*.png` | [Logo.dev](https://www.logo.dev), each company's domain at 128px, for the comparison and the demo |
+| `rivals/elmo.png` | [Elmo on GitHub](https://github.com/elmohq), its organization picture at 128px, downloaded on 2026-11-25 |
+| other `rivals/*.png` | [Logo.dev](https://www.logo.dev), each company's domain at 128px, for the comparison and the demo |

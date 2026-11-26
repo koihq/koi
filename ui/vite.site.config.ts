@@ -25,6 +25,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     assetsInlineLimit: 0,
+    // Pages load on demand, but their styles must be there with the prerendered HTML.
+    cssCodeSplit: false,
     emptyOutDir: true,
     rollupOptions: {
       input: {

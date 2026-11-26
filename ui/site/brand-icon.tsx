@@ -2,6 +2,7 @@ import { cn } from "cn";
 import { useLogoInfo } from "@/lib/logo-info";
 import mark from "./assets/koi-mark-64.png";
 import athena from "./assets/logos/rivals/athenahq.png";
+import elmo from "./assets/logos/rivals/elmo.png";
 import otterly from "./assets/logos/rivals/otterly.png";
 import peec from "./assets/logos/rivals/peec.png";
 import rankscale from "./assets/logos/rivals/rankscale.png";
@@ -13,6 +14,7 @@ const logos: Record<string, string> = {
   "tryprofound.com": profound,
   "peec.ai": peec,
   "otterly.ai": otterly,
+  "elmohq.com": elmo,
   "scrunch.com": scrunch,
   "athenahq.ai": athena,
   "rankscale.ai": rankscale,
