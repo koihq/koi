@@ -87,7 +87,9 @@ function Projects({ projects }: { projects: Project[] }) {
       <div className="mt-12 grid gap-16">
         {projects.map((project) => {
           const tool = tools[project.tool];
-          const [repository] = tool.sources.filter((source) => source.url.includes("github.com"));
+          const repository = tool.sources.find(
+            (source) => new URL(source.url).hostname === "github.com",
+          );
 
           return (
             <article
