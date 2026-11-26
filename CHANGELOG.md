@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/koihq/koi/compare/v0.3.3...v0.3.4) (2026-11-26)
+
+
+### Bug Fixes
+
+* shorten the MCP server instructions for the ChatGPT directory ([#84](https://github.com/koihq/koi/issues/84)) ([2d86cce](https://github.com/koihq/koi/commit/2d86cce2949e972b6a9c00dc675ffdd41f7c4dbc))
+
 ## [0.3.3](https://github.com/koihq/koi/compare/v0.3.2...v0.3.3) (2026-11-25)
 
 
