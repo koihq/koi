@@ -86,10 +86,12 @@ func TestMCPAgentsCannotChangeWhatTheUserPays(t *testing.T) {
 	require.NoError(t, err)
 	defer session.Close()
 
+	// OpenAI's directory holds server instructions that talk about plans or run long.
 	instructions := session.InitializeResult().Instructions
-	require.NotContains(t, instructions, "billing_change_allowance")
-	require.NotContains(t, instructions, "checkout")
-	require.Contains(t, instructions, "Settings > Billing")
+	require.LessOrEqual(t, len(instructions), 512)
+	for _, word := range []string{"billing", "Billing", "checkout", "plan", "trial", "free"} {
+		require.NotContains(t, instructions, word)
+	}
 
 	tools, err := session.ListTools(context.Background(), nil)
 	require.NoError(t, err)
